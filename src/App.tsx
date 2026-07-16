@@ -6,6 +6,7 @@ import Puzzles from './pages/Puzzles'
 import PuzzleRush from './pages/PuzzleRush'
 import Archive from './pages/Archive'
 import Stats from './pages/Stats'
+import Import from './pages/Import'
 
 const NAV = [
   { to: '/', icon: '♞', label: 'Accueil' },
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/analyse" element={<Analysis />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/stats" element={<Stats />} />
+            <Route path="/import" element={<Import />} />
           </Routes>
         </main>
         <nav className="pb-safe flex shrink-0 border-t border-black/40 bg-surface-2 md:hidden">

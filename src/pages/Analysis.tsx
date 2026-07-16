@@ -1,19 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chess, type Move } from 'chess.js'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Board, type BoardArrow } from '../components/Board'
 import { EvalBar } from '../components/EvalBar'
+import { EvalGraph } from '../components/EvalGraph'
 import { MoveList } from '../components/MoveList'
 import { Engine, type EngineLine } from '../lib/engine'
 import { db } from '../lib/db'
 import { bookContinuations, openingForMoves } from '../lib/openings'
-import { CLASS_META, reviewGame, type GameReview, type MoveClass } from '../lib/review'
+import { CLASS_META, reviewGame, winPct, type GameReview, type MoveClass } from '../lib/review'
 import { coachComments, coachSummary } from '../lib/coach'
+import { sounds } from '../lib/sounds'
+import { REVIEW_DEPTHS, useSettings } from '../store/settings'
+
+interface RetryState {
+  moveIndex: number
+  baseFen: string // position avant le coup fautif
+  status: 'trying' | 'checking' | 'found' | 'failed'
+  lastTried?: string
+  solutionShown?: boolean
+}
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
 export default function Analysis() {
   const [params, setParams] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { reviewDepth, playSounds } = useSettings()
   const [startFen, setStartFen] = useState(START_FEN)
   const [moves, setMoves] = useState<Move[]>([])
   const [viewIndex, setViewIndex] = useState(-1) // -1 = position de départ
@@ -27,6 +41,7 @@ export default function Analysis() {
   const [importError, setImportError] = useState('')
   const [gameMeta, setGameMeta] = useState<string | null>(null)
   const [orientation, setOrientation] = useState<'w' | 'b'>('w')
+  const [retry, setRetry] = useState<RetryState | null>(null)
   const engineRef = useRef<Engine | null>(null)
 
   const viewFen = useMemo(() => {
@@ -46,6 +61,22 @@ export default function Analysis() {
     [startFen, uciMoves],
   )
 
+  // Chargement depuis l'import chess.com (state de navigation).
+  useEffect(() => {
+    const state = location.state as { pgn?: string; color?: 'w' | 'b'; label?: string; review?: boolean } | null
+    if (!state?.pgn) return
+    if (loadPgn(state.pgn)) {
+      setGameMeta(state.label ?? null)
+      if (state.color) {
+        setReviewColor(state.color)
+        setOrientation(state.color)
+      }
+      if (state.review) setTimeout(() => void runReview(state.pgn), 300)
+    }
+    navigate('.', { replace: true, state: null })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Chargement depuis l'archive (?game=id).
   useEffect(() => {
     const gameId = params.get('game')
@@ -64,10 +95,12 @@ export default function Analysis() {
   }, [])
 
   // Analyse infinie sur la position affichée. Coupée pendant un Game Review
-  // pour ne pas entrelacer deux recherches sur le même worker.
+  // (deux recherches entrelacées sur le même worker) et pendant un retry
+  // (les lignes révéleraient la solution).
   const reviewing = reviewProgress !== null
+  const retrying = retry !== null
   useEffect(() => {
-    if (!engineOn || reviewing) {
+    if (!engineOn || reviewing || retrying) {
       setLines([])
       return
     }
@@ -87,7 +120,7 @@ export default function Analysis() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewFen, engineOn, reviewing])
+  }, [viewFen, engineOn, reviewing, retrying])
 
   useEffect(
     () => () => {
@@ -160,7 +193,7 @@ export default function Analysis() {
     await engine.stop()
     engine.onLines = null
     try {
-      const result = await reviewGame(pgn, engine, 12, (done, total) =>
+      const result = await reviewGame(pgn, engine, REVIEW_DEPTHS[reviewDepth], (done, total) =>
         setReviewProgress(Math.round((done / total) * 100)),
       )
       setReview(result)
@@ -171,7 +204,7 @@ export default function Analysis() {
       engine.onLines = setLines
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moves, startFen])
+  }, [moves, startFen, reviewDepth])
 
   function currentPgn(): string | null {
     if (startFen !== START_FEN || moves.length === 0) return null
@@ -196,12 +229,27 @@ export default function Analysis() {
     evalMate = review.moves[viewIndex]?.mateAfter ?? null
   }
 
-  const arrows: BoardArrow[] = []
-  if (engineOn && topLine?.pv[0] && topLine.pv[0].length >= 4) {
-    arrows.push({ startSquare: topLine.pv[0].slice(0, 2), endSquare: topLine.pv[0].slice(2, 4), color: '#95bb4a' })
-  }
   const reviewedCurrent = review && viewIndex >= 0 ? review.moves[viewIndex] : null
 
+  const BAD: MoveClass[] = ['inaccuracy', 'mistake', 'miss', 'missedWin', 'blunder']
+  const arrows: BoardArrow[] = []
+  if (retry) {
+    // Pas de flèche : ne pas révéler la solution.
+  } else if (reviewedCurrent && BAD.includes(reviewedCurrent.class)) {
+    // Coup fautif : coup joué en rouge, meilleur coup en vert.
+    arrows.push({
+      startSquare: reviewedCurrent.uci.slice(0, 2),
+      endSquare: reviewedCurrent.uci.slice(2, 4),
+      color: '#ca3431',
+    })
+    arrows.push({
+      startSquare: reviewedCurrent.bestMoveUci.slice(0, 2),
+      endSquare: reviewedCurrent.bestMoveUci.slice(2, 4),
+      color: '#81b64c',
+    })
+  } else if (engineOn && topLine?.pv[0] && topLine.pv[0].length >= 4) {
+    arrows.push({ startSquare: topLine.pv[0].slice(0, 2), endSquare: topLine.pv[0].slice(2, 4), color: '#95bb4a' })
+  }
   const coach = useMemo(
     () =>
       review
@@ -222,6 +270,61 @@ export default function Analysis() {
         ? keyMoments.find((c) => c.moveIndex > viewIndex)
         : [...keyMoments].reverse().find((c) => c.moveIndex < viewIndex)
     if (next) setViewIndex(next.moveIndex)
+  }
+
+  // --- Retry : rejouer la position avant une faute et trouver mieux ---
+  function fenBeforeMove(idx: number): string {
+    const c = new Chess(startFen)
+    for (let i = 0; i < idx; i++) c.move(moves[i].san)
+    return c.fen()
+  }
+
+  function startRetry(idx: number) {
+    setRetry({ moveIndex: idx, baseFen: fenBeforeMove(idx), status: 'trying' })
+  }
+
+  const retrySolution = useMemo(() => {
+    if (!retry || !review) return null
+    const best = review.moves[retry.moveIndex].bestMoveUci
+    try {
+      return new Chess(retry.baseFen).move({ from: best.slice(0, 2), to: best.slice(2, 4), promotion: best[4] }).san
+    } catch {
+      return best
+    }
+  }, [retry, review])
+
+  function handleRetryMove(from: string, to: string, promotion?: string): boolean {
+    if (!retry || !review || retry.status === 'checking' || retry.status === 'found') return false
+    const c = new Chess(retry.baseFen)
+    let move
+    try {
+      move = c.move({ from, to, promotion: promotion ?? 'q' })
+    } catch {
+      return false
+    }
+    const m = review.moves[retry.moveIndex]
+    if (move.lan === m.bestMoveUci || c.isCheckmate()) {
+      if (playSounds) sounds.success()
+      setRetry({ ...retry, status: 'found', lastTried: move.san })
+      return true
+    }
+    // Un autre coup peut aussi être bon : on demande au moteur.
+    setRetry({ ...retry, status: 'checking', lastTried: move.san })
+    void (async () => {
+      engineRef.current ??= new Engine()
+      const engine = engineRef.current
+      await engine.stop()
+      const res = await engine.search({ fen: c.fen(), depth: REVIEW_DEPTHS[reviewDepth], multipv: 1 })
+      const line = res.lines[0]
+      const cpAfterUser = line
+        ? -(line.scoreMate !== null ? (line.scoreMate > 0 ? 10000 : -10000) : (line.scoreCp ?? 0))
+        : 0
+      const drop = m.winPctBefore - winPct(cpAfterUser)
+      const ok = drop < 5
+      if (playSounds) (ok ? sounds.success : sounds.fail)()
+      setRetry((r) => (r ? { ...r, status: ok ? 'found' : 'failed' } : r))
+    })()
+    return true
   }
 
   const lastMove = viewIndex >= 0 ? { from: moves[viewIndex].from, to: moves[viewIndex].to } : null
@@ -261,14 +364,18 @@ export default function Analysis() {
         <div className="flex flex-col justify-center gap-2 md:ml-4">
           <div className="w-[min(100vw-2.5rem,76vh,640px)]">
             <Board
-              fen={viewFen}
+              fen={retry ? retry.baseFen : viewFen}
               orientation={orientation}
-              interactive
-              onMove={handleMove}
-              lastMove={lastMove}
+              interactive={!retry || retry.status === 'trying' || retry.status === 'failed'}
+              movableColor={retry ? (retry.moveIndex % 2 === 0 ? 'w' : 'b') : undefined}
+              onMove={retry ? handleRetryMove : handleMove}
+              lastMove={retry ? null : lastMove}
               arrows={arrows}
             />
           </div>
+          {review && !retry && (
+            <EvalGraph review={review} currentIndex={viewIndex} onSelect={setViewIndex} />
+          )}
           <div className="flex items-center gap-2 text-sm text-neutral-400">
           {opening && (
             <span>
@@ -326,10 +433,12 @@ export default function Analysis() {
               <div>
                 <div className="text-xl font-bold text-white">{review.accuracyWhite}</div>
                 <div className="text-xs text-neutral-400">Précision Blancs</div>
+                <div className="text-xs font-semibold text-neutral-300">~{review.gameRatingWhite}</div>
               </div>
               <div>
                 <div className="text-xl font-bold text-white">{review.accuracyBlack}</div>
                 <div className="text-xs text-neutral-400">Précision Noirs</div>
+                <div className="text-xs font-semibold text-neutral-300">~{review.gameRatingBlack}</div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-x-4 text-xs">
@@ -347,7 +456,40 @@ export default function Analysis() {
           </div>
         )}
 
-        {coach && (
+        {coach && retry && review && (
+          <div className="rounded border-l-4 border-l-accent bg-surface-2 p-3">
+            <div className="flex items-start gap-2">
+              <span className="text-2xl leading-none">🎯</span>
+              <p className="min-h-10 text-sm leading-snug text-neutral-200">
+                {retry.status === 'trying' &&
+                  `À toi : trouve mieux que ${review.moves[retry.moveIndex].san}. Joue ton coup sur l'échiquier.`}
+                {retry.status === 'checking' && `Je vérifie ${retry.lastTried}…`}
+                {retry.status === 'found' &&
+                  `🎉 Trouvé ! ${retry.lastTried} ${retry.lastTried === retrySolution ? 'était exactement le coup.' : 'fait aussi le travail.'}`}
+                {retry.status === 'failed' &&
+                  `${retry.lastTried} ne suffit pas non plus. Réessaie !`}
+                {retry.solutionShown && ` La solution était ${retrySolution}.`}
+              </p>
+            </div>
+            <div className="mt-2 flex gap-2">
+              {(retry.status === 'trying' || retry.status === 'failed') && (
+                <button
+                  onClick={() => setRetry({ ...retry, solutionShown: true })}
+                  className="flex-1 cursor-pointer rounded bg-surface-3 py-1 text-xs font-semibold hover:bg-surface-3/70"
+                >
+                  💡 Voir la solution
+                </button>
+              )}
+              <button
+                onClick={() => setRetry(null)}
+                className="flex-1 cursor-pointer rounded bg-surface-3 py-1 text-xs font-semibold hover:bg-surface-3/70"
+              >
+                {retry.status === 'found' ? 'Continuer le bilan' : 'Quitter'}
+              </button>
+            </div>
+          </div>
+        )}
+        {coach && !retry && (
           <div
             className="rounded border-l-4 bg-surface-2 p-3"
             style={{
@@ -366,22 +508,32 @@ export default function Analysis() {
                   : coachCurrent?.text ?? 'Coup adverse. Avance pour retrouver mes commentaires.'}
               </p>
             </div>
-            {keyMoments.length > 0 && (
-              <div className="mt-2 flex gap-2">
+            <div className="mt-2 flex gap-2">
+              {keyMoments.length > 0 && (
+                <>
+                  <button
+                    onClick={() => jumpKeyMoment(-1)}
+                    className="flex-1 cursor-pointer rounded bg-surface-3 py-1 text-xs font-semibold hover:bg-surface-3/70"
+                  >
+                    ← Moment clé
+                  </button>
+                  <button
+                    onClick={() => jumpKeyMoment(1)}
+                    className="flex-1 cursor-pointer rounded bg-surface-3 py-1 text-xs font-semibold hover:bg-surface-3/70"
+                  >
+                    Moment clé →
+                  </button>
+                </>
+              )}
+              {coachCurrent && (coachCurrent.severity === 'warn' || coachCurrent.severity === 'alarm') && (
                 <button
-                  onClick={() => jumpKeyMoment(-1)}
-                  className="flex-1 cursor-pointer rounded bg-surface-3 py-1 text-xs font-semibold hover:bg-surface-3/70"
+                  onClick={() => startRetry(viewIndex)}
+                  className="flex-1 cursor-pointer rounded bg-accent/20 py-1 text-xs font-bold text-accent hover:bg-accent/30"
                 >
-                  ← Moment clé
+                  🎯 Réessayer
                 </button>
-                <button
-                  onClick={() => jumpKeyMoment(1)}
-                  className="flex-1 cursor-pointer rounded bg-surface-3 py-1 text-xs font-semibold hover:bg-surface-3/70"
-                >
-                  Moment clé →
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
@@ -401,8 +553,11 @@ export default function Analysis() {
           >
             {reviewProgress !== null ? `Analyse… ${reviewProgress}%` : '🔍 Bilan de partie'}
           </button>
+          <button onClick={() => navigate('/import')} className="cursor-pointer rounded bg-surface-3 px-3 py-2 text-sm font-semibold hover:bg-surface-3/70">
+            ♟ chess.com
+          </button>
           <button onClick={() => { setShowImport(true); setImportText(''); setImportError('') }} className="cursor-pointer rounded bg-surface-3 px-3 py-2 text-sm font-semibold hover:bg-surface-3/70">
-            Importer
+            PGN
           </button>
           <button
             onClick={() => { const pgn = currentPgn(); if (pgn) void navigator.clipboard.writeText(pgn) }}

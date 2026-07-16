@@ -94,6 +94,31 @@ export default function Stats() {
         </div>
         <Toggle label="Afficher les coups légaux" value={settings.showLegalMoves} onChange={settings.setShowLegalMoves} />
         <Toggle label="Sons" value={settings.playSounds} onChange={settings.setPlaySounds} />
+        <div>
+          <p className="mb-2 text-sm font-semibold text-neutral-300">Profondeur du bilan de partie</p>
+          <div className="flex gap-2">
+            {(
+              [
+                ['fast', 'Rapide'],
+                ['balanced', 'Équilibré'],
+                ['deep', 'Profond'],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => settings.setReviewDepth(key)}
+                className={`cursor-pointer rounded border-2 px-3 py-1.5 text-sm font-semibold transition ${
+                  settings.reviewDepth === key ? 'border-accent bg-accent/10' : 'border-transparent bg-surface-3 hover:bg-surface-3/70'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-neutral-500">
+            Rapide ≈ 30 s, Équilibré ≈ 1-2 min, Profond ≈ 4-5 min sur iPhone (partie de 40 coups).
+          </p>
+        </div>
       </div>
     </div>
   )

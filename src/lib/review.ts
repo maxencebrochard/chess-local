@@ -7,7 +7,7 @@ import { isBookPosition } from './openings'
 
 export type MoveClass =
   | 'brilliant' | 'great' | 'best' | 'excellent' | 'good'
-  | 'book' | 'inaccuracy' | 'mistake' | 'blunder'
+  | 'book' | 'inaccuracy' | 'mistake' | 'miss' | 'missedWin' | 'blunder'
 
 export interface ReviewedMove {
   san: string
@@ -25,6 +25,11 @@ export interface GameReview {
   accuracyWhite: number
   accuracyBlack: number
   counts: { w: Record<MoveClass, number>; b: Record<MoveClass, number> }
+  // Elo estimé de la performance sur cette partie (par couleur).
+  gameRatingWhite: number
+  gameRatingBlack: number
+  // Win% blanc après chaque demi-coup ; index 0 = position initiale. Longueur = coups + 1.
+  winPctSeries: number[]
 }
 
 export const CLASS_META: Record<MoveClass, { label: string; symbol: string; color: string }> = {
@@ -36,6 +41,8 @@ export const CLASS_META: Record<MoveClass, { label: string; symbol: string; colo
   book: { label: 'Théorie', symbol: '📖', color: '#a88865' },
   inaccuracy: { label: 'Imprécision', symbol: '?!', color: '#f0c15c' },
   mistake: { label: 'Erreur', symbol: '?', color: '#e58f2a' },
+  miss: { label: 'Occasion manquée', symbol: '✗', color: '#e58f2a' },
+  missedWin: { label: 'Gain manqué', symbol: '−', color: '#ca6431' },
   blunder: { label: 'Gaffe', symbol: '??', color: '#ca3431' },
 }
 
@@ -90,6 +97,7 @@ export async function reviewGame(
   const moves: ReviewedMove[] = []
   const replay = new Chess()
   const uciSoFar: string[] = []
+  const cpLosses: { w: number[]; b: number[] } = { w: [], b: [] }
 
   for (let i = 0; i < total; i++) {
     const mv = verbose[i]
@@ -113,9 +121,20 @@ export async function reviewGame(
     const drop = Math.max(0, wBefore - wAfter)
 
     uciSoFar.push(mv.lan)
+    // Le coup précédent (adverse) était-il une grosse faute non punie ?
+    const prevMove = moves[i - 1]
+    const opponentJustBlundered =
+      prevMove !== undefined && Math.max(0, prevMove.winPctBefore - prevMove.winPctAfter) >= 10
+
     let cls: MoveClass
     if (isBookPosition(uciSoFar)) {
       cls = 'book'
+    } else if (mv.lan !== bestMoveUci && wBefore >= 85 && wAfter < 55) {
+      // Position gagnante jetée : Gain manqué (prioritaire sur l'échelle standard).
+      cls = 'missedWin'
+    } else if (mv.lan !== bestMoveUci && opponentJustBlundered && drop >= 5) {
+      // L'adversaire venait d'offrir l'avantage, non puni : Occasion manquée.
+      cls = 'miss'
     } else if (mv.lan === bestMoveUci) {
       // Brillant : meilleur coup qui sacrifie du matériel en restant gagnant/égal.
       const balBefore = materialBalance(replay, mover)
@@ -149,6 +168,7 @@ export async function reviewGame(
       evalAfterCp, mateAfter, bestMoveUci,
       winPctBefore: wBefore, winPctAfter: wAfter,
     })
+    cpLosses[mover].push(Math.min(1000, Math.max(0, cpBefore - cpAfterMover)))
     replay.move(mv.san)
   }
 
@@ -166,10 +186,37 @@ export async function reviewGame(
   })
   const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 100)
 
+  // Win% blanc après chaque demi-coup (index 0 = départ).
+  const winPctSeries: number[] = [50]
+  moves.forEach((m) => {
+    winPctSeries.push(m.evalAfterCp !== null ? winPct(m.evalAfterCp) : winPctSeries[winPctSeries.length - 1])
+  })
+
   return {
     moves,
     accuracyWhite: Math.round(mean(accs.w) * 10) / 10,
     accuracyBlack: Math.round(mean(accs.b) * 10) / 10,
     counts,
+    gameRatingWhite: ratingFromAcpl(mean(cpLosses.w.length ? cpLosses.w : [0])),
+    gameRatingBlack: ratingFromAcpl(mean(cpLosses.b.length ? cpLosses.b : [0])),
+    winPctSeries,
   }
+}
+
+// Elo estimé depuis l'ACPL (centipawn loss moyen) : table empirique interpolée.
+const ACPL_RATING: [number, number][] = [
+  [5, 2800], [15, 2350], [25, 1900], [40, 1500], [60, 1150], [90, 850], [140, 600], [200, 400],
+]
+
+export function ratingFromAcpl(acpl: number): number {
+  if (acpl <= ACPL_RATING[0][0]) return ACPL_RATING[0][1]
+  for (let i = 1; i < ACPL_RATING.length; i++) {
+    const [x1, y1] = ACPL_RATING[i - 1]
+    const [x2, y2] = ACPL_RATING[i]
+    if (acpl <= x2) {
+      const t = (acpl - x1) / (x2 - x1)
+      return Math.round((y1 + t * (y2 - y1)) / 50) * 50
+    }
+  }
+  return ACPL_RATING[ACPL_RATING.length - 1][1]
 }

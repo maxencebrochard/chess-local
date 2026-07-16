@@ -15,6 +15,9 @@ export const BOARD_THEMES: BoardTheme[] = [
   { id: 'purple', name: 'Améthyste', light: '#e8e0ec', dark: '#8877b7' },
 ]
 
+export type ReviewDepthSetting = 'fast' | 'balanced' | 'deep'
+export const REVIEW_DEPTHS: Record<ReviewDepthSetting, number> = { fast: 10, balanced: 12, deep: 16 }
+
 interface SettingsState {
   themeId: string
   setTheme: (id: string) => void
@@ -22,6 +25,10 @@ interface SettingsState {
   setShowLegalMoves: (v: boolean) => void
   playSounds: boolean
   setPlaySounds: (v: boolean) => void
+  chesscomUsername: string
+  setChesscomUsername: (v: string) => void
+  reviewDepth: ReviewDepthSetting
+  setReviewDepth: (v: ReviewDepthSetting) => void
 }
 
 export const useSettings = create<SettingsState>()(
@@ -33,6 +40,10 @@ export const useSettings = create<SettingsState>()(
       setShowLegalMoves: (showLegalMoves) => set({ showLegalMoves }),
       playSounds: true,
       setPlaySounds: (playSounds) => set({ playSounds }),
+      chesscomUsername: '',
+      setChesscomUsername: (chesscomUsername) => set({ chesscomUsername }),
+      reviewDepth: 'balanced',
+      setReviewDepth: (reviewDepth) => set({ reviewDepth }),
     }),
     { name: 'chess-local-settings' },
   ),

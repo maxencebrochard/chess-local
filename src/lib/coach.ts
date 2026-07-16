@@ -1,7 +1,7 @@
 // Coach post-partie : commentaires en français générés par règles depuis le
 // Game Review (classe du coup, delta d'éval, matériel, mat, meilleur coup).
 import { Chess, type Square } from 'chess.js'
-import type { GameReview, ReviewedMove } from './review'
+import type { GameReview, MoveClass, ReviewedMove } from './review'
 
 export interface CoachComment {
   moveIndex: number
@@ -130,6 +130,16 @@ export function coachComments(review: GameReview, playerColor: 'w' | 'b' | null)
         severity = 'warn'
         break
       }
+      case 'miss': {
+        text = `${m.san} laisse passer l'occasion : ton adversaire venait de faire une faute. ${better ? `${better}${point} punissait immédiatement.` : ''} (${evalTxt})`
+        severity = 'warn'
+        break
+      }
+      case 'missedWin': {
+        text = `${m.san} jette une position gagnante. ${better ? `${better}${point} gardait la victoire en main.` : ''} (${evalTxt})`
+        severity = 'alarm'
+        break
+      }
       case 'blunder': {
         const hung = hungPiece(fenAfter, moverColor)
         const missedMate = m.mateAfter !== null && (moverColor === 'w' ? m.mateAfter < 0 : m.mateAfter > 0)
@@ -145,23 +155,112 @@ export function coachComments(review: GameReview, playerColor: 'w' | 'b' | null)
   return comments
 }
 
-// Résumé d'ouverture de session du coach.
+// Découpage en phases : ouverture = jusqu'au dernier coup de théorie (fallback
+// 16 demi-coups) ; finale = quand il reste ≤ 6 pièces hors pions et rois.
+export interface GamePhases {
+  openingEnd: number // index du dernier demi-coup d'ouverture (-1 si aucun)
+  endgameStart: number // index du premier demi-coup de finale (moves.length si jamais atteinte)
+}
+
+export function detectPhases(review: GameReview): GamePhases {
+  let openingEnd = -1
+  review.moves.forEach((m, i) => {
+    if (m.class === 'book') openingEnd = i
+  })
+  if (openingEnd === -1) openingEnd = Math.min(15, review.moves.length - 1)
+
+  const replay = new Chess()
+  let endgameStart = review.moves.length
+  for (let i = 0; i < review.moves.length; i++) {
+    replay.move(review.moves[i].san)
+    let pieces = 0
+    for (const row of replay.board()) {
+      for (const sq of row) {
+        if (sq && sq.type !== 'p' && sq.type !== 'k') pieces++
+      }
+    }
+    if (pieces <= 6) {
+      endgameStart = i + 1
+      break
+    }
+  }
+  return { openingEnd, endgameStart: Math.max(endgameStart, openingEnd + 1) }
+}
+
+// Précision d'une couleur sur une tranche de demi-coups.
+function accuracyOnRange(review: GameReview, color: 'w' | 'b', from: number, to: number): number | null {
+  const accs: number[] = []
+  for (let i = Math.max(0, from); i < Math.min(to, review.moves.length); i++) {
+    if ((i % 2 === 0 ? 'w' : 'b') !== color) continue
+    const m = review.moves[i]
+    const drop = Math.max(0, m.winPctBefore - m.winPctAfter)
+    accs.push(Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669)))
+  }
+  if (accs.length === 0) return null
+  return Math.round((accs.reduce((a, b) => a + b, 0) / accs.length) * 10) / 10
+}
+
+function phaseVerdict(acc: number | null): string {
+  if (acc === null) return 'pas de coup à évaluer'
+  if (acc >= 92) return 'impeccable'
+  if (acc >= 80) return 'solide'
+  if (acc >= 65) return 'irrégulière'
+  return 'difficile'
+}
+
+const BAD_CLASSES: MoveClass[] = ['blunder', 'missedWin', 'miss', 'mistake']
+
+// Résumé narratif d'ouverture de session du coach.
 export function coachSummary(review: GameReview, playerColor: 'w' | 'b' | null): string {
   const color = playerColor ?? 'w'
   const acc = color === 'w' ? review.accuracyWhite : review.accuracyBlack
+  const rating = color === 'w' ? review.gameRatingWhite : review.gameRatingBlack
   const counts = review.counts[color]
-  const mistakes = counts.mistake + counts.blunder
+  const phases = detectPhases(review)
   const parts: string[] = []
 
-  if (acc >= 90) parts.push(`Très belle partie : ${acc} % de précision.`)
-  else if (acc >= 75) parts.push(`Partie solide, ${acc} % de précision.`)
-  else if (acc >= 55) parts.push(`Partie correcte à ${acc} % de précision, avec des occasions manquées.`)
-  else parts.push(`Partie difficile (${acc} % de précision), mais chaque erreur est une leçon.`)
+  // Verdict global + game rating.
+  if (acc >= 90) parts.push(`Très belle partie : ${acc} % de précision — tu as joué comme un ~${rating}.`)
+  else if (acc >= 75) parts.push(`Partie solide (${acc} % de précision), niveau de jeu estimé ~${rating}.`)
+  else if (acc >= 55) parts.push(`${acc} % de précision, un niveau de jeu autour de ${rating} sur cette partie.`)
+  else parts.push(`Partie compliquée (${acc} % de précision, ~${rating}), mais on va en tirer les leçons.`)
 
-  if (counts.brilliant > 0) parts.push(`Tu as trouvé ${counts.brilliant} coup${counts.brilliant > 1 ? 's' : ''} brillant${counts.brilliant > 1 ? 's' : ''} !`)
-  if (counts.blunder > 0) parts.push(`${counts.blunder} gaffe${counts.blunder > 1 ? 's' : ''} à revoir en priorité.`)
-  else if (mistakes === 0) parts.push('Aucune erreur grave, très propre.')
+  // Compte des fautes, mis en avant.
+  const faults: string[] = []
+  if (counts.blunder > 0) faults.push(`${counts.blunder} gaffe${counts.blunder > 1 ? 's' : ''}`)
+  if (counts.missedWin > 0) faults.push(`${counts.missedWin} gain${counts.missedWin > 1 ? 's' : ''} manqué${counts.missedWin > 1 ? 's' : ''}`)
+  if (counts.miss > 0) faults.push(`${counts.miss} occasion${counts.miss > 1 ? 's' : ''} manquée${counts.miss > 1 ? 's' : ''}`)
+  if (counts.mistake > 0) faults.push(`${counts.mistake} erreur${counts.mistake > 1 ? 's' : ''}`)
+  if (faults.length > 0) parts.push(`Au tableau : ${faults.join(', ')} — je te les montre une par une avec « Moment clé ».`)
+  else parts.push('Aucune faute sérieuse, très propre.')
+  if (counts.brilliant > 0) parts.push(`Et ${counts.brilliant === 1 ? 'un coup brillant' : `${counts.brilliant} coups brillants`} !`)
 
-  parts.push('Navigue avec les flèches, je commente chaque coup.')
+  // Récit par phases.
+  const accOpen = accuracyOnRange(review, color, 0, phases.openingEnd + 1)
+  const accMid = accuracyOnRange(review, color, phases.openingEnd + 1, phases.endgameStart)
+  const accEnd = accuracyOnRange(review, color, phases.endgameStart, review.moves.length)
+  const phraseParts: string[] = []
+  if (accOpen !== null) phraseParts.push(`ouverture ${phaseVerdict(accOpen)} (${accOpen} %)`)
+  if (accMid !== null) phraseParts.push(`milieu de partie ${phaseVerdict(accMid)} (${accMid} %)`)
+  if (accEnd !== null) phraseParts.push(`finale ${phaseVerdict(accEnd)} (${accEnd} %)`)
+  if (phraseParts.length > 1) parts.push(`Le film : ${phraseParts.join(', ')}.`)
+
+  // Le moment où la partie a basculé (plus gros drop du joueur).
+  let pivotIdx = -1
+  let pivotDrop = 12
+  review.moves.forEach((m, i) => {
+    if ((i % 2 === 0 ? 'w' : 'b') !== color) return
+    if (!BAD_CLASSES.includes(m.class)) return
+    const drop = m.winPctBefore - m.winPctAfter
+    if (drop > pivotDrop) {
+      pivotDrop = drop
+      pivotIdx = i
+    }
+  })
+  if (pivotIdx >= 0) {
+    const moveNo = Math.floor(pivotIdx / 2) + 1
+    parts.push(`La partie a basculé au ${moveNo}e coup : ${review.moves[pivotIdx].san}.`)
+  }
+
   return parts.join(' ')
 }

@@ -31,7 +31,8 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* PWA standalone iOS : le contenu ne doit pas passer sous la Dynamic Island. */
+/* PWA standalone iOS : le contenu ne doit pas passer sous la Dynamic Island,
+   avec un peu d'air en plus pour le confort. */
 .pt-safe {
-  padding-top: env(safe-area-inset-top);
+  padding-top: calc(env(safe-area-inset-top) + 12px);
 }
