@@ -10,7 +10,8 @@
 }
 
 html, body, #root {
-  height: 100%;
+  /* dvh : seul le viewport dynamique est fiable en PWA standalone iOS. */
+  height: 100dvh;
   background: var(--color-surface);
 }
 

@@ -20,7 +20,7 @@ const NAV = [
 export default function App() {
   return (
     <HashRouter>
-      <div className="flex h-full flex-col md:flex-row">
+      <div className="flex h-dvh flex-col md:flex-row">
         <nav className="hidden w-44 shrink-0 flex-col gap-1 border-r border-black/30 bg-surface-2 p-3 md:flex">
           <div className="mb-3 px-2 text-lg font-black">
             Chess<span className="text-accent">Local</span>
