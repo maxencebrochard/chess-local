@@ -42,7 +42,7 @@ export default function App() {
           ))}
           <div className="mt-auto whitespace-nowrap px-2 text-[11px] text-neutral-600">100 % local · SF 18</div>
         </nav>
-        <main className="min-w-0 flex-1 overflow-y-auto">
+        <main className="pt-safe min-w-0 flex-1 overflow-y-auto">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/jouer" element={<Play />} />

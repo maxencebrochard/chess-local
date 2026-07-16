@@ -15,7 +15,7 @@ export default function Home() {
 
   const tiles = [
     { to: '/jouer', icon: '♟', title: 'Jouer', desc: 'Contre 9 bots de 400 à 3200 Elo, ou à deux sur le même écran.' },
-    { to: '/puzzles', icon: '🧩', title: 'Puzzles', desc: `15 000 puzzles notés, adaptés à ton niveau (${puzzle}).` },
+    { to: '/puzzles', icon: '🧩', title: 'Puzzles', desc: `120 000 puzzles notés, adaptés à ton niveau (${puzzle}).` },
     { to: '/rush', icon: '⚡', title: 'Puzzle Rush', desc: '3 min, 5 min ou survie. Trois erreurs et c\'est fini.' },
     { to: '/analyse', icon: '🔍', title: 'Analyse', desc: 'Stockfish 18, bilan de partie, explorer d\'ouvertures.' },
     { to: '/archive', icon: '📚', title: 'Archive', desc: `${nbGames} partie${nbGames > 1 ? 's' : ''} enregistrée${nbGames > 1 ? 's' : ''}, export PGN.` },

@@ -11,6 +11,7 @@
 
 html, body, #root {
   height: 100%;
+  background: var(--color-surface);
 }
 
 body {
@@ -27,4 +28,9 @@ body {
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* PWA standalone iOS : le contenu ne doit pas passer sous la Dynamic Island. */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
 }
