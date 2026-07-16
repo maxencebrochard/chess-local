@@ -78,6 +78,7 @@ export default function Analysis() {
       pgn?: string
       fen?: string
       uci?: string[]
+      viewIndex?: number
       color?: 'w' | 'b'
       orientation?: 'w' | 'b'
       label?: string
@@ -97,7 +98,7 @@ export default function Analysis() {
           }
           const played = c.history({ verbose: true })
           setMoves(played)
-          setViewIndex(played.length - 1)
+          setViewIndex(Math.min(state.viewIndex ?? played.length - 1, played.length - 1))
         }
         setOrientation(state.orientation ?? 'w')
         if (state.label) setGameMeta(state.label)

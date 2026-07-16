@@ -84,14 +84,16 @@ export default function Puzzles() {
   const sideToPlay = puzzle.fen.split(' ')[1] === 'w' ? 'Noirs' : 'Blancs'
   const playerColor: 'w' | 'b' = puzzle.fen.split(' ')[1] === 'w' ? 'b' : 'w'
 
-  // Ouvre l'analyse sur le puzzle : position initiale + séquence jouée,
-  // pour pouvoir naviguer coup par coup dans la solution.
+  // Ouvre l'analyse sur le puzzle : solution complète navigable, positionnée
+  // sur la position clé (après le coup d'amorce) — le moteur y montre le
+  // meilleur coup, c'est-à-dire la solution.
   function openInAnalysis() {
     if (!puzzle) return
     navigate('/analyse', {
       state: {
         fen: puzzle.fen,
-        uci: puzzle.moves.slice(0, Math.max(stepIndex, 1)),
+        uci: puzzle.moves,
+        viewIndex: 0,
         orientation: playerColor,
         label: `Puzzle ${puzzle.id} (${puzzle.rating})`,
       },
