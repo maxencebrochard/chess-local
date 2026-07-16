@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Chess } from 'chess.js'
+import { useNavigate } from 'react-router-dom'
 import { Cta } from '../components/Cta'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
 import { applyRating, db, getRating } from '../lib/db'
@@ -7,6 +9,7 @@ import { loadPuzzles } from '../lib/puzzles'
 type Phase = 'solving' | 'solved' | 'failed'
 
 export default function Puzzles() {
+  const navigate = useNavigate()
   const [rating, setRating] = useState<number | null>(null)
   const [puzzle, setPuzzle] = useState<PuzzleData | null>(null)
   const [phase, setPhase] = useState<Phase>('solving')
@@ -80,6 +83,23 @@ export default function Puzzles() {
   if (!puzzle || rating === null) return <div className="p-8 text-neutral-400">Chargement…</div>
 
   const sideToPlay = puzzle.fen.split(' ')[1] === 'w' ? 'Noirs' : 'Blancs'
+  const playerColor: 'w' | 'b' = puzzle.fen.split(' ')[1] === 'w' ? 'b' : 'w'
+
+  // Position courante du puzzle (fen initial + coups déjà joués).
+  function openInAnalysis() {
+    if (!puzzle) return
+    const c = new Chess(puzzle.fen)
+    for (const uci of puzzle.moves.slice(0, stepIndex)) {
+      try {
+        c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] })
+      } catch {
+        break
+      }
+    }
+    navigate('/analyse', {
+      state: { fen: c.fen(), orientation: playerColor, label: `Puzzle ${puzzle.id} (${puzzle.rating})` },
+    })
+  }
 
   return (
     <div className="flex h-full flex-col items-center justify-start gap-3 p-2 md:flex-row md:justify-center md:gap-6 md:p-4">
@@ -149,6 +169,15 @@ export default function Puzzles() {
             {phase === 'solving' ? 'Passer' : 'Suivant'}
           </Cta>
         </div>
+
+        {phase !== 'solving' && (
+          <button
+            onClick={openInAnalysis}
+            className="cursor-pointer rounded-lg bg-surface-2 py-2.5 font-semibold text-neutral-200 hover:bg-surface-3"
+          >
+            ♞ Analyser avec Stockfish
+          </button>
+        )}
       </div>
     </div>
   )

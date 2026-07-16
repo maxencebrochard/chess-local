@@ -17,7 +17,7 @@ export function EvalBar({ cp, mate, orientation }: EvalBarProps) {
   } else {
     // Sigmoïde douce : ±400cp ≈ 90/10.
     whiteShare = 100 / (1 + Math.exp(-cp / 190))
-    label = (Math.abs(cp) / 100).toFixed(1)
+    label = (Math.abs(cp) / 100).toFixed(1).replace('.', ',')
   }
   const topIsWhite = orientation === 'b'
   const topShare = topIsWhite ? whiteShare : 100 - whiteShare

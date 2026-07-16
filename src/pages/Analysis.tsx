@@ -70,9 +70,25 @@ export default function Analysis() {
     [startFen, uciMoves],
   )
 
-  // Chargement depuis l'import chess.com (state de navigation).
+  // Chargement depuis l'import chess.com ou une position externe (state de navigation).
   useEffect(() => {
-    const state = location.state as { pgn?: string; color?: 'w' | 'b'; label?: string; review?: boolean } | null
+    const state = location.state as {
+      pgn?: string
+      fen?: string
+      color?: 'w' | 'b'
+      orientation?: 'w' | 'b'
+      label?: string
+      review?: boolean
+    } | null
+    // Position seule (ex : bouton Stockfish des puzzles) : analyse live immédiate.
+    if (state?.fen && !state.pgn) {
+      if (loadFen(state.fen)) {
+        setOrientation(state.orientation ?? 'w')
+        if (state.label) setGameMeta(state.label)
+      }
+      navigate('.', { replace: true, state: null })
+      return
+    }
     if (!state?.pgn) return
     if (loadPgn(state.pgn)) {
       setGameMeta(state.label ?? null)
@@ -364,7 +380,7 @@ export default function Analysis() {
       return `M${Math.abs(m)}${m < 0 ? ' (adv.)' : ''}`
     }
     const cp = (sign * (line.scoreCp ?? 0)) / 100
-    return (cp > 0 ? '+' : '') + cp.toFixed(2)
+    return ((cp > 0 ? '+' : '') + cp.toFixed(2)).replace('.', ',')
   }
 
   // --- Écran résumé du bilan (style chess.com, plein écran par-dessus la nav) ---
