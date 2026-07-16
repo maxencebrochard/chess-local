@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Chess, type Square } from 'chess.js'
 import { Chessboard } from 'react-chessboard'
 import { useSettings, currentTheme } from '../store/settings'
+import { ClassIcon } from './ClassIcon'
+import type { MoveClass } from '../lib/review'
 
 export interface BoardArrow {
   startSquare: string
@@ -19,9 +21,13 @@ interface BoardProps {
   arrows?: BoardArrow[]
   // Le joueur ne peut bouger que cette couleur (undefined = les deux).
   movableColor?: 'w' | 'b'
+  // Pastille de classification affichée sur une case (coin haut-droit), façon chess.com.
+  badge?: { square: string; cls: MoveClass } | null
+  // Teintes de cases supplémentaires (ex : case du coup fautif en rouge).
+  markSquares?: Record<string, string>
 }
 
-export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor }: BoardProps) {
+export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares }: BoardProps) {
   const { themeId, showLegalMoves } = useSettings()
   const theme = currentTheme(themeId)
   const [selected, setSelected] = useState<Square | null>(null)
@@ -85,6 +91,11 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   }
 
   const squareStyles: Record<string, React.CSSProperties> = {}
+  if (markSquares) {
+    for (const [sq, color] of Object.entries(markSquares)) {
+      squareStyles[sq] = { backgroundColor: color }
+    }
+  }
   if (lastMove) {
     squareStyles[lastMove.from] = { backgroundColor: 'rgba(255, 255, 51, 0.4)' }
     squareStyles[lastMove.to] = { backgroundColor: 'rgba(255, 255, 51, 0.4)' }
@@ -132,6 +143,14 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
           boardStyle: { borderRadius: 4, overflow: 'hidden' },
         }}
       />
+      {badge && badge.square.length === 2 && (
+        <div
+          className="pointer-events-none absolute z-10"
+          style={badgePosition(badge.square, orientation)}
+        >
+          <ClassIcon cls={badge.cls} size={22} />
+        </div>
+      )}
       {pendingPromotion && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 rounded">
           <div className="flex gap-2 rounded-lg bg-surface-2 p-3 shadow-xl">
@@ -158,4 +177,19 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
 const PROMO_GLYPHS: Record<'w' | 'b', Record<string, string>> = {
   w: { q: '♕', r: '♖', b: '♗', n: '♘' },
   b: { q: '♛', r: '♜', b: '♝', n: '♞' },
+}
+
+// Coin haut-droit de la case, en % de l'échiquier, selon l'orientation.
+function badgePosition(square: string, orientation: 'w' | 'b'): React.CSSProperties {
+  let file = square.charCodeAt(0) - 97 // a=0
+  let rankFromTop = 8 - +square[1]
+  if (orientation === 'b') {
+    file = 7 - file
+    rankFromTop = 7 - rankFromTop
+  }
+  return {
+    left: `${(file + 1) * 12.5}%`,
+    top: `${rankFromTop * 12.5}%`,
+    transform: 'translate(-60%, -40%)',
+  }
 }

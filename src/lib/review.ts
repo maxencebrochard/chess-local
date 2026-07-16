@@ -32,18 +32,28 @@ export interface GameReview {
   winPctSeries: number[]
 }
 
-export const CLASS_META: Record<MoveClass, { label: string; symbol: string; color: string }> = {
-  brilliant: { label: 'Brillant', symbol: '!!', color: '#26c2a3' },
-  great: { label: 'Excellent coup', symbol: '!', color: '#5b8bb0' },
-  best: { label: 'Meilleur', symbol: '★', color: '#95bb4a' },
-  excellent: { label: 'Excellent', symbol: '✓', color: '#95bb4a' },
-  good: { label: 'Bon', symbol: '✓', color: '#77915f' },
-  book: { label: 'Théorie', symbol: '📖', color: '#a88865' },
-  inaccuracy: { label: 'Imprécision', symbol: '?!', color: '#f0c15c' },
-  mistake: { label: 'Erreur', symbol: '?', color: '#e58f2a' },
-  miss: { label: 'Occasion manquée', symbol: '✗', color: '#e58f2a' },
-  missedWin: { label: 'Gain manqué', symbol: '−', color: '#ca6431' },
-  blunder: { label: 'Gaffe', symbol: '??', color: '#ca3431' },
+// label : tallies et listes. headline : « {san} est {headline} » dans la bulle coach.
+export const CLASS_META: Record<
+  MoveClass,
+  { label: string; headline: string; symbol: string; color: string }
+> = {
+  brilliant: { label: 'Brillant', headline: 'brillant', symbol: '!!', color: '#1baca6' },
+  great: { label: 'Très bon', headline: 'un très bon coup', symbol: '!', color: '#5b8bb0' },
+  best: { label: 'Meilleur', headline: 'le meilleur', symbol: '★', color: '#81b64c' },
+  excellent: { label: 'Excellent', headline: 'excellent', symbol: '👍', color: '#81b64c' },
+  good: { label: 'Bon', headline: 'un bon coup', symbol: '✓', color: '#95b776' },
+  book: { label: 'Théorique', headline: 'un coup théorique', symbol: '📖', color: '#a88865' },
+  inaccuracy: { label: 'Imprécision', headline: 'une imprécision', symbol: '?!', color: '#f7c631' },
+  mistake: { label: 'Erreur', headline: 'une erreur', symbol: '?', color: '#ffa459' },
+  miss: { label: 'Coup manqué', headline: 'une occasion manquée', symbol: '✗', color: '#ff7769' },
+  missedWin: { label: 'Gain manqué', headline: 'un gain manqué', symbol: '−', color: '#ff7769' },
+  blunder: { label: 'Gaffe', headline: 'une gaffe', symbol: '??', color: '#fa412d' },
+}
+
+// SAN avec figurines (Nf3 -> ♞f3), plus lisible dans les bulles et listes.
+const FIGURINES: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞' }
+export function figurine(san: string): string {
+  return san.replace(/[KQRBN]/g, (c) => FIGURINES[c])
 }
 
 // Win% depuis des centipawns, formule lichess.

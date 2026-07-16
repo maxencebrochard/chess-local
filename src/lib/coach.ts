@@ -1,11 +1,14 @@
 // Coach post-partie : commentaires en français générés par règles depuis le
 // Game Review (classe du coup, delta d'éval, matériel, mat, meilleur coup).
 import { Chess, type Square } from 'chess.js'
-import type { GameReview, MoveClass, ReviewedMove } from './review'
+import { CLASS_META, figurine, type GameReview, type MoveClass } from './review'
 
 export interface CoachComment {
   moveIndex: number
-  text: string
+  // « ♗xa7 est une gaffe » — affiché en gras avec la pastille de classe.
+  headline: string
+  // Explication en langage naturel, sans répéter le coup.
+  body: string
   // Coup meilleur suggéré, en SAN, quand le coup joué n'était pas le bon.
   betterMove?: string
   severity: 'praise' | 'neutral' | 'warn' | 'alarm'
@@ -15,16 +18,6 @@ const PIECE_NAMES: Record<string, string> = {
   p: 'le pion', n: 'le cavalier', b: 'le fou', r: 'la tour', q: 'la dame', k: 'le roi',
 }
 const PIECE_VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
-
-function fmtEval(m: ReviewedMove): string {
-  if (m.mateAfter !== null && m.mateAfter !== 0) {
-    const side = m.mateAfter > 0 ? 'les Blancs' : 'les Noirs'
-    return `mat en ${Math.abs(m.mateAfter)} pour ${side}`
-  }
-  if (m.evalAfterCp === null) return ''
-  const v = m.evalAfterCp / 100
-  return `${v > 0 ? '+' : ''}${v.toFixed(1)}`
-}
 
 // SAN du meilleur coup depuis la position avant le coup joué.
 function bestMoveSan(fenBefore: string, uci: string): string | undefined {
@@ -92,67 +85,115 @@ export function coachComments(review: GameReview, playerColor: 'w' | 'b' | null)
     if (playerColor && moverColor !== playerColor) return
 
     const better = m.uci !== m.bestMoveUci ? bestMoveSan(fenBefore, m.bestMoveUci) : undefined
+    const betterFig = better ? figurine(better) : undefined
     const point = better ? bestMovePoint(fenBefore, m.bestMoveUci) : ''
-    const evalTxt = fmtEval(m)
-    let text: string
+    const headline = `${figurine(m.san)} est ${CLASS_META[m.class].headline}`
+    let body: string
     let severity: CoachComment['severity'] = 'neutral'
 
     switch (m.class) {
       case 'brilliant':
-        text = `${m.san} est brillant ! Un sacrifice que la tactique justifie entièrement. Superbe vision.`
+        body = 'Un sacrifice que la tactique justifie entièrement. Superbe vision !'
         severity = 'praise'
         break
       case 'great':
-        text = `${m.san} était le seul bon coup dans cette position. Bien vu.`
+        body = "C'était le seul bon coup dans cette position. Bien vu."
         severity = 'praise'
         break
       case 'best':
-        text = `${m.san} est exactement ce que le moteur aurait joué.`
+        body = "Exactement ce que le moteur aurait joué. Rien à redire."
         severity = 'praise'
         break
       case 'excellent':
-        text = `${m.san} est un excellent coup, quasiment optimal.`
+        body = 'Quasiment optimal. Ça tient la route.'
         severity = 'praise'
         break
       case 'good':
-        text = `${m.san} est correct${better ? `, même si ${better} était un peu plus précis` : ''}.`
+        body = better ? `Correct, même si ${betterFig} était un peu plus précis.` : 'Correct, la position reste saine.'
         break
       case 'book':
-        text = `${m.san} suit la théorie.`
+        body = 'La théorie approuve. Terrain connu.'
         break
       case 'inaccuracy':
-        text = `${m.san} est une imprécision. ${better ? `${better}${point} gardait un meilleur contrôle.` : ''} (${evalTxt})`
+        body = better ? `${betterFig}${point} gardait un meilleur contrôle de la position.` : 'La position glisse doucement.'
         severity = 'warn'
         break
       case 'mistake': {
         const hung = hungPiece(fenAfter, moverColor)
-        text = `${m.san} est une erreur${hung ? ` : ${hung} peut être capturé` : ''}. ${better ? `Il fallait jouer ${better}${point}.` : ''} (${evalTxt})`
+        body = `${hung ? `${hung[0].toUpperCase()}${hung.slice(1)} peut maintenant être capturé. ` : ''}${better ? `Il fallait jouer ${betterFig}${point}.` : ''}`
         severity = 'warn'
         break
       }
       case 'miss': {
-        text = `${m.san} laisse passer l'occasion : ton adversaire venait de faire une faute. ${better ? `${better}${point} punissait immédiatement.` : ''} (${evalTxt})`
+        body = `L'adversaire venait de faire une faute et ça reste impuni. ${better ? `${betterFig}${point} punissait immédiatement.` : ''}`
         severity = 'warn'
         break
       }
       case 'missedWin': {
-        text = `${m.san} jette une position gagnante. ${better ? `${better}${point} gardait la victoire en main.` : ''} (${evalTxt})`
+        body = `Une position gagnante vient d'être jetée. ${better ? `${betterFig}${point} gardait la victoire en main.` : ''}`
         severity = 'alarm'
         break
       }
       case 'blunder': {
         const hung = hungPiece(fenAfter, moverColor)
         const missedMate = m.mateAfter !== null && (moverColor === 'w' ? m.mateAfter < 0 : m.mateAfter > 0)
-        text = `${m.san} est une gaffe${hung ? ` qui abandonne ${hung}` : ''}${missedMate ? ' et laisse un mat forcé' : ''}. ${better ? `${better}${point} était nécessaire.` : ''} (${evalTxt})`
+        body = `${hung ? `Ça abandonne ${hung}. ` : ''}${missedMate ? 'Et un mat forcé est maintenant au tableau. ' : ''}${better ? `${betterFig}${point} était nécessaire.` : ''}`
         severity = 'alarm'
         break
       }
     }
 
-    comments.push({ moveIndex: i, text, betterMove: better, severity })
+    comments.push({ moveIndex: i, headline, body: body.trim() || 'Voyons la suite.', betterMove: better, severity })
   })
 
   return comments
+}
+
+// Punchline courte du coach pour l'écran de résumé, façon chess.com.
+export function coachQuip(review: GameReview, playerColor: 'w' | 'b' | null): string {
+  const color = playerColor ?? 'w'
+  const report = phaseReport(review)
+  const o = report.opening[color]
+  const m = report.middlegame[color]
+  const e = report.endgame[color]
+  if (o === 'good' && (m === 'bad' || m === 'meh')) return "Le milieu de partie a dérapé, mais au moins l'ouverture était solide."
+  if (o !== 'good' && m === 'good') return "L'ouverture a piqué, mais tu t'es bien rattrapé au milieu de partie."
+  if (e === 'bad') return 'Tout se jouait dans la finale… et elle a glissé. Ça se travaille.'
+  if (e === 'good' && (m === 'bad' || o === 'bad')) return 'Belle finale ! Le début de partie mérite encore du travail.'
+  const acc = color === 'w' ? review.accuracyWhite : review.accuracyBlack
+  if (acc >= 90) return 'Une partie très propre. Continue comme ça.'
+  if (acc >= 75) return 'Une partie solide, avec quelques occasions à ne plus laisser filer.'
+  if (acc >= 55) return 'Des hauts et des bas — on regarde les moments clés ensemble ?'
+  return 'Partie compliquée, mais chaque erreur est une leçon. Au travail.'
+}
+
+// Verdict par phase et par couleur, pour l'écran de résumé.
+export type PhaseVerdict = 'good' | 'meh' | 'bad' | 'none'
+
+export interface PhaseReport {
+  opening: { w: PhaseVerdict; b: PhaseVerdict }
+  middlegame: { w: PhaseVerdict; b: PhaseVerdict }
+  endgame: { w: PhaseVerdict; b: PhaseVerdict }
+}
+
+function verdictOf(acc: number | null): PhaseVerdict {
+  if (acc === null) return 'none'
+  if (acc >= 80) return 'good'
+  if (acc >= 60) return 'meh'
+  return 'bad'
+}
+
+export function phaseReport(review: GameReview): PhaseReport {
+  const phases = detectPhases(review)
+  const range = (from: number, to: number) => ({
+    w: verdictOf(accuracyOnRange(review, 'w', from, to)),
+    b: verdictOf(accuracyOnRange(review, 'b', from, to)),
+  })
+  return {
+    opening: range(0, phases.openingEnd + 1),
+    middlegame: range(phases.openingEnd + 1, phases.endgameStart),
+    endgame: range(phases.endgameStart, review.moves.length),
+  }
 }
 
 // Découpage en phases : ouverture = jusqu'au dernier coup de théorie (fallback

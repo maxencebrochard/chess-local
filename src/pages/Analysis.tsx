@@ -2,13 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chess, type Move } from 'chess.js'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Board, type BoardArrow } from '../components/Board'
+import { CoachBubble } from '../components/CoachBubble'
+import { Cta } from '../components/Cta'
 import { EvalBar } from '../components/EvalBar'
 import { EvalGraph } from '../components/EvalGraph'
+import { HEvalBar } from '../components/HEvalBar'
 import { MoveList } from '../components/MoveList'
+import { MoveStrip } from '../components/MoveStrip'
+import { ReviewSummary } from '../components/ReviewSummary'
 import { Engine, type EngineLine } from '../lib/engine'
 import { db } from '../lib/db'
 import { bookContinuations, openingForMoves } from '../lib/openings'
-import { CLASS_META, reviewGame, winPct, type GameReview, type MoveClass } from '../lib/review'
+import { CLASS_META, figurine, reviewGame, winPct, type GameReview, type MoveClass } from '../lib/review'
 import { coachComments, coachSummary } from '../lib/coach'
 import { sounds } from '../lib/sounds'
 import { REVIEW_DEPTHS, useSettings } from '../store/settings'
@@ -42,6 +47,10 @@ export default function Analysis() {
   const [gameMeta, setGameMeta] = useState<string | null>(null)
   const [orientation, setOrientation] = useState<'w' | 'b'>('w')
   const [retry, setRetry] = useState<RetryState | null>(null)
+  const [reviewStage, setReviewStage] = useState<'summary' | 'guided' | null>(null)
+  const [showBest, setShowBest] = useState(false)
+  const [showLines, setShowLines] = useState(false)
+  const [names, setNames] = useState<{ w: string; b: string }>({ w: 'Blancs', b: 'Noirs' })
   const engineRef = useRef<Engine | null>(null)
 
   const viewFen = useMemo(() => {
@@ -99,8 +108,9 @@ export default function Analysis() {
   // (les lignes révéleraient la solution).
   const reviewing = reviewProgress !== null
   const retrying = retry !== null
+  const guidedNoLines = reviewStage === 'guided' && !showLines
   useEffect(() => {
-    if (!engineOn || reviewing || retrying) {
+    if (!engineOn || reviewing || retrying || reviewStage === 'summary' || guidedNoLines) {
       setLines([])
       return
     }
@@ -120,7 +130,7 @@ export default function Analysis() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewFen, engineOn, reviewing, retrying])
+  }, [viewFen, engineOn, reviewing, retrying, reviewStage, guidedNoLines])
 
   useEffect(
     () => () => {
@@ -140,7 +150,11 @@ export default function Analysis() {
       setViewIndex(c.history().length - 1)
       setReview(null)
       setReviewColor(null)
+      setReviewStage(null)
       setGameMeta(null)
+      const h = c.header()
+      const clean = (v: string | undefined, fallback: string) => (v && v !== '?' ? v : fallback)
+      setNames({ w: clean(h.White, 'Blancs'), b: clean(h.Black, 'Noirs') })
       return true
     } catch {
       return false
@@ -197,7 +211,8 @@ export default function Analysis() {
         setReviewProgress(Math.round((done / total) * 100)),
       )
       setReview(result)
-      setViewIndex(-1) // ouvre sur le résumé du coach
+      setViewIndex(-1)
+      setReviewStage('summary') // ouvre sur l'écran de résumé
 
     } finally {
       setReviewProgress(null)
@@ -352,6 +367,153 @@ export default function Analysis() {
     return (cp > 0 ? '+' : '') + cp.toFixed(2)
   }
 
+  // --- Écran résumé du bilan (style chess.com) ---
+  if (reviewStage === 'summary' && review) {
+    return (
+      <div className="mx-auto h-full max-w-lg">
+        <ReviewSummary
+          review={review}
+          whiteName={names.w}
+          blackName={names.b}
+          playerColor={reviewColor}
+          onStart={() => {
+            setReviewStage('guided')
+            setViewIndex((v) => (v >= 0 ? v : 0))
+          }}
+          onClose={() => setReviewStage(null)}
+          onSelectMove={setViewIndex}
+        />
+      </div>
+    )
+  }
+
+  // --- Bilan guidé coup par coup (style chess.com) ---
+  if (reviewStage === 'guided' && review && viewIndex >= 0) {
+    const m = review.moves[viewIndex]
+    const comment = coach?.comments.find((c) => c.moveIndex === viewIndex) ?? null
+    const guidedArrows: BoardArrow[] = []
+    if (!retry && showBest && m.uci !== m.bestMoveUci) {
+      guidedArrows.push({
+        startSquare: m.bestMoveUci.slice(0, 2),
+        endSquare: m.bestMoveUci.slice(2, 4),
+        color: '#81b64c',
+      })
+    }
+    const tint = `${CLASS_META[m.class].color}59` // ~35 % d'opacité
+    const evalBadge =
+      m.mateAfter !== null
+        ? m.mateAfter === 0
+          ? '#'
+          : `M${Math.abs(m.mateAfter)}`
+        : m.evalAfterCp !== null
+          ? ((m.evalAfterCp > 0 ? '+' : '') + (m.evalAfterCp / 100).toFixed(2)).replace('.', ',')
+          : ''
+    const canRetry = BAD.includes(m.class)
+    const mood = comment?.severity === 'praise' ? 'happy' : comment?.severity === 'alarm' ? 'worried' : 'thinking'
+
+    return (
+      <div className="mx-auto flex h-full max-w-2xl flex-col">
+        <header className="flex items-center px-3 py-2">
+          <button
+            onClick={() => { setRetry(null); setReviewStage('summary') }}
+            className="cursor-pointer p-2 text-2xl text-neutral-400 hover:text-white"
+          >
+            ←
+          </button>
+          <h1 className="flex-1 text-center text-xl font-black">Bilan de la partie</h1>
+          <span className="w-10" />
+        </header>
+
+        <div className="px-3">
+          <HEvalBar cp={m.evalAfterCp} mate={m.mateAfter} />
+        </div>
+
+        <div className="px-3 py-3">
+          {retry ? (
+            <CoachBubble mood={retry.status === 'found' ? 'happy' : 'thinking'} headline="🎯 À toi de jouer">
+              {retry.status === 'trying' && `Trouve mieux que ${figurine(m.san)}. Joue ton coup sur l'échiquier.`}
+              {retry.status === 'checking' && `Je vérifie ${figurine(retry.lastTried ?? '')}…`}
+              {retry.status === 'found' && `🎉 Trouvé ! ${figurine(retry.lastTried ?? '')} ${retry.lastTried === retrySolution ? 'était exactement le coup.' : 'fait aussi le travail.'}`}
+              {retry.status === 'failed' && `${figurine(retry.lastTried ?? '')} ne suffit pas non plus. Réessaie !`}
+              {retry.solutionShown && ` La solution était ${figurine(retrySolution ?? '')}.`}
+              <div className="mt-2 flex gap-2">
+                {(retry.status === 'trying' || retry.status === 'failed') && (
+                  <button
+                    onClick={() => setRetry({ ...retry, solutionShown: true })}
+                    className="cursor-pointer rounded bg-neutral-200 px-2 py-1 text-xs font-bold hover:bg-neutral-300"
+                  >
+                    💡 Solution
+                  </button>
+                )}
+                <button
+                  onClick={() => setRetry(null)}
+                  className="cursor-pointer rounded bg-neutral-200 px-2 py-1 text-xs font-bold hover:bg-neutral-300"
+                >
+                  {retry.status === 'found' ? 'Continuer' : 'Quitter'}
+                </button>
+              </div>
+            </CoachBubble>
+          ) : (
+            <CoachBubble cls={m.class} headline={comment?.headline ?? figurine(m.san)} evalBadge={evalBadge} mood={mood}>
+              {comment?.body ?? ''}
+            </CoachBubble>
+          )}
+        </div>
+
+        <div className="flex justify-center">
+          <div className="boardbox md:w-[min(56vh,520px)]">
+            <Board
+              fen={retry ? retry.baseFen : viewFen}
+              orientation={orientation}
+              interactive={!!retry && (retry.status === 'trying' || retry.status === 'failed')}
+              movableColor={retry ? (retry.moveIndex % 2 === 0 ? 'w' : 'b') : undefined}
+              onMove={retry ? handleRetryMove : undefined}
+              lastMove={null}
+              arrows={guidedArrows}
+              badge={retry ? null : { square: m.uci.slice(2, 4), cls: m.class }}
+              markSquares={retry ? undefined : { [m.uci.slice(0, 2)]: tint, [m.uci.slice(2, 4)]: tint }}
+            />
+          </div>
+        </div>
+
+        {showLines && !retry && (
+          <div className="space-y-0.5 px-3 pt-2">
+            {lines.slice(0, 2).map((l) => (
+              <div key={l.multipv} className="flex gap-2 truncate text-sm">
+                <span className="w-14 shrink-0 font-bold text-neutral-100">{lineScore(l)}</span>
+                <span className="truncate text-neutral-400">{sanLine(l)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <MoveStrip
+          sans={moves.map((mv) => mv.san)}
+          classes={review.moves.map((mv) => mv.class)}
+          currentIndex={viewIndex}
+          onSelect={(i) => { setRetry(null); setViewIndex(i) }}
+        />
+
+        <div className="mt-auto flex items-center gap-2 border-t border-black/40 p-3">
+          <BarAction label="Afficher" icon="♞" active={showLines} onClick={() => setShowLines(!showLines)} />
+          <BarAction label="Meilleur" icon="🔍" active={showBest} onClick={() => setShowBest(!showBest)} />
+          <BarAction label="Réessayer" icon="↺" disabled={!canRetry} onClick={() => startRetry(viewIndex)} />
+          <Cta
+            className="flex-1"
+            onClick={() => {
+              setRetry(null)
+              setShowBest(false)
+              if (viewIndex >= moves.length - 1) setReviewStage('summary')
+              else setViewIndex(viewIndex + 1)
+            }}
+          >
+            {viewIndex >= moves.length - 1 ? 'Résumé' : 'Suivant'}
+          </Cta>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-full flex-col items-center justify-start gap-2 p-2 md:flex-row md:items-stretch md:justify-center md:gap-4 md:p-4">
       <div className="flex w-full flex-none justify-center gap-2 md:w-auto md:items-center md:gap-0">
@@ -456,39 +618,6 @@ export default function Analysis() {
           </div>
         )}
 
-        {coach && retry && review && (
-          <div className="rounded border-l-4 border-l-accent bg-surface-2 p-3">
-            <div className="flex items-start gap-2">
-              <span className="text-2xl leading-none">🎯</span>
-              <p className="min-h-10 text-sm leading-snug text-neutral-200">
-                {retry.status === 'trying' &&
-                  `À toi : trouve mieux que ${review.moves[retry.moveIndex].san}. Joue ton coup sur l'échiquier.`}
-                {retry.status === 'checking' && `Je vérifie ${retry.lastTried}…`}
-                {retry.status === 'found' &&
-                  `🎉 Trouvé ! ${retry.lastTried} ${retry.lastTried === retrySolution ? 'était exactement le coup.' : 'fait aussi le travail.'}`}
-                {retry.status === 'failed' &&
-                  `${retry.lastTried} ne suffit pas non plus. Réessaie !`}
-                {retry.solutionShown && ` La solution était ${retrySolution}.`}
-              </p>
-            </div>
-            <div className="mt-2 flex gap-2">
-              {(retry.status === 'trying' || retry.status === 'failed') && (
-                <button
-                  onClick={() => setRetry({ ...retry, solutionShown: true })}
-                  className="flex-1 cursor-pointer rounded bg-surface-3 py-1 text-xs font-semibold hover:bg-surface-3/70"
-                >
-                  💡 Voir la solution
-                </button>
-              )}
-              <button
-                onClick={() => setRetry(null)}
-                className="flex-1 cursor-pointer rounded bg-surface-3 py-1 text-xs font-semibold hover:bg-surface-3/70"
-              >
-                {retry.status === 'found' ? 'Continuer le bilan' : 'Quitter'}
-              </button>
-            </div>
-          </div>
-        )}
         {coach && !retry && (
           <div
             className="rounded border-l-4 bg-surface-2 p-3"
@@ -505,7 +634,9 @@ export default function Analysis() {
               <p className="min-h-10 text-sm leading-snug text-neutral-200">
                 {viewIndex === -1
                   ? coach.summary
-                  : coachCurrent?.text ?? 'Coup adverse. Avance pour retrouver mes commentaires.'}
+                  : coachCurrent
+                    ? `${coachCurrent.headline}. ${coachCurrent.body}`
+                    : 'Coup adverse. Avance pour retrouver mes commentaires.'}
               </p>
             </div>
             <div className="mt-2 flex gap-2">
@@ -527,7 +658,7 @@ export default function Analysis() {
               )}
               {coachCurrent && (coachCurrent.severity === 'warn' || coachCurrent.severity === 'alarm') && (
                 <button
-                  onClick={() => startRetry(viewIndex)}
+                  onClick={() => { setReviewStage('guided'); startRetry(viewIndex) }}
                   className="flex-1 cursor-pointer rounded bg-accent/20 py-1 text-xs font-bold text-accent hover:bg-accent/30"
                 >
                   🎯 Réessayer
@@ -547,7 +678,7 @@ export default function Analysis() {
 
         <div className="flex gap-2">
           <button
-            onClick={() => void runReview()}
+            onClick={() => (review ? setReviewStage('summary') : void runReview())}
             disabled={reviewProgress !== null || moves.length === 0 || startFen !== START_FEN}
             className="flex-1 cursor-pointer rounded bg-accent py-2 text-sm font-bold text-white hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
           >
@@ -623,6 +754,28 @@ export default function Analysis() {
 function NavBtn({ label, onClick, title }: { label: string; onClick: () => void; title?: string }) {
   return (
     <button title={title} onClick={onClick} className="flex-1 cursor-pointer rounded bg-surface-3 py-1.5 hover:bg-surface-3/70">
+      {label}
+    </button>
+  )
+}
+
+// Action de la barre du bilan guidé : icône + libellé, style chess.com.
+function BarAction({ label, icon, active, disabled, onClick }: {
+  label: string
+  icon: string
+  active?: boolean
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex cursor-pointer flex-col items-center gap-0.5 rounded px-2 py-1 text-xs font-semibold disabled:cursor-default disabled:opacity-35 ${
+        active ? 'text-accent' : 'text-neutral-300 hover:text-white'
+      }`}
+    >
+      <span className="text-xl leading-none">{icon}</span>
       {label}
     </button>
   )

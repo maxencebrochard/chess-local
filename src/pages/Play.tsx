@@ -3,6 +3,7 @@ import { Chess } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
 import { Board } from '../components/Board'
 import { Clock } from '../components/Clock'
+import { Cta } from '../components/Cta'
 import { MoveList } from '../components/MoveList'
 import { BOTS, botEngineOptions, type Bot } from '../lib/bots'
 import { Engine } from '../lib/engine'
@@ -320,12 +321,9 @@ export default function Play() {
           </p>
         )}
 
-        <button
-          onClick={startGame}
-          className="w-full cursor-pointer rounded-lg bg-accent py-3 text-lg font-bold text-white shadow hover:bg-accent-hover"
-        >
+        <Cta className="w-full" onClick={startGame}>
           Jouer
-        </button>
+        </Cta>
       </div>
     )
   }
@@ -404,21 +402,15 @@ export default function Play() {
                 </span>
               </p>
             )}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setStatus('setup')}
-                className="flex-1 cursor-pointer rounded bg-accent py-2 font-bold text-white hover:bg-accent-hover"
-              >
-                Rejouer
-              </button>
+            <div className="flex flex-col gap-2">
               {savedGameId !== null && (
-                <button
-                  onClick={() => navigate(`/analyse?game=${savedGameId}&review=1`)}
-                  className="flex-1 cursor-pointer rounded bg-surface-3 py-2 font-semibold hover:bg-surface-3/70"
-                >
-                  🔍 Analyser
-                </button>
+                <Cta className="w-full" onClick={() => navigate(`/analyse?game=${savedGameId}&review=1`)}>
+                  Bilan de la partie
+                </Cta>
               )}
+              <Cta variant="secondary" className="w-full" onClick={() => setStatus('setup')}>
+                Nouvelle partie
+              </Cta>
             </div>
           </div>
         </div>

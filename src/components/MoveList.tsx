@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { CLASS_META, type MoveClass } from '../lib/review'
+import { figurine, type MoveClass } from '../lib/review'
+import { ClassIcon } from './ClassIcon'
 
 interface MoveListProps {
   sans: string[]
@@ -22,21 +23,17 @@ export function MoveList({ sans, currentIndex, onSelect, classes }: MoveListProp
   const cell = (idx?: number) => {
     if (idx === undefined) return <span className="flex-1" />
     const cls = classes?.[idx]
-    const meta = cls ? CLASS_META[cls] : null
+    const marked = cls && !['best', 'excellent', 'good', 'book'].includes(cls)
     return (
       <button
         data-current={idx === currentIndex}
         onClick={() => onSelect(idx)}
-        className={`flex-1 cursor-pointer rounded px-1.5 py-0.5 text-left text-sm font-medium ${
+        className={`flex flex-1 cursor-pointer items-center gap-1.5 rounded px-1.5 py-0.5 text-left text-sm font-medium ${
           idx === currentIndex ? 'bg-accent/30 text-white' : 'text-neutral-200 hover:bg-surface-3'
         }`}
       >
-        {sans[idx]}
-        {meta && cls !== 'book' && cls !== 'best' && cls !== 'excellent' && cls !== 'good' && (
-          <span className="ml-1 text-xs font-bold" style={{ color: meta.color }}>
-            {meta.symbol}
-          </span>
-        )}
+        {figurine(sans[idx])}
+        {marked && <ClassIcon cls={cls} size={14} />}
       </button>
     )
   }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Cta } from '../components/Cta'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
 import { db } from '../lib/db'
 import { loadPuzzles } from '../lib/puzzles'
@@ -136,12 +137,10 @@ export default function PuzzleRush() {
         <p className="mb-1 text-6xl font-black text-accent">{score}</p>
         <p className="mb-6 text-neutral-400">puzzles résolus · record {Math.max(best[mode], score)}</p>
         <div className="flex justify-center gap-3">
-          <button onClick={() => start(mode)} className="cursor-pointer rounded bg-accent px-6 py-2 font-bold text-white hover:bg-accent-hover">
-            Rejouer
-          </button>
-          <button onClick={() => setState('menu')} className="cursor-pointer rounded bg-surface-3 px-6 py-2 font-semibold hover:bg-surface-3/70">
+          <Cta onClick={() => start(mode)}>Rejouer</Cta>
+          <Cta variant="secondary" onClick={() => setState('menu')}>
             Menu
-          </button>
+          </Cta>
         </div>
       </div>
     )

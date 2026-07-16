@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Cta } from '../components/Cta'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
 import { applyRating, db, getRating } from '../lib/db'
 import { loadPuzzles } from '../lib/puzzles'
@@ -144,12 +145,9 @@ export default function Puzzles() {
               ↺ Réessayer
             </button>
           )}
-          <button
-            onClick={() => void pickPuzzle(rating)}
-            className="flex-1 cursor-pointer rounded bg-accent py-2 font-bold text-white hover:bg-accent-hover"
-          >
-            {phase === 'solving' ? 'Passer' : 'Suivant →'}
-          </button>
+          <Cta className="flex-1" onClick={() => void pickPuzzle(rating)}>
+            {phase === 'solving' ? 'Passer' : 'Suivant'}
+          </Cta>
         </div>
       </div>
     </div>
