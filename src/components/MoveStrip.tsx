@@ -16,13 +16,16 @@ const SHOWN: MoveClass[] = ['brilliant', 'great', 'best', 'book', 'inaccuracy', 
 export function MoveStrip({ sans, classes, currentIndex, onSelect }: MoveStripProps) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    ref.current
-      ?.querySelector('[data-current="true"]')
-      ?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+    // Scroll horizontal manuel : scrollIntoView scrollerait aussi les
+    // conteneurs verticaux ancêtres et rognerait la bulle du coach.
+    const strip = ref.current
+    const el = strip?.querySelector<HTMLElement>('[data-current="true"]')
+    if (!strip || !el) return
+    strip.scrollTo({ left: el.offsetLeft - strip.clientWidth / 2 + el.clientWidth / 2, behavior: 'smooth' })
   }, [currentIndex])
 
   return (
-    <div ref={ref} className="flex items-center gap-1.5 overflow-x-auto px-2 py-2 [scrollbar-width:none]">
+    <div ref={ref} className="flex items-center gap-1.5 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]">
       {sans.map((san, i) => {
         const cls = classes[i]
         return (
@@ -44,7 +47,7 @@ export function MoveStrip({ sans, classes, currentIndex, onSelect }: MoveStripPr
                   : undefined
               }
             >
-              {figurine(san)}
+              {figurine(san, i % 2 === 0 ? 'w' : 'b')}
             </button>
             {cls && SHOWN.includes(cls) && <ClassIcon cls={cls} size={16} />}
           </span>

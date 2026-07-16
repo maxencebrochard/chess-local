@@ -19,7 +19,7 @@ export function CoachBubble({ cls, headline, evalBadge, children, mood = 'thinki
       <div className="relative mt-1 flex h-14 w-14 shrink-0 items-end justify-center overflow-hidden rounded-full bg-gradient-to-b from-neutral-500 to-neutral-700 text-4xl">
         <span className="translate-y-0.5">{MOODS[mood]}</span>
       </div>
-      <div className="relative min-w-0 flex-1 rounded-2xl bg-white p-3 text-neutral-900 shadow-lg">
+      <div className="relative min-w-0 flex-1 rounded-2xl bg-white p-2.5 text-neutral-900 shadow-lg">
         <div className="absolute top-5 -left-1.5 h-3 w-3 rotate-45 bg-white" />
         {headline && (
           <div className="mb-1 flex items-center gap-2">

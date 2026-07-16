@@ -50,10 +50,13 @@ export const CLASS_META: Record<
   blunder: { label: 'Gaffe', headline: 'une gaffe', symbol: '??', color: '#fa412d' },
 }
 
-// SAN avec figurines (Nf3 -> ♞f3), plus lisible dans les bulles et listes.
-const FIGURINES: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞' }
-export function figurine(san: string): string {
-  return san.replace(/[KQRBN]/g, (c) => FIGURINES[c])
+// SAN avec figurines (Nf3 -> ♘f3 / ♞f3 selon le camp), plus lisible partout.
+const FIGURINES: Record<'w' | 'b', Record<string, string>> = {
+  w: { K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘' },
+  b: { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞' },
+}
+export function figurine(san: string, color: 'w' | 'b' = 'b'): string {
+  return san.replace(/[KQRBN]/g, (c) => FIGURINES[color][c])
 }
 
 // Win% depuis des centipawns, formule lichess.

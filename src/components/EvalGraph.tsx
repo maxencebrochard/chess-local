@@ -37,7 +37,7 @@ export function EvalGraph({ review, currentIndex, onSelect }: EvalGraphProps) {
     <svg
       viewBox={`0 0 ${W} ${H}`}
       preserveAspectRatio="none"
-      className="h-16 w-full cursor-pointer touch-none rounded bg-neutral-900"
+      className="h-16 w-full cursor-pointer touch-none overflow-visible rounded bg-neutral-900"
       onPointerDown={handlePointer}
       onPointerMove={(e) => e.buttons === 1 && handlePointer(e)}
     >

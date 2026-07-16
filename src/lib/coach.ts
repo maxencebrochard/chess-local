@@ -85,9 +85,9 @@ export function coachComments(review: GameReview, playerColor: 'w' | 'b' | null)
     if (playerColor && moverColor !== playerColor) return
 
     const better = m.uci !== m.bestMoveUci ? bestMoveSan(fenBefore, m.bestMoveUci) : undefined
-    const betterFig = better ? figurine(better) : undefined
+    const betterFig = better ? figurine(better, moverColor) : undefined
     const point = better ? bestMovePoint(fenBefore, m.bestMoveUci) : ''
-    const headline = `${figurine(m.san)} est ${CLASS_META[m.class].headline}`
+    const headline = `${figurine(m.san, moverColor)} est ${CLASS_META[m.class].headline}`
     let body: string
     let severity: CoachComment['severity'] = 'neutral'
 

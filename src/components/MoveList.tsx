@@ -32,7 +32,7 @@ export function MoveList({ sans, currentIndex, onSelect, classes }: MoveListProp
           idx === currentIndex ? 'bg-accent/30 text-white' : 'text-neutral-200 hover:bg-surface-3'
         }`}
       >
-        {figurine(sans[idx])}
+        {figurine(sans[idx], idx % 2 === 0 ? 'w' : 'b')}
         {marked && <ClassIcon cls={cls} size={14} />}
       </button>
     )

@@ -367,10 +367,11 @@ export default function Analysis() {
     return (cp > 0 ? '+' : '') + cp.toFixed(2)
   }
 
-  // --- Écran résumé du bilan (style chess.com) ---
+  // --- Écran résumé du bilan (style chess.com, plein écran par-dessus la nav) ---
   if (reviewStage === 'summary' && review) {
     return (
-      <div className="mx-auto h-full max-w-lg">
+      <div className="pt-safe pb-safe fixed inset-0 z-40 bg-surface">
+        <div className="mx-auto h-full max-w-lg">
         <ReviewSummary
           review={review}
           whiteName={names.w}
@@ -383,13 +384,15 @@ export default function Analysis() {
           onClose={() => setReviewStage(null)}
           onSelectMove={setViewIndex}
         />
+        </div>
       </div>
     )
   }
 
-  // --- Bilan guidé coup par coup (style chess.com) ---
+  // --- Bilan guidé coup par coup (style chess.com, plein écran par-dessus la nav) ---
   if (reviewStage === 'guided' && review && viewIndex >= 0) {
     const m = review.moves[viewIndex]
+    const moverColor: 'w' | 'b' = viewIndex % 2 === 0 ? 'w' : 'b'
     const comment = coach?.comments.find((c) => c.moveIndex === viewIndex) ?? null
     const guidedArrows: BoardArrow[] = []
     if (!retry && showBest && m.uci !== m.bestMoveUci) {
@@ -412,11 +415,12 @@ export default function Analysis() {
     const mood = comment?.severity === 'praise' ? 'happy' : comment?.severity === 'alarm' ? 'worried' : 'thinking'
 
     return (
+      <div className="pt-safe pb-safe fixed inset-0 z-40 bg-surface">
       <div className="mx-auto flex h-full max-w-2xl flex-col">
-        <header className="flex items-center px-3 py-2">
+        <header className="flex items-center px-3 py-1">
           <button
             onClick={() => { setRetry(null); setReviewStage('summary') }}
-            className="cursor-pointer p-2 text-2xl text-neutral-400 hover:text-white"
+            className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white"
           >
             ←
           </button>
@@ -428,14 +432,15 @@ export default function Analysis() {
           <HEvalBar cp={m.evalAfterCp} mate={m.mateAfter} />
         </div>
 
-        <div className="px-3 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="px-3 py-2">
           {retry ? (
             <CoachBubble mood={retry.status === 'found' ? 'happy' : 'thinking'} headline="🎯 À toi de jouer">
-              {retry.status === 'trying' && `Trouve mieux que ${figurine(m.san)}. Joue ton coup sur l'échiquier.`}
-              {retry.status === 'checking' && `Je vérifie ${figurine(retry.lastTried ?? '')}…`}
-              {retry.status === 'found' && `🎉 Trouvé ! ${figurine(retry.lastTried ?? '')} ${retry.lastTried === retrySolution ? 'était exactement le coup.' : 'fait aussi le travail.'}`}
-              {retry.status === 'failed' && `${figurine(retry.lastTried ?? '')} ne suffit pas non plus. Réessaie !`}
-              {retry.solutionShown && ` La solution était ${figurine(retrySolution ?? '')}.`}
+              {retry.status === 'trying' && `Trouve mieux que ${figurine(m.san, moverColor)}. Joue ton coup sur l'échiquier.`}
+              {retry.status === 'checking' && `Je vérifie ${figurine(retry.lastTried ?? '', moverColor)}…`}
+              {retry.status === 'found' && `🎉 Trouvé ! ${figurine(retry.lastTried ?? '', moverColor)} ${retry.lastTried === retrySolution ? 'était exactement le coup.' : 'fait aussi le travail.'}`}
+              {retry.status === 'failed' && `${figurine(retry.lastTried ?? '', moverColor)} ne suffit pas non plus. Réessaie !`}
+              {retry.solutionShown && ` La solution était ${figurine(retrySolution ?? '', moverColor)}.`}
               <div className="mt-2 flex gap-2">
                 {(retry.status === 'trying' || retry.status === 'failed') && (
                   <button
@@ -454,7 +459,7 @@ export default function Analysis() {
               </div>
             </CoachBubble>
           ) : (
-            <CoachBubble cls={m.class} headline={comment?.headline ?? figurine(m.san)} evalBadge={evalBadge} mood={mood}>
+            <CoachBubble cls={m.class} headline={comment?.headline ?? figurine(m.san, moverColor)} evalBadge={evalBadge} mood={mood}>
               {comment?.body ?? ''}
             </CoachBubble>
           )}
@@ -493,8 +498,9 @@ export default function Analysis() {
           currentIndex={viewIndex}
           onSelect={(i) => { setRetry(null); setViewIndex(i) }}
         />
+        </div>
 
-        <div className="mt-auto flex items-center gap-2 border-t border-black/40 p-3">
+        <div className="flex items-center gap-2 border-t border-black/40 p-3">
           <BarAction label="Afficher" icon="♞" active={showLines} onClick={() => setShowLines(!showLines)} />
           <BarAction label="Meilleur" icon="🔍" active={showBest} onClick={() => setShowBest(!showBest)} />
           <BarAction label="Réessayer" icon="↺" disabled={!canRetry} onClick={() => startRetry(viewIndex)} />
@@ -510,6 +516,7 @@ export default function Analysis() {
             {viewIndex >= moves.length - 1 ? 'Résumé' : 'Suivant'}
           </Cta>
         </div>
+      </div>
       </div>
     )
   }
