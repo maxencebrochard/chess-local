@@ -153,7 +153,7 @@ export default function Analysis() {
       setReviewStage(null)
       setGameMeta(null)
       const h = c.header()
-      const clean = (v: string | undefined, fallback: string) => (v && v !== '?' ? v : fallback)
+      const clean = (v: string | null | undefined, fallback: string) => (v && v !== '?' ? v : fallback)
       setNames({ w: clean(h.White, 'Blancs'), b: clean(h.Black, 'Noirs') })
       return true
     } catch {
