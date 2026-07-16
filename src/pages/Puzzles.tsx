@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Chess } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
 import { Cta } from '../components/Cta'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
@@ -85,19 +84,17 @@ export default function Puzzles() {
   const sideToPlay = puzzle.fen.split(' ')[1] === 'w' ? 'Noirs' : 'Blancs'
   const playerColor: 'w' | 'b' = puzzle.fen.split(' ')[1] === 'w' ? 'b' : 'w'
 
-  // Position courante du puzzle (fen initial + coups déjà joués).
+  // Ouvre l'analyse sur le puzzle : position initiale + séquence jouée,
+  // pour pouvoir naviguer coup par coup dans la solution.
   function openInAnalysis() {
     if (!puzzle) return
-    const c = new Chess(puzzle.fen)
-    for (const uci of puzzle.moves.slice(0, stepIndex)) {
-      try {
-        c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] })
-      } catch {
-        break
-      }
-    }
     navigate('/analyse', {
-      state: { fen: c.fen(), orientation: playerColor, label: `Puzzle ${puzzle.id} (${puzzle.rating})` },
+      state: {
+        fen: puzzle.fen,
+        uci: puzzle.moves.slice(0, Math.max(stepIndex, 1)),
+        orientation: playerColor,
+        label: `Puzzle ${puzzle.id} (${puzzle.rating})`,
+      },
     })
   }
 

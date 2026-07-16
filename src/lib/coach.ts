@@ -73,10 +73,10 @@ function hungPiece(fenAfter: string, moverColor: 'w' | 'b'): string | null {
 
 export function coachComments(review: GameReview, playerColor: 'w' | 'b' | null): CoachComment[] {
   const comments: CoachComment[] = []
-  const replay = new Chess()
+  const replay = new Chess(review.startFen)
 
   review.moves.forEach((m, i) => {
-    const moverColor: 'w' | 'b' = i % 2 === 0 ? 'w' : 'b'
+    const moverColor = replay.turn()
     const fenBefore = replay.fen()
     replay.move(m.san)
     const fenAfter = replay.fen()
@@ -143,10 +143,21 @@ export function coachComments(review: GameReview, playerColor: 'w' | 'b' | null)
       }
     }
 
-    comments.push({ moveIndex: i, headline, body: body.trim() || 'Voyons la suite.', betterMove: better, severity })
+    comments.push({
+      moveIndex: i,
+      headline,
+      body: body.trim() || 'Voyons la suite.',
+      betterMove: better,
+      severity,
+    })
   })
 
   return comments
+}
+
+// Couleur du joueur au demi-coup i, en tenant compte du trait initial.
+function colorAt(review: GameReview, i: number): 'w' | 'b' {
+  return (i % 2 === 0) === (review.startTurn === 'w') ? 'w' : 'b'
 }
 
 // Punchline courte du coach pour l'écran de résumé, façon chess.com.
@@ -210,7 +221,7 @@ export function detectPhases(review: GameReview): GamePhases {
   })
   if (openingEnd === -1) openingEnd = Math.min(15, review.moves.length - 1)
 
-  const replay = new Chess()
+  const replay = new Chess(review.startFen)
   let endgameStart = review.moves.length
   for (let i = 0; i < review.moves.length; i++) {
     replay.move(review.moves[i].san)
@@ -232,7 +243,7 @@ export function detectPhases(review: GameReview): GamePhases {
 function accuracyOnRange(review: GameReview, color: 'w' | 'b', from: number, to: number): number | null {
   const accs: number[] = []
   for (let i = Math.max(0, from); i < Math.min(to, review.moves.length); i++) {
-    if ((i % 2 === 0 ? 'w' : 'b') !== color) continue
+    if (colorAt(review, i) !== color) continue
     const m = review.moves[i]
     const drop = Math.max(0, m.winPctBefore - m.winPctAfter)
     accs.push(Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669)))
@@ -290,7 +301,7 @@ export function coachSummary(review: GameReview, playerColor: 'w' | 'b' | null):
   let pivotIdx = -1
   let pivotDrop = 12
   review.moves.forEach((m, i) => {
-    if ((i % 2 === 0 ? 'w' : 'b') !== color) return
+    if (colorAt(review, i) !== color) return
     if (!BAD_CLASSES.includes(m.class)) return
     const drop = m.winPctBefore - m.winPctAfter
     if (drop > pivotDrop) {

@@ -9,11 +9,13 @@ interface MoveStripProps {
   classes: (MoveClass | null)[]
   currentIndex: number
   onSelect: (index: number) => void
+  // Trait au premier demi-coup ('b' pour un départ custom où les noirs jouent).
+  startTurn?: 'w' | 'b'
 }
 
 const SHOWN: MoveClass[] = ['brilliant', 'great', 'best', 'book', 'inaccuracy', 'mistake', 'miss', 'missedWin', 'blunder']
 
-export function MoveStrip({ sans, classes, currentIndex, onSelect }: MoveStripProps) {
+export function MoveStrip({ sans, classes, currentIndex, onSelect, startTurn = 'w' }: MoveStripProps) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // Scroll horizontal manuel : scrollIntoView scrollerait aussi les
@@ -47,7 +49,7 @@ export function MoveStrip({ sans, classes, currentIndex, onSelect }: MoveStripPr
                   : undefined
               }
             >
-              {figurine(san, i % 2 === 0 ? 'w' : 'b')}
+              {figurine(san, (i % 2 === 0) === (startTurn === 'w') ? 'w' : 'b')}
             </button>
             {cls && SHOWN.includes(cls) && <ClassIcon cls={cls} size={16} />}
           </span>

@@ -60,6 +60,8 @@ export default function Analysis() {
   }, [startFen, moves, viewIndex])
 
   const viewChess = useMemo(() => new Chess(viewFen), [viewFen])
+  const startTurn = useMemo(() => new Chess(startFen).turn(), [startFen])
+  const colorAtIndex = (i: number): 'w' | 'b' => ((i % 2 === 0) === (startTurn === 'w') ? 'w' : 'b')
   const uciMoves = useMemo(() => moves.slice(0, viewIndex + 1).map((m) => m.lan), [moves, viewIndex])
   const opening = useMemo(
     () => (startFen === START_FEN ? openingForMoves(moves.map((m) => m.lan)) : null),
@@ -75,14 +77,28 @@ export default function Analysis() {
     const state = location.state as {
       pgn?: string
       fen?: string
+      uci?: string[]
       color?: 'w' | 'b'
       orientation?: 'w' | 'b'
       label?: string
       review?: boolean
     } | null
-    // Position seule (ex : bouton Stockfish des puzzles) : analyse live immédiate.
+    // Position (+ séquence de coups optionnelle, ex : puzzle) : analyse live immédiate.
     if (state?.fen && !state.pgn) {
       if (loadFen(state.fen)) {
+        if (state.uci?.length) {
+          const c = new Chess(state.fen)
+          for (const uci of state.uci) {
+            try {
+              c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] })
+            } catch {
+              break
+            }
+          }
+          const played = c.history({ verbose: true })
+          setMoves(played)
+          setViewIndex(played.length - 1)
+        }
         setOrientation(state.orientation ?? 'w')
         if (state.label) setGameMeta(state.label)
       }
@@ -238,8 +254,12 @@ export default function Analysis() {
   }, [moves, startFen, reviewDepth])
 
   function currentPgn(): string | null {
-    if (startFen !== START_FEN || moves.length === 0) return null
-    const c = new Chess()
+    if (moves.length === 0) return null
+    const c = new Chess(startFen)
+    if (startFen !== START_FEN) {
+      c.header('SetUp', '1')
+      c.header('FEN', startFen)
+    }
     for (const m of moves) c.move(m.san)
     return c.pgn()
   }
@@ -408,7 +428,7 @@ export default function Analysis() {
   // --- Bilan guidé coup par coup (style chess.com, plein écran par-dessus la nav) ---
   if (reviewStage === 'guided' && review && viewIndex >= 0) {
     const m = review.moves[viewIndex]
-    const moverColor: 'w' | 'b' = viewIndex % 2 === 0 ? 'w' : 'b'
+    const moverColor = colorAtIndex(viewIndex)
     const comment = coach?.comments.find((c) => c.moveIndex === viewIndex) ?? null
     const guidedArrows: BoardArrow[] = []
     if (!retry && showBest && m.uci !== m.bestMoveUci) {
@@ -487,7 +507,7 @@ export default function Analysis() {
               fen={retry ? retry.baseFen : viewFen}
               orientation={orientation}
               interactive={!!retry && (retry.status === 'trying' || retry.status === 'failed')}
-              movableColor={retry ? (retry.moveIndex % 2 === 0 ? 'w' : 'b') : undefined}
+              movableColor={retry ? colorAtIndex(retry.moveIndex) : undefined}
               onMove={retry ? handleRetryMove : undefined}
               lastMove={null}
               arrows={guidedArrows}
@@ -513,6 +533,7 @@ export default function Analysis() {
           classes={review.moves.map((mv) => mv.class)}
           currentIndex={viewIndex}
           onSelect={(i) => { setRetry(null); setViewIndex(i) }}
+          startTurn={startTurn}
         />
         </div>
 
@@ -552,7 +573,7 @@ export default function Analysis() {
               fen={retry ? retry.baseFen : viewFen}
               orientation={orientation}
               interactive={!retry || retry.status === 'trying' || retry.status === 'failed'}
-              movableColor={retry ? (retry.moveIndex % 2 === 0 ? 'w' : 'b') : undefined}
+              movableColor={retry ? colorAtIndex(retry.moveIndex) : undefined}
               onMove={retry ? handleRetryMove : handleMove}
               lastMove={retry ? null : lastMove}
               arrows={arrows}
@@ -702,7 +723,7 @@ export default function Analysis() {
         <div className="flex gap-2">
           <button
             onClick={() => (review ? setReviewStage('summary') : void runReview())}
-            disabled={reviewProgress !== null || moves.length === 0 || startFen !== START_FEN}
+            disabled={reviewProgress !== null || moves.length === 0}
             className="flex-1 cursor-pointer rounded bg-accent py-2 text-sm font-bold text-white hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
           >
             {reviewProgress !== null ? `Analyse… ${reviewProgress}%` : '🔍 Bilan de partie'}
@@ -715,7 +736,8 @@ export default function Analysis() {
           </button>
           <button
             onClick={() => { const pgn = currentPgn(); if (pgn) void navigator.clipboard.writeText(pgn) }}
-            className="cursor-pointer rounded bg-surface-3 px-3 py-2 text-sm font-semibold hover:bg-surface-3/70"
+            disabled={moves.length === 0}
+            className="cursor-pointer rounded bg-surface-3 px-3 py-2 text-sm font-semibold hover:bg-surface-3/70 disabled:cursor-default disabled:opacity-40"
           >
             Copier PGN
           </button>

@@ -22,6 +22,9 @@ export interface ReviewedMove {
 
 export interface GameReview {
   moves: ReviewedMove[]
+  // Position de départ (FEN) et trait initial — départ custom possible (puzzle).
+  startFen: string
+  startTurn: 'w' | 'b'
   accuracyWhite: number
   accuracyBlack: number
   counts: { w: Record<MoveClass, number>; b: Record<MoveClass, number> }
@@ -92,9 +95,11 @@ export async function reviewGame(
   game.loadPgn(pgn)
   const verbose = game.history({ verbose: true })
   const total = verbose.length
+  // Position de départ custom (puzzle, FEN importé) : header FEN du PGN.
+  const customStart = game.header().FEN ?? undefined
 
   // Évaluations de chaque position (avant coup 1, après coup 1, ...).
-  const chess = new Chess()
+  const chess = new Chess(customStart)
   const evals: { lines: EngineLine[] }[] = []
   for (let i = 0; i <= total; i++) {
     if (i > 0) chess.move(verbose[i - 1].san)
@@ -108,7 +113,7 @@ export async function reviewGame(
   }
 
   const moves: ReviewedMove[] = []
-  const replay = new Chess()
+  const replay = new Chess(customStart)
   const uciSoFar: string[] = []
   const cpLosses: { w: number[]; b: number[] } = { w: [], b: [] }
 
@@ -140,7 +145,7 @@ export async function reviewGame(
       prevMove !== undefined && Math.max(0, prevMove.winPctBefore - prevMove.winPctAfter) >= 10
 
     let cls: MoveClass
-    if (isBookPosition(uciSoFar)) {
+    if (!customStart && isBookPosition(uciSoFar)) {
       cls = 'book'
     } else if (mv.lan !== bestMoveUci && wBefore >= 85 && wAfter < 55) {
       // Position gagnante jetée : Gain manqué (prioritaire sur l'échelle standard).
@@ -185,12 +190,16 @@ export async function reviewGame(
     replay.move(mv.san)
   }
 
+  const startTurn = new Chess(customStart).turn()
+  const colorAt = (i: number): 'w' | 'b' =>
+    (i % 2 === 0) === (startTurn === 'w') ? 'w' : 'b'
+
   const emptyCounts = () =>
     Object.fromEntries(Object.keys(CLASS_META).map((k) => [k, 0])) as Record<MoveClass, number>
   const counts = { w: emptyCounts(), b: emptyCounts() }
   const accs: { w: number[]; b: number[] } = { w: [], b: [] }
   moves.forEach((m, i) => {
-    const color = i % 2 === 0 ? 'w' : 'b'
+    const color = colorAt(i)
     counts[color][m.class]++
     // Accuracy par coup, formule lichess.
     const drop = Math.max(0, m.winPctBefore - m.winPctAfter)
@@ -200,13 +209,20 @@ export async function reviewGame(
   const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 100)
 
   // Win% blanc après chaque demi-coup (index 0 = départ).
-  const winPctSeries: number[] = [50]
+  const startPct = moves.length
+    ? startTurn === 'w'
+      ? moves[0].winPctBefore
+      : 100 - moves[0].winPctBefore
+    : 50
+  const winPctSeries: number[] = [startPct]
   moves.forEach((m) => {
     winPctSeries.push(m.evalAfterCp !== null ? winPct(m.evalAfterCp) : winPctSeries[winPctSeries.length - 1])
   })
 
   return {
     moves,
+    startFen: new Chess(customStart).fen(),
+    startTurn,
     accuracyWhite: Math.round(mean(accs.w) * 10) / 10,
     accuracyBlack: Math.round(mean(accs.b) * 10) / 10,
     counts,
