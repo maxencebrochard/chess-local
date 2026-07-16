@@ -184,6 +184,7 @@ export default function Import() {
           </ol>
         </div>
       </details>
+      <p className="mt-4 text-center text-[10px] text-neutral-600">build {__BUILD__}</p>
     </div>
   )
 }

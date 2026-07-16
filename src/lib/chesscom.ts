@@ -14,10 +14,20 @@ export interface ChesscomGame {
 }
 
 async function fetchJson(url: string): Promise<unknown> {
-  const res = await fetch(url)
+  let res: Response
+  try {
+    res = await fetch(url)
+  } catch (e) {
+    // Erreur bas niveau (réseau, blocage, bug navigateur) : contexte explicite.
+    throw new Error(`Requête chess.com impossible (${(e as Error).name}: ${(e as Error).message}) — ${url}`)
+  }
   if (res.status === 404) throw new Error('Joueur introuvable sur chess.com.')
   if (!res.ok) throw new Error(`chess.com a répondu ${res.status}.`)
-  return res.json()
+  try {
+    return await res.json()
+  } catch (e) {
+    throw new Error(`Réponse chess.com illisible (${(e as Error).name}) — ${url}`)
+  }
 }
 
 interface RawGame {
@@ -32,7 +42,10 @@ interface RawGame {
 
 // Parties récentes du joueur, les plus récentes d'abord.
 export async function fetchRecentGames(username: string, months = 3, limit = 30): Promise<ChesscomGame[]> {
-  const user = username.trim().toLowerCase()
+  // Nettoyage agressif : le clavier iOS ajoute espaces/majuscules, et un
+  // caractère invisible dans l'URL casse fetch sur certains navigateurs.
+  const user = encodeURIComponent(username.trim().toLowerCase().replace(/[^\w-]/g, ''))
+  if (!user) throw new Error('Pseudo vide ou invalide.')
   const archives = (await fetchJson(`https://api.chess.com/pub/player/${user}/games/archives`)) as {
     archives: string[]
   }

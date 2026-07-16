@@ -7,6 +7,8 @@ export default defineConfig({
   // Chemins relatifs : l'app doit marcher servie depuis n'importe quel sous-chemin
   // (GitHub Pages /chess-local/) comme depuis la racine (dev, preview).
   base: './',
+  // Horodatage de build, affiché dans l'app pour vérifier qu'on est à jour.
+  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')) },
   plugins: [
     react(),
     tailwindcss(),
