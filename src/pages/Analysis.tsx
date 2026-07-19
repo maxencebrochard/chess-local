@@ -42,6 +42,8 @@ export default function Analysis() {
   const [reviewProgress, setReviewProgress] = useState<number | null>(null)
   const [reviewColor, setReviewColor] = useState<'w' | 'b' | null>(null)
   const [showImport, setShowImport] = useState(false)
+  const [showOptions, setShowOptions] = useState(false)
+  const [showExplorer, setShowExplorer] = useState(false)
   const [importText, setImportText] = useState('')
   const [importError, setImportError] = useState('')
   const [gameMeta, setGameMeta] = useState<string | null>(null)
@@ -300,7 +302,8 @@ export default function Analysis() {
       color: '#81b64c',
     })
   } else if (engineOn && topLine?.pv[0] && topLine.pv[0].length >= 4) {
-    arrows.push({ startSquare: topLine.pv[0].slice(0, 2), endSquare: topLine.pv[0].slice(2, 4), color: '#95bb4a' })
+    // Bleu chess.com pour l'analyse libre ; le vert reste réservé au bilan.
+    arrows.push({ startSquare: topLine.pv[0].slice(0, 2), endSquare: topLine.pv[0].slice(2, 4), color: '#69c3f2' })
   }
   const coach = useMemo(
     () =>
@@ -559,17 +562,31 @@ export default function Analysis() {
     )
   }
 
+  const compactLines = lines.slice(0, 2).map((l) => `(${lineScore(l)}) ${sanLine(l)}`)
+
   return (
-    <div className="flex h-full flex-col items-center justify-start gap-2 p-2 md:flex-row md:items-stretch md:justify-center md:gap-4 md:p-4">
+    <div className="flex h-full flex-col items-center justify-start gap-1.5 p-2 md:flex-row md:items-stretch md:justify-center md:gap-4 md:p-4">
+      {/* Barre d'éval horizontale + lignes compactes : mobile uniquement */}
+      <div className="w-full md:hidden">
+        <HEvalBar cp={evalCp} mate={evalMate} />
+        {engineOn && (
+          <div className="mt-1.5 space-y-0.5">
+            {(compactLines.length ? compactLines : [viewChess.isGameOver() ? 'Partie terminée.' : 'Calcul…']).map((t, i) => (
+              <p key={i} className="truncate text-[13px] text-neutral-400">{t}</p>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="flex w-full flex-none justify-center gap-2 md:w-auto md:items-center md:gap-0">
-        <div className="flex items-stretch md:items-center">
+        <div className="hidden items-stretch md:flex md:items-center">
           <div className="self-stretch md:h-[min(76vh,640px)] md:self-auto">
             <EvalBar cp={evalCp} mate={evalMate} orientation={orientation} />
           </div>
         </div>
 
         <div className="flex flex-col justify-center gap-2 md:ml-4">
-          <div className="w-[min(100vw-2.5rem,76vh,640px)]">
+          <div className="boardbox md:w-[min(76vh,640px)]">
             <Board
               fen={retry ? retry.baseFen : viewFen}
               orientation={orientation}
@@ -580,10 +597,14 @@ export default function Analysis() {
               arrows={arrows}
             />
           </div>
+          {/* Bandeau ouverture, façon chess.com (mobile) */}
+          <div className="rounded bg-surface-2 py-1.5 text-center text-sm font-semibold text-neutral-200 md:hidden">
+            {opening ? opening.name : moves.length === 0 ? 'Position de départ' : 'Hors théorie'}
+          </div>
           {review && !retry && (
             <EvalGraph review={review} currentIndex={viewIndex} onSelect={setViewIndex} />
           )}
-          <div className="flex items-center gap-2 text-sm text-neutral-400">
+          <div className="hidden items-center gap-2 text-sm text-neutral-400 md:flex">
           {opening && (
             <span>
               <span className="font-mono text-xs text-neutral-500">{opening.eco}</span> {opening.name}
@@ -600,7 +621,7 @@ export default function Analysis() {
       </div>
 
       <div className="flex w-full flex-col gap-3 px-1 pb-2 md:w-96 md:px-0 md:py-2">
-        <div className="flex items-center justify-between rounded bg-surface-2 px-3 py-2">
+        <div className="hidden items-center justify-between rounded bg-surface-2 px-3 py-2 md:flex">
           <span className="text-sm font-semibold">Stockfish 18</span>
           <div className="flex items-center gap-2">
             {topLine && <span className="text-xs text-neutral-500">prof. {topLine.depth}</span>}
@@ -614,7 +635,7 @@ export default function Analysis() {
         </div>
 
         {engineOn && (
-          <div className="space-y-1 rounded bg-surface-2 p-2">
+          <div className="hidden space-y-1 rounded bg-surface-2 p-2 md:block">
             {lines.length === 0 && <p className="px-1 text-sm text-neutral-500">{viewChess.isGameOver() ? 'Partie terminée.' : 'Calcul…'}</p>}
             {lines.map((l) => (
               <div key={l.multipv} className="flex gap-2 truncate px-1 text-sm">
@@ -625,7 +646,17 @@ export default function Analysis() {
           </div>
         )}
 
-        <div className="h-36 md:h-auto md:min-h-0 md:flex-1">
+        <div className="md:hidden">
+          <MoveStrip
+            sans={moves.map((m) => m.san)}
+            classes={review ? review.moves.map((m) => m.class) : moves.map(() => null)}
+            currentIndex={viewIndex}
+            onSelect={setViewIndex}
+            startTurn={startTurn}
+          />
+        </div>
+
+        <div className="hidden md:block md:h-auto md:min-h-0 md:flex-1">
           <MoveList
             sans={moves.map((m) => m.san)}
             currentIndex={viewIndex}
@@ -713,7 +744,7 @@ export default function Analysis() {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
+        <div className="hidden flex-wrap gap-2 md:flex">
           <NavBtn label="⏮" onClick={() => setViewIndex(-1)} />
           <NavBtn label="◀" onClick={() => setViewIndex((v) => Math.max(-1, v - 1))} />
           <NavBtn label="▶" onClick={() => setViewIndex((v) => Math.min(moves.length - 1, v + 1))} />
@@ -721,7 +752,7 @@ export default function Analysis() {
           <NavBtn label="⇅" title="Retourner l'échiquier" onClick={() => setOrientation((o) => (o === 'w' ? 'b' : 'w'))} />
         </div>
 
-        <div className="flex gap-2">
+        <div className="hidden gap-2 md:flex">
           <button
             onClick={() => (review ? setReviewStage('summary') : void runReview())}
             disabled={reviewProgress !== null || moves.length === 0}
@@ -745,7 +776,7 @@ export default function Analysis() {
         </div>
 
         {book.length > 0 && (
-          <div className="rounded bg-surface-2 p-2">
+          <div className={`${showExplorer ? '' : 'hidden md:block'} rounded bg-surface-2 p-2`}>
             <p className="mb-1 px-1 text-xs font-semibold text-neutral-400">Explorer d'ouvertures</p>
             {book.map((b) => {
               const c = new Chess(viewFen)
@@ -767,6 +798,43 @@ export default function Analysis() {
           </div>
         )}
       </div>
+
+      {/* Barre d'actions mobile, façon chess.com */}
+      <div className="sticky bottom-0 z-20 mt-auto flex w-full items-center justify-around border-t border-black/40 bg-surface py-1 md:hidden">
+        <BarAction label="Options" icon="⚙" onClick={() => setShowOptions(true)} />
+        <BarAction
+          label="Bilan"
+          icon="★"
+          disabled={reviewProgress !== null || moves.length === 0}
+          onClick={() => (review ? setReviewStage('summary') : void runReview())}
+        />
+        <BarAction label="Explorer" icon="🧭" active={showExplorer} onClick={() => setShowExplorer(!showExplorer)} />
+        <BarAction label="Précédent" icon="‹" onClick={() => setViewIndex((v) => Math.max(-1, v - 1))} />
+        <BarAction label="Suivant" icon="›" onClick={() => setViewIndex((v) => Math.min(moves.length - 1, v + 1))} />
+      </div>
+
+      {showOptions && (
+        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60 md:items-center" onClick={() => setShowOptions(false)}>
+          <div className="w-full max-w-md rounded-t-2xl bg-surface-2 p-4 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-3 text-center text-lg font-bold">Options</h2>
+            <div className="space-y-2">
+              <SheetBtn label="⇅ Retourner l'échiquier" onClick={() => { setOrientation((o) => (o === 'w' ? 'b' : 'w')); setShowOptions(false) }} />
+              <SheetBtn
+                label={`Moteur : ${engineOn ? 'activé' : 'désactivé'}`}
+                onClick={() => setEngineOn(!engineOn)}
+              />
+              <SheetBtn
+                label="Copier le PGN"
+                disabled={moves.length === 0}
+                onClick={() => { const pgn = currentPgn(); if (pgn) void navigator.clipboard.writeText(pgn); setShowOptions(false) }}
+              />
+              <SheetBtn label="Importer PGN ou FEN" onClick={() => { setShowOptions(false); setShowImport(true); setImportText(''); setImportError('') }} />
+              <SheetBtn label="♟ Importer depuis chess.com" onClick={() => navigate('/import')} />
+              <SheetBtn label="Fermer" onClick={() => setShowOptions(false)} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {showImport && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70" onClick={() => setShowImport(false)}>
@@ -800,6 +868,18 @@ export default function Analysis() {
 function NavBtn({ label, onClick, title }: { label: string; onClick: () => void; title?: string }) {
   return (
     <button title={title} onClick={onClick} className="flex-1 cursor-pointer rounded bg-surface-3 py-1.5 hover:bg-surface-3/70">
+      {label}
+    </button>
+  )
+}
+
+function SheetBtn({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full cursor-pointer rounded-lg bg-surface-3 py-2.5 font-semibold text-neutral-200 hover:bg-surface-3/70 disabled:cursor-default disabled:opacity-40"
+    >
       {label}
     </button>
   )

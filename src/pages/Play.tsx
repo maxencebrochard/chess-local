@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
-import { Board } from '../components/Board'
+import { Board, type BoardArrow } from '../components/Board'
 import { Clock } from '../components/Clock'
+import { CoachBubble } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
+import { HEvalBar } from '../components/HEvalBar'
 import { MoveList } from '../components/MoveList'
+import { MoveStrip } from '../components/MoveStrip'
+import { greeting, liveComment, quickClass, type LiveComment } from '../lib/liveCoach'
+import { isBookPosition } from '../lib/openings'
 import { BOTS, botEngineOptions, type Bot } from '../lib/bots'
 import { Engine } from '../lib/engine'
 import { applyRating, db, getRating, type SavedGame } from '../lib/db'
@@ -44,7 +49,7 @@ export default function Play() {
   const { playSounds } = useSettings()
 
   // --- Setup ---
-  const [mode, setMode] = useState<'bot' | 'local'>('bot')
+  const [mode, setMode] = useState<'bot' | 'local' | 'coach'>('bot')
   const [bot, setBot] = useState<Bot>(BOTS[3])
   const [colorChoice, setColorChoice] = useState<'w' | 'b' | 'random'>('w')
   const [tc, setTc] = useState<TimeControl>(TIME_CONTROLS[4])
@@ -64,6 +69,60 @@ export default function Play() {
   const botThinking = useRef(false)
   const lowTimeWarned = useRef(false)
 
+  // --- Mode entraîneur ---
+  const coachEngineRef = useRef<Engine | null>(null) // pleine force, dédié à l'éval
+  const [coachMsg, setCoachMsg] = useState<LiveComment | null>(null)
+  const [liveCp, setLiveCp] = useState<number | null>(null) // point de vue blanc
+  const [unrated, setUnrated] = useState(false)
+  const [hintArrow, setHintArrow] = useState<BoardArrow | null>(null)
+  const [hintBusy, setHintBusy] = useState(false)
+  const [bookBadge, setBookBadge] = useState<string | null>(null)
+  const lastWhiteCp = useRef(20) // éval blanche avant le dernier coup
+  const unratedRef = useRef(false)
+
+  function markUnrated() {
+    unratedRef.current = true
+    setUnrated(true)
+  }
+
+  // Éval + commentaire live après chaque demi-coup (mode entraîneur).
+  // Chaîne sérialisée : l'éval du coup N doit finir avant celle du coup N+1
+  // (sinon la classification du coup du bot lirait une éval « avant » périmée).
+  const liveChain = useRef(Promise.resolve())
+  const liveEval = useCallback((san: string, byPlayer: boolean) => {
+    const game = chessRef.current
+    const fen = game.fen()
+    const moverColor: 'w' | 'b' = game.turn() === 'w' ? 'b' : 'w'
+    const turnAfter = game.turn()
+    const uciMoves = game.history({ verbose: true }).map((m) => m.lan)
+    const isBook = isBookPosition(uciMoves)
+    const mate = game.isCheckmate()
+    const over = game.isGameOver()
+    setBookBadge(isBook ? uciMoves[uciMoves.length - 1].slice(2, 4) : null)
+
+    liveChain.current = liveChain.current.then(async () => {
+      let whiteCp: number
+      if (mate) {
+        whiteCp = moverColor === 'w' ? 10000 : -10000
+      } else if (over) {
+        whiteCp = 0
+      } else {
+        coachEngineRef.current ??= new Engine()
+        const res = await coachEngineRef.current.search({ fen, depth: 10, multipv: 1 })
+        const line = res.lines[0]
+        const cpPovTurn = line ? (line.scoreMate !== null ? (line.scoreMate > 0 ? 10000 : -10000) : (line.scoreCp ?? 0)) : 0
+        whiteCp = turnAfter === 'w' ? cpPovTurn : -cpPovTurn
+      }
+      if (chessRef.current !== game) return // nouvelle partie entre-temps
+      const cpBeforeMover = moverColor === 'w' ? lastWhiteCp.current : -lastWhiteCp.current
+      const cpAfterMover = moverColor === 'w' ? whiteCp : -whiteCp
+      lastWhiteCp.current = whiteCp
+      setLiveCp(whiteCp)
+      const cls = quickClass(cpBeforeMover, cpAfterMover, isBook)
+      setCoachMsg(liveComment({ san, moverColor, byPlayer, cls, uciMoves }))
+    })
+  }, [])
+
   useEffect(() => {
     getRating(tc.timeClass).then((r) => setMyRating(r.value))
   }, [tc])
@@ -73,6 +132,8 @@ export default function Play() {
       // Null obligatoire : StrictMode rejoue les effets, un worker terminé ne doit pas être réutilisé.
       engineRef.current?.quit()
       engineRef.current = null
+      coachEngineRef.current?.quit()
+      coachEngineRef.current = null
     },
     [],
   )
@@ -132,7 +193,7 @@ export default function Play() {
           if (playSounds) sounds.gameEnd()
           let ratingBefore: number | undefined
           let ratingAfter: number | undefined
-          if (mode === 'bot') {
+          if (mode !== 'local' && !unratedRef.current) {
             const score = result === '1/2-1/2' ? 0.5 : (result === '1-0') === (playerColor === 'w') ? 1 : 0
             const before = await getRating(tc.timeClass)
             ratingBefore = before.value
@@ -140,16 +201,16 @@ export default function Play() {
             setMyRating(ratingAfter)
           }
           const c = chessRef.current
-          c.header('Event', mode === 'bot' ? `Partie vs ${bot.name}` : 'Partie locale')
+          c.header('Event', mode !== 'local' ? `Partie vs ${bot.name}` : 'Partie locale')
           c.header('Site', 'chess-local')
           c.header('Date', new Date().toISOString().slice(0, 10).replaceAll('-', '.'))
-          c.header('White', mode === 'bot' ? (playerColor === 'w' ? 'Moi' : bot.name) : 'Blancs')
-          c.header('Black', mode === 'bot' ? (playerColor === 'b' ? 'Moi' : bot.name) : 'Noirs')
+          c.header('White', mode !== 'local' ? (playerColor === 'w' ? 'Moi' : bot.name) : 'Blancs')
+          c.header('Black', mode !== 'local' ? (playerColor === 'b' ? 'Moi' : bot.name) : 'Noirs')
           c.header('Result', result)
           const id = await db.games.add({
             date: Date.now(),
-            mode,
-            botId: mode === 'bot' ? bot.id : undefined,
+            mode: mode === 'local' ? 'local' : 'bot',
+            botId: mode !== 'local' ? bot.id : undefined,
             playerColor,
             timeControl: tc.label,
             timeClass: tc.timeClass,
@@ -179,7 +240,7 @@ export default function Play() {
   }, [endGame])
 
   const afterMove = useCallback(
-    (san: string) => {
+    (san: string, byPlayer = false) => {
       const c = chessRef.current
       if (playSounds) {
         if (c.inCheck()) sounds.check()
@@ -193,9 +254,13 @@ export default function Play() {
       setFen(c.fen())
       setSans(c.history())
       setViewIndex(-1)
+      if (mode === 'coach') {
+        setHintArrow(null)
+        void liveEval(san, byPlayer)
+      }
       return !checkGameEnd()
     },
-    [tc, playSounds, checkGameEnd],
+    [tc, playSounds, checkGameEnd, mode, liveEval],
   )
 
   const playBotMove = useCallback(async () => {
@@ -230,8 +295,8 @@ export default function Play() {
     if (viewIndex !== -1) return false
     try {
       const move = c.move({ from, to, promotion: promotion ?? 'q' })
-      const cont = afterMove(move.san)
-      if (cont && mode === 'bot') void playBotMove()
+      const cont = afterMove(move.san, true)
+      if (cont && mode !== 'local') void playBotMove()
       return true
     } catch {
       return false
@@ -249,16 +314,64 @@ export default function Play() {
     setSavedGameId(null)
     setClocks({ w: tc.baseMs ?? 0, b: tc.baseMs ?? 0 })
     lowTimeWarned.current = false
+    setUnrated(false)
+    unratedRef.current = false
+    setHintArrow(null)
+    setBookBadge(null)
+    setLiveCp(mode === 'coach' ? 20 : null)
+    lastWhiteCp.current = 20
+    setCoachMsg(mode === 'coach' ? greeting() : null)
     setStatus('playing')
-    if (mode === 'bot' && color === 'b') {
+    if (mode !== 'local' && color === 'b') {
       setTimeout(() => void playBotMove(), 400)
     }
   }
 
   function resign() {
     if (status !== 'playing') return
-    const loser = mode === 'bot' ? playerColor : chess.turn()
+    const loser = mode !== 'local' ? playerColor : chess.turn()
     endGame(loser === 'w' ? '0-1' : '1-0', 'par abandon')
+  }
+
+  // --- Actions du mode entraîneur ---
+  async function requestHint() {
+    if (hintBusy || status !== 'playing' || chessRef.current.turn() !== playerColor) return
+    markUnrated()
+    setHintBusy(true)
+    try {
+      coachEngineRef.current ??= new Engine()
+      const res = await coachEngineRef.current.search({ fen: chessRef.current.fen(), depth: 12, multipv: 1 })
+      const uci = res.bestMove
+      if (uci && uci.length >= 4) {
+        setHintArrow({ startSquare: uci.slice(0, 2), endSquare: uci.slice(2, 4), color: '#81b64c' })
+      }
+    } finally {
+      setHintBusy(false)
+    }
+  }
+
+  function takeback() {
+    const c = chessRef.current
+    if (status !== 'playing' || c.history().length < 2 || c.turn() !== playerColor || botThinking.current) return
+    markUnrated()
+    c.undo()
+    c.undo()
+    setFen(c.fen())
+    setSans(c.history())
+    setViewIndex(-1)
+    setHintArrow(null)
+    setBookBadge(null)
+    // Recale l'éval sur la position restaurée.
+    void (async () => {
+      coachEngineRef.current ??= new Engine()
+      const res = await coachEngineRef.current.search({ fen: c.fen(), depth: 10, multipv: 1 })
+      const line = res.lines[0]
+      const cpPovTurn = line ? (line.scoreMate !== null ? (line.scoreMate > 0 ? 10000 : -10000) : (line.scoreCp ?? 0)) : 0
+      const whiteCp = c.turn() === 'w' ? cpPovTurn : -cpPovTurn
+      lastWhiteCp.current = whiteCp
+      setLiveCp(whiteCp)
+      setCoachMsg({ text: 'On reprend ici. Cherche un meilleur plan.', cls: null, mood: 'thinking' })
+    })()
   }
 
   // --- Rendu ---
@@ -266,12 +379,24 @@ export default function Play() {
     return (
       <div className="mx-auto max-w-3xl p-6">
         <h1 className="mb-6 text-2xl font-bold">Jouer</h1>
-        <div className="mb-5 flex gap-2">
+        <div className="mb-5 flex flex-wrap gap-2">
           <ModeButton active={mode === 'bot'} onClick={() => setMode('bot')} label="🤖 Contre un bot" />
+          <ModeButton
+            active={mode === 'coach'}
+            onClick={() => { setMode('coach'); setTc(TIME_CONTROLS[7]) }}
+            label="🎓 Entraîneur"
+          />
           <ModeButton active={mode === 'local'} onClick={() => setMode('local')} label="👥 2 joueurs (local)" />
         </div>
 
-        {mode === 'bot' && (
+        {mode === 'coach' && (
+          <p className="mb-4 rounded bg-surface-2 p-3 text-sm text-neutral-300">
+            Le coach évalue chaque coup en direct, commente la partie, et t'offre Indication et Annuler.
+            Sans pendule. La partie reste classée tant que tu n'utilises pas d'aide.
+          </p>
+        )}
+
+        {mode !== 'local' && (
           <>
             <h2 className="mb-2 text-sm font-semibold text-neutral-400">Adversaire</h2>
             <div className="mb-5 grid grid-cols-3 gap-2">
@@ -300,22 +425,26 @@ export default function Play() {
           </>
         )}
 
-        <h2 className="mb-2 text-sm font-semibold text-neutral-400">Cadence</h2>
-        <div className="mb-6 grid grid-cols-4 gap-2">
-          {TIME_CONTROLS.map((t) => (
-            <button
-              key={t.label}
-              onClick={() => setTc(t)}
-              className={`cursor-pointer rounded-lg border-2 py-2 font-semibold transition ${
-                tc.label === t.label ? 'border-accent bg-accent/10' : 'border-transparent bg-surface-2 hover:bg-surface-3'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {mode !== 'coach' && (
+          <>
+            <h2 className="mb-2 text-sm font-semibold text-neutral-400">Cadence</h2>
+            <div className="mb-6 grid grid-cols-4 gap-2">
+              {TIME_CONTROLS.map((t) => (
+                <button
+                  key={t.label}
+                  onClick={() => setTc(t)}
+                  className={`cursor-pointer rounded-lg border-2 py-2 font-semibold transition ${
+                    tc.label === t.label ? 'border-accent bg-accent/10' : 'border-transparent bg-surface-2 hover:bg-surface-3'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
-        {mode === 'bot' && myRating !== null && (
+        {mode !== 'local' && myRating !== null && (
           <p className="mb-4 text-sm text-neutral-400">
             Mon classement {tc.timeClass} : <b className="text-white">{myRating}</b>
           </p>
@@ -328,10 +457,107 @@ export default function Play() {
     )
   }
 
-  const orientation = mode === 'bot' ? playerColor : 'w'
+  const orientation = mode !== 'local' ? playerColor : 'w'
   const topColor = orientation === 'w' ? 'b' : 'w'
   const nameOf = (c: 'w' | 'b') =>
     mode === 'local' ? (c === 'w' ? 'Blancs' : 'Noirs') : c === playerColor ? `Moi${myRating ? ` (${myRating})` : ''}` : `${bot.emoji} ${bot.name} (${bot.elo})`
+
+  const gameOverModal = gameOver && (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70" onClick={() => setGameOver(null)}>
+      <div className="w-96 rounded-xl bg-surface-2 p-6 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <h2 className="mb-1 text-2xl font-bold">
+          {gameOver.result === '1/2-1/2' ? 'Nulle' : gameOver.result === '1-0' ? 'Les Blancs gagnent' : 'Les Noirs gagnent'}
+        </h2>
+        <p className="mb-4 text-neutral-400">{gameOver.termination}</p>
+        {gameOver.ratingAfter !== undefined && gameOver.ratingBefore !== undefined && (
+          <p className="mb-4 text-lg">
+            Classement : <b>{gameOver.ratingAfter}</b>{' '}
+            <span className={gameOver.ratingAfter >= gameOver.ratingBefore ? 'text-accent' : 'text-red-400'}>
+              ({gameOver.ratingAfter >= gameOver.ratingBefore ? '+' : ''}
+              {gameOver.ratingAfter - gameOver.ratingBefore})
+            </span>
+          </p>
+        )}
+        {mode === 'coach' && unrated && (
+          <p className="mb-4 text-sm text-neutral-400">Partie non classée (aide du coach utilisée).</p>
+        )}
+        <div className="flex flex-col gap-2">
+          {savedGameId !== null && (
+            <Cta className="w-full" onClick={() => navigate(`/analyse?game=${savedGameId}&review=1`)}>
+              Bilan de la partie
+            </Cta>
+          )}
+          <Cta variant="secondary" className="w-full" onClick={() => setStatus('setup')}>
+            Nouvelle partie
+          </Cta>
+        </div>
+      </div>
+    </div>
+  )
+
+  // --- Rendu mode entraîneur : éval bar, coach, board plein, barre d'actions ---
+  if (mode === 'coach') {
+    return (
+      <div className="mx-auto flex h-full max-w-2xl flex-col">
+        <div className="px-3 pt-2">
+          <HEvalBar cp={liveCp} mate={null} />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="flex items-center justify-between px-3 pt-2 text-sm">
+            <span className="font-semibold">{nameOf(topColor)}</span>
+            {unrated && <span className="rounded bg-surface-3 px-2 py-0.5 text-xs text-neutral-400">non classée</span>}
+          </div>
+          <div className="px-3 py-2">
+            <CoachBubble mood={coachMsg?.mood ?? 'thinking'} cls={coachMsg?.cls ?? undefined}>
+              {coachMsg?.text ?? '…'}
+            </CoachBubble>
+          </div>
+          <div className="flex justify-center">
+            <div className="boardbox md:w-[min(56vh,520px)]">
+              <Board
+                fen={viewFen}
+                orientation={orientation}
+                interactive={status === 'playing' && viewIndex === -1}
+                movableColor={playerColor}
+                onMove={handlePlayerMove}
+                lastMove={lastMove}
+                arrows={hintArrow ? [hintArrow] : []}
+                badge={bookBadge && viewIndex === -1 ? { square: bookBadge, cls: 'book' } : null}
+              />
+            </div>
+          </div>
+          <MoveStrip
+            sans={sans}
+            classes={sans.map(() => null)}
+            currentIndex={viewIndex === -1 ? sans.length - 1 : viewIndex}
+            onSelect={setViewIndex}
+          />
+        </div>
+        <div className="flex items-center gap-1 border-t border-black/40 p-2">
+          <CoachAction label="Abandonner" icon="🏳" onClick={resign} disabled={status !== 'playing'} />
+          <CoachAction
+            label={hintBusy ? '…' : 'Indication'}
+            icon="💡"
+            onClick={() => void requestHint()}
+            disabled={status !== 'playing' || hintBusy || chess.turn() !== playerColor}
+          />
+          <CoachAction
+            label="Annuler"
+            icon="↩"
+            onClick={takeback}
+            disabled={status !== 'playing' || sans.length < 2 || chess.turn() !== playerColor}
+          />
+          <div className="flex-1" />
+          {status !== 'playing' && (
+            <Cta className="px-6 py-2 text-base" onClick={() => setStatus('setup')}>
+              Nouvelle partie
+            </Cta>
+          )}
+        </div>
+        {gameOverModal}
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col items-center justify-start gap-2 p-2 md:flex-row md:justify-center md:gap-6 md:p-4">
@@ -386,36 +612,27 @@ export default function Play() {
         )}
       </div>
 
-      {gameOver && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70" onClick={() => setGameOver(null)}>
-          <div className="w-96 rounded-xl bg-surface-2 p-6 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-1 text-2xl font-bold">
-              {gameOver.result === '1/2-1/2' ? 'Nulle' : gameOver.result === '1-0' ? 'Les Blancs gagnent' : 'Les Noirs gagnent'}
-            </h2>
-            <p className="mb-4 text-neutral-400">{gameOver.termination}</p>
-            {gameOver.ratingAfter !== undefined && gameOver.ratingBefore !== undefined && (
-              <p className="mb-4 text-lg">
-                Classement : <b>{gameOver.ratingAfter}</b>{' '}
-                <span className={gameOver.ratingAfter >= gameOver.ratingBefore ? 'text-accent' : 'text-red-400'}>
-                  ({gameOver.ratingAfter >= gameOver.ratingBefore ? '+' : ''}
-                  {gameOver.ratingAfter - gameOver.ratingBefore})
-                </span>
-              </p>
-            )}
-            <div className="flex flex-col gap-2">
-              {savedGameId !== null && (
-                <Cta className="w-full" onClick={() => navigate(`/analyse?game=${savedGameId}&review=1`)}>
-                  Bilan de la partie
-                </Cta>
-              )}
-              <Cta variant="secondary" className="w-full" onClick={() => setStatus('setup')}>
-                Nouvelle partie
-              </Cta>
-            </div>
-          </div>
-        </div>
-      )}
+      {gameOverModal}
     </div>
+  )
+}
+
+// Action de la barre du mode entraîneur.
+function CoachAction({ label, icon, onClick, disabled }: {
+  label: string
+  icon: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="flex cursor-pointer flex-col items-center gap-0.5 rounded px-3 py-1 text-xs font-semibold text-neutral-300 hover:text-white disabled:cursor-default disabled:opacity-35"
+    >
+      <span className="text-xl leading-none">{icon}</span>
+      {label}
+    </button>
   )
 }
 

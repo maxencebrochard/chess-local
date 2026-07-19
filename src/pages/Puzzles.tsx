@@ -18,6 +18,7 @@ export default function Puzzles() {
   const [hint, setHint] = useState<string | null>(null)
   const [attemptKey, setAttemptKey] = useState(0)
   const [stepIndex, setStepIndex] = useState(0)
+  const [midFeedback, setMidFeedback] = useState(false)
 
   const pickPuzzle = useCallback(async (currentRating: number) => {
     const all = await loadPuzzles()
@@ -36,6 +37,7 @@ export default function Puzzles() {
     setRatingDelta(null)
     setScored(false)
     setHint(null)
+    setMidFeedback(false)
     setAttemptKey((k) => k + 1)
   }, [])
 
@@ -107,26 +109,41 @@ export default function Puzzles() {
           key={`${puzzle.id}-${attemptKey}`}
           puzzle={puzzle}
           onComplete={handleComplete}
-          onStep={(s) => { setStepIndex(s); setHint(null) }}
+          onStep={(s) => {
+            setStepIndex(s)
+            setHint(null)
+            // Coup correct du joueur, puzzle pas fini : encouragement.
+            setMidFeedback(s > 1 && s % 2 === 0)
+          }}
           hintSquare={hint}
         />
       </div>
 
       <div className="flex w-full flex-col gap-3 px-1 pb-2 md:w-80 md:px-0 md:pb-0">
         <div className="rounded-lg bg-surface-2 p-4 text-center">
-          <div className="text-3xl font-bold">
-            {rating}
-            {ratingDelta !== null && (
-              <span className={`ml-2 text-lg ${ratingDelta >= 0 ? 'text-accent' : 'text-red-400'}`}>
-                {ratingDelta >= 0 ? '+' : ''}{ratingDelta}
-              </span>
-            )}
+          <div className="flex items-center justify-center gap-4">
+            <div>
+              <div className="text-3xl font-bold">
+                {rating}
+                {ratingDelta !== null && (
+                  <span className={`ml-2 text-lg ${ratingDelta >= 0 ? 'text-accent' : 'text-red-400'}`}>
+                    {ratingDelta >= 0 ? '+' : ''}{ratingDelta}
+                  </span>
+                )}
+              </div>
+              <div className="text-sm text-neutral-400">Classement puzzles</div>
+            </div>
+            <div className={`text-center ${streak > 0 ? '' : 'opacity-30 grayscale'}`}>
+              <div className="text-2xl">🔥</div>
+              <div className="text-sm font-bold text-orange-400">{streak}</div>
+            </div>
           </div>
-          <div className="text-sm text-neutral-400">Classement puzzles</div>
-          {streak > 1 && <div className="mt-1 text-sm text-orange-400">🔥 Série de {streak}</div>}
         </div>
 
         <div className="rounded-lg bg-surface-2 p-4">
+          {phase === 'solving' && midFeedback && (
+            <p className="mb-2 rounded bg-accent/20 px-2 py-1 text-sm font-bold text-accent">✓ Trouvé ! Continue…</p>
+          )}
           {phase === 'solving' && (
             <>
               <p className="mb-1 font-semibold">Trait aux {sideToPlay}</p>
