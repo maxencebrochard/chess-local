@@ -83,6 +83,10 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
 
   function handleSquareClick({ square }: { piece: unknown; square: string }) {
     if (!interactive) return
+    if (selected === square) {
+      setSelected(null) // re-tap : désélection
+      return
+    }
     if (selected && legalTargets.has(square)) {
       tryMove(selected, square)
       return
@@ -113,8 +117,8 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
         squareStyles[t] = {
           ...squareStyles[t],
           background: occupied
-            ? `radial-gradient(circle, transparent 55%, rgba(0,0,0,0.25) 56%) ${squareStyles[t]?.backgroundColor ?? ''}`
-            : `radial-gradient(circle, rgba(0,0,0,0.25) 25%, transparent 26%)`,
+            ? `radial-gradient(circle, transparent 50%, rgba(0,0,0,0.34) 51%) ${squareStyles[t]?.backgroundColor ?? ''}`
+            : `radial-gradient(circle, rgba(0,0,0,0.34) 30%, transparent 31%)`,
         }
       }
     }
@@ -139,7 +143,9 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
           arrows: arrows?.map((a) => ({ ...a })) ?? [],
           darkSquareStyle: { backgroundColor: theme.dark },
           lightSquareStyle: { backgroundColor: theme.light },
-          animationDurationInMs: 150,
+          dropSquareStyle: { boxShadow: 'inset 0 0 0 3px rgba(255,255,255,0.65)' },
+          animationDurationInMs: 80,
+          dragActivationDistance: 1,
           boardStyle: { borderRadius: 4, overflow: 'hidden' },
         }}
       />

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { Board, type BoardArrow } from '../components/Board'
 import { CoachBubble } from '../components/CoachBubble'
+import { CourseSheet, courseFor } from '../components/CourseSheet'
 import { Cta } from '../components/Cta'
 import { HEvalBar } from '../components/HEvalBar'
 import { PuzzlePlayer } from '../components/PuzzlePlayer'
@@ -11,13 +12,16 @@ import {
   buildSession, DOMAIN_META, domainRating, pickNextDomain, scoreItem,
   type LearnDomain, type Session, type SessionItem,
 } from '../lib/learn'
+import { openingFamilyFr } from '../lib/openingNames'
 import { figurine, winPct } from '../lib/review'
 import { sounds } from '../lib/sounds'
 import { useSettings } from '../store/settings'
+import { useNavigate } from 'react-router-dom'
 
 type ItemPhase = 'lesson' | 'play' | 'success' | 'fail'
 
 export default function Learn() {
+  const navigate = useNavigate()
   const { playSounds } = useSettings()
   const [ratings, setRatings] = useState<Record<string, number | null>>({})
   const [mistakeCount, setMistakeCount] = useState(0)
@@ -27,6 +31,8 @@ export default function Learn() {
   const [results, setResults] = useState<boolean[]>([])
   const [ratingDelta, setRatingDelta] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
+  const [retryTick, setRetryTick] = useState(0)
+  const scoredItems = useRef(new Set<number>())
   const engineRef = useRef<Engine | null>(null)
 
   const refresh = useCallback(async () => {
@@ -64,6 +70,7 @@ export default function Learn() {
       setItemIdx(0)
       setResults([])
       setRatingDelta(null)
+      scoredItems.current.clear()
       setPhase('lesson')
     } finally {
       setLoading(false)
@@ -74,18 +81,57 @@ export default function Learn() {
     if (!session) return
     const item = session.items[itemIdx]
     if (playSounds) (success ? sounds.success : sounds.fail)()
-    const before = item.kind === 'mistake' ? null : (ratings[session.domain] ?? 800)
-    const after = await scoreItem(session.domain, itemKey(item), success, item.difficulty)
-    if (item.kind === 'mistake') {
-      await db.mistakes.update(item.mistake.id!, {
-        attempts: item.mistake.attempts + 1,
-        solved: success ? 1 : 0,
-      })
+    // Un réessai ne re-score pas : seule la première tentative compte pour l'Elo.
+    if (!scoredItems.current.has(itemIdx)) {
+      scoredItems.current.add(itemIdx)
+      const before = item.kind === 'mistake' ? null : (ratings[session.domain] ?? 800)
+      const after = await scoreItem(session.domain, itemKey(item), success, item.difficulty)
+      if (item.kind === 'mistake') {
+        await db.mistakes.update(item.mistake.id!, {
+          attempts: item.mistake.attempts + 1,
+          solved: success ? 1 : 0,
+        })
+      }
+      if (after !== null && before !== null) setRatingDelta(after - before)
+      setResults((r) => [...r, success])
+      void refresh()
+    } else if (item.kind === 'mistake' && success) {
+      await db.mistakes.update(item.mistake.id!, { solved: 1 })
+      void refresh()
     }
-    if (after !== null && before !== null) setRatingDelta(after - before)
-    setResults((r) => [...r, success])
     setPhase(success ? 'success' : 'fail')
-    void refresh()
+  }
+
+  function retryItem() {
+    setRetryTick((t) => t + 1)
+    setPhase('play')
+  }
+
+  // Ouvre la position de l'exercice dans l'analyseur Stockfish.
+  function analyseItem() {
+    if (!session) return
+    const item = session.items[itemIdx]
+    const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+    if (item.kind === 'endgame') {
+      navigate('/analyse', { state: { fen: item.endgame.fen, orientation: item.endgame.side, label: item.endgame.title } })
+    } else if (item.kind === 'tactic' || item.kind === 'strategy') {
+      const p = item.puzzle
+      navigate('/analyse', {
+        state: {
+          fen: p.fen,
+          uci: p.moves,
+          viewIndex: 0,
+          orientation: p.fen.split(' ')[1] === 'w' ? 'b' : 'w',
+          label: `Puzzle ${p.id} (${p.rating})`,
+        },
+      })
+    } else if (item.kind === 'opening') {
+      navigate('/analyse', {
+        state: { fen: START, uci: item.line.uci.slice(0, item.depth), viewIndex: 0, orientation: item.line.playerColor, label: openingFamilyFr(item.line.name) },
+      })
+    } else {
+      navigate('/analyse', { state: { fen: item.mistake.fenBefore, orientation: new Chess(item.mistake.fenBefore).turn(), label: item.mistake.gameLabel } })
+    }
   }
 
   function nextItem() {
@@ -148,12 +194,14 @@ export default function Learn() {
             <span className="w-9" />
           </header>
           <ExerciseView
-            key={`${itemIdx}-${itemKey(item)}`}
+            key={`${itemIdx}-${retryTick}-${itemKey(item)}`}
             item={item}
             phase={phase}
             setPhase={setPhase}
             onFinish={(s) => void finishItem(s)}
             onNext={nextItem}
+            onRetry={retryItem}
+            onAnalyse={analyseItem}
             getEngine={getEngine}
             ratingDelta={ratingDelta}
           />
@@ -235,33 +283,57 @@ interface ExerciseProps {
   setPhase: (p: ItemPhase) => void
   onFinish: (success: boolean) => void
   onNext: () => void
+  onRetry: () => void
+  onAnalyse: () => void
   getEngine: () => Engine
   ratingDelta: number | null
 }
 
 function ExerciseView(props: ExerciseProps) {
   const { item, phase, setPhase, onNext } = props
+  const [showCourse, setShowCourse] = useState(false)
+
+  // Cours détaillé associé à l'exercice (finale → id, tactique → thème,
+  // stratégie → thème de la carte, ouverture → principes généraux).
+  const courseId =
+    item.kind === 'endgame' ? item.endgame.id
+    : item.kind === 'tactic' ? item.theme
+    : item.kind === 'strategy' ? (item.card.themes.find((t) => courseFor(t)) ?? item.card.id)
+    : item.kind === 'opening' ? 'opening-principles'
+    : null
+  const course = courseId ? courseFor(courseId) : null
+
+  const courseSheet = showCourse && course && <CourseSheet course={course} onClose={() => setShowCourse(false)} />
 
   const lesson =
     item.kind === 'endgame' ? { title: item.endgame.title, text: item.endgame.lesson }
     : item.kind === 'strategy' ? { title: item.card.title, text: item.card.lesson }
-    : item.kind === 'tactic' ? { title: item.themeLabel, text: `Séquence « ${item.themeLabel} ». Repère le motif avant de calculer : il est dans chaque position.` }
-    : item.kind === 'opening' ? { title: item.line.name.split(':')[0], text: `Rejoue tes ${Math.ceil(item.depth / 2)} premiers coups de la ${item.line.name.split(':')[0]}. Un mauvais coup = correction, puis on continue.` }
-    : { title: 'Répare ta partie', text: `${item.mistake.gameLabel} : tu as joué ${figurine(item.mistake.playedSan)}. Trouve mieux cette fois.` }
+    : item.kind === 'tactic' ? { title: item.themeLabel, text: `Trois positions, un même motif : ${item.themeLabel.toLowerCase()}. Prends deux secondes pour le repérer avant de calculer — il est présent à chaque fois.` }
+    : item.kind === 'opening' ? { title: openingFamilyFr(item.line.name), text: `Objectif : dérouler les ${Math.ceil(item.depth / 2)} premiers coups de la ${openingFamilyFr(item.line.name)} sans te tromper. En cas d'erreur, je te montre le bon coup et on continue.` }
+    : { title: 'Répare ta partie', text: `${item.mistake.gameLabel} : tu avais joué ${figurine(item.mistake.playedSan)}, et ce coup t'a coûté cher. Reprends la position et trouve plus fort.` }
 
   if (phase === 'lesson') {
     return (
-      <div className="flex flex-1 flex-col justify-center gap-4 p-4">
+      <div className="flex flex-1 flex-col justify-center gap-3 p-4">
         <CoachBubble mood="happy" headline={lesson.title}>{lesson.text}</CoachBubble>
+        {course && (
+          <button
+            onClick={() => setShowCourse(true)}
+            className="mx-auto cursor-pointer rounded-full bg-surface-2 px-4 py-1.5 text-sm font-semibold text-neutral-300 hover:bg-surface-3"
+          >
+            ❓ Voir le cours complet
+          </button>
+        )}
         <Cta className="w-full" onClick={() => setPhase('play')}>
           C'est parti
         </Cta>
+        {courseSheet}
       </div>
     )
   }
 
   const verdictBar = (phase === 'success' || phase === 'fail') && (
-    <div className="flex items-center gap-3 px-3 py-2">
+    <div className="flex items-center gap-2 px-3 py-2">
       <span className={`text-lg font-black ${phase === 'success' ? 'text-accent' : 'text-red-400'}`}>
         {phase === 'success' ? '✓ Réussi !' : '✗ Raté'}
       </span>
@@ -270,19 +342,45 @@ function ExerciseView(props: ExerciseProps) {
           ({props.ratingDelta > 0 ? '+' : ''}{props.ratingDelta})
         </span>
       )}
-      <Cta className="ml-auto px-6 py-2 text-base" onClick={onNext}>
-        Suivant
-      </Cta>
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          onClick={props.onRetry}
+          className="flex cursor-pointer flex-col items-center rounded px-2 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
+        >
+          <span className="text-lg leading-none">↺</span>
+          Réessayer
+        </button>
+        <button
+          onClick={props.onAnalyse}
+          className="flex cursor-pointer flex-col items-center rounded px-2 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
+        >
+          <span className="text-lg leading-none">♞</span>
+          Analyser
+        </button>
+        <Cta className="px-6 py-2 text-base" onClick={onNext}>
+          Suivant
+        </Cta>
+      </div>
     </div>
   )
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="relative flex flex-1 flex-col">
+      {course && (
+        <button
+          onClick={() => setShowCourse(true)}
+          title="Voir le cours"
+          className="absolute top-1 right-4 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-surface-3 text-sm font-black text-neutral-300 shadow hover:bg-surface-3/70"
+        >
+          ?
+        </button>
+      )}
       {(item.kind === 'tactic' || item.kind === 'strategy') && <PuzzleExercise {...props} />}
       {item.kind === 'endgame' && <EndgameExercise {...props} />}
       {item.kind === 'opening' && <OpeningExercise {...props} />}
       {item.kind === 'mistake' && <MistakeExercise {...props} />}
       {verdictBar}
+      {courseSheet}
     </div>
   )
 }
@@ -474,16 +572,19 @@ function OpeningExercise({ item, phase, onFinish }: ExerciseProps) {
     setFen(c.fen())
     setFaults(faults + 1)
     setHintArrow({ startSquare: expected.slice(0, 2), endSquare: expected.slice(2, 4), color: '#69c3f2' })
-    setMsg(`Pas la ligne : ici on joue ${figurine(new Chess(c.fen()).move({ from: expected.slice(0, 2), to: expected.slice(2, 4), promotion: expected[4] }).san, playerColor)}.`)
+    setMsg(`Pas la ligne : ici, la théorie joue ${figurine(new Chess(c.fen()).move({ from: expected.slice(0, 2), to: expected.slice(2, 4), promotion: expected[4] }).san, playerColor)}. Rejoue-le.`)
     return false
   }
 
   return (
     <div className="flex flex-col gap-2 px-3">
-      <div className="rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold">
-        {line.name.split(':')[0]} — joue les {Math.ceil(depth / 2)} premiers coups ({playerColor === 'w' ? 'Blancs' : 'Noirs'})
+      <div className="truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold">
+        {openingFamilyFr(line.name)} — les {Math.ceil(depth / 2)} premiers coups, côté {playerColor === 'w' ? 'blanc' : 'noir'}
       </div>
-      {msg && <p className="rounded bg-red-900/40 px-3 py-1.5 text-sm text-red-200">{msg}</p>}
+      {/* Hauteur réservée : l'apparition du message ne doit pas faire sauter le board. */}
+      <p className={`min-h-[34px] rounded px-3 py-1.5 text-sm ${msg ? 'bg-red-900/40 text-red-200' : ''}`}>
+        {msg ?? ' '}
+      </p>
       <div className="flex justify-center">
         <div className="boardbox md:w-[min(56vh,520px)]">
           <Board

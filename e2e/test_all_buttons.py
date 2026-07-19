@@ -181,7 +181,7 @@ with sync_playwright() as p:
         tg = page.evaluate("""() => {
           const els=[...document.querySelectorAll('[data-square]')];
           const has=(r,f)=>[r,...r.querySelectorAll('*')].some(f);
-          return els.find(e=>has(e,n=>getComputedStyle(n).background.includes('radial-gradient')))?.getAttribute('data-square') ?? null;
+          return els.find(e=>has(e,n=>getComputedStyle(n).background.includes('rgba(0, 0, 0, 0.34)')))?.getAttribute('data-square') ?? null;
         }""")
         if not tg:
             break

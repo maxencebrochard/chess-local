@@ -32,7 +32,7 @@ export function CoachBubble({ cls, headline, evalBadge, children, mood = 'thinki
             )}
           </div>
         )}
-        <div className="text-[15px] leading-snug">{children}</div>
+        <div className="min-h-[42px] text-[15px] leading-snug">{children}</div>
       </div>
     </div>
   )

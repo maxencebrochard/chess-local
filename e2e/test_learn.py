@@ -42,15 +42,31 @@ with sync_playwright() as p:
     check("[learn] Mes erreurs grisé (vide)", not page.locator("button", has_text="Mes erreurs").is_enabled())
     page.screenshot(path=f"{SHOTS}/learn_home.png")
 
-    # --- Séance Finales (leçon -> jeu) ---
+    # --- Séance Finales (leçon -> cours -> jeu) ---
     page.locator("main button", has_text="Finales").click()
     page.wait_for_timeout(1200)
     check("[learn] leçon finale affichée", page.locator(".bg-white").first.is_visible())
     page.screenshot(path=f"{SHOTS}/learn_lesson.png")
+    # Cours détaillé depuis la leçon
+    page.click("text=Voir le cours complet")
+    page.wait_for_timeout(500)
+    check("[cours] feuille ouverte", page.locator("text=À retenir").is_visible())
+    check("[cours] contenu structuré", page.locator("h2:has-text('📚')").is_visible())
+    page.screenshot(path=f"{SHOTS}/learn_course.png")
+    page.click("text=Retour à l'exercice")
+    page.wait_for_timeout(300)
+    check("[cours] fermeture -> leçon intacte", page.locator(".bg-white").first.is_visible())
     page.get_by_role("button", name="C'est parti").click()
     page.wait_for_timeout(800)
     check("[learn] objectif affiché", page.locator("text=Objectif").is_visible())
     check("[learn] board finale", page.locator("[id^='chessboard-']").first.is_visible())
+    # Bouton ? pendant l'exercice
+    page.locator("main button", has_text="?").last.click()
+    page.wait_for_timeout(400)
+    check("[cours] ? pendant l'exercice", page.locator("text=À retenir").is_visible())
+    page.click("text=Retour à l'exercice")
+    page.wait_for_timeout(300)
+    check("[cours] retour exercice intact", page.locator("[id^='chessboard-']").first.is_visible())
     page.screenshot(path=f"{SHOTS}/learn_endgame.png")
     page.click("header button:has-text('✕')")
     page.wait_for_timeout(400)
@@ -111,7 +127,42 @@ with sync_playwright() as p:
     page.wait_for_timeout(600)
     check("[learn] exercice erreur affiché", page.locator("text=Trouve mieux").is_visible())
     page.screenshot(path=f"{SHOTS}/learn_mistake.png")
+    # Jouer un coup quelconque -> verdict -> Réessayer / Analyser
+    # Jouer n'importe quel coup légal : sélectionner une pièce puis un point de destination.
+    played = False
+    for f in "abcdefgh":
+        for r in "12345678":
+            page.locator(f"[data-square='{f}{r}']").click()
+            page.wait_for_timeout(60)
+            tg = page.evaluate("""() => {
+              const els=[...document.querySelectorAll('[data-square]')];
+              const has=(root,pred)=>[root,...root.querySelectorAll('*')].some(pred);
+              return els.find(e=>has(e,n=>getComputedStyle(n).background.includes('rgba(0, 0, 0, 0.34)')))?.getAttribute('data-square') ?? null;
+            }""")
+            if tg:
+                page.locator(f"[data-square='{tg}']").click()
+                played = True
+                break
+        if played:
+            break
+    page.wait_for_timeout(12000)  # vérification moteur éventuelle
+    verdict = page.locator("text=Réussi").count() > 0 or page.locator("text=Raté").count() > 0
+    check("[learn] verdict après coup", verdict)
+    check("[learn] bouton Réessayer", page.locator("button", has_text="Réessayer").is_visible())
+    check("[learn] bouton Analyser", page.locator("button", has_text="Analyser").is_visible())
+    page.locator("button", has_text="Réessayer").click()
+    page.wait_for_timeout(600)
+    check("[learn] Réessayer relance l'exercice", page.locator("text=Trouve mieux").is_visible())
     page.click("header button:has-text('✕')")
+
+
+    # --- Anti-saut : le board de /analyse ne bouge pas quand les lignes moteur arrivent ---
+    page.goto(f"{BASE}/#/analyse")
+    page.wait_for_timeout(600)
+    y_before = page.evaluate("() => document.querySelector(\"[id^='chessboard-']\")?.getBoundingClientRect().top")
+    page.wait_for_timeout(4000)
+    y_after = page.evaluate("() => document.querySelector(\"[id^='chessboard-']\")?.getBoundingClientRect().top")
+    check("[anti-saut] board stable sur /analyse", y_before is not None and y_before == y_after, f"({y_before} -> {y_after})")
 
     # --- Sauvegarde (Stats) ---
     page.goto(f"{BASE}/#/stats")

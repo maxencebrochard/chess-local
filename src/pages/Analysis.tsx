@@ -13,6 +13,7 @@ import { ReviewSummary } from '../components/ReviewSummary'
 import { Engine, type EngineLine } from '../lib/engine'
 import { db } from '../lib/db'
 import { bookContinuations, openingForMoves } from '../lib/openings'
+import { openingFr } from '../lib/openingNames'
 import { CLASS_META, figurine, reviewGame, winPct, type GameReview, type MoveClass } from '../lib/review'
 import { coachComments, coachSummary } from '../lib/coach'
 import { sounds } from '../lib/sounds'
@@ -596,10 +597,13 @@ export default function Analysis() {
       {/* Barre d'éval horizontale + lignes compactes : mobile uniquement */}
       <div className="w-full md:hidden">
         <HEvalBar cp={evalCp} mate={evalMate} />
+        {/* Hauteur fixe (2 lignes) : le board ne doit jamais sauter quand les lignes arrivent. */}
         {engineOn && (
-          <div className="mt-1.5 space-y-0.5">
-            {(compactLines.length ? compactLines : [viewChess.isGameOver() ? 'Partie terminée.' : 'Calcul…']).map((t, i) => (
-              <p key={i} className="truncate text-[13px] text-neutral-400">{t}</p>
+          <div className="mt-1.5 h-[38px] space-y-0.5 overflow-hidden">
+            {[0, 1].map((i) => (
+              <p key={i} className="truncate text-[13px] leading-[17px] text-neutral-400">
+                {compactLines[i] ?? (i === 0 ? (viewChess.isGameOver() ? 'Partie terminée.' : 'Calcul…') : ' ')}
+              </p>
             ))}
           </div>
         )}
@@ -624,9 +628,9 @@ export default function Analysis() {
               arrows={arrows}
             />
           </div>
-          {/* Bandeau ouverture, façon chess.com (mobile) */}
-          <div className="rounded bg-surface-2 py-1.5 text-center text-sm font-semibold text-neutral-200 md:hidden">
-            {opening ? opening.name : moves.length === 0 ? 'Position de départ' : 'Hors théorie'}
+          {/* Bandeau ouverture, façon chess.com (mobile) — 1 ligne fixe */}
+          <div className="truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold text-neutral-200 md:hidden">
+            {opening ? openingFr(opening.name) : moves.length === 0 ? 'Position de départ' : 'Hors théorie'}
           </div>
           {review && !retry && (
             <EvalGraph review={review} currentIndex={viewIndex} onSelect={setViewIndex} />
@@ -634,7 +638,7 @@ export default function Analysis() {
           <div className="hidden items-center gap-2 text-sm text-neutral-400 md:flex">
           {opening && (
             <span>
-              <span className="font-mono text-xs text-neutral-500">{opening.eco}</span> {opening.name}
+              <span className="font-mono text-xs text-neutral-500">{opening.eco}</span> {openingFr(opening.name)}
             </span>
           )}
           {gameMeta && <span className="text-neutral-500">· {gameMeta}</span>}

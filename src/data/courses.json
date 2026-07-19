@@ -1,0 +1,366 @@
+{
+  "opening-principles": {
+    "title": "Les principes d'ouverture",
+    "intro": "Les dix premiers coups ne servent qu'à trois choses : contrôler le centre, développer les pièces, mettre le roi à l'abri. Tout le reste attendra.",
+    "sections": [
+      { "heading": "Le centre d'abord", "text": "Les cases e4, d4, e5 et d5 sont le cœur de l'échiquier : une pièce placée au centre rayonne partout. Occupe le centre avec un ou deux pions, puis soutiens-les avec tes pièces." },
+      { "heading": "Une pièce, un coup", "text": "Ne joue pas deux fois la même pièce dans l'ouverture sans bonne raison, et ne sors pas la dame trop tôt : elle deviendrait une cible. Cavaliers avant les fous, puis le roque, et seulement ensuite les plans ambitieux." }
+    ],
+    "diagram": { "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3", "caption": "Après 1.e4 e5 2.Cf3 Cc6 : centre occupé, pièces développées, roque imminent." },
+    "keyPoints": ["Contrôle le centre avec les pions e et d", "Développe cavaliers puis fous, sans répéter les coups", "Roque avant le 10e coup", "La dame sort en dernier"]
+  },
+  "kp-square": {
+    "title": "La règle du carré",
+    "intro": "Un pion qui court vers la promotion : faut-il calculer chaque coup ? Non — un seul coup d'œil suffit avec la règle du carré.",
+    "sections": [
+      { "heading": "Tracer le carré", "text": "Imagine un carré dont un côté va du pion à sa case de promotion. Si le roi défenseur est dans ce carré (ou peut y entrer à son tour de jeu), il rattrape le pion. Sinon, le pion promeut sans aide." },
+      { "heading": "Le piège du premier double pas", "text": "Un pion encore sur sa case initiale avance de deux cases : trace le carré depuis la case d'arrivée, pas depuis la case de départ. C'est l'erreur classique." }
+    ],
+    "diagram": { "fen": "1k6/8/8/8/5p2/8/8/1K6 b - - 0 1", "caption": "Le roi blanc est hors du carré du pion f4 : les noirs gagnent la course.", "arrows": [["f4", "f1"]] },
+    "keyPoints": ["Carré = distance du pion à la promotion, dans les deux directions", "Roi dans le carré → pion arrêté", "Attention au double pas initial"]
+  },
+  "kq-mate": {
+    "title": "Mater avec la dame",
+    "intro": "Roi et dame contre roi : victoire garantie, à condition d'éviter l'unique piège — le pat.",
+    "sections": [
+      { "heading": "La boxe à distance de cavalier", "text": "Place ta dame à distance de cavalier du roi adverse, sans jamais donner d'échec inutile : chaque coup du roi adverse te laisse resserrer la boîte. Il finit acculé sur une bande." },
+      { "heading": "Le roi finit le travail", "text": "Une fois le roi adverse coincé au bord, STOP : ne bouge plus la dame. Amène ton roi à deux cases du sien, puis donne le mat. Vérifie toujours que le roi adverse a un coup légal tant que le mat n'est pas là." }
+    ],
+    "diagram": { "fen": "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1", "caption": "Position finale type : la dame mate protégée ou coupe tout. Attention, ici c'est PAT si la dame était en g6 !" },
+    "keyPoints": ["Dame à distance de cavalier, jamais collée au roi", "Le roi adverse au bord → amène ton roi", "À chaque coup : « a-t-il encore un coup légal ? »"]
+  },
+  "rr-mate": {
+    "title": "Le mat des deux tours",
+    "intro": "Deux tours matent toutes seules, sans l'aide du roi : c'est l'escalier, le mat le plus mécanique du jeu.",
+    "sections": [
+      { "heading": "L'escalier", "text": "Une tour coupe une rangée : le roi adverse ne peut plus la franchir. L'autre tour donne échec sur la rangée suivante et le repousse. Les tours alternent, rangée par rangée, jusqu'à la bande." },
+      { "heading": "Quand le roi s'approche", "text": "Si le roi adverse attaque une tour, déplace-la à l'autre bout de la même rangée : elle garde son rôle et le mat continue. Ne t'inquiète jamais pour tes tours tant qu'elles restent loin du roi." }
+    ],
+    "diagram": { "fen": "4k3/R7/1R6/8/8/8/8/4K3 w - - 0 1", "caption": "Tb8 est mat : la tour a7 coupe la 7e rangée, la tour b monte donner l'échec final.", "arrows": [["b6", "b8"]] },
+    "keyPoints": ["Une tour coupe, l'autre donne échec", "Alterner rangée par rangée", "Tour attaquée → même rangée, autre bout"]
+  },
+  "kr-mate": {
+    "title": "Mater avec la tour",
+    "intro": "Roi et tour contre roi : le mat demande la coopération du roi. Trois gestes à répéter : couper, s'opposer, repousser.",
+    "sections": [
+      { "heading": "Couper puis s'opposer", "text": "La tour trace une frontière que le roi adverse ne peut pas franchir. Ton roi avance alors face au sien : quand les deux rois se font face, l'échec de la tour force le recul d'une rangée." },
+      { "heading": "Gagner un temps", "text": "Si le roi adverse évite de se placer face au tien, joue un coup d'attente avec la tour sur la même rangée. Zugzwang : il devra revenir en face, et l'échec suivant le repousse." }
+    ],
+    "diagram": { "fen": "3k4/8/3K4/8/8/8/8/7R w - - 0 1", "caption": "Rois en opposition : Th8 est mat.", "arrows": [["h1", "h8"]] },
+    "keyPoints": ["La tour coupe, le roi pousse", "Échec seulement quand les rois se font face", "Coup d'attente de la tour = zugzwang"]
+  },
+  "kp-opposition-1": {
+    "title": "L'opposition",
+    "intro": "En finale de pions, celui qui a l'opposition contrôle les cases critiques. C'est l'outil n°1 du duel de rois.",
+    "sections": [
+      { "heading": "Définition", "text": "Deux rois face à face, séparés d'une case : celui qui n'a PAS le trait a l'opposition. L'autre doit céder le passage — chaque coup de roi abandonne des cases." },
+      { "heading": "Avec un pion", "text": "Le camp fort veut faire entrer son roi devant le pion. Avance le roi, garde le pion en réserve : chaque poussée de pion est un « coup d'attente » qui te rend l'opposition au bon moment." }
+    ],
+    "diagram": { "fen": "8/8/8/4k3/8/4K3/4P3/8 w - - 0 1", "caption": "Trait aux blancs : Kd3 ou Kf3 gagne le terrain de côté ; e5 face au roi serait une faute." },
+    "keyPoints": ["Face à face + trait adverse = opposition pour toi", "Le roi devant son pion, le pion en réserve", "La poussée de pion sert à reprendre l'opposition"]
+  },
+  "kp-king-front": {
+    "title": "Roi devant son pion",
+    "intro": "Roi devant son pion avec au moins une rangée d'écart : position gagnante, à une condition — savoir manœuvrer.",
+    "sections": [
+      { "heading": "Pourquoi c'est gagné", "text": "Le roi ouvre la route et contrôle les cases de promotion avant même que le pion n'avance. La règle : si ton roi atteint la 6e rangée devant son pion, c'est toujours gagné, opposition ou pas." },
+      { "heading": "La manœuvre", "text": "Monte le roi le plus haut possible, gagne l'opposition, fais un pas de côté pour créer le passage, et seulement alors pousse le pion. Le pion avance en dernier." }
+    ],
+    "diagram": { "fen": "8/8/4k3/8/4K3/8/4P3/8 w - - 0 1", "caption": "Ke4 devant son pion : monter le roi d'abord, le pion suivra." },
+    "keyPoints": ["Roi en 6e devant le pion = gain assuré", "Le roi d'abord, le pion en dernier", "Pas de côté pour ouvrir le passage"]
+  },
+  "two-pawns": {
+    "title": "Deux pions liés",
+    "intro": "Deux pions voisins se défendent l'un l'autre : bien menés, ils forcent la promotion sans aide extérieure.",
+    "sections": [
+      { "heading": "L'escalier de pions", "text": "Avance-les en quinconce : celui de derrière protège celui de devant. Le roi adverse ne peut jamais capturer le pion avancé sans se faire déborder par l'autre." },
+      { "heading": "L'erreur à éviter", "text": "Deux pions côte à côte sur la même rangée face au roi : l'un des deux tombera. Reforme l'escalier avec ton roi en soutien avant de continuer." }
+    ],
+    "diagram": { "fen": "8/8/8/3k4/8/8/3PP3/3K4 w - - 0 1", "caption": "e3 puis d3-d4 : l'escalier se reforme à chaque étape." },
+    "keyPoints": ["Toujours en quinconce, jamais côte à côte face au roi", "Le pion arrière défend le pion avant", "Le roi accompagne pour finir"]
+  },
+  "rook-pawn-corner": {
+    "title": "Le pion tour et le mauvais coin",
+    "intro": "Tous les pions ne se valent pas : le pion de la colonne a ou h ne gagne pas si le roi défenseur touche le coin.",
+    "sections": [
+      { "heading": "Pourquoi c'est nulle", "text": "Le roi défenseur se colle dans le coin de promotion. Pour le déloger, il faudrait donner échec ou... pat. Le camp fort n'a aucun moyen de progresser : c'est le seul pion du jeu qui pardonne au défenseur." },
+      { "heading": "En pratique", "text": "Défenseur : cours vers le coin, rien d'autre ne compte. Attaquant : évite d'échanger vers une finale de pion tour, ou garde ton roi ENTRE le roi adverse et le coin." }
+    ],
+    "diagram": { "fen": "7k/8/6KP/8/8/8/8/8 b - - 0 1", "caption": "Kh8 s'incruste : h7 serait pat immédiat. Nulle de salon." },
+    "keyPoints": ["Pion a/h + roi défenseur au coin = nulle", "Défenseur : fonce au coin", "Attaquant : n'échange pas vers cette finale"]
+  },
+  "kp-defense-front": {
+    "title": "Défendre une finale de pion",
+    "intro": "Un pion de moins en finale de pions ? Tout n'est pas perdu : le défenseur tient s'il applique une seule consigne.",
+    "sections": [
+      { "heading": "Rester devant", "text": "Ton roi doit rester sur la colonne du pion, DEVANT lui. Tant que tu peux prendre l'opposition à chaque avancée du roi adverse, la position est nulle." },
+      { "heading": "Reculer droit", "text": "Quand il faut céder du terrain, recule tout droit sur la colonne du pion, jamais en diagonale. La diagonale offre au roi adverse la case de côté qui gagne." }
+    ],
+    "diagram": { "fen": "8/8/8/4pk2/8/4K3/8/8 w - - 0 1", "caption": "Ke3 garde la colonne e : face à Kf5-e5, répondre par l'opposition." },
+    "keyPoints": ["Roi défenseur devant le pion, sur sa colonne", "Opposition à chaque avance", "Reculer droit, jamais en diagonale"]
+  },
+  "opposition-distant": {
+    "title": "L'opposition à distance",
+    "intro": "L'opposition ne se joue pas qu'au corps à corps : elle se prend à trois ou cinq cases de distance.",
+    "sections": [
+      { "heading": "La règle impaire", "text": "Rois sur la même ligne avec un nombre IMPAIR de cases entre eux, trait à l'adversaire : l'opposition est à toi. En avançant coup pour coup, elle se convertit en opposition rapprochée au moment décisif." },
+      { "heading": "Compter avant de bouger", "text": "Avant chaque coup de roi en finale de pions, compte les cases. Un seul pas de trop et l'opposition change de camp — la différence entre gain et nulle tient à ce calcul." }
+    ],
+    "diagram": { "fen": "8/8/1k6/8/8/1K6/1P6/8 w - - 0 1", "caption": "Trois cases entre les rois, trait aux blancs : jouer b4 ? Non — Kb4 ne perd pas l'opposition, compte !" },
+    "keyPoints": ["Nombre impair de cases + trait adverse = opposition", "Compter avant chaque coup de roi", "L'opposition distante devient rapprochée au bon moment"]
+  },
+  "active-king-draw": {
+    "title": "Le roi actif",
+    "intro": "En finale, le roi n'est plus une pièce à protéger : c'est un attaquant qui vaut trois pions bien placés.",
+    "sections": [
+      { "heading": "Centraliser sans attendre", "text": "Dès que les dames sont échangées, le roi marche vers le centre. Chaque tempo compte : un roi actif attaque les pions adverses et défend les siens en même temps." },
+      { "heading": "L'activité compense le matériel", "text": "Un pion de moins avec un roi dominant vaut souvent la nulle, parfois le gain. À l'inverse, un pion de plus avec un roi passif se perd. Juge tes finales à l'activité des rois d'abord." }
+    ],
+    "diagram": { "fen": "8/5pk1/8/6K1/8/8/5P2/8 w - - 0 1", "caption": "Le roi blanc en g5 domine : la nulle est acquise malgré la symétrie." },
+    "keyPoints": ["Dames échangées → le roi fonce au centre", "L'activité du roi avant le compte des pions", "Roi passif = pions condamnés"]
+  },
+  "r-vs-p": {
+    "title": "Tour contre pion",
+    "intro": "Une tour arrête un pion, mais pas toute seule contre un pion soutenu : la course des rois décide.",
+    "sections": [
+      { "heading": "Couper ou courir", "text": "Deux plans : couper le roi adverse derrière une rangée pour l'isoler du pion, ou ramener ton roi à temps dans le carré. Souvent, la tour harcèle par derrière pendant que ton roi accourt." },
+      { "heading": "Le sacrifice de la tour", "text": "Si le pion promeut malgré tout, la tour se donne contre lui : tour contre pion promu = nulle évitée de justesse, mais tour contre dame se perd. Sacrifie au bon moment, pas trop tard." }
+    ],
+    "diagram": { "fen": "8/8/8/8/2p5/2k5/8/R3K3 w - - 0 1", "caption": "Ra3+ repousse le roi, puis le roi blanc revient dans le carré." },
+    "keyPoints": ["Tour derrière le pion, roi dans le carré", "Couper le roi adverse quand c'est possible", "En dernier recours : tour contre pion"]
+  },
+  "lucena": {
+    "title": "La position de Lucena",
+    "intro": "LA position gagnante des finales de tours. Si tu ne dois connaître qu'une technique de finale, c'est le pont de Lucena.",
+    "sections": [
+      { "heading": "Le problème", "text": "Ton roi est devant son pion en 8e, mais il est enfermé : la tour adverse donne des échecs sans fin dès qu'il sort. Il faut un abri." },
+      { "heading": "Construire le pont", "text": "Monte ta tour en 4e rangée. Sors le roi : aux échecs, il s'approche de la tour adverse ; quand il arrive à distance, ta tour s'interpose en faisant écran — le pont. Le pion promeut." }
+    ],
+    "diagram": { "fen": "3K4/3P1k2/8/8/8/8/1R6/2r5 w - - 0 1", "caption": "1.Tb4 ! prépare le pont : après les échecs, la tour s'interposera en d4.", "arrows": [["b2", "b4"]] },
+    "keyPoints": ["Tour en 4e rangée AVANT de sortir le roi", "Le roi marche vers la tour qui donne échec", "La tour fait écran : le pont"]
+  },
+  "philidor": {
+    "title": "La position de Philidor",
+    "intro": "La défense qui sauve toutes les finales de tours : roi devant le pion, tour sur la 3e rangée. Simple, imparable.",
+    "sections": [
+      { "heading": "La barrière", "text": "Tant que le pion n'a pas franchi ta 3e rangée (la 6e pour l'adversaire), garde ta tour dessus : elle interdit au roi adverse d'avancer sans son pion. Rien ne peut se passer." },
+      { "heading": "La bascule", "text": "Dès que le pion avance, le roi adverse perd son abri : envoie ta tour tout au fond pour donner des échecs par derrière, sans fin. C'est la nulle mécanique." }
+    ],
+    "diagram": { "fen": "4k3/8/r7/8/3PK3/8/8/1R6 b - - 0 1", "caption": "Ta6 tient la 6e rangée ; si d5 avance, la tour file en a1 pour les échecs éternels.", "arrows": [["a6", "a1"]] },
+    "keyPoints": ["Roi devant le pion, tour sur la 3e rangée", "Le pion avance → tour derrière, échecs infinis", "Ne jamais laisser le roi adverse s'installer en 6e"]
+  },
+  "q-vs-r": {
+    "title": "Dame contre tour",
+    "intro": "Un gain technique parmi les plus fins : la dame doit séparer le roi de sa tour sans jamais donner de répit.",
+    "sections": [
+      { "heading": "Le zugzwang d'abord", "text": "Tant que la tour reste collée à son roi, rien à prendre. Mets le roi adverse en zugzwang avec des échecs croisés et l'approche de ton roi : la tour devra s'éloigner d'une case." },
+      { "heading": "La fourchette finale", "text": "Une tour séparée de son roi tombe presque toujours sur une fourchette dame : échec au roi + attaque de la tour. Cherche les diagonales et rangées qui touchent les deux." }
+    ],
+    "diagram": { "fen": "8/8/8/8/3k4/2r5/8/3QK3 w - - 0 1", "caption": "But : forcer la tour à quitter c3, puis la fourcher depuis d1-d4 ou la diagonale." },
+    "keyPoints": ["Zugzwang : forcer la tour à s'éloigner", "Fourchette roi+tour dès la séparation", "Patience : pas d'échec gratuit, pas de pat"]
+  },
+  "fork": {
+    "title": "La fourchette",
+    "intro": "Un coup, deux cibles : la fourchette est l'arme tactique la plus rentable du jeu — et le cavalier en est le spécialiste.",
+    "sections": [
+      { "heading": "Repérer les géométries", "text": "Le cavalier fourche depuis une case d'où il attaque deux pièces à la fois ; roi et dame sur des cases de même couleur sont sa cible favorite. Pions, fous et dames fourchent aussi : deux pièces sur une même diagonale ou rangée, et le tour est joué." },
+      { "heading": "Préparer la fourchette", "text": "La fourchette se construit : un échec qui déplace le roi, une capture qui attire la dame, et la géométrie fatale apparaît. Cherche d'abord les cases d'où DEUX pièces adverses seraient attaquées, puis le moyen d'y arriver." }
+    ],
+    "diagram": { "fen": "3q1k2/8/4N3/8/8/8/8/4K3 w - - 0 1", "caption": "Le cavalier e6 fourche roi et dame : géométrie classique.", "arrows": [["e6", "d8"], ["e6", "f8"]] },
+    "keyPoints": ["Chercher les cases attaquant deux cibles", "Roi + dame sur même couleur = alerte cavalier", "Attirer les pièces sur la géométrie avant de fourcher"]
+  },
+  "pin": {
+    "title": "Le clouage",
+    "intro": "Une pièce clouée est une pièce qui ment : elle semble défendre, mais elle ne peut plus bouger.",
+    "sections": [
+      { "heading": "Absolu ou relatif", "text": "Clouage absolu : la pièce masque son roi, bouger est illégal. Clouage relatif : elle masque une pièce de valeur, bouger est permis mais ruineux. Dans les deux cas, la pièce clouée ne participe plus au jeu." },
+      { "heading": "Exploiter sans se presser", "text": "N'échange pas tout de suite contre la pièce clouée : accumule. Un pion qui attaque une pièce clouée la gagne souvent, un deuxième attaquant la condamne. Et une pièce clouée ne défend RIEN : compte-la absente." }
+    ],
+    "diagram": { "fen": "rn1qk2r/ppp2ppp/5n2/3p4/1b1P2b1/2NBPN2/PPP2PPP/R1BQK2R w KQkq - 0 1", "caption": "Deux clouages croisés : le cavalier f3 et le cavalier c3 sont épinglés.", "arrows": [["g4", "d1"], ["b4", "e1"]] },
+    "keyPoints": ["Pièce clouée = pièce absente de la défense", "Accumuler les attaquants avant d'échanger", "Attaquer la pièce clouée avec un pion"]
+  },
+  "skewer": {
+    "title": "L'enfilade",
+    "intro": "Le clouage inversé : la pièce de valeur devant, la cible derrière. Elle doit s'écarter et abandonner ce qu'elle protège.",
+    "sections": [
+      { "heading": "Le mécanisme", "text": "Une attaque en ligne force la grosse pièce à bouger, découvrant celle qui se trouve derrière. Roi devant tour, dame devant tour : les alignements adverses sont des cibles permanentes." },
+      { "heading": "Créer l'alignement", "text": "Les enfilades se provoquent : un échec bien placé aligne le roi avec une pièce, une menace force la dame sur la mauvaise diagonale. En finale, l'enfilade décide de presque toutes les courses de promotion." }
+    ],
+    "diagram": { "fen": "8/8/8/8/8/2k5/q7/2K1R3 b - - 0 1", "caption": "Après Ta2xe1+? ... non : ici Te1 enfile déjà — si le roi noir s'écarte mal, Te1-e2 ramasse la dame alignée." },
+    "keyPoints": ["Grosse pièce devant, butin derrière", "Les échecs créent les alignements", "Mortelle en finale de promotion"]
+  },
+  "discoveredAttack": {
+    "title": "L'attaque à la découverte",
+    "intro": "Deux attaques simultanées avec un seul coup : la pièce qui s'écarte attaque, celle qu'elle démasque attaque aussi. Presque toujours du matériel à la clé.",
+    "sections": [
+      { "heading": "Les batteries", "text": "Repère tes alignements : tour ou fou derrière une pièce mobile pointant vers une cible. La pièce de devant peut alors jouer N'IMPORTE OÙ — elle est intouchable pendant que la découverte frappe derrière." },
+      { "heading": "L'échec à la découverte", "text": "Quand la découverte donne échec, la pièce qui s'écarte a un coup gratuit : capture, fourchette, tout est permis, l'adversaire doit d'abord parer l'échec. Le double échec, lui, force le roi à bouger — imparable." }
+    ],
+    "diagram": { "fen": "4k3/8/8/8/8/2N5/8/2R1K3 w - - 0 1", "caption": "Le cavalier c3 peut jouer partout : la tour c1 cloue la colonne derrière lui.", "arrows": [["c3", "d5"], ["c1", "c8"]] },
+    "keyPoints": ["Chercher ses batteries alignées", "La pièce qui s'écarte a un coup gratuit", "Double échec = le roi doit bouger"]
+  },
+  "mateIn1": {
+    "title": "Voir les mats en 1",
+    "intro": "Trouver un mat en un coup n'est pas une question de talent mais de méthode : passer les échecs en revue, tous, à chaque fois.",
+    "sections": [
+      { "heading": "La checklist", "text": "Liste chaque échec possible, même absurde. Pour chacun, trois questions : le roi peut-il fuir ? Une pièce peut-elle s'interposer ? L'attaquant peut-il être capturé ? Trois non = mat." },
+      { "heading": "Les cases de fuite", "text": "Avant de donner l'échec, photographie les cases du roi : lesquelles sont libres, lesquelles sont couvertes ? Le mat arrive quand toutes les issues sont fermées — souvent par ses propres pièces." }
+    ],
+    "keyPoints": ["Énumérer TOUS les échecs", "Fuite ? Interposition ? Capture ?", "Le roi étouffé par ses propres pièces"]
+  },
+  "mateIn2": {
+    "title": "Les mats en 2",
+    "intro": "Le mat en deux ajoute une idée : le premier coup prépare, contraint ou détourne. Le second exécute.",
+    "sections": [
+      { "heading": "Coups forcés d'abord", "text": "Commence par les coups qui ne laissent qu'une réponse : échecs, captures, menaces de mat immédiat. Sur chaque réponse forcée, cherche ton mat en 1. L'arbre est étroit : il se calcule en entier." },
+      { "heading": "Le coup silencieux", "text": "Certains mats en 2 commencent par un coup calme qui met l'adversaire en zugzwang : toute réponse crée la faiblesse fatale. Si les échecs ne donnent rien, cherche LE coup qui enlève la dernière case de fuite." }
+    ],
+    "keyPoints": ["Échecs et menaces de mat d'abord", "Chaque réponse forcée → chercher le mat en 1", "Sinon : le coup calme qui ferme tout"]
+  },
+  "mateIn3": {
+    "title": "Les mats en 3",
+    "intro": "Trois coups, c'est déjà de la combinaison : sacrifice d'ouverture de colonne, attraction du roi, puis exécution.",
+    "sections": [
+      { "heading": "Les schémas classiques", "text": "La plupart des mats en 3 suivent des patrons connus : sacrifice en h7 et la dame arrive, tour qui déboule sur la colonne ouverte, mat des arabes tour+cavalier. Reconnaître le patron évite de calculer à l'aveugle." },
+      { "heading": "Ordre des coups", "text": "Le bon mat en 3 échoue souvent d'un rien si l'ordre est faux. Vérifie chaque défense intermédiaire : interpositions, contre-échecs, captures désespérées de l'adversaire." }
+    ],
+    "keyPoints": ["Reconnaître les patrons de mat", "Sacrifier pour ouvrir ou attirer", "Vérifier chaque défense intermédiaire"]
+  },
+  "backRankMate": {
+    "title": "Le mat du couloir",
+    "intro": "Le roi roqué derrière ses trois pions intacts : une sécurité qui devient un tombeau dès que la dernière rangée est mal gardée.",
+    "sections": [
+      { "heading": "Compter les défenseurs", "text": "Combien de pièces lourdes gardent la dernière rangée, combien peuvent l'attaquer ? Si les attaquants dépassent les défenseurs, la combinaison existe : déviation de la défense, puis tour ou dame au fond." },
+      { "heading": "La luft", "text": "Un pas de pion (h3, g3 côté blanc) donne au roi une case d'air et désamorce tout. Fais-le tôt, dès que tes pièces lourdes quittent la défense — pas quand la menace est déjà là." }
+    ],
+    "diagram": { "fen": "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", "caption": "Td8+ serait mat : trois pions intacts, aucune luft, aucune défense de la 8e.", "arrows": [["d1", "d8"]] },
+    "keyPoints": ["Attaquants vs défenseurs de la dernière rangée", "Dévier le défenseur avant d'entrer", "La luft (h3/h6) au bon moment"]
+  },
+  "hangingPiece": {
+    "title": "Les pièces en prise",
+    "intro": "La cause n°1 des parties perdues avant 2000 Elo : une pièce non défendue. Le scan systématique change tout.",
+    "sections": [
+      { "heading": "Le scan avant chaque coup", "text": "Trois secondes : quelles pièces adverses sont non défendues ? Lesquelles des miennes le sont ? Une pièce non défendue n'est pas encore perdue — mais elle est vulnérable à toute double attaque." },
+      { "heading": "Compter les échanges", "text": "Sur chaque capture possible, compte : combien d'attaquants, combien de défenseurs, dans quel ordre ? La règle du moindre attaquant d'abord évite la plupart des mauvais comptes." }
+    ],
+    "keyPoints": ["Scanner les pièces non défendues, les deux camps", "Non défendu = cible de double attaque", "Compter attaquants/défenseurs avant de capturer"]
+  },
+  "sacrifice": {
+    "title": "Le sacrifice",
+    "intro": "Donner du matériel n'est jamais gratuit : on achète du temps, des lignes ouvertes ou un roi à découvert. Encore faut-il que la caisse soit pleine.",
+    "sections": [
+      { "heading": "Les trois monnaies", "text": "Un sacrifice s'échange contre : du matériel supérieur en retour (combinaison), un mat (attaque), ou une compensation durable (initiative, roi exposé). Si tu ne peux nommer aucune des trois, ne donne rien." },
+      { "heading": "Compter les attaquants", "text": "Avant un sacrifice d'attaque : combien de pièces participent à l'assaut, combien défendent ? En dessous de trois attaquants actifs contre un roi, le sacrifice est presque toujours incorrect." }
+    ],
+    "keyPoints": ["Nommer la compensation avant de donner", "Trois attaquants minimum contre le roi", "Calculer jusqu'au gain concret ou renoncer"]
+  },
+  "deflection": {
+    "title": "Déviation et surcharge",
+    "intro": "Une pièce qui garde deux choses n'en garde vraiment aucune : force-la à choisir et prends ce qu'elle abandonne.",
+    "sections": [
+      { "heading": "Repérer la surcharge", "text": "Passe en revue les défenseurs adverses : cette dame protège-t-elle à la fois le fou et la case de mat ? Cette tour, le pion et la dernière rangée ? Chaque double emploi est un point de rupture." },
+      { "heading": "Forcer le choix", "text": "Échec, capture ou menace supérieure : tout coup qui oblige le défenseur surchargé à répondre lui fait lâcher l'autre mission. Paye le prix s'il le faut — la déviation vaut souvent un sacrifice." }
+    ],
+    "keyPoints": ["Chercher les défenseurs à double mission", "L'obliger à choisir par échec ou menace", "La déviation justifie un sacrifice"]
+  },
+  "attraction": {
+    "title": "L'attraction",
+    "intro": "Attirer une pièce — souvent le roi — sur une case fatale : le sacrifice d'attraction ouvre les plus belles combinaisons.",
+    "sections": [
+      { "heading": "La case empoisonnée", "text": "Certaines cases exposent leur occupant à une fourchette, une enfilade ou un mat. Si la pièce adverse n'y va pas d'elle-même, offre-lui quelque chose qu'elle ne peut refuser : une dame, une tour." },
+      { "heading": "Calculer la suite", "text": "L'attraction n'est que le premier maillon : vérifie que la géométrie qui suit (l'échec du cavalier, l'enfilade) fonctionne pour CHAQUE reprise possible, pas seulement la plus naturelle." }
+    ],
+    "keyPoints": ["Identifier la case fatale d'abord", "Sacrifier pour y attirer la cible", "Vérifier toutes les reprises"]
+  },
+  "promotion": {
+    "title": "La promotion",
+    "intro": "Un pion en 7e rangée vaut souvent plus qu'une pièce : tout tourne autour de la case de promotion.",
+    "sections": [
+      { "heading": "Escorter le passé", "text": "Le pion passé se pousse avec méthode : tour DERRIÈRE lui (elle gagne en puissance à chaque pas), roi en soutien, et blocus adverse à détruire en priorité." },
+      { "heading": "La sous-promotion", "text": "Promouvoir en cavalier gagne parfois un temps décisif (échec !) ou évite un pat. Avant de poser la dame automatique, vérifie si une autre pièce fait mieux." }
+    ],
+    "keyPoints": ["Tour derrière le pion passé", "Détruire le blocus avant de pousser", "Penser à la sous-promotion"]
+  },
+  "trappedPiece": {
+    "title": "La pièce piégée",
+    "intro": "Capturer, c'est bien ; enfermer, c'est mieux : une pièce sans case de repli est déjà à toi, il ne reste qu'à encaisser.",
+    "sections": [
+      { "heading": "Fermer le filet", "text": "Compte les cases de fuite de la pièce visée. Chaque coup qui en retire une vaut mieux qu'une capture précipitée : quand il n'en reste aucune, attaque-la avec ta pièce la moins chère." },
+      { "heading": "Les victimes classiques", "text": "La dame partie chercher un pion b2/b7, le fou enfermé en a2 par b3, le cavalier coincé en bord d'échiquier : des pièges centenaires qui fonctionnent toujours. Méfie-toi aussi de TES pièces aventurières." }
+    ],
+    "keyPoints": ["Retirer les cases de fuite une à une", "Attaquer avec la pièce la moins chère", "La dame chasseuse de pions : cible n°1"]
+  },
+  "intermezzo": {
+    "title": "Le coup intermédiaire",
+    "intro": "Entre la capture adverse et ta reprise « automatique », il y a parfois un coup plus fort. Le zwischenzug gagne des parties entières.",
+    "sections": [
+      { "heading": "Ne jamais reprendre par réflexe", "text": "Avant chaque reprise, une question : ai-je un échec, une menace de mat ou une capture plus forte à glisser d'abord ? L'adversaire devra y répondre — TA reprise attendra." },
+      { "heading": "S'en protéger", "text": "L'intermezzo joue dans les deux sens : avant de lancer un échange, vérifie que l'adversaire n'a pas d'échec intermédiaire qui change le compte. La plupart des « combinaisons ratées » meurent là." }
+    ],
+    "keyPoints": ["Jamais de reprise automatique", "Échec ou menace supérieure d'abord", "Vérifier les intermezzos adverses avant d'échanger"]
+  },
+  "defensiveMove": {
+    "title": "L'art de la défense",
+    "intro": "Bien défendre rapporte autant de points que bien attaquer : la plupart des attaques amateurs s'effondrent contre une défense exacte.",
+    "sections": [
+      { "heading": "Identifier LA menace", "text": "Face à un coup agressif, nomme précisément la menace : mat ? gain de matériel ? Si le coup adverse ne menace rien de concret, ignore-le et poursuis ton plan — la peur coûte plus cher que les pions." },
+      { "heading": "Échanger les attaquants", "text": "Chaque échange retire une pièce à l'assaut adverse. Propose l'échange des dames dès que tu es sous pression : sans dame, la plupart des attaques meurent sur place." }
+    ],
+    "keyPoints": ["Nommer la menace avant de répondre", "Pas de menace réelle → continuer son plan", "Échanger les pièces d'attaque, surtout les dames"]
+  },
+  "exposedKing": {
+    "title": "Le roi exposé",
+    "intro": "Un roi sans pions devant lui se mate avec peu de forces : la question n'est pas si, mais comment amener les tiennes.",
+    "sections": [
+      { "heading": "Ouvrir les lignes", "text": "Un roi exposé se punit par les colonnes et diagonales ouvertes qui mènent à lui. Sacrifier un pion pour ouvrir la ligne décisive est presque toujours rentable." },
+      { "heading": "Dame + une pièce", "text": "La dame seule ne mate pas un roi défendu ; dame + cavalier ou dame + tour, si. Amène le deuxième attaquant AVANT de commencer les échecs : les échecs prématurés réchauffent le roi au lieu de le refroidir." }
+    ],
+    "keyPoints": ["Ouvrir colonnes et diagonales vers le roi", "Deux attaquants minimum avant les échecs", "Les échecs sans mat consolident l'adversaire"]
+  },
+  "rookEndgame": {
+    "title": "Les finales de tours",
+    "intro": "La finale la plus fréquente des échecs — et la plus mal jouée. Deux principes règlent 80 % des cas : activité et placement derrière les pions.",
+    "sections": [
+      { "heading": "La tour active avant tout", "text": "Une tour passive qui garde un pion perd plus de parties qu'un pion sacrifié pour activer sa tour. La tour veut la 7e rangée, les pions adverses, l'espace — jamais la garde statique." },
+      { "heading": "Derrière les pions passés", "text": "Ta tour derrière TON pion passé le pousse ; derrière le pion passé ADVERSE, elle le fige. Devant un pion, elle recule en puissance à chaque avancée : la pire place du jeu." }
+    ],
+    "diagram": { "fen": "3k4/8/8/8/8/8/R2p4/3K4 w - - 0 1", "caption": "Ta2 derrière le pion d2 : il est figé pour toujours." },
+    "keyPoints": ["Activité > matériel en finale de tours", "Tour derrière les pions passés, les deux camps", "La 7e rangée vaut un pion"]
+  },
+  "pawnEndgame": {
+    "title": "Les finales de pions",
+    "intro": "Sans pièces, tout se calcule : les finales de pions ne pardonnent aucune approximation, mais leurs règles se comptent sur une main.",
+    "sections": [
+      { "heading": "Les quatre outils", "text": "Opposition, règle du carré, pion passé éloigné, percée : ces quatre outils règlent presque toutes les finales de pions. Avant tout échange de la dernière pièce, vérifie la finale de pions qui en résulte — elle est binaire, gagnée ou pas." },
+      { "heading": "Le tempo est roi", "text": "Un seul temps décide : compte les coups de chaque camp jusqu'à la promotion. Les poussées de pion en réserve servent d'ajusteurs de tempo pour gagner l'opposition au moment critique." }
+    ],
+    "keyPoints": ["Opposition + carré + passé éloigné + percée", "Calculer AVANT d'entrer dans la finale de pions", "Garder des coups de pion en réserve"]
+  },
+  "zugzwang": {
+    "title": "Le zugzwang",
+    "intro": "L'obligation de jouer comme malédiction : en zugzwang, chaque coup légal empire la position. L'arme absolue des finales.",
+    "sections": [
+      { "heading": "Créer le zugzwang", "text": "Fige d'abord tout ce qui peut bouger : bloque les pions, ligote les pièces. Quand l'adversaire n'a plus que des coups nuisibles, passe-lui le trait avec un coup d'attente — la triangulation du roi est l'outil classique." },
+      { "heading": "La triangulation", "text": "Ton roi fait trois pas (un triangle) là où le sien n'en peut faire que deux : même position, trait changé. Ce tour de passe-passe gagne des finales de pions théoriquement bloquées." }
+    ],
+    "keyPoints": ["Bloquer tout, puis passer le trait", "Coups d'attente et triangulation", "Décisif en finale de pions"]
+  },
+  "quietMove": {
+    "title": "Le coup tranquille",
+    "intro": "Ni échec ni capture, et pourtant décisif : le coup tranquille crée une menace que rien ne peut parer.",
+    "sections": [
+      { "heading": "Deux menaces valent mieux qu'une", "text": "Le coup calme mortel menace deux choses à la fois — un mat et un gain de pièce, deux mats différents. L'adversaire ne peut parer qu'une seule : cherche les cases d'où naissent deux menaces." },
+      { "heading": "Au cœur des combinaisons", "text": "Les plus belles combinaisons contiennent un coup silencieux au milieu des échecs : c'est lui qui ferme la cage. Quand ta série d'échecs ne mate pas, demande-toi si un coup calme intermédiaire ne la complète pas." }
+    ],
+    "keyPoints": ["Chercher le coup à double menace", "Les échecs préparent, le coup calme conclut", "Vérifier que rien ne pare les deux menaces"]
+  },
+  "discoveredCheck": {
+    "title": "L'échec à la découverte",
+    "intro": "La pièce s'écarte, l'échec tombe de derrière : pendant que le roi pare, la pièce baladeuse fait ce qu'elle veut.",
+    "sections": [
+      { "heading": "Un coup gratuit", "text": "L'échec à la découverte offre un tempo entier : la pièce qui démasque peut capturer, fourcher, se poster — l'adversaire est occupé par son roi. Le moulinet (échecs à la découverte répétés) peut vider l'échiquier entier." },
+      { "heading": "Le double échec", "text": "Si la pièce qui s'écarte donne AUSSI échec, ni capture ni interposition ne sauvent : le roi doit bouger. Le double échec est le coup le plus violent du jeu — souvent prélude au mat." }
+    ],
+    "keyPoints": ["La pièce démasquante a un coup gratuit", "Moulinet : découverte en série", "Double échec : le roi bouge, point final"]
+  }
+}

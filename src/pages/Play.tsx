@@ -10,6 +10,7 @@ import { MoveList } from '../components/MoveList'
 import { MoveStrip } from '../components/MoveStrip'
 import { greeting, liveComment, quickClass, type LiveComment } from '../lib/liveCoach'
 import { isBookPosition } from '../lib/openings'
+import { openingFr } from '../lib/openingNames'
 import { BOTS, botEngineOptions, type Bot } from '../lib/bots'
 import { Engine } from '../lib/engine'
 import { applyRating, db, getRating, type SavedGame } from '../lib/db'
@@ -586,7 +587,7 @@ export default function Play() {
         <div className="rounded bg-surface-2 px-3 py-2 text-sm text-neutral-300">
           {opening ? (
             <>
-              <span className="font-mono text-xs text-neutral-500">{opening.eco}</span> {opening.name}
+              <span className="font-mono text-xs text-neutral-500">{opening.eco}</span> {openingFr(opening.name)}
             </>
           ) : (
             <span className="text-neutral-500">Ouverture inconnue</span>
