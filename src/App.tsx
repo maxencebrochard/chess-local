@@ -7,12 +7,13 @@ import PuzzleRush from './pages/PuzzleRush'
 import Archive from './pages/Archive'
 import Stats from './pages/Stats'
 import Import from './pages/Import'
+import Learn from './pages/Learn'
 
 const NAV = [
   { to: '/', icon: '♞', label: 'Accueil' },
   { to: '/jouer', icon: '♟', label: 'Jouer' },
   { to: '/puzzles', icon: '🧩', label: 'Puzzles' },
-  { to: '/rush', icon: '⚡', label: 'Rush' },
+  { to: '/apprendre', icon: '🎓', label: 'Apprendre' },
   { to: '/analyse', icon: '🔍', label: 'Analyse' },
   { to: '/archive', icon: '📚', label: 'Archive' },
   { to: '/stats', icon: '📊', label: 'Stats' },
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="/jouer" element={<Play />} />
             <Route path="/puzzles" element={<Puzzles />} />
             <Route path="/rush" element={<PuzzleRush />} />
+            <Route path="/apprendre" element={<Learn />} />
             <Route path="/analyse" element={<Analysis />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/stats" element={<Stats />} />

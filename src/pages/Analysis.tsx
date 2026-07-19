@@ -248,6 +248,7 @@ export default function Analysis() {
       setReview(result)
       setViewIndex(-1)
       setReviewStage('summary') // ouvre sur l'écran de résumé
+      void recordMistakes(result)
 
     } finally {
       setReviewProgress(null)
@@ -325,6 +326,32 @@ export default function Analysis() {
         ? keyMoments.find((c) => c.moveIndex > viewIndex)
         : [...keyMoments].reverse().find((c) => c.moveIndex < viewIndex)
     if (next) setViewIndex(next.moveIndex)
+  }
+
+  // Alimente « Apprendre → Mes erreurs » avec les fautes du joueur.
+  async function recordMistakes(result: GameReview) {
+    const BAD_FOR_LEARN = ['mistake', 'miss', 'missedWin', 'blunder']
+    const replay = new Chess(result.startFen)
+    for (let i = 0; i < result.moves.length; i++) {
+      const m = result.moves[i]
+      const fenBefore = replay.fen()
+      const moverColor = replay.turn()
+      replay.move(m.san)
+      if (reviewColor && moverColor !== reviewColor) continue
+      if (!BAD_FOR_LEARN.includes(m.class)) continue
+      const existing = await db.mistakes.where('fenBefore').equals(fenBefore).count()
+      if (existing > 0) continue
+      await db.mistakes.add({
+        date: Date.now(),
+        gameLabel: gameMeta ?? 'Partie analysée',
+        fenBefore,
+        playedSan: m.san,
+        bestUci: m.bestMoveUci,
+        cls: m.class,
+        attempts: 0,
+        solved: 0,
+      })
+    }
   }
 
   // --- Retry : rejouer la position avant une faute et trouver mieux ---

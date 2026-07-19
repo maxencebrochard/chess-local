@@ -36,7 +36,7 @@ with sync_playwright() as p:
     page.add_init_script(f"localStorage.setItem('chess-local-settings', {json.dumps(SETTINGS)})")
     page.goto(BASE)
     page.wait_for_timeout(1500)
-    for label, marker in [("Jouer", "Adversaire"), ("Puzzles", "Classement puzzles"), ("Rush", "Puzzle Rush"),
+    for label, marker in [("Jouer", "Adversaire"), ("Puzzles", "Classement puzzles"), ("Apprendre", "Séance"),
                           ("Analyse", "Options"), ("Archive", "Archive"), ("Stats", "Statistiques"),
                           ("Accueil", "ChessLocal")]:
         page.locator("nav a", has_text=label).last.click()
@@ -53,7 +53,7 @@ with sync_playwright() as p:
     page.goto(BASE)
     page.wait_for_timeout(1500)
 
-    for label in ["Jouer", "Puzzles", "Rush", "Analyse", "Archive", "Stats", "Accueil"]:
+    for label in ["Jouer", "Puzzles", "Apprendre", "Analyse", "Archive", "Stats", "Accueil"]:
         page.locator("nav a", has_text=label).first.click()
         page.wait_for_timeout(700)
         check(f"[nav desktop] {label}", True)
@@ -199,8 +199,8 @@ with sync_playwright() as p:
     check("[puzzles] Suivant/Passer → nouveau", page.locator("text=Trouve le meilleur coup").is_visible())
 
     # ---------- RUSH ----------
-    page.locator("nav a", has_text="Rush").first.click()
-    page.wait_for_timeout(600)
+    page.goto(f"{BASE}/#/rush")
+    page.wait_for_timeout(800)
     for mode, marker in [("3 minutes", "2:5"), ("5 minutes", "4:5"), ("Survie", "résolus")]:
         page.locator("main button", has_text=mode).click()
         page.wait_for_timeout(1600)

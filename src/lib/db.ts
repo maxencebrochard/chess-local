@@ -36,11 +36,35 @@ export interface RushScore {
   date: number
 }
 
+// Faute détectée par un bilan de partie, rejouable dans « Apprendre ».
+export interface Mistake {
+  id?: number
+  date: number
+  gameLabel: string
+  fenBefore: string
+  playedSan: string
+  bestUci: string
+  cls: string // mistake | miss | missedWin | blunder
+  attempts: number
+  solved: 0 | 1
+}
+
+export interface LearnSession {
+  id?: number
+  date: number
+  domain: string // endgame | tactic | opening | strategy | mistakes
+  itemId: string
+  success: 0 | 1
+  ratingAfter: number | null
+}
+
 export const db = new Dexie('chess-local') as Dexie & {
   games: EntityTable<SavedGame, 'id'>
   ratings: EntityTable<Rating, 'key'>
   puzzleAttempts: EntityTable<PuzzleAttempt, 'id'>
   rushScores: EntityTable<RushScore, 'id'>
+  mistakes: EntityTable<Mistake, 'id'>
+  learnSessions: EntityTable<LearnSession, 'id'>
 }
 
 db.version(1).stores({
@@ -48,6 +72,15 @@ db.version(1).stores({
   ratings: 'key',
   puzzleAttempts: '++id, date, puzzleId',
   rushScores: '++id, mode, score, date',
+})
+
+db.version(2).stores({
+  games: '++id, date, mode, timeClass',
+  ratings: 'key',
+  puzzleAttempts: '++id, date, puzzleId',
+  rushScores: '++id, mode, score, date',
+  mistakes: '++id, date, solved, fenBefore',
+  learnSessions: '++id, date, domain',
 })
 
 export const DEFAULT_RATING = 800

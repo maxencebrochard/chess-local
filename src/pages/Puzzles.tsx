@@ -194,6 +194,13 @@ export default function Puzzles() {
             ♞ Analyser avec Stockfish
           </button>
         )}
+
+        <button
+          onClick={() => navigate('/rush')}
+          className="cursor-pointer rounded-lg bg-surface-2 py-2.5 font-semibold text-neutral-200 hover:bg-surface-3"
+        >
+          ⚡ Puzzle Rush
+        </button>
       </div>
     </div>
   )

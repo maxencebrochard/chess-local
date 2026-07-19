@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { db, DEFAULT_RATING, type PuzzleAttempt, type Rating, type SavedGame } from '../lib/db'
+import { downloadBackup, exportBackup, importBackup } from '../lib/backup'
 import { BOARD_THEMES, useSettings } from '../store/settings'
 
 export default function Stats() {
   const [ratings, setRatings] = useState<Rating[]>([])
   const [games, setGames] = useState<SavedGame[]>([])
   const [attempts, setAttempts] = useState<PuzzleAttempt[]>([])
+  const [backupMsg, setBackupMsg] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
   const settings = useSettings()
 
   useEffect(() => {
@@ -117,6 +120,46 @@ export default function Stats() {
           </div>
           <p className="mt-1 text-xs text-neutral-500">
             Rapide ≈ 30 s, Équilibré ≈ 1-2 min, Profond ≈ 4-5 min sur iPhone (partie de 40 coups).
+          </p>
+        </div>
+        <div>
+          <p className="mb-2 text-sm font-semibold text-neutral-300">Sauvegarde des données</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => void exportBackup().then(downloadBackup)}
+              className="cursor-pointer rounded bg-surface-3 px-3 py-1.5 text-sm font-semibold hover:bg-surface-3/70"
+            >
+              ⬇ Exporter tout
+            </button>
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="cursor-pointer rounded bg-surface-3 px-3 py-1.5 text-sm font-semibold hover:bg-surface-3/70"
+            >
+              ⬆ Restaurer
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (!f) return
+                void f.text().then(async (json) => {
+                  try {
+                    await importBackup(json)
+                    setBackupMsg('Sauvegarde restaurée. Recharge la page.')
+                  } catch (err) {
+                    setBackupMsg((err as Error).message)
+                  }
+                })
+              }}
+            />
+          </div>
+          {backupMsg && <p className="mt-1 text-xs text-accent">{backupMsg}</p>}
+          <p className="mt-1 text-xs text-neutral-500">
+            Classements, parties, puzzles, erreurs et réglages dans un fichier JSON. À faire de temps en temps :
+            iOS peut purger le stockage d'une app web inutilisée.
           </p>
         </div>
       </div>
