@@ -154,16 +154,27 @@ export async function reviewGame(
       // L'adversaire venait d'offrir l'avantage, non puni : Occasion manquée.
       cls = 'miss'
     } else if (mv.lan === bestMoveUci) {
-      // Brillant : meilleur coup qui sacrifie du matériel en restant gagnant/égal.
+      // Brillant (critères chess.com) : sacrifice réel d'au moins une pièce
+      // mineure, sur une case effectivement prenable par l'adversaire, dans
+      // une position pas déjà largement gagnante sans ce coup, et qui reste
+      // au moins égale ensuite.
       const balBefore = materialBalance(replay, mover)
       const balAfter2 = -materialBalance(replayAfter, replayAfter.turn())
-      const sacrifice = balAfter2 < balBefore - 1 && !replayAfter.isCheckmate()
-      const secondGap = before[1] ? winPct(cpBefore) - winPct(lineCp(before[1])) : 0
-      if (sacrifice && wAfter > 45) cls = 'brilliant'
-      else if (secondGap > 12 && wBefore > 40 && wBefore < 90) cls = 'great'
-      else cls = 'best'
-    } else if (drop < 2) cls = 'excellent'
-    else if (drop < 5) cls = 'good'
+      const sacrifice = balBefore - balAfter2 >= 2 && !replayAfter.isCheckmate()
+      const destAttacked = sacrifice && replayAfter.isAttacked(mv.to, replayAfter.turn())
+      const secondBestWinPct = before[1] ? winPct(lineCp(before[1])) : 0
+      const secondGap = wBefore - secondBestWinPct
+      if (sacrifice && destAttacked && secondBestWinPct < 85 && wAfter >= 50) {
+        cls = 'brilliant'
+      } else if (
+        secondGap > 20 || // seul bon coup de la position
+        (wBefore < 45 && wAfter >= 50) || // renverse : perdant -> au moins égal
+        (wBefore >= 45 && wBefore < 55 && wAfter >= 70) // renverse : égal -> nettement gagnant
+      ) {
+        cls = 'great'
+      } else cls = 'best'
+    } else if (drop < 3.5) cls = 'excellent'
+    else if (drop < 7) cls = 'good'
     else if (drop < 10) cls = 'inaccuracy'
     else if (drop < 20) cls = 'mistake'
     else cls = 'blunder'
@@ -197,16 +208,6 @@ export async function reviewGame(
   const emptyCounts = () =>
     Object.fromEntries(Object.keys(CLASS_META).map((k) => [k, 0])) as Record<MoveClass, number>
   const counts = { w: emptyCounts(), b: emptyCounts() }
-  const accs: { w: number[]; b: number[] } = { w: [], b: [] }
-  moves.forEach((m, i) => {
-    const color = colorAt(i)
-    counts[color][m.class]++
-    // Accuracy par coup, formule lichess.
-    const drop = Math.max(0, m.winPctBefore - m.winPctAfter)
-    const acc = Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669))
-    accs[color].push(acc)
-  })
-  const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 100)
 
   // Win% blanc après chaque demi-coup (index 0 = départ).
   const startPct = moves.length
@@ -219,12 +220,49 @@ export async function reviewGame(
     winPctSeries.push(m.evalAfterCp !== null ? winPct(m.evalAfterCp) : winPctSeries[winPctSeries.length - 1])
   })
 
+  // Accuracy par coup (formule Lichess) + poids de volatilité : écart-type du
+  // win% dans une fenêtre glissante autour du coup (~10 plis, comme Lichess).
+  // Un coup joué en pleine bagarre tactique pèse plus qu'un coup dans une
+  // position calme déjà décidée.
+  const windowSize = Math.min(8, Math.max(2, Math.round(moves.length / 10)))
+  const accs: { w: number[]; b: number[] } = { w: [], b: [] }
+  const weights: { w: number[]; b: number[] } = { w: [], b: [] }
+  moves.forEach((m, i) => {
+    const color = colorAt(i)
+    counts[color][m.class]++
+    const drop = Math.max(0, m.winPctBefore - m.winPctAfter)
+    const acc = Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669))
+    accs[color].push(acc)
+
+    const half = Math.floor(windowSize / 2)
+    const lo = Math.max(0, i + 1 - half)
+    const hi = Math.min(winPctSeries.length - 1, i + 1 + half)
+    const window = winPctSeries.slice(lo, hi + 1)
+    const windowMean = window.reduce((a, b) => a + b, 0) / window.length
+    const variance = window.reduce((a, b) => a + (b - windowMean) ** 2, 0) / window.length
+    weights[color].push(Math.min(12, Math.max(0.5, Math.sqrt(variance))))
+  })
+
+  const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 100)
+  const harmonicMean = (xs: number[]) =>
+    xs.length ? xs.length / xs.reduce((a, x) => a + 1 / Math.max(x, 1), 0) : 100
+  const weightedMean = (xs: number[], ws: number[]) => {
+    const sumW = ws.reduce((a, b) => a + b, 0)
+    return sumW ? xs.reduce((a, x, i) => a + x * ws[i], 0) / sumW : mean(xs)
+  }
+  // Précision finale façon Lichess : moyenne de la moyenne harmonique (pénalise
+  // les gaffes isolées) et de la moyenne pondérée par volatilité (pénalise les
+  // fautes dans les moments critiques). Plus fidèle qu'une moyenne arithmétique
+  // simple, trop indulgente pour une partie propre avec une seule grosse gaffe.
+  const accuracy = (color: 'w' | 'b') =>
+    Math.round(((harmonicMean(accs[color]) + weightedMean(accs[color], weights[color])) / 2) * 10) / 10
+
   return {
     moves,
     startFen: new Chess(customStart).fen(),
     startTurn,
-    accuracyWhite: Math.round(mean(accs.w) * 10) / 10,
-    accuracyBlack: Math.round(mean(accs.b) * 10) / 10,
+    accuracyWhite: accuracy('w'),
+    accuracyBlack: accuracy('b'),
     counts,
     gameRatingWhite: ratingFromAcpl(mean(cpLosses.w.length ? cpLosses.w : [0])),
     gameRatingBlack: ratingFromAcpl(mean(cpLosses.b.length ? cpLosses.b : [0])),

@@ -54,6 +54,7 @@ export default function Analysis() {
   const [showBest, setShowBest] = useState(false)
   const [showLines, setShowLines] = useState(false)
   const [names, setNames] = useState<{ w: string; b: string }>({ w: 'Blancs', b: 'Noirs' })
+  const [returnTo, setReturnTo] = useState<string | null>(null)
   const engineRef = useRef<Engine | null>(null)
 
   const viewFen = useMemo(() => {
@@ -86,7 +87,9 @@ export default function Analysis() {
       orientation?: 'w' | 'b'
       label?: string
       review?: boolean
+      returnTo?: string
     } | null
+    if (state?.returnTo) setReturnTo(state.returnTo)
     // Position (+ séquence de coups optionnelle, ex : puzzle) : analyse live immédiate.
     if (state?.fen && !state.pgn) {
       if (loadFen(state.fen)) {
@@ -617,6 +620,14 @@ export default function Analysis() {
         </div>
 
         <div className="flex flex-col justify-center gap-2 md:ml-4">
+          {returnTo && (
+            <button
+              onClick={() => navigate(returnTo, { state: { restore: true } })}
+              className="flex w-fit cursor-pointer items-center gap-1 rounded px-1 py-1 text-sm font-semibold text-neutral-300 hover:text-white"
+            >
+              ← Retour à l'exercice
+            </button>
+          )}
           <div className="boardbox md:w-[min(76vh,640px)]">
             <Board
               fen={retry ? retry.baseFen : viewFen}

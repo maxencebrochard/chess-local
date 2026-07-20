@@ -98,6 +98,7 @@ export default function Puzzles() {
         viewIndex: 0,
         orientation: playerColor,
         label: `Puzzle ${puzzle.id} (${puzzle.rating})`,
+        returnTo: '/puzzles',
       },
     })
   }

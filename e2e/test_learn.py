@@ -60,8 +60,14 @@ with sync_playwright() as p:
     page.wait_for_timeout(800)
     check("[learn] objectif affiché", page.locator("text=Objectif").is_visible())
     check("[learn] board finale", page.locator("[id^='chessboard-']").first.is_visible())
-    # Bouton ? pendant l'exercice
-    page.locator("main button", has_text="?").last.click()
+    # Bouton ? dans le header (ne doit jamais chevaucher le board)
+    q_btn = page.locator("header button", has_text="?")
+    q_box = q_btn.bounding_box()
+    board_box = page.locator("[id^='chessboard-']").first.bounding_box()
+    overlaps = not (q_box["x"] + q_box["width"] < board_box["x"] or q_box["x"] > board_box["x"] + board_box["width"]
+                    or q_box["y"] + q_box["height"] < board_box["y"] or q_box["y"] > board_box["y"] + board_box["height"])
+    check("[cours] ? ne chevauche pas le board", not overlaps)
+    q_btn.click()
     page.wait_for_timeout(400)
     check("[cours] ? pendant l'exercice", page.locator("text=À retenir").is_visible())
     page.click("text=Retour à l'exercice")
@@ -153,6 +159,34 @@ with sync_playwright() as p:
     page.locator("button", has_text="Réessayer").click()
     page.wait_for_timeout(600)
     check("[learn] Réessayer relance l'exercice", page.locator("text=Trouve mieux").is_visible())
+    # Rejouer un coup pour revenir au verdict, puis Analyser -> Retour -> exercice restauré
+    header_before = page.locator("header h1").inner_text()
+    played = False
+    for f in "abcdefgh":
+        for r in "12345678":
+            page.locator(f"[data-square='{f}{r}']").click()
+            page.wait_for_timeout(50)
+            tg = page.evaluate("""() => {
+              const els=[...document.querySelectorAll('[data-square]')];
+              const has=(root,pred)=>[root,...root.querySelectorAll('*')].some(pred);
+              return els.find(e=>has(e,n=>getComputedStyle(n).background.includes('rgba(0, 0, 0, 0.34)')))?.getAttribute('data-square') ?? null;
+            }""")
+            if tg:
+                page.locator(f"[data-square='{tg}']").click()
+                played = True
+                break
+        if played:
+            break
+    page.wait_for_timeout(2000)
+    page.locator("button", has_text="Analyser").click()
+    page.wait_for_timeout(1200)
+    check("[analyse] Analyser ouvre /analyse", "#/analyse" in page.url or page.evaluate("() => location.hash") == "#/analyse")
+    back_btn = page.locator("button", has_text="Retour à l'exercice")
+    check("[analyse] bouton retour visible", back_btn.is_visible())
+    back_btn.click()
+    page.wait_for_timeout(800)
+    check("[learn] retour restaure la séance", page.evaluate("() => location.hash") == "#/apprendre")
+    check("[learn] compteur d'item restauré", page.locator("header h1").inner_text() == header_before)
     page.click("header button:has-text('✕')")
 
 

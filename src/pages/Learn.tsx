@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { Board, type BoardArrow } from '../components/Board'
 import { CoachBubble } from '../components/CoachBubble'
-import { CourseSheet, courseFor } from '../components/CourseSheet'
+import { CourseSheet, courseFor, type Course } from '../components/CourseSheet'
 import { Cta } from '../components/Cta'
 import { HEvalBar } from '../components/HEvalBar'
 import { PuzzlePlayer } from '../components/PuzzlePlayer'
@@ -16,12 +16,23 @@ import { openingFamilyFr } from '../lib/openingNames'
 import { figurine, winPct } from '../lib/review'
 import { sounds } from '../lib/sounds'
 import { useSettings } from '../store/settings'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 type ItemPhase = 'lesson' | 'play' | 'success' | 'fail'
 
+const SESSION_KEY = 'learn-session-v1'
+
+interface StoredSession {
+  session: Session
+  itemIdx: number
+  phase: ItemPhase
+  results: boolean[]
+  scoredItems: number[]
+}
+
 export default function Learn() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { playSounds } = useSettings()
   const [ratings, setRatings] = useState<Record<string, number | null>>({})
   const [mistakeCount, setMistakeCount] = useState(0)
@@ -32,6 +43,7 @@ export default function Learn() {
   const [ratingDelta, setRatingDelta] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [retryTick, setRetryTick] = useState(0)
+  const [showCourse, setShowCourse] = useState(false)
   const scoredItems = useRef(new Set<number>())
   const engineRef = useRef<Engine | null>(null)
 
@@ -54,6 +66,36 @@ export default function Learn() {
     },
     [],
   )
+
+  // Retour depuis l'analyseur (bouton « Analyser ») : restaure la séance en cours.
+  useEffect(() => {
+    const state = location.state as { restore?: boolean } | null
+    if (state?.restore) {
+      const raw = sessionStorage.getItem(SESSION_KEY)
+      if (raw) {
+        try {
+          const saved = JSON.parse(raw) as StoredSession
+          setSession(saved.session)
+          setItemIdx(saved.itemIdx)
+          setPhase(saved.phase)
+          setResults(saved.results)
+          scoredItems.current = new Set(saved.scoredItems)
+        } catch {}
+      }
+      navigate('.', { replace: true, state: null })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persiste la séance active pour pouvoir la restaurer après un aller-retour vers l'analyseur.
+  useEffect(() => {
+    if (session && session.items.length > 0) {
+      const stored: StoredSession = { session, itemIdx, phase, results, scoredItems: [...scoredItems.current] }
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
+    } else {
+      sessionStorage.removeItem(SESSION_KEY)
+    }
+  }, [session, itemIdx, phase, results])
 
   function getEngine(): Engine {
     engineRef.current ??= new Engine()
@@ -105,6 +147,7 @@ export default function Learn() {
   function retryItem() {
     setRetryTick((t) => t + 1)
     setPhase('play')
+    setShowCourse(false)
   }
 
   // Ouvre la position de l'exercice dans l'analyseur Stockfish.
@@ -112,8 +155,9 @@ export default function Learn() {
     if (!session) return
     const item = session.items[itemIdx]
     const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+    const returnTo = '/apprendre'
     if (item.kind === 'endgame') {
-      navigate('/analyse', { state: { fen: item.endgame.fen, orientation: item.endgame.side, label: item.endgame.title } })
+      navigate('/analyse', { state: { fen: item.endgame.fen, orientation: item.endgame.side, label: item.endgame.title, returnTo } })
     } else if (item.kind === 'tactic' || item.kind === 'strategy') {
       const p = item.puzzle
       navigate('/analyse', {
@@ -123,19 +167,21 @@ export default function Learn() {
           viewIndex: 0,
           orientation: p.fen.split(' ')[1] === 'w' ? 'b' : 'w',
           label: `Puzzle ${p.id} (${p.rating})`,
+          returnTo,
         },
       })
     } else if (item.kind === 'opening') {
       navigate('/analyse', {
-        state: { fen: START, uci: item.line.uci.slice(0, item.depth), viewIndex: 0, orientation: item.line.playerColor, label: openingFamilyFr(item.line.name) },
+        state: { fen: START, uci: item.line.uci.slice(0, item.depth), viewIndex: 0, orientation: item.line.playerColor, label: openingFamilyFr(item.line.name), returnTo },
       })
     } else {
-      navigate('/analyse', { state: { fen: item.mistake.fenBefore, orientation: new Chess(item.mistake.fenBefore).turn(), label: item.mistake.gameLabel } })
+      navigate('/analyse', { state: { fen: item.mistake.fenBefore, orientation: new Chess(item.mistake.fenBefore).turn(), label: item.mistake.gameLabel, returnTo } })
     }
   }
 
   function nextItem() {
     if (!session) return
+    setShowCourse(false)
     if (itemIdx + 1 < session.items.length) {
       setItemIdx(itemIdx + 1)
       setPhase('lesson')
@@ -175,6 +221,8 @@ export default function Learn() {
   // ---------- Écran de séance ----------
   if (session) {
     const item = session.items[itemIdx]
+    const courseId = courseIdForItem(item)
+    const course = courseId ? courseFor(courseId) : null
     return (
       <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto bg-surface">
         <div className="mx-auto flex min-h-full max-w-2xl flex-col">
@@ -191,7 +239,17 @@ export default function Learn() {
                 {itemIdx + 1}/{session.items.length}
               </span>
             </h1>
-            <span className="w-9" />
+            {course ? (
+              <button
+                onClick={() => setShowCourse(true)}
+                title="Voir le cours"
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-lg font-black text-neutral-400 hover:text-white"
+              >
+                ?
+              </button>
+            ) : (
+              <span className="w-9" />
+            )}
           </header>
           <ExerciseView
             key={`${itemIdx}-${retryTick}-${itemKey(item)}`}
@@ -204,7 +262,10 @@ export default function Learn() {
             onAnalyse={analyseItem}
             getEngine={getEngine}
             ratingDelta={ratingDelta}
+            course={course}
+            onShowCourse={() => setShowCourse(true)}
           />
+          {showCourse && course && <CourseSheet course={course} onClose={() => setShowCourse(false)} />}
         </div>
       </div>
     )
@@ -277,6 +338,16 @@ function itemKey(item: SessionItem): string {
 }
 
 // ---------- Rendu d'un exercice ----------
+// Cours détaillé associé à l'exercice (finale → id, tactique → thème,
+// stratégie → thème de la carte, ouverture → principes généraux).
+function courseIdForItem(item: SessionItem): string | null {
+  return item.kind === 'endgame' ? item.endgame.id
+    : item.kind === 'tactic' ? item.theme
+    : item.kind === 'strategy' ? (item.card.themes.find((t) => courseFor(t)) ?? item.card.id)
+    : item.kind === 'opening' ? 'opening-principles'
+    : null
+}
+
 interface ExerciseProps {
   item: SessionItem
   phase: ItemPhase
@@ -287,23 +358,12 @@ interface ExerciseProps {
   onAnalyse: () => void
   getEngine: () => Engine
   ratingDelta: number | null
+  course: Course | null
+  onShowCourse: () => void
 }
 
 function ExerciseView(props: ExerciseProps) {
-  const { item, phase, setPhase, onNext } = props
-  const [showCourse, setShowCourse] = useState(false)
-
-  // Cours détaillé associé à l'exercice (finale → id, tactique → thème,
-  // stratégie → thème de la carte, ouverture → principes généraux).
-  const courseId =
-    item.kind === 'endgame' ? item.endgame.id
-    : item.kind === 'tactic' ? item.theme
-    : item.kind === 'strategy' ? (item.card.themes.find((t) => courseFor(t)) ?? item.card.id)
-    : item.kind === 'opening' ? 'opening-principles'
-    : null
-  const course = courseId ? courseFor(courseId) : null
-
-  const courseSheet = showCourse && course && <CourseSheet course={course} onClose={() => setShowCourse(false)} />
+  const { item, phase, setPhase, onNext, course, onShowCourse } = props
 
   const lesson =
     item.kind === 'endgame' ? { title: item.endgame.title, text: item.endgame.lesson }
@@ -318,7 +378,7 @@ function ExerciseView(props: ExerciseProps) {
         <CoachBubble mood="happy" headline={lesson.title}>{lesson.text}</CoachBubble>
         {course && (
           <button
-            onClick={() => setShowCourse(true)}
+            onClick={onShowCourse}
             className="mx-auto cursor-pointer rounded-full bg-surface-2 px-4 py-1.5 text-sm font-semibold text-neutral-300 hover:bg-surface-3"
           >
             ❓ Voir le cours complet
@@ -327,7 +387,6 @@ function ExerciseView(props: ExerciseProps) {
         <Cta className="w-full" onClick={() => setPhase('play')}>
           C'est parti
         </Cta>
-        {courseSheet}
       </div>
     )
   }
@@ -365,22 +424,12 @@ function ExerciseView(props: ExerciseProps) {
   )
 
   return (
-    <div className="relative flex flex-1 flex-col">
-      {course && (
-        <button
-          onClick={() => setShowCourse(true)}
-          title="Voir le cours"
-          className="absolute top-1 right-4 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-surface-3 text-sm font-black text-neutral-300 shadow hover:bg-surface-3/70"
-        >
-          ?
-        </button>
-      )}
+    <div className="flex flex-1 flex-col">
       {(item.kind === 'tactic' || item.kind === 'strategy') && <PuzzleExercise {...props} />}
       {item.kind === 'endgame' && <EndgameExercise {...props} />}
       {item.kind === 'opening' && <OpeningExercise {...props} />}
       {item.kind === 'mistake' && <MistakeExercise {...props} />}
       {verdictBar}
-      {courseSheet}
     </div>
   )
 }
