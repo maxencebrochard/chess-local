@@ -14,26 +14,37 @@ Toute l'UI, les commentaires de code et les messages de commit sont en français
 ```bash
 npm ci                 # requis avant tout : sans node_modules, `oxlint` et `tsc` sont introuvables
 npm run dev            # Vite, http://localhost:5173
-npm run build          # tsc -b && vite build (le typecheck n'existe que ici, pas de script séparé)
-npm run lint           # oxlint (config .oxlintrc.json)
+npm run build          # tsc -b && vite build
+npm run check          # lint (oxlint) + typecheck (tsc -b) : à lancer avant tout commit
 npm run preview        # sert dist/
 ```
 
 Il n'y a pas de tests unitaires.
-Les tests sont des scripts E2E Playwright en Python, un fichier = une suite, lancés un par un :
+Les tests sont des suites E2E Playwright en Python (`e2e/test_*.py`), lancées par `e2e/run.py` :
 
 ```bash
-npx vite --port 5199               # les suites visent http://localhost:5199 par défaut
-python3 e2e/test_learn.py          # Apprendre
-python3 e2e/test_v4.py             # entraîneur, analyse mobile, accueil, puzzles
-python3 e2e/test_all_buttons.py    # un assert d'effet par bouton de l'app
-BASE=https://maxencebrochard.github.io/chess-local python3 e2e/test_learn.py   # contre la prod
+npm run test:e2e                          # build de prod servi sous /chess-local/ (comme GitHub Pages), toutes les suites
+npm run test:e2e -- --suite learn         # une seule suite : learn, v4, all_buttons, pwa (cumulable : --suite learn --suite v4)
+npm run test:e2e:dev                      # serveur de dev : StrictMode double les updaters et révèle les effets de bord mal placés
+BASE=https://maxencebrochard.github.io/chess-local npm run test:e2e   # contre la prod déployée, sans serveur local
+E2E_LIVE=1 npm run test:e2e -- --suite all_buttons                    # API chess.com réelle au lieu de la fixture
 ```
 
-Chaque suite imprime `[PASS]`/`[FAIL]` par check et écrit ses captures dans `e2e/shots/` (gitignoré).
-Elles pré-remplissent `localStorage['chess-local-settings']` au format Zustand persist (`{state: {...}, version: 0}`) avec `reviewDepth: 'fast'` et les sons coupés.
-Changer la forme du store `src/store/settings.ts` impose de mettre à jour ces seeds.
-`test_all_buttons.py` appelle la vraie API chess.com (réseau requis).
+Prérequis hors `npm ci` : `pip install -r e2e/requirements.txt` puis `python3 -m playwright install chromium`.
+`e2e/run.py` démarre son propre serveur sur un port libre, vérifie que c'est bien cette app qui répond, surveille le serveur pendant les suites et l'arrête toujours.
+Ne jamais lancer une suite contre un serveur démarré à la main sur un port fixe : un serveur mort ou fantôme a déjà fait chercher un bug qui n'existait pas.
+Le code de sortie est la vérité : non nul dès qu'un check échoue, qu'une page lève une exception (`pageerror`) ou qu'un appel chess.com sort de la fixture.
+
+Écrire une suite : tout passe par `e2e/helpers.py`.
+`Checker` porte les checks (`check`, `appears`) et le code de sortie, `mobile_context`/`desktop_context` créent des contextes surveillés (iPhone 14 Pro tactile, `standalone=True` pour le viewport de la PWA installée), `drag_piece` fait un vrai drag TACTILE via CDP.
+Un check doit pouvoir échouer : pas de `check(nom, True)`, pas d'attente nue dont l'échec interrompt la suite (utiliser `ck.appears`).
+Les contextes pré-remplissent `localStorage['chess-local-settings']` au format Zustand persist (`{state: {...}, version: 0}`) avec `reviewDepth: 'fast'` et les sons coupés.
+Changer la forme du store `src/store/settings.ts` impose de mettre à jour `DEFAULT_SETTINGS` dans `e2e/helpers.py`.
+L'API chess.com est simulée par `e2e/fixtures/chesscom.json` (parties fictives) : tout nouvel appel réseau doit y être ajouté.
+`test_pwa.py` ne tourne que sur le build local : sous-chemin, manifest, service worker, précache, puis redémarrage avec le serveur réellement tué (`set_offline` ne coupe pas le réseau du service worker).
+Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` : deux lancements simultanés ne se gênent pas.
+Les captures vont dans `e2e/shots/` (gitignoré).
+`e2e/qa/` est l'archive de la campagne QA du 2026-09-18 (constats, scripts de repro), pas une suite : voir son README.
 
 Autres scripts :
 

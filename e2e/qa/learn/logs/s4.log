@@ -1,0 +1,30 @@
+
+=== idx=2 Sicilian Defense: Wing Gambit, Carlsbad Variation eco=B20 color=w depth=6 diff=1060 uci=['e2e4', 'c7c5', 'b2b4', 'c5b4', 'a2a3', 'b4a3']
+ leçon: Défense sicilienne | Objectif : dérouler les 3 premiers coups de la Défense sicilienne sans te tromper. En cas d'erreur, je te montre le bon coup et on continue.
+ header drill: {'text': 'Défense sicilienne — les 3 premiers coups, côté blanc', 'truncated': True, 'sw': 384, 'cw': 369}
+     faute exprès au demi-coup 2: Ba6 au lieu de b4
+     message: Pas la ligne : ici, la théorie joue b4. Rejoue-le. | pièce revenue: True
+ verdict: ✓ Réussi ! | (+33) | ↺ | Réessayer | ♞ | Analyser | Suivant | elo: {'key': 'learn-opening', 'value': 833, 'games': 1}
+ LOGS: []
+
+=== idx=4 Queen's Gambit Declined: Austrian Attack, Salvio Countergambit eco=D06 color=w depth=6 diff=1060 uci=['d2d4', 'd7d5', 'c2c4', 'c7c5', 'd4c5', 'd5d4']
+ leçon: Gambit dame refusé | Objectif : dérouler les 3 premiers coups de la Gambit dame refusé sans te tromper. En cas d'erreur, je te montre le bon coup et on continue.
+ header drill: {'text': 'Gambit dame refusé — les 3 premiers coups, côté blanc', 'truncated': True, 'sw': 398, 'cw': 369}
+     faute exprès au demi-coup 0: Na3 au lieu de d4
+     message: Pas la ligne : ici, la théorie joue d4. Rejoue-le. | pièce revenue: True
+     faute exprès au demi-coup 2: Qd3 au lieu de c4
+     message: Pas la ligne : ici, la théorie joue c4. Rejoue-le. | pièce revenue: True
+ verdict: ✗ Raté | (-7) | ↺ | Réessayer | ♞ | Analyser | Suivant | elo: {'key': 'learn-opening', 'value': 793, 'games': 1}
+ LOGS: []
+
+=== idx=5 London System eco=A48 color=w depth=6 diff=1060 uci=['d2d4', 'g8f6', 'g1f3', 'g7g6', 'c1f4', 'f8g7', 'e2e3']
+ leçon: Système de Londres | Objectif : dérouler les 3 premiers coups de la Système de Londres sans te tromper. En cas d'erreur, je te montre le bon coup et on continue.
+ header drill: {'text': 'Système de Londres — les 3 premiers coups, côté blanc', 'truncated': True, 'sw': 399, 'cw': 369}
+ verdict: ✓ Réussi ! | (+33) | ↺ | Réessayer | ♞ | Analyser | Suivant | elo: {'key': 'learn-opening', 'value': 833, 'games': 1}
+ LOGS: []
+
+=== idx=0 Italian Game: Anti-Fried Liver Defense eco=C50 color=w depth=6 diff=1060 uci=['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4', 'h7h6']
+ leçon: Partie italienne | Objectif : dérouler les 3 premiers coups de la Partie italienne sans te tromper. En cas d'erreur, je te montre le bon coup et on continue.
+ header drill: {'text': 'Partie italienne — les 3 premiers coups, côté blanc', 'truncated': False, 'sw': 369, 'cw': 369}
+ verdict: ✓ Réussi ! | (+33) | ↺ | Réessayer | ♞ | Analyser | Suivant | elo: {'key': 'learn-opening', 'value': 833, 'games': 1}
+ LOGS: []

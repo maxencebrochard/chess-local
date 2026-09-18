@@ -1,0 +1,18 @@
+  mistake: 1 Partie analysée | w joue Nxf7 best c4f7 blunder
+  mistake: 2 Partie analysée | w joue Be2 best d1e2 mistake
+compteur Mes erreurs: 🩹 Mes erreurs 2
+séance: [(2, 'Be2'), (1, 'Nxf7')] | ? visible: 0
+leçon: Répare ta partie | Partie analysée : tu avais joué ♝e2, et ce coup t'a coûté cher. Reprends la position et trouve plus fort.
+bandeau: Partie analysée — tu avais joué ♗e2. Trouve mieux.
+ pendant vérif: 0
+ après coup fautif rejoué: {'hash': '#/apprendre', 'header': '🩹 Mes erreurs1/2', 'verdict': '✗ Raté | ↺ | Réessayer | ♞ | Analyser | Suivant', 'stored': {'idx': 0, 'phase': 'fail', 'results': [False], 'scored': [0]}} | db: [(1, 0, 0), (2, 1, 0)]
+ sur /analyse: #/analyse | bouton retour: 1
+ retour 1: {'hash': '#/apprendre', 'header': '🩹 Mes erreurs1/2', 'verdict': '✗ Raté | ↺ | Réessayer | ♞ | Analyser | Suivant', 'stored': {'idx': 0, 'phase': 'fail', 'results': [False], 'scored': [0]}}
+ retour 2: {'hash': '#/apprendre', 'header': '🩹 Mes erreurs1/2', 'verdict': '✗ Raté | ↺ | Réessayer | ♞ | Analyser | Suivant', 'stored': {'idx': 0, 'phase': 'fail', 'results': [False], 'scored': [0]}}
+ après bon coup (réessai): {'hash': '#/apprendre', 'header': '🩹 Mes erreurs1/2', 'verdict': '✓ Réussi ! | ↺ | Réessayer | ♞ | Analyser | Suivant', 'stored': {'idx': 0, 'phase': 'success', 'results': [False], 'scored': [0]}} | db: [(1, 0, 0), (2, 1, 1)]
+ item 2: {'hash': '#/apprendre', 'header': '🩹 Mes erreurs2/2', 'verdict': None, 'stored': {'idx': 1, 'phase': 'lesson', 'results': [False], 'scored': [0]}}
+ après F5: {'hash': '#/apprendre', 'header': None, 'verdict': None, 'stored': None} | accueil visible: 1
+ item erreur réussi: {'hash': '#/apprendre', 'header': '🩹 Mes erreurs1/1', 'verdict': '✓ Réussi ! | ↺ | Réessayer | ♞ | Analyser | Suivant', 'stored': {'idx': 0, 'phase': 'success', 'results': [True], 'scored': [0]}}
+ après history.back depuis /analyse: {'hash': '#/apprendre', 'header': None, 'verdict': None, 'stored': None} | accueil: 1
+sessions: [('mistakes', '2', 0, None), ('mistakes', '1', 1, None)]
+LOGS: []

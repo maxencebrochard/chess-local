@@ -1,0 +1,77 @@
+MODE=dev-server BASE=http://localhost:5199
+
+=== puzzles | standalone852+insets-emules | fix=- | joueur=w scroller_du_board=main.pt-safe min-w-0 flex-1 overflo scrollers=[{'el': 'main.pt-safe min-w-0 flex-1 overflow-y-auto', 'top': 0, 'max': 10}] boardTop=79
+[ok    ] pièce ADVERSE f7 drag bas 220px                            hit=piece:bR         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(79, 79, 79) scrolled=null nav=None sel=[]
+[SCROLL] case VIDE a4 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  1 boardTop=(79, 69, 69) scrolled={"main.pt-safe min-w-0 flex-1 overflow-y-auto": [0, 10]} nav=None sel=[]
+[ok    ] case VIDE a4 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(79, 79, 79) scrolled=null nav=None sel=[]
+[SCROLL] pièce à moi a8 saisie sur sa coordonnée '8'                hit=coordonnee:8     moved=False clone=False pcancel=1 scrollEv=  2 boardTop=(79, 69, 69) scrolled={"main.pt-safe min-w-0 flex-1 overflow-y-auto": [0, 10]} nav=None sel=[]
+[ok    ] pièce à moi a8 long drag vertical                          hit=piece:wR         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(79, 79, 79) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag a8->b8                                 hit=piece:wR         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(79, 79, 79) scrolled=null nav=None sel=[]
+   erreurs console touchend: 2 | autres: []
+
+=== rush | standalone852+insets-emules | fix=- | joueur=w scroller_du_board=main.pt-safe min-w-0 flex-1 overflo scrollers=[] boardTop=79
+[ok    ] pièce ADVERSE e8 drag bas 220px                            hit=piece:bR         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(79, 79, 79) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h5 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(79, 79, 79) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h5 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(79, 79, 79) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi a3 saisie sur sa coordonnée '3'                hit=coordonnee:3     moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(79, 79, 79) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi d4 long drag vertical                          hit=piece:wB         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(79, 79, 79) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag d2->e2                                 hit=piece:wQ         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(79, 79, 79) scrolled=null nav=None sel=[]
+   erreurs console touchend: 0 | autres: ["CONSOLE.error: %s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing background backgroundColor"]
+
+=== apprendre:Finales | standalone852+insets-emules : ERREUR DE SCRIPT TimeoutError: Page.wait_for_selector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator("[data-square]") to be visible
+
+
+=== apprendre:Tactiques | standalone852+insets-emules : ERREUR DE SCRIPT TimeoutError: Page.wait_for_selector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator("[data-square]") to be visible
+
+
+=== apprendre:Ouvertures | standalone852+insets-emules : ERREUR DE SCRIPT TimeoutError: Page.wait_for_selector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator("[data-square]") to be visible
+
+
+=== apprendre:Stratégie | standalone852+insets-emules : ERREUR DE SCRIPT TimeoutError: Page.wait_for_selector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator("[data-square]") to be visible
+
+
+=== puzzles | safari660 | fix=- | joueur=w scroller_du_board=main.pt-safe min-w-0 flex-1 overflo scrollers=[{'el': 'main.pt-safe min-w-0 flex-1 overflow-y-auto', 'top': 0, 'max': 109}] boardTop=20
+[ok    ] pièce ADVERSE e8 drag bas 220px                            hit=piece:bK         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(20, 20, 20) scrolled=null nav=None sel=[]
+[SCROLL] case VIDE b4 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  8 boardTop=(20, -65, -89) scrolled={"main.pt-safe min-w-0 flex-1 overflow-y-auto": [0, 109]} nav=None sel=[]
+[ok    ] case VIDE b4 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(20, 20, 20) scrolled=null nav=None sel=[]
+   (aucune pièce à moi sur une case à coordonnée dans cette position)
+[ok    ] pièce à moi h5 long drag vertical                          hit=piece:wP         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(20, 20, 20) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag d3->d4                                 hit=piece:wQ         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(20, 20, 20) scrolled=null nav=None sel=[]
+   erreurs console touchend: 1 | autres: []
+
+=== rush | safari660 | fix=- | joueur=b scroller_du_board=main.pt-safe min-w-0 flex-1 overflo scrollers=[] boardTop=20
+[ok    ] pièce ADVERSE g1 drag bas 220px                            hit=piece:wK         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(20, 20, 20) scrolled=null nav=None sel=[]
+[ok    ] case VIDE g5 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(20, 20, 20) scrolled=null nav=None sel=[]
+[ok    ] case VIDE g5 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(20, 20, 20) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi h7 saisie sur sa coordonnée '7'                hit=coordonnee:7     moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(20, 20, 20) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi f4 long drag vertical                          hit=piece:bB         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(20, 20, 20) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag f4->c1                                 hit=piece:bB         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(20, 20, 20) scrolled=null nav=None sel=[]
+   erreurs console touchend: 0 | autres: []
+
+=== apprendre:Finales | safari660 : ERREUR DE SCRIPT TimeoutError: Page.wait_for_selector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator("[data-square]") to be visible
+
+
+=== apprendre:Tactiques | safari660 : ERREUR DE SCRIPT TimeoutError: Page.wait_for_selector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator("[data-square]") to be visible
+
+
+=== apprendre:Ouvertures | safari660 : ERREUR DE SCRIPT TimeoutError: Page.wait_for_selector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator("[data-square]") to be visible
+
+
+=== apprendre:Stratégie | safari660 : ERREUR DE SCRIPT TimeoutError: Page.wait_for_selector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator("[data-square]") to be visible
+

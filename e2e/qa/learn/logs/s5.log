@@ -1,0 +1,41 @@
+== partie 1 (Blancs)
+   1. e4 -> bot e7e6
+   2. Nf3 -> bot d7d5
+   3. Bc4 -> bot d5c4
+   4. d3 -> bot d8d7
+   5. O-O -> bot c7c5
+== partie 2 (Noirs)
+   bot ouvre: move e2e3
+   1. e5 -> bot d2d3
+   2. Nc6 -> bot b2b3
+   3. Nf6 -> bot c1b2
+   4. Bc5 -> bot d3d4
+   5. d6 -> bot g1f3
+  game: bot w 0-1 par abandon | 1. e4 e6 2. Nf3 d5 3. Bc4 dxc4 4. d3 Qd7 5. O-O c5 0-1
+  game: bot w 0-1 par abandon | 1. e4 e6 2. Nf3 d5 3. Bc4 dxc4 4. d3 Qd7 5. O-O c5 0-1
+  game: bot b 1-0 par abandon | 1. e3 e5 2. d3 Nc6 3. b3 Nf6 4. Bb2 Bc5 5. d4 d6 6. Nf3 1-0
+  game: bot b 1-0 par abandon | 1. e3 e5 2. d3 Nc6 3. b3 Nf6 4. Bb2 Bc5 5. d4 d6 6. Nf3 1-0
+== buildDrillLines:
+   C50 Italian Game: Anti-Fried Liver Defense w joué 0 perdu 0 6 demi-coups
+   C60 Ruy Lopez: Alapin Defense w joué 0 perdu 0 6 demi-coups
+   B20 Sicilian Defense: Wing Gambit, Carlsbad Variation w joué 0 perdu 0 6 demi-coups
+   C00 French Defense: Diemer-Duhm Gambit Accepted w joué 0 perdu 0 6 demi-coups
+   D06 Queen's Gambit Declined: Austrian Attack, Salvio Countergambit w joué 0 perdu 0 6 demi-coups
+   A48 London System w joué 0 perdu 0 7 demi-coups
+   B10 Caro-Kann Defense: Accelerated Panov Attack, Pseudo-Scandinavian w joué 0 perdu 0 6 demi-coups
+   B01 Scandinavian Defense: Blackburne Gambit w joué 0 perdu 0 6 demi-coups
+== buildDrillLines après seed Caro-Kann (2 défaites, Noirs):
+   B15 Caro-Kann Defense b joué 2 perdu 2 6 demi-coups
+   C50 Italian Game: Anti-Fried Liver Defense w joué 0 perdu 0 6 demi-coups
+   C60 Ruy Lopez: Alapin Defense w joué 0 perdu 0 6 demi-coups
+   B20 Sicilian Defense: Wing Gambit, Carlsbad Variation w joué 0 perdu 0 6 demi-coups
+   C00 French Defense: Diemer-Duhm Gambit Accepted w joué 0 perdu 0 6 demi-coups
+   D06 Queen's Gambit Declined: Austrian Attack, Salvio Countergambit w joué 0 perdu 0 6 demi-coups
+   A48 London System w joué 0 perdu 0 7 demi-coups
+   B10 Caro-Kann Defense: Accelerated Panov Attack, Pseudo-Scandinavian w joué 0 perdu 0 6 demi-coups
+   B01 Scandinavian Defense: Blackburne Gambit w joué 0 perdu 0 6 demi-coups
+== drill: Caro-Kann Defense b depth 6 ['e2e4', 'c7c6', 'd2d4', 'd7d5', 'b1c3', 'd5e4']
+ leçon: Défense Caro-Kann | Objectif : dérouler les 3 premiers coups de la Défense Caro-Kann sans te tromper. En cas d'erreur, je te montre le bon coup et on continue.
+ orientation noire ? a8 en bas-droite: True
+ verdict: ✓ Réussi ! | (+33) | ↺ | Réessayer | ♞ | Analyser | Suivant {'key': 'learn-opening', 'value': 833, 'games': 1}
+LOGS: []

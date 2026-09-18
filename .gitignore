@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 e2e/shots/
+
+# E2E
+__pycache__/
+# Captures des scripts de la campagne QA (volumineuses, régénérables)
+e2e/qa/**/shots/
+# Les journaux de la campagne sont des preuves citées par les constats : ils restent versionnés malgré `logs` et `*.log` plus haut.
+!e2e/qa/**/logs/
+!e2e/qa/**/*.log

@@ -1,0 +1,200 @@
+
+== TABS 393x852 navHeight=[48]
+   {'label': '♞Accueil', 'w': 56.1, 'h': 47, 'fontSize': '10px', 'textW': 35.2, 'overflow': -21}
+   {'label': '♟Jouer', 'w': 56.1, 'h': 47, 'fontSize': '10px', 'textW': 27.2, 'overflow': -28.9}
+   {'label': '🧩Puzzles', 'w': 56.1, 'h': 47, 'fontSize': '10px', 'textW': 36.7, 'overflow': -19.5}
+   {'label': '🎓Apprendre', 'w': 56.1, 'h': 47, 'fontSize': '10px', 'textW': 50, 'overflow': -6.1}
+   {'label': '🔍Analyse', 'w': 56.1, 'h': 47, 'fontSize': '10px', 'textW': 37.4, 'overflow': -18.7}
+   {'label': '📚Archive', 'w': 56.1, 'h': 47, 'fontSize': '10px', 'textW': 35.8, 'overflow': -20.4}
+   {'label': '📊Stats', 'w': 56.1, 'h': 47, 'fontSize': '10px', 'textW': 24.6, 'overflow': -31.5}
+
+== CONTRASTES
+{
+ "text-neutral-300": {
+  "css": "oklch(0.87 0 0)",
+  "rgb": [
+   212,
+   212,
+   212
+  ],
+  "surface": 10.44,
+  "surface-2": 9.1,
+  "surface-3": 7.74
+ },
+ "text-neutral-400": {
+  "css": "oklch(0.708 0 0)",
+  "rgb": [
+   161,
+   161,
+   161
+  ],
+  "surface": 5.99,
+  "surface-2": 5.22,
+  "surface-3": 4.44
+ },
+ "text-neutral-500": {
+  "css": "oklch(0.556 0 0)",
+  "rgb": [
+   115,
+   115,
+   115
+  ],
+  "surface": 3.26,
+  "surface-2": 2.85,
+  "surface-3": 2.42
+ },
+ "text-neutral-600": {
+  "css": "oklch(0.439 0 0)",
+  "rgb": [
+   82,
+   82,
+   82
+  ],
+  "surface": 1.98,
+  "surface-2": 1.73,
+  "surface-3": 1.47
+ },
+ "text-accent": {
+  "css": "rgb(129, 182, 76)",
+  "rgb": [
+   129,
+   182,
+   76
+  ],
+  "surface": 6.43,
+  "surface-2": 5.61,
+  "surface-3": 4.77
+ },
+ "text-red-400": {
+  "css": "oklch(0.704 0.191 22.216)",
+  "rgb": [
+   255,
+   100,
+   103
+  ],
+  "surface": 5.36,
+  "surface-2": 4.67,
+  "surface-3": 3.97
+ },
+ "white-on-accent": 2.41
+}
+
+== CIBLES < 44px et boutons sans nom accessible (393x852)
+  /: 17 interactifs, 0 sous 44px (hors nav)
+  /jouer: 31 interactifs, 0 sous 44px (hors nav)
+      NONAME BUTTON text='3 | 2' title=None role=None pressed=None checked=None 80x44
+  /puzzles: 10 interactifs, 0 sous 44px (hors nav)
+  /rush: 10 interactifs, 0 sous 44px (hors nav)
+  /apprendre: 13 interactifs, 0 sous 44px (hors nav)
+  /analyse: 12 interactifs, 0 sous 44px (hors nav)
+  /archive: 7 interactifs, 0 sous 44px (hors nav)
+  /stats: 18 interactifs, 11 sous 44px (hors nav)
+      small BUTTON '' 68x36
+      small BUTTON '' 68x36
+      small BUTTON '' 68x36
+      small BUTTON '' 68x36
+      small BUTTON '' 44x24
+      small BUTTON '' 44x24
+      small BUTTON 'Rapide' 75x36
+      small BUTTON 'Équilibré' 87x36
+      small BUTTON 'Profond' 81x36
+      small BUTTON '⬇ Exporter tout' 130x32
+      small BUTTON '⬆ Restaurer' 108x32
+      NONAME BUTTON text='' title=Vert role=None pressed=None checked=None 68x36
+      NONAME BUTTON text='' title=Bois role=None pressed=None checked=None 68x36
+      NONAME BUTTON text='' title=Océan role=None pressed=None checked=None 68x36
+      NONAME BUTTON text='' title=Améthyste role=None pressed=None checked=None 68x36
+      NONAME BUTTON text='' title=None role=None pressed=None checked=None 44x24
+      NONAME BUTTON text='' title=None role=None pressed=None checked=None 44x24
+  /import: 10 interactifs, 2 sous 44px (hors nav)
+      small INPUT 'Ton pseudo chess.com' 241x40
+      small BUTTON 'Connecter' 112x40
+
+== TABS 320x568 navHeight=[48]
+   {'label': '♞Accueil', 'w': 45, 'h': 47, 'fontSize': '10px', 'textW': 35.2, 'overflow': -9.8}
+   {'label': '♟Jouer', 'w': 45, 'h': 47, 'fontSize': '10px', 'textW': 27.2, 'overflow': -17.8}
+   {'label': '🧩Puzzles', 'w': 45, 'h': 47, 'fontSize': '10px', 'textW': 36.7, 'overflow': -8.3}
+   {'label': '🎓Apprendre', 'w': 50, 'h': 47, 'fontSize': '10px', 'textW': 50, 'overflow': 0}
+   {'label': '🔍Analyse', 'w': 45, 'h': 47, 'fontSize': '10px', 'textW': 37.4, 'overflow': -7.6}
+   {'label': '📚Archive', 'w': 45, 'h': 47, 'fontSize': '10px', 'textW': 35.8, 'overflow': -9.3}
+   {'label': '📊Stats', 'w': 45, 'h': 47, 'fontSize': '10px', 'textW': 24.6, 'overflow': -20.4}
+
+== RELOAD sur chaque route
+   / {'hash': '#/', 'txt': 251} OK
+   /jouer {'hash': '#/jouer', 'txt': 367} OK
+   /puzzles {'hash': '#/puzzles', 'txt': 134} OK
+   /rush {'hash': '#/rush', 'txt': 178} OK
+   /apprendre {'hash': '#/apprendre', 'txt': 336} OK
+   /analyse {'hash': '#/analyse', 'txt': 183} OK
+   /archive {'hash': '#/archive', 'txt': 50} OK
+   /stats {'hash': '#/stats', 'txt': 614} OK
+   /import {'hash': '#/import', 'txt': 255} OK
+
+== BACK : chaîne accueil > tuile Rush > back ; accueil > import > back ; chaîne d'onglets
+   après tuile Rush: #/rush | liens de retour dans main: 0
+   back -> #/
+   après tuile chess.com: #/import | retour dans main: 0
+   back -> #/
+   chaîne back: ['#/stats', '#/archive', '#/analyse', '#/apprendre', '#/puzzles', '#/jouer', '#/']
+   history.length avant/après 3 re-taps sur l'onglet actif: 12 12
+   scrollTop de main après stats(300) -> archive: 0
+   scrollTop de main au retour sur stats: 0
+   logs: []
+
+== PAYSAGE 852x393 accueil: {'h1Top': -51, 'h1Bottom': -15, 'mainTop': 0, 'scrollTopMin': 0, 'jouerBottom': 457, 'vh': 393, 'scrollMax': 64}
+
+== TAB ORDER /
+   1 {'tag': 'A', 'text': '🧩 Problèmes 0 résolus · class', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0', 'focusVisible': True}
+   2 {'tag': 'A', 'text': '⏱ 800 Rapide', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   3 {'tag': 'A', 'text': '⚡ 800 Blitz', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   4 {'tag': 'A', 'text': '🚀 800 Bullet', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   5 {'tag': 'A', 'text': '🧩 800 Puzzles', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   6 {'tag': 'A', 'text': '🔍 Analyse Stockfish 18, bilan', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   7 {'tag': 'A', 'text': '⚡ Puzzle Rush 3 min, 5 min ou ', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   8 {'tag': 'A', 'text': '📚 Archive 0 partie', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   9 {'tag': 'A', 'text': '♟ chess.com Importer tes parti', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   10 {'tag': 'BUTTON', 'text': 'Jouer', 'outline': 'auto 1px rgb(255, 255, 255)', 'shadow': 'rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0', 'focusVisible': True}
+   11 None
+   12 {'tag': 'A', 'text': '♞Accueil', 'outline': 'auto 1px rgb(129, 182, 76)', 'shadow': 'none', 'focusVisible': True}
+   13 {'tag': 'A', 'text': '♟Jouer', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   14 {'tag': 'A', 'text': '🧩Puzzles', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+
+== TAB ORDER /stats
+   1 {'tag': 'BUTTON', 'text': 'Vert', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   2 {'tag': 'BUTTON', 'text': 'Bois', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   3 {'tag': 'BUTTON', 'text': 'Océan', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   4 {'tag': 'BUTTON', 'text': 'Améthyste', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   5 {'tag': 'BUTTON', 'text': '', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   6 {'tag': 'BUTTON', 'text': '', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   7 {'tag': 'BUTTON', 'text': 'Rapide', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   8 {'tag': 'BUTTON', 'text': 'Équilibré', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   9 {'tag': 'BUTTON', 'text': 'Profond', 'outline': 'auto 1px rgb(228, 226, 224)', 'shadow': 'none', 'focusVisible': True}
+   10 {'tag': 'BUTTON', 'text': '⬇ Exporter tout', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   11 {'tag': 'BUTTON', 'text': '⬆ Restaurer', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   12 None
+   13 {'tag': 'A', 'text': '♞Accueil', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   14 {'tag': 'A', 'text': '♟Jouer', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   15 {'tag': 'A', 'text': '🧩Puzzles', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   16 {'tag': 'A', 'text': '🎓Apprendre', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   17 {'tag': 'A', 'text': '🔍Analyse', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   18 {'tag': 'A', 'text': '📚Archive', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   19 {'tag': 'A', 'text': '📊Stats', 'outline': 'auto 1px rgb(129, 182, 76)', 'shadow': 'none', 'focusVisible': True}
+   20 {'tag': 'BUTTON', 'text': 'Vert', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   21 {'tag': 'BUTTON', 'text': 'Bois', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   22 {'tag': 'BUTTON', 'text': 'Océan', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+
+== TAB ORDER /import
+   1 {'tag': 'INPUT', 'text': 'Ton pseudo chess.com', 'outline': 'none 0px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   2 {'tag': 'SUMMARY', 'text': '📲 Partager directement depuis', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   3 None
+   4 {'tag': 'A', 'text': '♞Accueil', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   5 {'tag': 'A', 'text': '♟Jouer', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   6 {'tag': 'A', 'text': '🧩Puzzles', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   7 {'tag': 'A', 'text': '🎓Apprendre', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   8 {'tag': 'A', 'text': '🔍Analyse', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   9 {'tag': 'A', 'text': '📚Archive', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   10 {'tag': 'A', 'text': '📊Stats', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}
+   11 {'tag': 'INPUT', 'text': 'Ton pseudo chess.com', 'outline': 'none 0px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   12 {'tag': 'SUMMARY', 'text': '📲 Partager directement depuis', 'outline': 'auto 1px rgb(0, 95, 204)', 'shadow': 'none', 'focusVisible': True}
+   13 None
+   14 {'tag': 'A', 'text': '♞Accueil', 'outline': 'auto 1px rgb(212, 212, 212)', 'shadow': 'none', 'focusVisible': True}

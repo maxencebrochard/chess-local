@@ -1,0 +1,6 @@
+MODE=dev-server BASE=http://localhost:5199
+=== (a) parade touchstart.preventDefault, standalone 852
+   touchstart interceptés: 4 | tous cancelable+prevented: True | événements souris/click de compatibilité émis sur les cases: [] (attendu [] si preventDefault effectif)
+   tap e2 -> sélection ['e2'] | tap e4 -> e4=wP | drag e7->e5 -> e5=bP | a2 saisi par son chiffre -> a4=wP
+=== (b) chess.com mobile (iPhone 14 Pro émulé, 393px) : marge latérale du board
+   {'found': True, 'tag': 'wc-chess-board', 'left': 0.5, 'rightGap': 0.5, 'width': 392, 'vw': 393, 'touchAction': 'none', 'userSelect': 'none', 'coordsInsideBoard': True, 'coordsPointerEvents': 'auto'}

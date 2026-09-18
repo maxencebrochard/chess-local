@@ -1,0 +1,19 @@
+MODE=dev-server BASE=http://localhost:5199
+=== 1. CourseSheet (diagramme lecture seule dans une feuille overflow-y-auto), safari660
+   feuille: {'top': 0, 'max': 348, 'board': [37, 183, 320]} | nb pièces: 4
+   doigt posé sur une PIECE du diagramme (bK, touch-action=none), glissé haut 160px -> feuille scrollTop 0 -> 0 | pcancel=0 hit=piece:bK
+   doigt posé sur une CASE VIDE du diagramme (h6), glissé haut 160px -> feuille scrollTop 0 -> 145 | hit=case-vide
+=== 2. promotion : peut-on annuler ? (tap sur le voile hors boutons)
+   voile de promotion affiché: True
+   après tap sur le voile (coin a1, hors boutons) -> voile toujours affiché: True | g7 = wP
+   après bouton 'Précédent' -> voile toujours affiché: True
+=== 3/4. navigation par la barre du bas : history.length et scroll de <main> (safari660)
+   history.length : 2 -> 8 après 6 taps d'onglets (chaque tap empile une entrée = autant de cibles pour le swipe-back iOS)
+   <main> scrollé à 364 sur Jouer, puis onglet Puzzles -> mainScrollTop=109 (attendu 0) boardTop=-89
+=== 5. parade candidate touchstart.preventDefault (cases uniquement, pas le voile de promotion)
+   tap e2 -> sélection: ['e2'] (attendu ['e2'])
+   tap e4 -> e4 = wP (attendu wP)
+[ok    ] drag e7->e5                                                hit=piece:bP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(98, 98, 98) scrolled=null nav=None sel=[]
+   touchstart marqué prevented: False | events: ['touchstart:path(piece)']
+   promotion par tap sur la dame avec la parade active -> h8 = wQ (attendu wQ)
+   logs: ["CONSOLE.error: %s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing background backgroundColor", "CONSOLE.error: %s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing background backgroundColor", "CONSOLE.error: %s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. Removing background backgroundColor"]

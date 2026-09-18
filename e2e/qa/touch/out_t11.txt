@@ -1,0 +1,3 @@
+MODE=dev-server BASE=http://localhost:5199
+AVANT: hit=coordonnee:2 coup_joué=False pointercancel=1 main.scrollTop 0 -> 58 boardTop=(123, 98, 65) a4=None
+APRES: hit=piece:wP coup_joué=True pointercancel=0 main.scrollTop 0 -> 0 boardTop=(123, 123, 123) a4=wP

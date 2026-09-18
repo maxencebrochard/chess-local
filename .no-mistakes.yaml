@@ -1,0 +1,11 @@
+# Commandes canoniques du gate no-mistakes pour ce repo.
+# Lue depuis la branche de confiance (main) : une modification ici ne prend effet qu'après merge.
+commands:
+  # Python + Playwright (e2e/requirements.txt) sont des prérequis de la machine : le gate ne
+  # touche pas à l'environnement Python de l'utilisateur. e2e/run.py le signale s'ils manquent.
+  prepare: npm ci
+  lint: npm run check
+  test: npm run test:e2e
+
+# Pas de CI GitHub sur ce repo : le gate ne doit pas attendre des checks qui n'existeront jamais.
+no_ci: true

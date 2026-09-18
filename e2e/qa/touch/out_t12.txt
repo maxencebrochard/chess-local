@@ -1,0 +1,3 @@
+MODE=dev-server BASE=http://localhost:5199
+glyphes à l'ouverture (pion BLANC, trait aux blancs) : ['♕ U+2655', '♖ U+2656', '♗ U+2657', '♘ U+2658'] (blancs = U+2655..2658, noirs = U+265B..265E)
+glyphes après 'Précédent' (trait aux noirs)        : ['♛ U+265B', '♜ U+265C', '♝ U+265D', '♞ U+265E']

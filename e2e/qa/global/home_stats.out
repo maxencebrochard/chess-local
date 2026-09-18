@@ -1,0 +1,43 @@
+stores: {'games': 10, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 12, 'ratings': 7, 'rushScores': 4}
+HOME TEXT: ♞ ChessLocal | 🧩 Problèmes | 8 résolus · classement 1034 | Résolvez ! | ⏱ | 781 | Rapide | ⚡ | 868 | Blitz | 🚀 | 803 | Bullet | 🧩 | 1034 | Puzzles | 🔍 | Analyse | Stockfish 18, bilan, coach | ⚡ | Puzzle Rush | 3 min, 5 min ou survie | 📚 | Archive | 10 parties | ♟ | chess.com | Importer tes parties | Jouer
+[PASS] home: 8 résolus 
+[PASS] home: classement puzzles 1034 
+[PASS] home: rapide 781 / blitz 868 / bullet 803 
+[PASS] home: archive 10 parties 
+[FAIL] home: classement Illimité (822) visible quelque part 
+[PASS] home CTA Problèmes -> #/puzzles #/puzzles
+[PASS] home CTA Rapide -> #/stats #/stats
+[PASS] home CTA Blitz -> #/stats #/stats
+[PASS] home CTA Bullet -> #/stats #/stats
+[PASS] home CTA Analyse -> #/analyse #/analyse
+[PASS] home CTA Puzzle Rush -> #/rush #/rush
+[PASS] home CTA Archive -> #/archive #/archive
+[PASS] home CTA chess.com -> #/import #/import
+[PASS] home CTA Jouer -> #/jouer 
+STATS TEXT: Statistiques | 🚀 | 803 | Bullet · 1 parties | ⚡ | 868 | Blitz · 2 parties | ⏱ | 781 | Rapide · 3 parties | 🧩 | 1034 | Puzzles · 12 essais | Parties contre les bots | 3 gagnées | 2 nulles | 2 perdues | Puzzles |  | 8 résolus / 12 tentés (67 %) |  | Réglages |  | Thème de l'échiquier |  | Afficher les coups légaux | Sons |  | Profondeur du bilan de partie |  | Rapide | Équilibré | Profond |  | Rapide ≈ 30 s, Équilibré ≈ 1-2 min, Profond ≈ 4-5 min sur iPhone (partie de 40 coups). |  | Sauvegarde des données |  | ⬇ Exporter tout | ⬆ Restaurer |  | Classements, parties, puzzles, erreurs et réglages dans un fichier JSON. À faire de temps en temps : iOS peut purger le stockage d'une app web inutilisée.
+[PASS] stats: 3 gagnées 
+[PASS] stats: 2 nulles 
+[PASS] stats: 2 perdues 
+[PASS] stats: 8 résolus / 12 tentés (67 %) 
+[FAIL] stats: singulier '1 partie' (bullet) -> '1 parties' affiché
+[FAIL] stats: classement Illimité affiché 
+[FAIL] stats: records Puzzle Rush affichés 
+[FAIL] stats: domaines Apprendre affichés 
+barre V/N/D (%): [42.9, 28.6, 28.6]
+[PASS] stats: barre V/N/D = 42.9/28.6/28.6 
+settings après clics: {'state': {'themeId': 'purple', 'showLegalMoves': False, 'playSounds': True, 'chesscomUsername': '', 'reviewDepth': 'deep'}, 'version': 0}
+[PASS] réglages écrits 
+[PASS] réglages persistés après reload {'themeId': 'purple', 'showLegalMoves': False, 'playSounds': True, 'chesscomUsername': '', 'reviewDepth': 'deep'}
+UI après reload: {'theme': ['Améthyste'], 'toggles': [False, True], 'depth': ['Profond']}
+[PASS] UI reflète les réglages après reload 
+[FAIL] stats: pseudo chess.com éditable dans Réglages 
+[FAIL] stats: version/build affiché dans Réglages 
+[PASS] thème: puzzles rgb(136, 119, 183)
+[PASS] thème: analyse rgb(136, 119, 183)
+[PASS] thème: rush rgb(136, 119, 183)
+[PASS] thème: jouer rgb(136, 119, 183)
+[FAIL] thème: apprendre (exercice) None
+[PASS] thème: diagramme de cours rgb(136, 119, 183) (n=1)
+logs: []
+
+FAILS: ['home: classement Illimité (822) visible quelque part', "stats: singulier '1 partie' (bullet)", 'stats: classement Illimité affiché', 'stats: records Puzzle Rush affichés', 'stats: domaines Apprendre affichés', 'stats: pseudo chess.com éditable dans Réglages', 'stats: version/build affiché dans Réglages', 'thème: apprendre (exercice)']

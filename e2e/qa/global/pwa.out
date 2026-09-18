@@ -1,0 +1,43 @@
+head: {"manifest": "http://localhost:5198/manifest.webmanifest", "apple": "http://localhost:5198/apple-touch-icon.png", "viewport": "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover", "capable": "yes", "statusBar": "black-translucent", "title": "ChessLocal", "startup": 0}
+SW: {'scope': 'http://localhost:5198/', 'state': 'activated', 'script': 'http://localhost:5198/sw.js'}
+[PASS] SW enregistré et actif 
+caches: {'workbox-precache-v2-http://localhost:5198/': 21}
+[PASS] précache: stockfish-18-lite-single.wasm 
+[PASS] précache: stockfish-18-lite-single.js 
+[PASS] précache: puzzles.json 
+[PASS] précache: Move.mp3 
+[PASS] précache: Capture.mp3 
+[PASS] précache: GenericNotify.mp3 
+[PASS] précache: Confirmation.mp3 
+[PASS] précache: Error.mp3 
+[PASS] précache: LowTime.mp3 
+[PASS] précache: pwa-192.png 
+[PASS] précache: apple-touch-icon.png 
+[PASS] précache: index.html 
+[PASS] précache: manifest.webmanifest 
+storage estimate: {'usageMB': 25.4, 'quotaMB': 905} | persisted: False
+réseau (en ligne): []
+[PASS] offline: l'app démarre après reload 
+[PASS] offline: deep link + reload /jouer (texte=355)
+[PASS] offline: deep link + reload /puzzles (texte=132)
+[PASS] offline: deep link + reload /rush (texte=178)
+[PASS] offline: deep link + reload /apprendre (texte=328)
+[PASS] offline: deep link + reload /analyse (texte=182)
+[PASS] offline: deep link + reload /archive (texte=50)
+[PASS] offline: deep link + reload /stats (texte=612)
+[PASS] offline: deep link + reload /import (texte=254)
+réseau offline (routes): []
+[PASS] offline: puzzles.json se charge (board affiché) 
+[PASS] offline: Stockfish évalue dans Analyse 
+[PASS] offline: le bot répond (demi-coups=2)
+sons offline: {'Move': 2547, 'Capture': 3432, 'GenericNotify': 8011, 'Confirmation': 3493, 'Error': 1689, 'LowTime': 3122}
+[PASS] offline: sons servis par le cache 
+réseau offline (moteur/puzzles/sons): [] | logs: ['CONSOLE.warning: The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio', 'CONSOLE.warning: The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio']
+import offline: "Pas de connexion — l'import chess.com nécessite internet." | navigator.onLine = False
+[PASS] offline: import -> message propre en français 
+deep link offline, statut: 'Requête chess.com impossible (TypeError: Failed to fetch) — https://api.chess.com/pub/player/hikaru/games/archives'
+[FAIL] offline: deep link ?url= -> message propre (sans nom d'erreur technique ni URL brute) Requête chess.com impossible (TypeError: Failed to fetch) — https://api.chess.com/pub/player/hikaru/games/archives
+logs console offline: ['CONSOLE.error: Failed to load resource: net::ERR_INTERNET_DISCONNECTED', 'CONSOLE.error: Failed to load resource: net::ERR_INTERNET_DISCONNECTED', 'CONSOLE.error: Failed to load resource: net::ERR_INTERNET_DISCONNECTED']
+horodatage build visible: {'/': False, '/stats': False, '/import': True}
+
+FAILS: ["offline: deep link ?url= -> message propre (sans nom d'erreur technique ni URL brute)"]

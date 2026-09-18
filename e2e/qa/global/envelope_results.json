@@ -1,0 +1,1115 @@
+[
+ {
+  "vp": "m393x852",
+  "route": "/",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♞Accueil"
+  ],
+  "mainTextLen": 251,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x852",
+  "route": "/jouer",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♟Jouer"
+  ],
+  "mainTextLen": 367,
+  "mainScrollable": 172,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x852",
+  "route": "/puzzles",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🧩Puzzles"
+  ],
+  "mainTextLen": 135,
+  "mainScrollable": 0,
+  "squarePx": 48,
+  "boardTop": 20,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x852",
+  "route": "/rush",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 178,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x852",
+  "route": "/apprendre",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🎓Apprendre"
+  ],
+  "mainTextLen": 336,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x852",
+  "route": "/analyse",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🔍Analyse"
+  ],
+  "mainTextLen": 186,
+  "mainScrollable": 0,
+  "squarePx": 48,
+  "boardTop": 98,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x852",
+  "route": "/archive",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📚Archive"
+  ],
+  "mainTextLen": 50,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x852",
+  "route": "/stats",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📊Stats"
+  ],
+  "mainTextLen": 614,
+  "mainScrollable": 216,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x852",
+  "route": "/import",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 255,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x852",
+  "route": "/nimporte",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 0,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": [
+   "CONSOLE.warning: No routes matched location \"/nimporte\" ",
+   "CONSOLE.warning: No routes matched location \"/nimporte\" "
+  ]
+ },
+ {
+  "vp": "m393x660",
+  "route": "/",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♞Accueil"
+  ],
+  "mainTextLen": 251,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x660",
+  "route": "/jouer",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♟Jouer"
+  ],
+  "mainTextLen": 367,
+  "mainScrollable": 364,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x660",
+  "route": "/puzzles",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🧩Puzzles"
+  ],
+  "mainTextLen": 134,
+  "mainScrollable": 109,
+  "squarePx": 48,
+  "boardTop": 20,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x660",
+  "route": "/rush",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 178,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x660",
+  "route": "/apprendre",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🎓Apprendre"
+  ],
+  "mainTextLen": 336,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x660",
+  "route": "/analyse",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🔍Analyse"
+  ],
+  "mainTextLen": 183,
+  "mainScrollable": 0,
+  "squarePx": 48,
+  "boardTop": 98,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x660",
+  "route": "/archive",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📚Archive"
+  ],
+  "mainTextLen": 50,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x660",
+  "route": "/stats",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📊Stats"
+  ],
+  "mainTextLen": 614,
+  "mainScrollable": 408,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x660",
+  "route": "/import",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 255,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m393x660",
+  "route": "/nimporte",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 0,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": [
+   "CONSOLE.warning: No routes matched location \"/nimporte\" ",
+   "CONSOLE.warning: No routes matched location \"/nimporte\" "
+  ]
+ },
+ {
+  "vp": "m320x568",
+  "route": "/",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♞Accueil"
+  ],
+  "mainTextLen": 251,
+  "mainScrollable": 108,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m320x568",
+  "route": "/jouer",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♟Jouer"
+  ],
+  "mainTextLen": 367,
+  "mainScrollable": 532,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m320x568",
+  "route": "/puzzles",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🧩Puzzles"
+  ],
+  "mainTextLen": 135,
+  "mainScrollable": 128,
+  "squarePx": 39,
+  "boardTop": 20,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m320x568",
+  "route": "/rush",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 178,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m320x568",
+  "route": "/apprendre",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🎓Apprendre"
+  ],
+  "mainTextLen": 336,
+  "mainScrollable": 60,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m320x568",
+  "route": "/analyse",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🔍Analyse"
+  ],
+  "mainTextLen": 183,
+  "mainScrollable": 13,
+  "squarePx": 39,
+  "boardTop": 98,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m320x568",
+  "route": "/archive",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📚Archive"
+  ],
+  "mainTextLen": 50,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m320x568",
+  "route": "/stats",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📊Stats"
+  ],
+  "mainTextLen": 614,
+  "mainScrollable": 556,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m320x568",
+  "route": "/import",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 13,
+  "active": [],
+  "mainTextLen": 255,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [
+   "BUTTON.cursor-pointer rounded bg-accent px-4 py-2 font-bold text-wh right=333"
+  ],
+  "logs": []
+ },
+ {
+  "vp": "m320x568",
+  "route": "/nimporte",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 0,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": [
+   "CONSOLE.warning: No routes matched location \"/nimporte\" ",
+   "CONSOLE.warning: No routes matched location \"/nimporte\" "
+  ]
+ },
+ {
+  "vp": "m430x932",
+  "route": "/",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♞Accueil"
+  ],
+  "mainTextLen": 251,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m430x932",
+  "route": "/jouer",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♟Jouer"
+  ],
+  "mainTextLen": 367,
+  "mainScrollable": 92,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m430x932",
+  "route": "/puzzles",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🧩Puzzles"
+  ],
+  "mainTextLen": 135,
+  "mainScrollable": 0,
+  "squarePx": 52,
+  "boardTop": 20,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m430x932",
+  "route": "/rush",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 178,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m430x932",
+  "route": "/apprendre",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🎓Apprendre"
+  ],
+  "mainTextLen": 336,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m430x932",
+  "route": "/analyse",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🔍Analyse"
+  ],
+  "mainTextLen": 183,
+  "mainScrollable": 0,
+  "squarePx": 52,
+  "boardTop": 98,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m430x932",
+  "route": "/archive",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📚Archive"
+  ],
+  "mainTextLen": 50,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m430x932",
+  "route": "/stats",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📊Stats"
+  ],
+  "mainTextLen": 614,
+  "mainScrollable": 136,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m430x932",
+  "route": "/import",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 255,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "m430x932",
+  "route": "/nimporte",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 0,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": [
+   "CONSOLE.warning: No routes matched location \"/nimporte\" ",
+   "CONSOLE.warning: No routes matched location \"/nimporte\" "
+  ]
+ },
+ {
+  "vp": "land852x393",
+  "route": "/",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♞Accueil"
+  ],
+  "mainTextLen": 251,
+  "mainScrollable": 64,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "land852x393",
+  "route": "/jouer",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♟Jouer"
+  ],
+  "mainTextLen": 367,
+  "mainScrollable": 531,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "land852x393",
+  "route": "/puzzles",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🧩Puzzles"
+  ],
+  "mainTextLen": 135,
+  "mainScrollable": 0,
+  "squarePx": 37,
+  "boardTop": 53,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "land852x393",
+  "route": "/rush",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 178,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "land852x393",
+  "route": "/apprendre",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🎓Apprendre"
+  ],
+  "mainTextLen": 336,
+  "mainScrollable": 167,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "land852x393",
+  "route": "/analyse",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 4,
+  "active": [
+   "🔍Analyse"
+  ],
+  "mainTextLen": 447,
+  "mainScrollable": 163,
+  "squarePx": 37,
+  "boardTop": 49,
+  "over": [
+   "DIV.flex w-full flex-col gap-3 px-1 pb-2 md:w-96 md:px-0 md:py-2 right=856",
+   "DIV.hidden items-center justify-between rounded bg-surface-2 px- right=856",
+   "DIV.hidden space-y-1 rounded bg-surface-2 p-2 md:block right=856",
+   "DIV.hidden md:block md:h-auto md:min-h-0 md:flex-1 right=856",
+   "DIV.h-full overflow-y-auto rounded bg-surface-2 p-2 right=856"
+  ],
+  "logs": []
+ },
+ {
+  "vp": "land852x393",
+  "route": "/archive",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📚Archive"
+  ],
+  "mainTextLen": 50,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "land852x393",
+  "route": "/stats",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📊Stats"
+  ],
+  "mainTextLen": 614,
+  "mainScrollable": 375,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "land852x393",
+  "route": "/import",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 255,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "land852x393",
+  "route": "/nimporte",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 0,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": [
+   "CONSOLE.warning: No routes matched location \"/nimporte\" ",
+   "CONSOLE.warning: No routes matched location \"/nimporte\" "
+  ]
+ },
+ {
+  "vp": "tab820x1180",
+  "route": "/",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♞Accueil"
+  ],
+  "mainTextLen": 251,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "tab820x1180",
+  "route": "/jouer",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♟Jouer"
+  ],
+  "mainTextLen": 367,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "tab820x1180",
+  "route": "/puzzles",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🧩Puzzles"
+  ],
+  "mainTextLen": 135,
+  "mainScrollable": 0,
+  "squarePx": 49,
+  "boardTop": 400,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "tab820x1180",
+  "route": "/rush",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 178,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "tab820x1180",
+  "route": "/apprendre",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🎓Apprendre"
+  ],
+  "mainTextLen": 336,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "tab820x1180",
+  "route": "/analyse",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 191,
+  "active": [
+   "🔍Analyse"
+  ],
+  "mainTextLen": 443,
+  "mainScrollable": 0,
+  "squarePx": 80,
+  "boardTop": 272,
+  "over": [
+   "DIV.flex w-full flex-col gap-3 px-1 pb-2 md:w-96 md:px-0 md:py-2 right=1011",
+   "DIV.hidden items-center justify-between rounded bg-surface-2 px- right=1011",
+   "DIV.flex items-center gap-2 right=999",
+   "SPAN.text-xs text-neutral-500 right=947",
+   "BUTTON.h-6 w-11 cursor-pointer rounded-full p-0.5 transition bg-acc right=999"
+  ],
+  "logs": []
+ },
+ {
+  "vp": "tab820x1180",
+  "route": "/archive",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📚Archive"
+  ],
+  "mainTextLen": 50,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "tab820x1180",
+  "route": "/stats",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📊Stats"
+  ],
+  "mainTextLen": 614,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "tab820x1180",
+  "route": "/import",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 255,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "tab820x1180",
+  "route": "/nimporte",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 0,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": [
+   "CONSOLE.warning: No routes matched location \"/nimporte\" ",
+   "CONSOLE.warning: No routes matched location \"/nimporte\" "
+  ]
+ },
+ {
+  "vp": "desk1440x900",
+  "route": "/",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♞Accueil"
+  ],
+  "mainTextLen": 251,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "desk1440x900",
+  "route": "/jouer",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "♟Jouer"
+  ],
+  "mainTextLen": 367,
+  "mainScrollable": 24,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "desk1440x900",
+  "route": "/puzzles",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🧩Puzzles"
+  ],
+  "mainTextLen": 134,
+  "mainScrollable": 0,
+  "squarePx": 80,
+  "boardTop": 136,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "desk1440x900",
+  "route": "/rush",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 178,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "desk1440x900",
+  "route": "/apprendre",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🎓Apprendre"
+  ],
+  "mainTextLen": 336,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "desk1440x900",
+  "route": "/analyse",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "🔍Analyse"
+  ],
+  "mainTextLen": 443,
+  "mainScrollable": 0,
+  "squarePx": 80,
+  "boardTop": 132,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "desk1440x900",
+  "route": "/archive",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📚Archive"
+  ],
+  "mainTextLen": 50,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "desk1440x900",
+  "route": "/stats",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [
+   "📊Stats"
+  ],
+  "mainTextLen": 614,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "desk1440x900",
+  "route": "/import",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 255,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": []
+ },
+ {
+  "vp": "desk1440x900",
+  "route": "/nimporte",
+  "title": "ChessLocal — échecs 100 % local",
+  "overflowX": 0,
+  "mainOverflowX": 0,
+  "active": [],
+  "mainTextLen": 0,
+  "mainScrollable": 0,
+  "squarePx": null,
+  "boardTop": null,
+  "over": [],
+  "logs": [
+   "CONSOLE.warning: No routes matched location \"/nimporte\" ",
+   "CONSOLE.warning: No routes matched location \"/nimporte\" "
+  ]
+ }
+]

@@ -1,0 +1,35 @@
+nom de fichier: chesslocal-sauvegarde-2026-09-18.json
+clés: ['_app', '_version', '_date', 'games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions', 'settings']
+compteurs: {'games': 10, 'ratings': 7, 'puzzleAttempts': 12, 'rushScores': 4, 'mistakes': 3, 'learnSessions': 3}
+[PASS] export: toutes les tables de db.ts 
+[PASS] export: compteurs = données injectées 
+[PASS] export: réglages inclus 
+[PASS] export: nom chesslocal-sauvegarde-AAAA-MM-JJ.json 
+[FAIL] export: retour visuel après export (message/toast) 
+message: Sauvegarde restaurée. Recharge la page.
+IDB après restauration: {'games': 10, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 12, 'ratings': 7, 'rushScores': 4}
+[PASS] restore: données en base 
+[FAIL] restore: l'UI Stats se rafraîchit sans reload (toujours '0 gagnées')
+[FAIL] restore: réglages appliqués sans reload ['Vert']
+[FAIL] restore: un réglage touché avant reload ne détruit pas les réglages restaurés themeId=green reviewDepth=fast
+[PASS] restore: après reload les stats reviennent 
+C. message: Sauvegarde restaurée. Recharge la page. | dialogs: [] | IDB: {'games': 0, 'learnSessions': 0, 'mistakes': 0, 'puzzleAttempts': 0, 'ratings': 0, 'rushScores': 0}
+[FAIL] écrasement: confirmation demandée avant d'effacer 10 parties 
+[FAIL] écrasement: données conservées tant que non confirmé games=0
+D. [texte brut] message: 'Unexpected token \'b\', "bonjour, j"... is not valid JSON' | classes: mt-1 text-xs text-accent | données préservées: True {'games': 10, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 12, 'ratings': 7, 'rushScores': 4} | pageerrors: []
+D. [JSON tronqué] message: "Expected ',' or '}' after property value in JSON at position 40 (line 1 column 41)" | classes: mt-1 text-xs text-accent | données préservées: True {'games': 10, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 12, 'ratings': 7, 'rushScores': 4} | pageerrors: []
+D. [JSON null] message: "Cannot read properties of null (reading '_app')" | classes: mt-1 text-xs text-accent | données préservées: True {'games': 10, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 12, 'ratings': 7, 'rushScores': 4} | pageerrors: []
+D. [JSON tableau] message: "Ce fichier n'est pas une sauvegarde ChessLocal." | classes: mt-1 text-xs text-accent | données préservées: True {'games': 10, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 12, 'ratings': 7, 'rushScores': 4} | pageerrors: []
+D. [autre app] message: "Ce fichier n'est pas une sauvegarde ChessLocal." | classes: mt-1 text-xs text-accent | données préservées: True {'games': 10, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 12, 'ratings': 7, 'rushScores': 4} | pageerrors: []
+D. [tables non-tableaux] message: 'Sauvegarde restaurée. Recharge la page.' | classes: mt-1 text-xs text-accent | données préservées: True {'games': 10, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 12, 'ratings': 7, 'rushScores': 4} | pageerrors: []
+D. [lignes en conflit de clé] message: 'games.bulkAdd(): 1 of 2 operations failed. Errors: ConstraintError: Key already exists in the object store.' | classes: mt-1 text-xs text-accent | données préservées: True {'games': 10, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 12, 'ratings': 7, 'rushScores': 4} | pageerrors: []
+D. [version future] message: 'Sauvegarde restaurée. Recharge la page.' | classes: mt-1 text-xs text-accent | données préservées: False {'games': 0, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 12, 'ratings': 7, 'rushScores': 4} | pageerrors: []
+E. message: Sauvegarde restaurée. Recharge la page. | IDB: {'games': 2, 'learnSessions': 3, 'mistakes': 3, 'puzzleAttempts': 0, 'ratings': 2, 'rushScores': 0}
+[PASS] v1: parties/classements remplacés 
+[FAIL] v1: mistakes/learnSessions de l'ancien appareil NE survivent PAS (état cohérent) mistakes=3 learnSessions=3
+   réglages après reload (v1 sans reviewDepth): {'themeId': 'brown', 'showLegalMoves': True, 'playSounds': True, 'chesscomUsername': 'vieuxpseudo'}
+[PASS] v1: réglage manquant (reviewDepth) retombe sur le défaut ['Équilibré']
+F. message: Sauvegarde restaurée. Recharge la page. | app rend après reload: True | logs: []
+[PASS] réglages corrompus: l'app démarre encore 
+
+FAILS: ['export: retour visuel après export (message/toast)', "restore: l'UI Stats se rafraîchit sans reload", 'restore: réglages appliqués sans reload', 'restore: un réglage touché avant reload ne détruit pas les réglages restaurés', "écrasement: confirmation demandée avant d'effacer 10 parties", 'écrasement: données conservées tant que non confirmé', "v1: mistakes/learnSessions de l'ancien appareil NE survivent PAS (état cohérent)"]

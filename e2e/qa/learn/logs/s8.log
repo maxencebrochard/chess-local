@@ -1,0 +1,33 @@
+
+##### safari home: {"vw": 393, "vh": 660, "board": null, "header": null, "q": null, "verdictBar": null, "next": null, "cta": null, "nav": {"x": 0, "y": 0, "w": 0, "h": 0, "bottom": 0, "right": 0}, "scroller": null, "overflowX": 0}
+ leçon: {"vw": 393, "vh": 660, "board": null, "header": {"x": 0, "y": 12, "w": 393, "h": 52, "bottom": 64, "right": 393}, "q": {"x": 345, "y": 20, "w": 36, "h": 36, "bottom": 56, "right": 381}, "verdictBar": null, "next": null, "cta": {"x": 16, "y": 427, "w": 361, "h": 52, "bottom": 479, "right": 377}, "nav": {"x": 0, "y": 0, "w": 0, "h": 0, "bottom": 0, "right": 0}, "scroller": {"top": 0, "sh": 660, "ch": 660}, "overflowX": 0}
+  CTA visible sans scroll: True
+ feuille: {'top': 52.8125, 'bottom': 660, 'h': 607.1875, 'w': 393, 'boardW': 320, 'vh': 660}
+ jeu: {"vw": 393, "vh": 660, "board": {"x": 12, "y": 140, "w": 369, "h": 369, "bottom": 509, "right": 381}, "header": {"x": 0, "y": 12, "w": 393, "h": 52, "bottom": 64, "right": 393}, "q": {"x": 345, "y": 20, "w": 36, "h": 36, "bottom": 56, "right": 381}, "verdictBar": null, "next": null, "cta": null, "nav": {"x": 0, "y": 0, "w": 0, "h": 0, "bottom": 0, "right": 0}, "scroller": {"top": 0, "sh": 660, "ch": 660}, "overflowX": 0}
+  board entièrement visible sans scroll: True | ? chevauche board: False
+  chaînage scroll (feuille au bout, 2 drags): fond 0 -> 0 | window 0
+  après fermeture: fond scrollTop = 0
+ verdict: ✓ Réussi ! | (+20) | ↺ | Réessayer | ♞ | Analyser | Suivant {"vw": 393, "vh": 660, "board": {"x": 12, "y": 140, "w": 369, "h": 369, "bottom": 509, "right": 381}, "header": {"x": 0, "y": 12, "w": 393, "h": 52, "bottom": 64, "right": 393}, "q": {"x": 345, "y": 20, "w": 36, "h": 36, "bottom": 56, "right": 381}, "verdictBar": {"x": 0, "y": 509, "w": 393, "h": 100, "bottom": 609, "right": 393}, "next": {"x": 279, "y": 533, "w": 112, "h": 52, "bottom": 585, "right": 391}, "cta": null, "nav": {"x": 0, "y": 0, "w": 0, "h": 0, "bottom": 0, "right": 0}, "scroller": {"top": 0, "sh": 660, "ch": 660}, "overflowX": 0}
+  barre verdict visible sans scroll: True | Suivant déborde à droite: True | hauteur barre: 100
+ LOGS: []
+
+##### landscape home: {"vw": 852, "vh": 393, "board": null, "header": null, "q": null, "verdictBar": null, "next": null, "cta": null, "nav": {"x": 0, "y": 0, "w": 176, "h": 393, "bottom": 393, "right": 176}, "scroller": null, "overflowX": 0}
+ leçon: {"vw": 852, "vh": 393, "board": null, "header": {"x": 90, "y": 12, "w": 672, "h": 52, "bottom": 64, "right": 762}, "q": {"x": 714, "y": 20, "w": 36, "h": 36, "bottom": 56, "right": 750}, "verdictBar": null, "next": null, "cta": {"x": 106, "y": 273, "w": 640, "h": 52, "bottom": 325, "right": 746}, "nav": {"x": 0, "y": 0, "w": 176, "h": 393, "bottom": 393, "right": 176}, "scroller": {"top": 0, "sh": 393, "ch": 393}, "overflowX": 0}
+  CTA visible sans scroll: True
+ feuille: {'top': 29.46875, 'bottom': 363.515625, 'h': 334.046875, 'w': 512, 'boardW': 320, 'vh': 393}
+ jeu: {"vw": 852, "vh": 393, "board": {"x": 277, "y": 140, "w": 299, "h": 299, "bottom": 439, "right": 575}, "header": {"x": 90, "y": 12, "w": 672, "h": 52, "bottom": 64, "right": 762}, "q": {"x": 714, "y": 20, "w": 36, "h": 36, "bottom": 56, "right": 750}, "verdictBar": null, "next": null, "cta": null, "nav": {"x": 0, "y": 0, "w": 176, "h": 393, "bottom": 393, "right": 176}, "scroller": {"top": 0, "sh": 439, "ch": 393}, "overflowX": 0}
+  board entièrement visible sans scroll: False | ? chevauche board: False
+  chaînage scroll (feuille au bout, 2 drags): fond 0 -> 0 | window 0
+  après fermeture: fond scrollTop = 0
+ verdict: None {"vw": 852, "vh": 393, "board": {"x": 277, "y": 140, "w": 299, "h": 299, "bottom": 439, "right": 575}, "header": {"x": 90, "y": 12, "w": 672, "h": 52, "bottom": 64, "right": 762}, "q": {"x": 714, "y": 20, "w": 36, "h": 36, "bottom": 56, "right": 750}, "verdictBar": null, "next": null, "cta": null, "nav": {"x": 0, "y": 0, "w": 176, "h": 393, "bottom": 393, "right": 176}, "scroller": {"top": 0, "sh": 439, "ch": 393}, "overflowX": 0}
+ LOGS: []
+
+##### desktop home: {"vw": 1440, "vh": 900, "board": null, "header": null, "q": null, "verdictBar": null, "next": null, "cta": null, "nav": {"x": 0, "y": 0, "w": 176, "h": 900, "bottom": 900, "right": 176}, "scroller": null, "overflowX": 0}
+ leçon: {"vw": 1440, "vh": 900, "board": null, "header": {"x": 384, "y": 12, "w": 672, "h": 52, "bottom": 64, "right": 1056}, "q": {"x": 1008, "y": 20, "w": 36, "h": 36, "bottom": 56, "right": 1044}, "verdictBar": null, "next": null, "cta": {"x": 400, "y": 526, "w": 640, "h": 52, "bottom": 578, "right": 1040}, "nav": {"x": 0, "y": 0, "w": 176, "h": 900, "bottom": 900, "right": 176}, "scroller": {"top": 0, "sh": 900, "ch": 900}, "overflowX": 0}
+  CTA visible sans scroll: True
+ feuille: {'top': 67.5, 'bottom': 832.5, 'h': 765, 'w': 512, 'boardW': 320, 'vh': 900}
+ jeu: {"vw": 1440, "vh": 900, "board": {"x": 400, "y": 140, "w": 640, "h": 640, "bottom": 780, "right": 1040}, "header": {"x": 384, "y": 12, "w": 672, "h": 52, "bottom": 64, "right": 1056}, "q": {"x": 1008, "y": 20, "w": 36, "h": 36, "bottom": 56, "right": 1044}, "verdictBar": null, "next": null, "cta": null, "nav": {"x": 0, "y": 0, "w": 176, "h": 900, "bottom": 900, "right": 176}, "scroller": {"top": 0, "sh": 900, "ch": 900}, "overflowX": 0}
+  board entièrement visible sans scroll: True | ? chevauche board: False
+ verdict: ✓ Réussi ! | (+20) | ↺ | Réessayer | ♞ | Analyser | Suivant {"vw": 1440, "vh": 900, "board": {"x": 400, "y": 140, "w": 640, "h": 640, "bottom": 780, "right": 1040}, "header": {"x": 384, "y": 12, "w": 672, "h": 52, "bottom": 64, "right": 1056}, "q": {"x": 1008, "y": 20, "w": 36, "h": 36, "bottom": 56, "right": 1044}, "verdictBar": {"x": 384, "y": 780, "w": 672, "h": 68, "bottom": 848, "right": 1056}, "next": {"x": 932, "y": 788, "w": 112, "h": 52, "bottom": 840, "right": 1044}, "cta": null, "nav": {"x": 0, "y": 0, "w": 176, "h": 900, "bottom": 900, "right": 176}, "scroller": {"top": 0, "sh": 900, "ch": 900}, "overflowX": 0}
+  barre verdict visible sans scroll: True | Suivant déborde à droite: False | hauteur barre: 68
+ LOGS: []

@@ -1,0 +1,46 @@
+MODE=dev-server BASE=http://localhost:5199
+
+=== jouer | standalone852-brut | fix=fix2 | AU DEMARRAGE scrollers=[] boardTop=64
+[ok    ] jouable e2->e4 (haut)                                      hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] BOT REFLECHIT, d2 [wP ta=none aria-disabled=true] drag haut 200px hit=piece:wP         moved=True  clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+      (fenêtre 'bot réfléchit' ATTRAPEE)
+[ok    ] pièce ADVERSE a7 drag bas 260px                            hit=piece:bP         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] pièce ADVERSE f6 drag haut 120px                           hit=piece:bP         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] case VIDE a6 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h3 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] colonne a : pion a2 saisi sur son chiffre (x=11px) -> a4   hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] rangée 1 : cavalier g1 saisi sur sa lettre -> f3           hit=piece:wN         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] colonne h : h2 -> h4 (centre)                              hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] RELECTURE pièce b2 [wP ta=none aria-disabled=true] drag haut hit=piece:wP         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] RELECTURE case vide a6 drag haut 200px                     hit=case-vide        moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+   nb erreurs console 'Ignored attempt to cancel a touchend': 0 | autres: []
+
+=== jouer | standalone852+insets-emules | fix=fix2 | AU DEMARRAGE scrollers=[{'el': 'main.pt-safe min-w-0 flex-1 overflow-y-auto', 'top': 58, 'max': 58}] boardTop=65
+[ok    ] jouable e2->e4 (haut)                                      hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] BOT REFLECHIT, d2 [wP ta=none aria-disabled=true] drag haut 200px hit=piece:wP         moved=True  clone=False pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+      (fenêtre 'bot réfléchit' ATTRAPEE)
+[ok    ] pièce ADVERSE a8 drag bas 260px                            hit=piece:bR         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] pièce ADVERSE f6 drag haut 120px                           hit=piece:bN         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] case VIDE a6 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h3 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] colonne a : pion a2 saisi sur son chiffre (x=11px) -> a4   hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] rangée 1 : cavalier g1 saisi sur sa lettre -> f3           hit=piece:wN         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] colonne h : h2 -> h4 (centre)                              hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] RELECTURE pièce b2 [wP ta=none aria-disabled=true] drag haut hit=piece:wP         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] RELECTURE case vide a6 drag haut 200px                     hit=case-vide        moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+   nb erreurs console 'Ignored attempt to cancel a touchend': 0 | autres: []
+
+=== jouer | safari660 | fix=fix2 | AU DEMARRAGE scrollers=[{'el': 'main.pt-safe min-w-0 flex-1 overflow-y-auto', 'top': 157, 'max': 157}] boardTop=-93
+[ok    ] jouable e2->e4 (haut)                                      hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] BOT REFLECHIT, d2 [wP ta=none aria-disabled=true] drag haut 200px hit=piece:wP         moved=True  clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+      (fenêtre 'bot réfléchit' ATTRAPEE)
+[ok    ] pièce ADVERSE a7 drag bas 260px                            hit=piece:bP         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] pièce ADVERSE f6 drag haut 120px                           hit=piece:bN         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] case VIDE a6 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h3 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] colonne a : pion a2 saisi sur son chiffre (x=11px) -> a4   hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[SCROLL] rangée 1 : cavalier g1 saisi sur sa lettre -> f3           hit=piece:wN         moved=True  clone=True  pcancel=0 scrollEv=  1 boardTop=(64, 64, 50) scrolled={"main.pt-safe min-w-0 flex-1 overflow-y-auto": [0, 14]} nav=None sel=[]
+[SCROLL] colonne h : h2 -> h4 (centre)                              hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  1 boardTop=(64, 64, 24) scrolled={"main.pt-safe min-w-0 flex-1 overflow-y-auto": [0, 40]} nav=None sel=[]
+[ok    ] RELECTURE pièce b2 [wP ta=none aria-disabled=true] drag haut hit=piece:wP         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] RELECTURE case vide a6 drag haut 200px                     hit=case-vide        moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+   nb erreurs console 'Ignored attempt to cancel a touchend': 0 | autres: []

@@ -1,0 +1,1380 @@
+{
+ "jouer|standalone": {
+  "html": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "body": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "none",
+   "overscroll-behavior-y": "none",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "main": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "auto",
+   "overflow-y": "auto",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardbox": null,
+  "boardEl": null,
+  "square": null,
+  "dragWrap": null,
+  "pieceDiv": null,
+  "svg": null,
+  "rects": {
+   "board": null,
+   "boardbox": null,
+   "pieceSq": null,
+   "dragWrap": null,
+   "pieceDiv": null,
+   "svg": null,
+   "main": {
+    "x": 0,
+    "y": 0,
+    "w": 393,
+    "h": 804
+   }
+  },
+  "pieceSqName": null,
+  "nbBoards": 0,
+  "vw": 393,
+  "vh": 852,
+  "main_scroll": {
+   "sh": 976,
+   "ch": 804
+  },
+  "doc_scroll": {
+   "sh": 852,
+   "ch": 852
+  },
+  "scroll": {
+   "windowScrollY": 0,
+   "mainScrollTop": 0,
+   "mainScrollable": true,
+   "mainScrollHeight": 976,
+   "mainClientHeight": 804,
+   "hash": "#/jouer",
+   "historyLength": 2
+  },
+  "probe": {
+   "edges": {
+    "boardLeft": Infinity,
+    "boardRightGap": Infinity,
+    "squareW": 0,
+    "leftColCenterX": Infinity,
+    "boardboxLeft": null
+   }
+  }
+ },
+ "analyse|standalone": {
+  "html": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "body": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "none",
+   "overscroll-behavior-y": "none",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "main": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "auto",
+   "overflow-y": "auto",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardbox": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardEl": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "hidden",
+   "overflow-y": "hidden",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "square": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "dragWrap": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "pieceDiv": {
+   "touch-action": "none",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "svg": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "hidden",
+   "overflow-y": "hidden",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "rects": {
+   "board": {
+    "x": 6,
+    "y": 98,
+    "w": 381,
+    "h": 381
+   },
+   "boardbox": {
+    "x": 6,
+    "y": 98,
+    "w": 381,
+    "h": 381
+   },
+   "pieceSq": {
+    "x": 6,
+    "y": 98,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "dragWrap": {
+    "x": 6,
+    "y": 98,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "pieceDiv": {
+    "x": 6,
+    "y": 98,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "svg": {
+    "x": 6,
+    "y": 98,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "main": {
+    "x": 0,
+    "y": 0,
+    "w": 393,
+    "h": 804
+   }
+  },
+  "pieceSqName": "a8",
+  "nbBoards": 1,
+  "vw": 393,
+  "vh": 852,
+  "main_scroll": {
+   "sh": 804,
+   "ch": 804
+  },
+  "doc_scroll": {
+   "sh": 852,
+   "ch": 852
+  },
+  "scroll": {
+   "windowScrollY": 0,
+   "mainScrollTop": 0,
+   "mainScrollable": false,
+   "mainScrollHeight": 804,
+   "mainClientHeight": 804,
+   "hash": "#/analyse",
+   "historyLength": 3
+  },
+  "probe": {
+   "a1": {
+    "tl": "span ta=auto txt=1 | effectif=auto",
+    "br": "span ta=auto txt=a | effectif=auto",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "a2": {
+    "tl": "span ta=auto txt=2 | effectif=auto",
+    "br": "svg ta=auto txt= | effectif=none",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "a8": {
+    "tl": "span ta=auto txt=8 | effectif=auto",
+    "br": "svg ta=auto txt= | effectif=none",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "h1": {
+    "tl": "svg ta=auto txt= | effectif=none",
+    "br": "span ta=auto txt=h | effectif=auto",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "e1": {
+    "tl": "svg ta=auto txt= | effectif=none",
+    "br": "span ta=auto txt=e | effectif=auto",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "e2": {
+    "tl": "svg ta=auto txt= | effectif=none",
+    "br": "svg ta=auto txt= | effectif=none",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "e4": {
+    "tl": "div ta=auto txt= | effectif=auto",
+    "br": "div ta=auto txt= | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "edges": {
+    "boardLeft": 6,
+    "boardRightGap": 6,
+    "squareW": 47.6,
+    "leftColCenterX": 29.8,
+    "boardboxLeft": 6
+   }
+  }
+ },
+ "puzzles|standalone": {
+  "html": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "body": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "none",
+   "overscroll-behavior-y": "none",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "main": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "auto",
+   "overflow-y": "auto",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardbox": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardEl": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "hidden",
+   "overflow-y": "hidden",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "square": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "dragWrap": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "pieceDiv": {
+   "touch-action": "none",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "svg": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "hidden",
+   "overflow-y": "hidden",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "rects": {
+   "board": {
+    "x": 6,
+    "y": 20,
+    "w": 381,
+    "h": 381
+   },
+   "boardbox": {
+    "x": 6,
+    "y": 20,
+    "w": 381,
+    "h": 381
+   },
+   "pieceSq": {
+    "x": 291.8,
+    "y": 20,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "dragWrap": {
+    "x": 291.8,
+    "y": 20,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "pieceDiv": {
+    "x": 291.8,
+    "y": 20,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "svg": {
+    "x": 291.8,
+    "y": 20,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "main": {
+    "x": 0,
+    "y": 0,
+    "w": 393,
+    "h": 804
+   }
+  },
+  "pieceSqName": "g8",
+  "nbBoards": 1,
+  "vw": 393,
+  "vh": 852,
+  "main_scroll": {
+   "sh": 804,
+   "ch": 804
+  },
+  "doc_scroll": {
+   "sh": 852,
+   "ch": 852
+  },
+  "scroll": {
+   "windowScrollY": 0,
+   "mainScrollTop": 0,
+   "mainScrollable": false,
+   "mainScrollHeight": 804,
+   "mainClientHeight": 804,
+   "hash": "#/puzzles",
+   "historyLength": 4
+  },
+  "probe": {
+   "a1": {
+    "tl": "span ta=auto txt=1 | effectif=auto",
+    "br": "span ta=auto txt=a | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "a2": {
+    "tl": "span ta=auto txt=2 | effectif=auto",
+    "br": "div ta=auto txt= | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "a8": {
+    "tl": "span ta=auto txt=8 | effectif=auto",
+    "br": "div ta=auto txt= | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "h1": {
+    "tl": "svg ta=auto txt= | effectif=none",
+    "br": "span ta=auto txt=h | effectif=auto",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "e1": {
+    "tl": "div ta=auto txt= | effectif=auto",
+    "br": "span ta=auto txt=e | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "e2": {
+    "tl": "svg ta=auto txt= | effectif=none",
+    "br": "svg ta=auto txt= | effectif=none",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "e4": {
+    "tl": "div ta=auto txt= | effectif=auto",
+    "br": "div ta=auto txt= | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "edges": {
+    "boardLeft": 6,
+    "boardRightGap": 6,
+    "squareW": 47.6,
+    "leftColCenterX": 29.8,
+    "boardboxLeft": 6
+   }
+  }
+ },
+ "rush|standalone": {
+  "html": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "body": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "none",
+   "overscroll-behavior-y": "none",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "main": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "auto",
+   "overflow-y": "auto",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardbox": null,
+  "boardEl": null,
+  "square": null,
+  "dragWrap": null,
+  "pieceDiv": null,
+  "svg": null,
+  "rects": {
+   "board": null,
+   "boardbox": null,
+   "pieceSq": null,
+   "dragWrap": null,
+   "pieceDiv": null,
+   "svg": null,
+   "main": {
+    "x": 0,
+    "y": 0,
+    "w": 393,
+    "h": 804
+   }
+  },
+  "pieceSqName": null,
+  "nbBoards": 0,
+  "vw": 393,
+  "vh": 852,
+  "main_scroll": {
+   "sh": 804,
+   "ch": 804
+  },
+  "doc_scroll": {
+   "sh": 852,
+   "ch": 852
+  },
+  "scroll": {
+   "windowScrollY": 0,
+   "mainScrollTop": 0,
+   "mainScrollable": false,
+   "mainScrollHeight": 804,
+   "mainClientHeight": 804,
+   "hash": "#/rush",
+   "historyLength": 5
+  },
+  "probe": {
+   "edges": {
+    "boardLeft": Infinity,
+    "boardRightGap": Infinity,
+    "squareW": 0,
+    "leftColCenterX": Infinity,
+    "boardboxLeft": null
+   }
+  }
+ },
+ "apprendre|standalone": {
+  "html": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "body": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "none",
+   "overscroll-behavior-y": "none",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "main": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "auto",
+   "overflow-y": "auto",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardbox": null,
+  "boardEl": null,
+  "square": null,
+  "dragWrap": null,
+  "pieceDiv": null,
+  "svg": null,
+  "rects": {
+   "board": null,
+   "boardbox": null,
+   "pieceSq": null,
+   "dragWrap": null,
+   "pieceDiv": null,
+   "svg": null,
+   "main": {
+    "x": 0,
+    "y": 0,
+    "w": 393,
+    "h": 804
+   }
+  },
+  "pieceSqName": null,
+  "nbBoards": 0,
+  "vw": 393,
+  "vh": 852,
+  "main_scroll": {
+   "sh": 804,
+   "ch": 804
+  },
+  "doc_scroll": {
+   "sh": 852,
+   "ch": 852
+  },
+  "scroll": {
+   "windowScrollY": 0,
+   "mainScrollTop": 0,
+   "mainScrollable": false,
+   "mainScrollHeight": 804,
+   "mainClientHeight": 804,
+   "hash": "#/apprendre",
+   "historyLength": 6
+  },
+  "probe": {
+   "edges": {
+    "boardLeft": Infinity,
+    "boardRightGap": Infinity,
+    "squareW": 0,
+    "leftColCenterX": Infinity,
+    "boardboxLeft": null
+   }
+  }
+ },
+ "jouer|safari": {
+  "html": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "body": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "none",
+   "overscroll-behavior-y": "none",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "main": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "auto",
+   "overflow-y": "auto",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardbox": null,
+  "boardEl": null,
+  "square": null,
+  "dragWrap": null,
+  "pieceDiv": null,
+  "svg": null,
+  "rects": {
+   "board": null,
+   "boardbox": null,
+   "pieceSq": null,
+   "dragWrap": null,
+   "pieceDiv": null,
+   "svg": null,
+   "main": {
+    "x": 0,
+    "y": 0,
+    "w": 393,
+    "h": 612
+   }
+  },
+  "pieceSqName": null,
+  "nbBoards": 0,
+  "vw": 393,
+  "vh": 660,
+  "main_scroll": {
+   "sh": 976,
+   "ch": 612
+  },
+  "doc_scroll": {
+   "sh": 660,
+   "ch": 660
+  },
+  "scroll": {
+   "windowScrollY": 0,
+   "mainScrollTop": 0,
+   "mainScrollable": true,
+   "mainScrollHeight": 976,
+   "mainClientHeight": 612,
+   "hash": "#/jouer",
+   "historyLength": 2
+  },
+  "probe": {
+   "edges": {
+    "boardLeft": Infinity,
+    "boardRightGap": Infinity,
+    "squareW": 0,
+    "leftColCenterX": Infinity,
+    "boardboxLeft": null
+   }
+  }
+ },
+ "analyse|safari": {
+  "html": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "body": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "none",
+   "overscroll-behavior-y": "none",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "main": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "auto",
+   "overflow-y": "auto",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardbox": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardEl": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "hidden",
+   "overflow-y": "hidden",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "square": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "dragWrap": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "pieceDiv": {
+   "touch-action": "none",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "svg": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "hidden",
+   "overflow-y": "hidden",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "rects": {
+   "board": {
+    "x": 6,
+    "y": 98,
+    "w": 381,
+    "h": 381
+   },
+   "boardbox": {
+    "x": 6,
+    "y": 98,
+    "w": 381,
+    "h": 381
+   },
+   "pieceSq": {
+    "x": 6,
+    "y": 98,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "dragWrap": {
+    "x": 6,
+    "y": 98,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "pieceDiv": {
+    "x": 6,
+    "y": 98,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "svg": {
+    "x": 6,
+    "y": 98,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "main": {
+    "x": 0,
+    "y": 0,
+    "w": 393,
+    "h": 612
+   }
+  },
+  "pieceSqName": "a8",
+  "nbBoards": 1,
+  "vw": 393,
+  "vh": 660,
+  "main_scroll": {
+   "sh": 612,
+   "ch": 612
+  },
+  "doc_scroll": {
+   "sh": 660,
+   "ch": 660
+  },
+  "scroll": {
+   "windowScrollY": 0,
+   "mainScrollTop": 0,
+   "mainScrollable": false,
+   "mainScrollHeight": 612,
+   "mainClientHeight": 612,
+   "hash": "#/analyse",
+   "historyLength": 3
+  },
+  "probe": {
+   "a1": {
+    "tl": "span ta=auto txt=1 | effectif=auto",
+    "br": "span ta=auto txt=a | effectif=auto",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "a2": {
+    "tl": "span ta=auto txt=2 | effectif=auto",
+    "br": "svg ta=auto txt= | effectif=none",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "a8": {
+    "tl": "span ta=auto txt=8 | effectif=auto",
+    "br": "svg ta=auto txt= | effectif=none",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "h1": {
+    "tl": "svg ta=auto txt= | effectif=none",
+    "br": "span ta=auto txt=h | effectif=auto",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "e1": {
+    "tl": "svg ta=auto txt= | effectif=none",
+    "br": "span ta=auto txt=e | effectif=auto",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "e2": {
+    "tl": "svg ta=auto txt= | effectif=none",
+    "br": "svg ta=auto txt= | effectif=none",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "e4": {
+    "tl": "div ta=auto txt= | effectif=auto",
+    "br": "div ta=auto txt= | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "edges": {
+    "boardLeft": 6,
+    "boardRightGap": 6,
+    "squareW": 47.6,
+    "leftColCenterX": 29.8,
+    "boardboxLeft": 6
+   }
+  }
+ },
+ "puzzles|safari": {
+  "html": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "body": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "none",
+   "overscroll-behavior-y": "none",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "main": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "auto",
+   "overflow-y": "auto",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardbox": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardEl": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "hidden",
+   "overflow-y": "hidden",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "square": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "dragWrap": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "pieceDiv": {
+   "touch-action": "none",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "svg": {
+   "touch-action": "auto",
+   "user-select": "none",
+   "-webkit-user-select": "none",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "hidden",
+   "overflow-y": "hidden",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "rects": {
+   "board": {
+    "x": 6,
+    "y": 20,
+    "w": 381,
+    "h": 381
+   },
+   "boardbox": {
+    "x": 6,
+    "y": 20,
+    "w": 381,
+    "h": 381
+   },
+   "pieceSq": {
+    "x": 101.3,
+    "y": 20,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "dragWrap": {
+    "x": 101.3,
+    "y": 20,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "pieceDiv": {
+    "x": 101.3,
+    "y": 20,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "svg": {
+    "x": 101.3,
+    "y": 20,
+    "w": 47.6,
+    "h": 47.6
+   },
+   "main": {
+    "x": 0,
+    "y": 0,
+    "w": 393,
+    "h": 612
+   }
+  },
+  "pieceSqName": "c8",
+  "nbBoards": 1,
+  "vw": 393,
+  "vh": 660,
+  "main_scroll": {
+   "sh": 721,
+   "ch": 612
+  },
+  "doc_scroll": {
+   "sh": 660,
+   "ch": 660
+  },
+  "scroll": {
+   "windowScrollY": 0,
+   "mainScrollTop": 0,
+   "mainScrollable": true,
+   "mainScrollHeight": 721,
+   "mainClientHeight": 612,
+   "hash": "#/puzzles",
+   "historyLength": 4
+  },
+  "probe": {
+   "a1": {
+    "tl": "span ta=auto txt=1 | effectif=auto",
+    "br": "span ta=auto txt=a | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "a2": {
+    "tl": "span ta=auto txt=2 | effectif=auto",
+    "br": "div ta=auto txt= | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "a8": {
+    "tl": "span ta=auto txt=8 | effectif=auto",
+    "br": "div ta=auto txt= | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "h1": {
+    "tl": "svg ta=auto txt= | effectif=none",
+    "br": "span ta=auto txt=h | effectif=auto",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "e1": {
+    "tl": "div ta=auto txt= | effectif=auto",
+    "br": "span ta=auto txt=e | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "e2": {
+    "tl": "div ta=auto txt= | effectif=auto",
+    "br": "div ta=auto txt= | effectif=auto",
+    "c": "div ta=auto txt= | effectif=auto",
+    "bl": "div ta=auto txt= | effectif=auto"
+   },
+   "e4": {
+    "tl": "svg ta=auto txt= | effectif=none",
+    "br": "svg ta=auto txt= | effectif=none",
+    "c": "path ta=auto txt= | effectif=none",
+    "bl": "svg ta=auto txt= | effectif=none"
+   },
+   "edges": {
+    "boardLeft": 6,
+    "boardRightGap": 6,
+    "squareW": 47.6,
+    "leftColCenterX": 29.8,
+    "boardboxLeft": 6
+   }
+  }
+ },
+ "rush|safari": {
+  "html": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "body": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "none",
+   "overscroll-behavior-y": "none",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "main": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "auto",
+   "overflow-y": "auto",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardbox": null,
+  "boardEl": null,
+  "square": null,
+  "dragWrap": null,
+  "pieceDiv": null,
+  "svg": null,
+  "rects": {
+   "board": null,
+   "boardbox": null,
+   "pieceSq": null,
+   "dragWrap": null,
+   "pieceDiv": null,
+   "svg": null,
+   "main": {
+    "x": 0,
+    "y": 0,
+    "w": 393,
+    "h": 612
+   }
+  },
+  "pieceSqName": null,
+  "nbBoards": 0,
+  "vw": 393,
+  "vh": 660,
+  "main_scroll": {
+   "sh": 612,
+   "ch": 612
+  },
+  "doc_scroll": {
+   "sh": 660,
+   "ch": 660
+  },
+  "scroll": {
+   "windowScrollY": 0,
+   "mainScrollTop": 0,
+   "mainScrollable": false,
+   "mainScrollHeight": 612,
+   "mainClientHeight": 612,
+   "hash": "#/rush",
+   "historyLength": 5
+  },
+  "probe": {
+   "edges": {
+    "boardLeft": Infinity,
+    "boardRightGap": Infinity,
+    "squareW": 0,
+    "leftColCenterX": Infinity,
+    "boardboxLeft": null
+   }
+  }
+ },
+ "apprendre|safari": {
+  "html": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "body": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "none",
+   "overscroll-behavior-y": "none",
+   "overflow-x": "visible",
+   "overflow-y": "visible",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "main": {
+   "touch-action": "auto",
+   "user-select": "auto",
+   "-webkit-user-select": "auto",
+   "-webkit-touch-callout": "",
+   "overscroll-behavior-x": "auto",
+   "overscroll-behavior-y": "auto",
+   "overflow-x": "auto",
+   "overflow-y": "auto",
+   "-webkit-tap-highlight-color": "rgba(0, 0, 0, 0)"
+  },
+  "boardbox": null,
+  "boardEl": null,
+  "square": null,
+  "dragWrap": null,
+  "pieceDiv": null,
+  "svg": null,
+  "rects": {
+   "board": null,
+   "boardbox": null,
+   "pieceSq": null,
+   "dragWrap": null,
+   "pieceDiv": null,
+   "svg": null,
+   "main": {
+    "x": 0,
+    "y": 0,
+    "w": 393,
+    "h": 612
+   }
+  },
+  "pieceSqName": null,
+  "nbBoards": 0,
+  "vw": 393,
+  "vh": 660,
+  "main_scroll": {
+   "sh": 612,
+   "ch": 612
+  },
+  "doc_scroll": {
+   "sh": 660,
+   "ch": 660
+  },
+  "scroll": {
+   "windowScrollY": 0,
+   "mainScrollTop": 0,
+   "mainScrollable": false,
+   "mainScrollHeight": 612,
+   "mainClientHeight": 612,
+   "hash": "#/apprendre",
+   "historyLength": 6
+  },
+  "probe": {
+   "edges": {
+    "boardLeft": Infinity,
+    "boardRightGap": Infinity,
+    "squareW": 0,
+    "leftColCenterX": Infinity,
+    "boardboxLeft": null
+   }
+  }
+ }
+}

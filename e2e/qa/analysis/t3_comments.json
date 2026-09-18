@@ -1,0 +1,16 @@
+[
+ "📖 | e4 est un coup théorique | +0,34 | La théorie approuve. Terrain connu.",
+ "📖 | e5 est un coup théorique | +0,46 | La théorie approuve. Terrain connu.",
+ "📖 | ♘f3 est un coup théorique | +0,43 | La théorie approuve. Terrain connu.",
+ "📖 | ♞c6 est un coup théorique | +0,57 | La théorie approuve. Terrain connu.",
+ "📖 | ♗c4 est un coup théorique | +0,52 | La théorie approuve. Terrain connu.",
+ "📖 | ♞d4 est un coup théorique | +0,99 | La théorie approuve. Terrain connu.",
+ "✓ | ♘xe5 est un bon coup | +0,38 | Correct, même si ♘xd4 était un peu plus précis.",
+ "★ | ♛g5 est le meilleur | +0,41 | Exactement ce que le moteur aurait joué. Rien à redire.",
+ "?? | ♘xf7 est une gaffe | -3,47 | ♗xf7+ avec échec était nécessaire.",
+ "! | ♛xg2 est un très bon coup | -3,53 | C'était le seul bon coup dans cette position. Bien vu.",
+ "?! | ♖f1 est une imprécision | -4,86 | d3 gardait un meilleur contrôle de la position.",
+ "★ | ♛xe4+ est le meilleur | -5,05 | Exactement ce que le moteur aurait joué. Rien à redire.",
+ "? | ♗e2 est une erreur | M1 | Le cavalier peut maintenant être capturé. Il fallait jouer ♕e2.",
+ "★ | ♞f3# est le meilleur | # | Exactement ce que le moteur aurait joué. Rien à redire."
+]
