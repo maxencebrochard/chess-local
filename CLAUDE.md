@@ -27,7 +27,7 @@ npm run test:e2e                          # build de prod servi sous /chess-loca
 npm run test:e2e -- --suite learn         # une seule suite : learn, v4, all_buttons, pwa (cumulable : --suite learn --suite v4)
 npm run test:e2e:dev                      # serveur de dev : StrictMode double les updaters et révèle les effets de bord mal placés
 BASE=https://maxencebrochard.github.io/chess-local npm run test:e2e   # contre la prod déployée, sans serveur local
-E2E_LIVE=1 npm run test:e2e -- --suite all_buttons                    # API chess.com réelle au lieu de la fixture
+npm run test:e2e -- --suite all_buttons --live                        # API chess.com réelle au lieu de la fixture, hors gate
 ```
 
 Prérequis hors `npm ci` : `pip install -r e2e/requirements.txt` puis `python3 -m playwright install chromium`.
@@ -41,6 +41,7 @@ Un check doit pouvoir échouer : pas de `check(nom, True)`, pas d'attente nue do
 Les contextes pré-remplissent `localStorage['chess-local-settings']` au format Zustand persist (`{state: {...}, version: 0}`) avec `reviewDepth: 'fast'` et les sons coupés.
 Changer la forme du store `src/store/settings.ts` impose de mettre à jour `DEFAULT_SETTINGS` dans `e2e/helpers.py`.
 L'API chess.com est simulée par `e2e/fixtures/chesscom.json` (parties fictives) : tout nouvel appel réseau doit y être ajouté.
+Le gate n'utilise jamais `--live`.
 `test_pwa.py` ne tourne que sur le build local : sous-chemin, manifest, service worker, précache, puis redémarrage avec le serveur réellement tué (`set_offline` ne coupe pas le réseau du service worker).
 Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` : deux lancements simultanés ne se gênent pas.
 Les captures vont dans `e2e/shots/` (gitignoré).

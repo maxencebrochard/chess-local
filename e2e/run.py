@@ -7,6 +7,7 @@ une par une, surveille le serveur pendant qu'elles tournent, et l'arrête toujou
     python3 e2e/run.py --mode dev       # serveur de dev : React StrictMode double les updaters,
                                         # ce qui révèle les effets de bord mal placés
     python3 e2e/run.py --suite learn    # une seule suite (option cumulable : --suite learn --suite v4)
+    python3 e2e/run.py --suite all_buttons --live  # API chess.com réelle, hors gate
     BASE=https://… python3 e2e/run.py   # cible externe : aucun serveur lancé
 
 Codes de sortie : 0 tout passe, 1 au moins un échec, 2 mauvais usage ou prérequis manquant.
@@ -219,7 +220,9 @@ def run_suite(name, path, base, server, timeout_s, extra_env):
     """Lance une suite et la surveille. Sans ça, une suite attend jusqu'à 180 s sur un serveur
     mort puis échoue ailleurs, et on cherche un bug qui n'existe pas."""
     say(f"\n{'=' * 60}\n[run] suite {name}\n{'=' * 60}")
-    env = {**os.environ, **extra_env, "BASE": base, "PYTHONUNBUFFERED": "1", "PYTHONDONTWRITEBYTECODE": "1"}
+    env = {k: v for k, v in os.environ.items() if k != "E2E_LIVE"}
+    env.update(extra_env)
+    env.update({"BASE": base, "PYTHONUNBUFFERED": "1", "PYTHONDONTWRITEBYTECODE": "1"})
     proc = subprocess.Popen([sys.executable, path], cwd=ROOT, env=env, start_new_session=True)
     started = time.time()
     try:
@@ -240,6 +243,7 @@ def main():
     parser.add_argument("--mode", choices=["prod", "dev"], default="prod")
     parser.add_argument("--suite", action="append", metavar="NOM", help=f"cumulable, parmi : {', '.join(available)}")
     parser.add_argument("--timeout", type=int, default=900, help="délai maximum par suite, en secondes")
+    parser.add_argument("--live", action="store_true", help="utilise l'API chess.com réelle (hors gate)")
     args = parser.parse_args()
 
     # Une suite demandée deux fois ne tourne qu'une fois : sinon le second résultat écraserait
@@ -280,6 +284,9 @@ def main():
     results = {}
     try:
         extra_env = {}
+        if args.live:
+            say("\n" + "!" * 60 + "\n[run] MODE RÉSEAU RÉEL : API chess.com, HORS GATE\n" + "!" * 60)
+            extra_env["E2E_LIVE"] = "1"
         if not external:
             if args.mode == "prod":
                 out_dir = tempfile.mkdtemp(prefix="chesslocal-e2e-dist-")
