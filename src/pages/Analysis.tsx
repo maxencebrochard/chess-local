@@ -36,7 +36,7 @@ export default function Analysis() {
   const { reviewDepth, playSounds } = useSettings()
   const [startFen, setStartFen] = useState(START_FEN)
   const [moves, setMoves] = useState<Move[]>([])
-  const [viewIndex, setViewIndex] = useState(-1) // -1 = position de départ
+  const [viewIndexRaw, setViewIndex] = useState(-1) // -1 = position de départ
   const [lines, setLines] = useState<EngineLine[]>([])
   const [engineOn, setEngineOn] = useState(true)
   const [review, setReview] = useState<GameReview | null>(null)
@@ -55,7 +55,17 @@ export default function Analysis() {
   const [showLines, setShowLines] = useState(false)
   const [names, setNames] = useState<{ w: string; b: string }>({ w: 'Blancs', b: 'Noirs' })
   const [returnTo, setReturnTo] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const engineRef = useRef<Engine | null>(null)
+  // Jeton du bilan en cours : tout résultat d'un bilan remplacé ou annulé est jeté.
+  const reviewAbortRef = useRef<AbortController | null>(null)
+  const aliveRef = useRef(false)
+  const reviewTimer = useRef<number | null>(null)
+  const noticeTimer = useRef<number | null>(null)
+
+  // Index affiché toujours borné par la liste de coups : un bilan ou une navigation périmée
+  // ne doit jamais faire lire `moves[i]` hors de la liste (écran blanc).
+  const viewIndex = Math.max(-1, Math.min(viewIndexRaw, moves.length - 1))
 
   const viewFen = useMemo(() => {
     const c = new Chess(startFen)
@@ -119,7 +129,10 @@ export default function Analysis() {
         setReviewColor(state.color)
         setOrientation(state.color)
       }
-      if (state.review) setTimeout(() => void runReview(state.pgn), 300)
+      if (state.review) {
+        const ctx = { color: state.color ?? null, label: state.label ?? null }
+        reviewTimer.current = window.setTimeout(() => void runReview(state.pgn, ctx), 300)
+      }
     }
     navigate('.', { replace: true, state: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,14 +143,26 @@ export default function Analysis() {
     const gameId = params.get('game')
     if (!gameId) return
     void (async () => {
-      const saved = await db.games.get(+gameId)
-      if (!saved) return
-      loadPgn(saved.pgn)
-      setGameMeta(`${saved.timeControl} · ${saved.result} ${saved.termination}`)
-      if (saved.playerColor === 'b') setOrientation('b')
-      if (saved.mode === 'bot') setReviewColor(saved.playerColor)
-      if (params.get('review') === '1') setTimeout(() => void runReview(saved.pgn), 300)
+      // Clé non numérique : Dexie lève, traité comme une partie absente.
+      const saved = await db.games.get(+gameId).catch(() => undefined)
+      if (!aliveRef.current) return // page quittée pendant la lecture : ne pas naviguer ni charger
       setParams({}, { replace: true })
+      if (!saved) {
+        showNotice('Partie introuvable (supprimée ?)')
+        return
+      }
+      if (!loadPgn(saved.pgn)) {
+        showNotice('Partie vide, rien à analyser')
+        return
+      }
+      const label = `${saved.timeControl} · ${saved.result} ${saved.termination}`
+      const color = saved.mode === 'bot' ? saved.playerColor : null
+      setGameMeta(label)
+      if (saved.playerColor === 'b') setOrientation('b')
+      setReviewColor(color)
+      if (params.get('review') === '1') {
+        reviewTimer.current = window.setTimeout(() => void runReview(saved.pgn, { color, label }), 300)
+      }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -171,25 +196,55 @@ export default function Analysis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewFen, engineOn, reviewing, retrying, reviewStage, guidedNoLines])
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    aliveRef.current = true
+    return () => {
+      // Plus aucun bilan différé ni en vol ne doit toucher la page ni créer un moteur après le démontage.
+      aliveRef.current = false
+      if (reviewTimer.current !== null) window.clearTimeout(reviewTimer.current)
+      if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current)
+      reviewAbortRef.current?.abort()
+      reviewAbortRef.current = null
       // Null obligatoire : StrictMode rejoue les effets, un worker terminé ne doit pas être réutilisé.
       engineRef.current?.quit()
       engineRef.current = null
-    },
-    [],
-  )
+    }
+  }, [])
+
+  // Bandeau d'information (partie introuvable, partie vide) : fermé au tap ou après 5 s.
+  function showNotice(text: string) {
+    setNotice(text)
+    if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current)
+    noticeTimer.current = window.setTimeout(() => setNotice(null), 5000)
+  }
+
+  // Annule le bilan en vol : son résultat, sa progression et ses fautes ne seront jamais appliqués.
+  function cancelReview() {
+    // Bilan différé (archive, state de navigation) pas encore parti : il analyserait l'ancien PGN.
+    if (reviewTimer.current !== null) window.clearTimeout(reviewTimer.current)
+    reviewTimer.current = null
+    reviewAbortRef.current?.abort()
+    reviewAbortRef.current = null
+    setReviewProgress(null)
+  }
 
   function loadPgn(pgn: string): boolean {
     try {
       const c = new Chess()
       c.loadPgn(pgn)
-      setStartFen(START_FEN)
-      setMoves(c.history({ verbose: true }))
-      setViewIndex(c.history().length - 1)
+      // En-tête FEN (puzzle, position importée) : l'historique part de cette position, pas de
+      // la position initiale. Normalisée pour que `startFen === START_FEN` reste fiable.
+      const fen = c.header().FEN
+      const history = c.history({ verbose: true })
+      if (history.length === 0 && !fen) return false // en-têtes seuls, rien à analyser
+      cancelReview()
+      setStartFen(fen ? new Chess(fen).fen() : START_FEN)
+      setMoves(history)
+      setViewIndex(history.length - 1)
       setReview(null)
       setReviewColor(null)
       setReviewStage(null)
+      setRetry(null)
       setGameMeta(null)
       const h = c.header()
       const clean = (v: string | null | undefined, fallback: string) => (v && v !== '?' ? v : fallback)
@@ -203,11 +258,14 @@ export default function Analysis() {
   function loadFen(fen: string): boolean {
     try {
       new Chess(fen)
+      cancelReview()
       setStartFen(fen)
       setMoves([])
       setViewIndex(-1)
       setReview(null)
       setReviewColor(null)
+      setReviewStage(null)
+      setRetry(null)
       setGameMeta(null)
       return true
     } catch {
@@ -228,35 +286,61 @@ export default function Analysis() {
       }
       setMoves([...kept, move])
       setViewIndex(kept.length)
-      if (moves.length > kept.length) setReview(null) // ligne modifiée, review obsolète
+      // Ligne modifiée (tronquée ou prolongée) : le bilan, affiché ou en vol, ne la décrit plus.
+      cancelReview()
+      setReview(null)
+      setReviewStage(null)
+      setRetry(null)
       return true
     } catch {
       return false
     }
   }
 
-  const runReview = useCallback(async (pgnOverride?: string) => {
+  // `ctx` : couleur du joueur et libellé de la partie, passés explicitement (les appels différés
+  // depuis le premier rendu ne voient pas `reviewColor` ni `gameMeta`).
+  const runReview = useCallback(async (pgnOverride?: string, ctx?: { color: 'w' | 'b' | null; label: string | null }) => {
     const pgn = pgnOverride ?? currentPgn()
-    if (!pgn) return
+    if (!pgn || !aliveRef.current) return
+    cancelReview()
+    const ctrl = new AbortController()
+    reviewAbortRef.current = ctrl
+    const isCurrent = () => reviewAbortRef.current === ctrl
+    const color = ctx?.color ?? null
+    const label = ctx?.label ?? null
     engineRef.current ??= new Engine()
     const engine = engineRef.current
+    setReviewColor(color)
     setReviewProgress(0)
     // Laisse l'effet d'analyse se couper (dépend de `reviewing`) avant de chercher.
     await new Promise((r) => setTimeout(r, 50))
+    if (!isCurrent()) return
     await engine.stop()
+    if (!isCurrent()) return // bilan remplacé pendant le stop : ne pas couper la barre d'éval réarmée
     engine.onLines = null
     try {
-      const result = await reviewGame(pgn, engine, REVIEW_DEPTHS[reviewDepth], (done, total) =>
-        setReviewProgress(Math.round((done / total) * 100)),
+      const result = await reviewGame(
+        pgn,
+        engine,
+        REVIEW_DEPTHS[reviewDepth],
+        (done, total) => {
+          if (isCurrent()) setReviewProgress(Math.round((done / total) * 100))
+        },
+        ctrl.signal,
       )
+      if (!isCurrent()) return
       setReview(result)
       setViewIndex(-1)
       setReviewStage('summary') // ouvre sur l'écran de résumé
-      void recordMistakes(result)
-
+      void recordMistakes(result, color, label)
+    } catch (e) {
+      if (!ctrl.signal.aborted) throw e
     } finally {
-      setReviewProgress(null)
-      engine.onLines = setLines
+      // L'effet d'analyse live réarme `engine.onLines` lui-même quand `reviewing` retombe.
+      if (isCurrent()) {
+        reviewAbortRef.current = null
+        setReviewProgress(null)
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moves, startFen, reviewDepth])
@@ -333,7 +417,7 @@ export default function Analysis() {
   }
 
   // Alimente « Apprendre → Mes erreurs » avec les fautes du joueur.
-  async function recordMistakes(result: GameReview) {
+  async function recordMistakes(result: GameReview, color: 'w' | 'b' | null, label: string | null) {
     const BAD_FOR_LEARN = ['mistake', 'miss', 'missedWin', 'blunder']
     const replay = new Chess(result.startFen)
     for (let i = 0; i < result.moves.length; i++) {
@@ -341,13 +425,13 @@ export default function Analysis() {
       const fenBefore = replay.fen()
       const moverColor = replay.turn()
       replay.move(m.san)
-      if (reviewColor && moverColor !== reviewColor) continue
+      if (color && moverColor !== color) continue
       if (!BAD_FOR_LEARN.includes(m.class)) continue
       const existing = await db.mistakes.where('fenBefore').equals(fenBefore).count()
       if (existing > 0) continue
       await db.mistakes.add({
         date: Date.now(),
-        gameLabel: gameMeta ?? 'Partie analysée',
+        gameLabel: label ?? 'Partie analysée',
         fenBefore,
         playedSan: m.san,
         bestUci: m.bestMoveUci,
@@ -371,7 +455,8 @@ export default function Analysis() {
 
   const retrySolution = useMemo(() => {
     if (!retry || !review) return null
-    const best = review.moves[retry.moveIndex].bestMoveUci
+    const best = review.moves[retry.moveIndex]?.bestMoveUci // bilan périmé : pas de solution
+    if (!best) return null
     try {
       return new Chess(retry.baseFen).move({ from: best.slice(0, 2), to: best.slice(2, 4), promotion: best[4] }).san
     } catch {
@@ -389,6 +474,7 @@ export default function Analysis() {
       return false
     }
     const m = review.moves[retry.moveIndex]
+    if (!m) return false
     if (move.lan === m.bestMoveUci || c.isCheckmate()) {
       if (playSounds) sounds.success()
       setRetry({ ...retry, status: 'found', lastTried: move.san })
@@ -461,7 +547,7 @@ export default function Analysis() {
   }
 
   // --- Bilan guidé coup par coup (style chess.com, plein écran par-dessus la nav) ---
-  if (reviewStage === 'guided' && review && viewIndex >= 0) {
+  if (reviewStage === 'guided' && review && viewIndex >= 0 && review.moves[viewIndex]) {
     const m = review.moves[viewIndex]
     const moverColor = colorAtIndex(viewIndex)
     const comment = coach?.comments.find((c) => c.moveIndex === viewIndex) ?? null
@@ -619,7 +705,8 @@ export default function Analysis() {
           </div>
         </div>
 
-        <div className="flex flex-col justify-center gap-2 md:ml-4">
+        {/* `boardbox` sur la colonne : le bandeau d'ouverture se tronque à la largeur du board au lieu de l'élargir */}
+        <div className="boardbox flex flex-col justify-center gap-2 md:ml-4 md:w-[min(76vh,640px)]">
           {returnTo && (
             <button
               onClick={() => navigate(returnTo, { state: { restore: true } })}
@@ -628,7 +715,7 @@ export default function Analysis() {
               ← Retour à l'exercice
             </button>
           )}
-          <div className="boardbox md:w-[min(76vh,640px)]">
+          <div className="w-full">
             <Board
               fen={retry ? retry.baseFen : viewFen}
               orientation={orientation}
@@ -796,7 +883,7 @@ export default function Analysis() {
 
         <div className="hidden gap-2 md:flex">
           <button
-            onClick={() => (review ? setReviewStage('summary') : void runReview())}
+            onClick={() => (review ? setReviewStage('summary') : void runReview(undefined, { color: reviewColor, label: gameMeta }))}
             disabled={reviewProgress !== null || moves.length === 0}
             className="flex-1 cursor-pointer rounded bg-accent py-2 text-sm font-bold text-white hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
           >
@@ -841,6 +928,17 @@ export default function Analysis() {
         )}
       </div>
 
+      {notice && (
+        <div role="alert" className="pt-safe pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4">
+          <button
+            onClick={() => setNotice(null)}
+            className="pointer-events-auto cursor-pointer rounded-lg bg-surface-3 px-4 py-2 text-sm font-semibold text-neutral-100 shadow-lg"
+          >
+            {notice}
+          </button>
+        </div>
+      )}
+
       {/* Barre d'actions mobile, façon chess.com */}
       <div className="sticky bottom-0 z-20 mt-auto flex w-full items-center justify-around border-t border-black/40 bg-surface py-1 md:hidden">
         <BarAction label="Options" icon="⚙" onClick={() => setShowOptions(true)} />
@@ -848,7 +946,7 @@ export default function Analysis() {
           label="Bilan"
           icon="★"
           disabled={reviewProgress !== null || moves.length === 0}
-          onClick={() => (review ? setReviewStage('summary') : void runReview())}
+          onClick={() => (review ? setReviewStage('summary') : void runReview(undefined, { color: reviewColor, label: gameMeta }))}
         />
         <BarAction label="Explorer" icon="🧭" active={showExplorer} onClick={() => setShowExplorer(!showExplorer)} />
         <BarAction label="Précédent" icon="‹" onClick={() => setViewIndex((v) => Math.max(-1, v - 1))} />
@@ -894,9 +992,10 @@ export default function Analysis() {
                 const text = importText.trim()
                 const ok = text.split('\n').length === 1 && text.split('/').length === 8 ? loadFen(text) : loadPgn(text)
                 if (ok) setShowImport(false)
-                else setImportError('Format non reconnu : ni PGN valide, ni FEN valide.')
+                else setImportError('Format non reconnu : ni PGN avec des coups, ni FEN valide.')
               }}
-              className="w-full cursor-pointer rounded bg-accent py-2 font-bold text-white hover:bg-accent-hover"
+              disabled={!importText.trim()}
+              className="w-full cursor-pointer rounded bg-accent py-2 font-bold text-white hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
             >
               Charger
             </button>
