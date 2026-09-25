@@ -90,6 +90,7 @@ export async function reviewGame(
   engine: Engine,
   depth: number,
   onProgress: (done: number, total: number) => void,
+  signal?: AbortSignal,
 ): Promise<GameReview> {
   const game = new Chess()
   game.loadPgn(pgn)
@@ -103,10 +104,14 @@ export async function reviewGame(
   const evals: { lines: EngineLine[] }[] = []
   for (let i = 0; i <= total; i++) {
     if (i > 0) chess.move(verbose[i - 1].san)
+    // Bilan annulé (ligne modifiée, réimport, page quittée) : on s'arrête à la granularité
+    // d'une recherche, sans jamais rendre de résultat partiel.
+    if (signal?.aborted) throw new DOMException('Bilan annulé', 'AbortError')
     if (chess.isGameOver()) {
       evals.push({ lines: [] })
     } else {
       const res = await engine.search({ fen: chess.fen(), depth, multipv: 2 })
+      if (signal?.aborted) throw new DOMException('Bilan annulé', 'AbortError')
       evals.push({ lines: res.lines })
     }
     onProgress(i, total + 1)
