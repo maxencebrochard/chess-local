@@ -4,6 +4,7 @@ import { Cta } from '../components/Cta'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
 import { applyRating, db, getRating } from '../lib/db'
 import { loadPuzzles } from '../lib/puzzles'
+import { displayThemes } from '../lib/puzzleThemes'
 
 type Phase = 'solving' | 'solved' | 'failed'
 
@@ -77,7 +78,7 @@ export default function Puzzles() {
   }
 
   const themesLabel = useMemo(
-    () => puzzle?.themes.filter((t) => !['short', 'long', 'veryLong', 'oneMove'].includes(t)).slice(0, 4).join(', '),
+    () => displayThemes(puzzle?.themes ?? []).join(', '), // motifs en français, méta exclus, 3 au plus
     [puzzle],
   )
 
