@@ -259,9 +259,10 @@ def main():
         say("[run] node_modules absent : lance `npm ci` d'abord.")
         return 2
     try:
+        import chess  # noqa: F401
         import playwright  # noqa: F401
-    except ImportError:
-        say("[run] Playwright absent : `pip install -r e2e/requirements.txt` puis `python3 -m playwright install chromium`.")
+    except ImportError as e:
+        say(f"[run] prérequis Python absent ({e.name}) : `pip install -r e2e/requirements.txt` puis `python3 -m playwright install chromium`.")
         return 2
     if external:
         # Un BASE resté exporté dans le shell ferait tester autre chose que ce checkout, sans build :
