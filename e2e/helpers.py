@@ -14,6 +14,7 @@ fournit BASE. Lancer une suite à la main exige BASE :
 """
 import json
 import os
+from contextlib import contextmanager
 import signal
 import sys
 import traceback
@@ -62,6 +63,7 @@ class Checker:
         self.suite = suite
         self.passed = 0
         self.failures = []
+        self._expected = []  # attentes actives de `expect_pageerror` (pile)
 
     def check(self, name, cond, detail=""):
         ok = bool(cond)
@@ -93,7 +95,29 @@ class Checker:
         return ctx
 
     def _watch_page(self, page):
-        page.on("pageerror", lambda e: self.fail("[pageerror] exception non rattrapée dans la page", f"({str(e)[:300]})"))
+        page.on("pageerror", self._on_pageerror)
+
+    def _on_pageerror(self, e):
+        msg = str(e)
+        for exp in reversed(self._expected):
+            if exp["pattern"] in msg:
+                exp["seen"].append(msg)
+                self.check(f"[pageerror attendu] {exp['pattern']}", True, f"({msg[:120]})")
+                return
+        self.fail("[pageerror] exception non rattrapée dans la page", f"({msg[:300]})")
+
+    @contextmanager
+    def expect_pageerror(self, pattern):
+        """Pendant le bloc, un `pageerror` dont le message contient `pattern` est un PASS attendu
+        (crash provoqué par la suite) ; à la sortie, échec si aucun n'est survenu. Hors bloc, rien
+        ne change : tout `pageerror` reste un échec."""
+        exp = {"pattern": pattern, "seen": []}
+        self._expected.append(exp)
+        try:
+            yield exp
+        finally:
+            self._expected.remove(exp)
+            self.check(f"[pageerror attendu] {pattern} survenu", len(exp["seen"]) >= 1, "(aucun pageerror correspondant)")
 
     def run(self, body):
         """Exécute `body(p)` puis sort. Le navigateur est toujours fermé (sortie du `with`),
