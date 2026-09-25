@@ -22,9 +22,18 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Échiquier : plein écran en portrait, borné par la hauteur en paysage/desktop. */
+/* Échiquier : plein écran en portrait, borné par la hauteur en paysage/desktop.
+   touch-action : un geste qui part de l'échiquier, case vide comprise, ne fait jamais défiler
+   la page. Le diagramme d'un cours n'est pas dans un .boardbox : il laisse défiler sa feuille. */
 .boardbox {
   width: min(100vw - 0.75rem, 76vh, 640px);
+  touch-action: none;
+}
+
+/* react-chessboard peint les coordonnées par-dessus la pièce, hors de sa zone de saisie :
+   un doigt posé sur le chiffre ou la lettre doit traverser et saisir la pièce. */
+.boardbox [data-square] > span {
+  pointer-events: none;
 }
 
 .pb-safe {

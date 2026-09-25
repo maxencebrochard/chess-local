@@ -94,6 +94,9 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
     setSelected(canMoveFrom(square) ? (square as Square) : null)
   }
 
+  // Teintes en `backgroundColor`, motifs (échec, pastille, anneau) en `backgroundImage`, jamais le
+  // raccourci `background` : quand React le retire, il vide aussi `backgroundColor` sans le
+  // reposer, et la teinte du dernier coup disparaissait après une désélection.
   const squareStyles: Record<string, React.CSSProperties> = {}
   if (markSquares) {
     for (const [sq, color] of Object.entries(markSquares)) {
@@ -106,19 +109,20 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   }
   if (checkSquare) {
     squareStyles[checkSquare] = {
-      background: 'radial-gradient(circle, rgba(255,0,0,0.55) 20%, rgba(255,0,0,0.15) 70%)',
+      ...squareStyles[checkSquare],
+      backgroundImage: 'radial-gradient(circle, rgba(255,0,0,0.55) 20%, rgba(255,0,0,0.15) 70%)',
     }
   }
   if (selected) {
     squareStyles[selected] = { backgroundColor: 'rgba(255, 255, 51, 0.5)' }
     if (showLegalMoves) {
       for (const t of legalTargets) {
-        const occupied = chess.get(t as Square)
+        // Anneau sur une pièce à prendre, pastille sur une case vide, par-dessus la teinte éventuelle.
         squareStyles[t] = {
           ...squareStyles[t],
-          background: occupied
-            ? `radial-gradient(circle, transparent 50%, rgba(0,0,0,0.34) 51%) ${squareStyles[t]?.backgroundColor ?? ''}`
-            : `radial-gradient(circle, rgba(0,0,0,0.34) 30%, transparent 31%)`,
+          backgroundImage: chess.get(t as Square)
+            ? 'radial-gradient(circle, transparent 50%, rgba(0,0,0,0.34) 51%)'
+            : 'radial-gradient(circle, rgba(0,0,0,0.34) 30%, transparent 31%)',
         }
       }
     }
