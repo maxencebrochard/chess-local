@@ -1,0 +1,42 @@
+MODE=dev-server BASE=http://localhost:5199
+=== A. tap tremblant sur e2 (dragActivationDistance: 1) : la pièce est-elle sélectionnée après le geste ?
+   déplacement 0px (tap pur)  -> sélection=['e2']
+   déplacement 1px           -> sélection=['e2'] clone_mi-course=False coup_joué=False
+   déplacement 2px           -> sélection=[] clone_mi-course=False coup_joué=False
+   déplacement 3px           -> sélection=[] clone_mi-course=False coup_joué=False
+   déplacement 5px           -> sélection=[] clone_mi-course=True coup_joué=False
+   déplacement 8px           -> sélection=[] clone_mi-course=True coup_joué=False
+=== B. tap-tap et sélection
+   tap e2 -> sélection: ['e2']
+   tap d2 (autre pièce à moi) -> sélection: ['d2'] (attendu ['d2'])
+   re-tap d2 -> sélection: [] (attendu [])
+   e2 sélectionné puis tap pièce adverse e7 (coup illégal) -> sélection: [] pos e2: wP
+   tap e2 puis tap e4 -> e4: wP e2: None
+=== C. drag lâché hors du board
+[ok    ] d7 lâché au-dessus du board (y=40)                         hit=piece:bP         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(98, 98, 98) scrolled=null nav=None sel=[]
+[ok    ] d7 lâché sur la barre de nav (y=800)                       hit=piece:bP         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(98, 98, 98) scrolled=null nav=None sel=[]
+   après : d7 = bP | hash: #/analyse | clone fantôme resté: False
+=== D. roque par drag du roi
+[ok    ] roi e1 -> g1                                               hit=piece:wK         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(98, 98, 98) scrolled=null nav=None sel=[]
+   g1 = wK | f1 = wR | h1 = None (attendu wK, wR, None)
+=== E. prise en passant par drag
+[ok    ] pion e5 x d6 e.p.                                          hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(98, 98, 98) scrolled=null nav=None sel=[]
+   d6 = wP | d5 = None | e5 = None (attendu wP, None, None)
+=== F. promotion par drag (g7xh8)
+[ok    ] pion g7 x h8 (8e rangée)                                   hit=piece:wP         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(98, 98, 98) scrolled=null nav=None sel=[]
+   UI de promotion: {'n': 9, 'glyphs': ['♕', '♖', '♗', '♘', '⚙Options', '★Bilan', '🧭Explorer', '‹Précédent', '›Suivant'], 'sizes': [[64, 64, 57, 257], [64, 64, 129, 257], [64, 64, 201, 257], [64, 64, 273, 257], [61, 46, 15, 746], [45, 46, 91, 746], [64, 46, 151, 746], [75, 46, 229, 746], [58, 46, 319, 746]], 'overlay': [6, 98, 381, 381], 'vw': 393}
+   après tap sur le cavalier : h8 = wN (attendu wN) | UI encore visible: True
+=== F. promotion par tap (g7xh8)
+   UI de promotion: {'n': 9, 'glyphs': ['♕', '♖', '♗', '♘', '⚙Options', '★Bilan', '🧭Explorer', '‹Précédent', '›Suivant'], 'sizes': [[64, 64, 57, 257], [64, 64, 129, 257], [64, 64, 201, 257], [64, 64, 273, 257], [61, 46, 15, 746], [45, 46, 91, 746], [64, 46, 151, 746], [75, 46, 229, 746], [58, 46, 319, 746]], 'overlay': [6, 98, 381, 381], 'vw': 393}
+   après tap sur le cavalier : h8 = wN (attendu wN) | UI encore visible: True
+=== G. long press 900 ms sans bouger
+   pièce e2                                   contextmenu=[] selectstart=0 texte_sélectionné=0 car. sélection_pièce=['e2']
+   case vide e4                               contextmenu=[] selectstart=0 texte_sélectionné=0 car. sélection_pièce=[]
+   texte hors board (lignes moteur, y=75)     contextmenu=[] selectstart=1 texte_sélectionné=0 car. sélection_pièce=[]
+=== H. second doigt pendant un drag
+[ok    ] drag e2->e4 + 2e doigt sur b1 à mi-course                  hit=piece:wP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(98, 98, 98) scrolled=null nav=None sel=[]
+   après : e4 = wP e2 = None | clone fantôme resté: False | sélection: [] | nb pièces: 32
+[ok    ] drag e7->e5 + 2e doigt sur case vide d4                    hit=piece:bP         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(98, 98, 98) scrolled=null nav=None sel=[]
+   après : e5 = bP e7 = None | clone fantôme resté: False | nb pièces: 32
+[ok    ] coup suivant normal g1->f3 (le board est-il resté utilisable ?) hit=piece:wN         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(98, 98, 98) scrolled=null nav=None sel=[]
+   logs: []

@@ -1,0 +1,64 @@
+{
+ "recapture": [
+  "00eCY",
+  "8/6p1/5p1p/R5kP/2b3P1/1r3PK1/8/8 b - - 4 61",
+  "c4d5 a5d5 f6f5 d5f5",
+  774,
+  "endgame hangingPiece mate mateIn2 short"
+ ],
+ "promo": [
+  "012tD",
+  "1Q6/5ppk/7p/2pr4/4p3/4P3/2p2PPP/R5K1 w - - 1 36",
+  "b8b2 d5d1 a1d1 c2d1q",
+  760,
+  "advancedPawn backRankMate endgame mate mateIn2 promotion queenRookEndgame short"
+ ],
+ "verylong": [
+  "59uEQ",
+  "8/7K/1pq5/6Q1/7P/8/1k6/8 b - - 4 50",
+  "c6d7 g5g7 d7g7 h7g7 b6b5 h4h5 b5b4 h5h6 b4b3 h6h7 b2c2 h7h8q",
+  734,
+  "advancedPawn crushing endgame promotion queenEndgame quietMove veryLong"
+ ],
+ "underpromo": [
+  "0D1rh",
+  "8/8/6q1/8/8/3KNQ2/6pk/8 w - - 4 67",
+  "d3e2 g2g1n e2f2 g1f3",
+  900,
+  "advancedPawn crushing endgame fork promotion short underPromotion"
+ ],
+ "altmate": [
+  "012tD",
+  "1Q6/5ppk/7p/2pr4/4p3/4P3/2p2PPP/R5K1 w - - 1 36",
+  "b8b2 d5d1 a1d1 c2d1q",
+  760,
+  "advancedPawn backRankMate endgame mate mateIn2 promotion queenRookEndgame short"
+ ],
+ "altmate_alt": [
+  "c2d1r"
+ ],
+ "longlabel": [
+  "0wsXe",
+  "5rk1/1br2p2/p4Ppp/1p1pPq2/1P6/P3bQB1/4N2P/3RR2K w - - 0 30",
+  "f3f5 d5d4 f5f3 b7f3",
+  1060,
+  "discoveredAttack discoveredCheck doubleBishopMate kingsideAttack mate mateIn2 middlegame short"
+ ],
+ "altmate2": [
+  "051ka",
+  "7k/1q1r2Np/1p4p1/p3n3/4P3/1QP1P2P/PP4P1/5RK1 b - - 0 25",
+  "d7g7 f1f8 g7g8 f8g8",
+  797,
+  "endgame mate mateIn2 short"
+ ],
+ "altmate2_alt": [
+  "b3g8"
+ ],
+ "recapture1": [
+  "12ejQ",
+  "r3k2r/3q2p1/pp1ppb1p/2p1P3/1nP5/2N1PNP1/PP4KP/R2Q1R2 b kq - 0 19",
+  "f6e5 f3e5",
+  809,
+  "crushing middlegame oneMove"
+ ]
+}

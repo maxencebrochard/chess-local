@@ -1,0 +1,73 @@
+MODE=dev-server BASE=http://localhost:5199
+
+=== apprendre:Finales | standalone852+insets-emules | fix=- | joueur=w scroller_du_board=div.pt-safe pb-safe fixed inset-0  scrollers=[] boardTop=199
+[ok    ] pièce ADVERSE e6 drag bas 220px                            hit=piece:bK         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(199, 199, 199) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h5 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(199, 199, 199) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h5 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(199, 199, 199) scrolled=null nav=None sel=[]
+   (aucune pièce à moi sur une case à coordonnée dans cette position)
+[ok    ] pièce à moi e4 long drag vertical                          hit=piece:wK         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(199, 199, 199) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag e4->d4                                 hit=piece:wK         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(199, 199, 199) scrolled=null nav=None sel=[]
+   erreurs console touchend: 0 | autres: []
+
+=== apprendre:Tactiques | standalone852+insets-emules | fix=- | joueur=b scroller_du_board=div.pt-safe pb-safe fixed inset-0  scrollers=[] boardTop=123
+[ok    ] pièce ADVERSE g1 drag bas 220px                            hit=piece:wK         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] case VIDE b4 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] case VIDE b4 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi h6 saisie sur sa coordonnée '6'                hit=coordonnee:6     moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi h6 long drag vertical                          hit=piece:bP         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag h6->h5                                 hit=piece:bP         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+   erreurs console touchend: 0 | autres: []
+
+=== apprendre:Ouvertures | standalone852+insets-emules | fix=- | joueur=w scroller_du_board=div.pt-safe pb-safe fixed inset-0  scrollers=[] boardTop=205
+[ok    ] pièce ADVERSE a8 drag bas 220px                            hit=piece:bR         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(205, 205, 205) scrolled=null nav=None sel=[]
+[ok    ] case VIDE a4 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(205, 205, 205) scrolled=null nav=None sel=[]
+[ok    ] case VIDE a4 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(205, 205, 205) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi a2 saisie sur sa coordonnée '2'                hit=coordonnee:2     moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(205, 205, 205) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi a2 long drag vertical                          hit=piece:wP         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(205, 205, 205) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag a2->a4                                 hit=piece:wP         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(205, 205, 205) scrolled=null nav=None sel=[]
+   erreurs console touchend: 0 | autres: []
+
+=== apprendre:Stratégie | standalone852+insets-emules | fix=- | joueur=w scroller_du_board=div.pt-safe pb-safe fixed inset-0  scrollers=[] boardTop=123
+[ok    ] pièce ADVERSE a8 drag bas 220px                            hit=piece:bR         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] case VIDE c4 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] case VIDE c4 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi g1 saisie sur sa coordonnée 'g'                hit=coordonnee:g     moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi b6 long drag vertical                          hit=piece:wB         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag b6->d8                                 hit=piece:wB         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(123, 123, 123) scrolled=null nav=None sel=[]
+   erreurs console touchend: 0 | autres: []
+
+=== apprendre:Finales | safari660 | fix=- | joueur=w scroller_du_board=div.pt-safe pb-safe fixed inset-0  scrollers=[] boardTop=140
+[ok    ] pièce ADVERSE e5 drag bas 220px                            hit=piece:bK         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(140, 140, 140) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h5 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(140, 140, 140) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h5 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(140, 140, 140) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi e1 saisie sur sa coordonnée 'e'                hit=coordonnee:e     moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(140, 140, 140) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi e2 long drag vertical                          hit=piece:wQ         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(140, 140, 140) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag e2->a6                                 hit=piece:wQ         moved=True  clone=True  pcancel=0 scrollEv=  0 boardTop=(140, 140, 140) scrolled=null nav=None sel=[]
+   erreurs console touchend: 0 | autres: []
+
+=== apprendre:Tactiques | safari660 | fix=- | joueur=w scroller_du_board=div.pt-safe pb-safe fixed inset-0  scrollers=[] boardTop=64
+[ok    ] pièce ADVERSE a8 drag bas 220px                            hit=piece:bR         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h5 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] case VIDE h5 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi a2 saisie sur sa coordonnée '2'                hit=coordonnee:2     moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi c3 long drag vertical                          hit=piece:wN         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag c3->b5                                 hit=piece:wN         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+   erreurs console touchend: 0 | autres: []
+
+=== apprendre:Ouvertures | safari660 | fix=- | joueur=w scroller_du_board=div.pt-safe pb-safe fixed inset-0  scrollers=[] boardTop=146
+[ok    ] pièce ADVERSE a8 drag bas 220px                            hit=piece:bR         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(146, 146, 146) scrolled=null nav=None sel=[]
+[ok    ] case VIDE a4 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(146, 146, 146) scrolled=null nav=None sel=[]
+[ok    ] case VIDE a4 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(146, 146, 146) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi a2 saisie sur sa coordonnée '2'                hit=coordonnee:2     moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(146, 146, 146) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi a2 long drag vertical                          hit=piece:wP         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(146, 146, 146) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag a2->a4                                 hit=piece:wP         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(146, 146, 146) scrolled=null nav=None sel=[]
+   erreurs console touchend: 0 | autres: []
+
+=== apprendre:Stratégie | safari660 | fix=- | joueur=w scroller_du_board=div.pt-safe pb-safe fixed inset-0  scrollers=[] boardTop=64
+[ok    ] pièce ADVERSE g8 drag bas 220px                            hit=piece:bK         moved=False clone=False pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] case VIDE g5 drag haut 200px                               hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] case VIDE g5 drag bas 200px                                hit=case-vide        moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi a2 saisie sur sa coordonnée '2'                hit=coordonnee:2     moved=False clone=False pcancel=1 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] pièce à moi e3 long drag vertical                          hit=piece:wB         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+[ok    ] coup légal par drag e3->a7                                 hit=piece:wB         moved=False clone=True  pcancel=0 scrollEv=  0 boardTop=(64, 64, 64) scrolled=null nav=None sel=[]
+   erreurs console touchend: 0 | autres: []

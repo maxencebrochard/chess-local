@@ -1,0 +1,7 @@
+MODE=dev-server BASE=http://localhost:5199
+=== (a) history.back() pendant une partie (standalone 852)
+   partie en cours : e4 = wP | hash #/jouer | history.length 3 | nb pièces déplacées vs départ: 1
+   après history.back() : hash #/ | board présent: False
+   après history.forward() (retour sur /jouer) : hash #/jouer | board présent: False | e4 = None | écran de configuration affiché: True
+=== (b) émulation 'onglets en replace' : pushState redirigé vers replaceState
+   history.length : 2 -> 2 après 5 taps d'onglets | toutes les routes atteintes: True

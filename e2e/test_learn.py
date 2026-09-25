@@ -1,37 +1,28 @@
 """E2E « Apprendre » : page, séances par domaine, exercices, Elo, mes erreurs, sauvegarde.
 
-Usage : python3 e2e/test_learn.py            (dev local, port 5199)
-        BASE=https://… python3 e2e/test_learn.py
+Usage : npm run test:e2e -- --suite learn
 """
-import json
-import os
-from playwright.sync_api import sync_playwright
+from helpers import BASE, SHOTS, Checker, click_square as sq, mobile_context
 
-BASE = os.environ.get("BASE", "http://localhost:5199")
-SHOTS = os.path.join(os.path.dirname(__file__), "shots")
-os.makedirs(SHOTS, exist_ok=True)
-SETTINGS = json.dumps({"state": {"themeId": "green", "showLegalMoves": True, "playSounds": False,
-                                 "chesscomUsername": "", "reviewDepth": "fast"}, "version": 0})
 PGN = "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nd4 4. Nxe5 Qg5 5. Nxf7 Qxg2 6. Rf1 Qxe4+ 7. Be2 Nf3#"
-errors = []
+ck = Checker("learn")
+check = ck.check
+
+# Témoin posé avant le code de l'app : main.tsx doit demander le stockage persistant au
+# démarrage, sinon iOS peut purger IndexedDB (parties, classements, progrès).
+SPY_PERSIST = """
+if (navigator.storage && navigator.storage.persist) {
+  const original = navigator.storage.persist.bind(navigator.storage)
+  navigator.storage.persist = () => { window.__persistRequested = true; return original() }
+}
+"""
 
 
-def check(name, cond, detail=""):
-    print(f"[{'PASS' if cond else 'FAIL'}] {name} {detail}")
-    if not cond:
-        errors.append(name)
-
-
-def sq(page, s):
-    page.locator(f"[data-square='{s}']").click()
-
-
-with sync_playwright() as p:
+def suite(p):
     browser = p.chromium.launch(headless=True)
-    ctx = browser.new_context(**p.devices["iPhone 14 Pro"])
+    ctx = mobile_context(p, browser, ck)
+    ctx.add_init_script(SPY_PERSIST)
     page = ctx.new_page()
-    page.add_init_script(f"localStorage.setItem('chess-local-settings', {json.dumps(SETTINGS)})")
-    page.on("pageerror", lambda e: print("PAGEERROR:", str(e)[:200]))
 
     # --- Page Apprendre ---
     page.goto(f"{BASE}/#/apprendre")
@@ -120,7 +111,7 @@ with sync_playwright() as p:
     page.click("button:has-text('Charger')")
     page.wait_for_timeout(400)
     page.get_by_role("button", name="★ Bilan").click()
-    page.wait_for_selector("text=Démarrer le bilan", timeout=180000)
+    ck.appears("[bilan] résumé affiché", page, "text=Démarrer le bilan", timeout=180000)
     page.click("header button:has-text('✕')")
     page.wait_for_timeout(600)
     page.goto(f"{BASE}/#/apprendre")
@@ -203,11 +194,10 @@ with sync_playwright() as p:
     page.wait_for_timeout(800)
     check("[backup] boutons présents", page.locator("button", has_text="Exporter tout").is_visible()
           and page.locator("button", has_text="Restaurer").is_visible())
-    persisted = page.evaluate("() => navigator.storage?.persisted ? navigator.storage.persisted() : false")
-    check("[backup] storage.persist demandé", persisted in (True, False))  # API répond sans erreur
+    check("[backup] storage.persist demandé au démarrage", page.evaluate("() => window.__persistRequested === true"))
 
     ctx.close()
     browser.close()
 
-print("=" * 40)
-print("TOUT PASSE" if not errors else f"ÉCHECS: {errors}")
+
+ck.run(suite)

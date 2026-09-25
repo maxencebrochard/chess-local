@@ -1,38 +1,19 @@
 """E2E V4 : mode entraîneur, analyse mobile chess.com, accueil gamifié, puzzles flamme.
 
-Usage : python3 e2e/test_v4.py            (dev local, port 5199)
-        BASE=https://… python3 e2e/test_v4.py
+Usage : npm run test:e2e -- --suite v4
 """
-import json
-import os
-from playwright.sync_api import sync_playwright
+from helpers import BASE, SHOTS, Checker, click_square as sq, desktop_context, mobile_context
 
-BASE = os.environ.get("BASE", "http://localhost:5199")
-SHOTS = os.path.join(os.path.dirname(__file__), "shots")
-os.makedirs(SHOTS, exist_ok=True)
-SETTINGS = json.dumps({"state": {"themeId": "green", "showLegalMoves": True, "playSounds": False,
-                                 "chesscomUsername": "", "reviewDepth": "fast"}, "version": 0})
-errors = []
+ck = Checker("v4")
+check = ck.check
 
 
-def check(name, cond, detail=""):
-    print(f"[{'PASS' if cond else 'FAIL'}] {name} {detail}")
-    if not cond:
-        errors.append(name)
-
-
-def sq(page, s):
-    page.locator(f"[data-square='{s}']").click()
-
-
-with sync_playwright() as p:
+def suite(p):
     browser = p.chromium.launch(headless=True)
 
     # ---------- MODE ENTRAÎNEUR (desktop) ----------
-    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    ctx = desktop_context(browser, ck)
     page = ctx.new_page()
-    page.add_init_script(f"localStorage.setItem('chess-local-settings', {json.dumps(SETTINGS)})")
-    page.on("pageerror", lambda e: print("PAGEERROR:", str(e)[:150]))
     page.goto(f"{BASE}/#/jouer")
     page.wait_for_timeout(1200)
     page.click("button:has-text('Entraîneur')")
@@ -68,10 +49,8 @@ with sync_playwright() as p:
     ctx.close()
 
     # ---------- ANALYSE MOBILE ----------
-    ctx = browser.new_context(**p.devices["iPhone 14 Pro"], permissions=["clipboard-read", "clipboard-write"])
+    ctx = mobile_context(p, browser, ck, permissions=["clipboard-read", "clipboard-write"])
     page = ctx.new_page()
-    page.add_init_script(f"localStorage.setItem('chess-local-settings', {json.dumps(SETTINGS)})")
-    page.on("pageerror", lambda e: print("PAGEERROR:", str(e)[:150]))
     page.goto(f"{BASE}/#/analyse")
     page.wait_for_timeout(3000)
     check("[analyse-m] HEvalBar en haut", page.locator("main .bg-neutral-800").first.is_visible())
@@ -118,11 +97,11 @@ with sync_playwright() as p:
 
     # ---------- PUZZLES : flamme ----------
     page.locator("nav a", has_text="Puzzles").last.click()
-    page.wait_for_selector("text=Classement puzzles", timeout=20000)
+    ck.appears("[puzzles] page chargée", page, "text=Classement puzzles", timeout=20000)
     check("[puzzles] flamme visible", page.locator("text=🔥").is_visible())
     page.screenshot(path=f"{SHOTS}/v4_puzzles.png")
     ctx.close()
     browser.close()
 
-print("=" * 40)
-print("TOUT PASSE" if not errors else f"ÉCHECS: {errors}")
+
+ck.run(suite)

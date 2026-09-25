@@ -1,0 +1,20 @@
+msg erreur: Unexpected token 'b', "bonjour, j"... is not valid JSON | couleur: rgb(129, 182, 76)
+
+== COHÉRENCE PAR ROUTE (393x852, données peuplées)
+  /: {"h1": {"text": "♞ ChessLocal", "size": "30px", "weight": "900", "left": 16, "top": 28}, "pad": "16px / top 16px", "firstLeft": 16, "radii": {"12px": 9}, "btnFonts": {"18px/900": 1}}
+  /jouer: {"h1": {"text": "Jouer", "size": "24px", "weight": "700", "left": 24, "top": 36}, "pad": "24px / top 24px", "firstLeft": 24, "radii": {"8px": 23, "12px": 1}, "btnFonts": {"16px/600": 14, "16px/400": 9, "18px/900": 1}}
+  /puzzles: {"h1": null, "pad": "8px / top 8px", "firstLeft": 6, "radii": {"8px": 3, "4px": 1, "12px": 1}, "btnFonts": {"16px/600": 2, "18px/900": 1}}
+  /rush: {"h1": {"text": "⚡ Puzzle Rush", "size": "24px", "weight": "700", "left": 32, "top": 44}, "pad": "32px / top 32px", "firstLeft": 32, "radii": {"8px": 3}, "btnFonts": {"16px/400": 3}}
+  /apprendre: {"h1": {"text": "🎓 Apprendre", "size": "24px", "weight": "900", "left": 16, "top": 28}, "pad": "16px / top 16px", "firstLeft": 16, "radii": {"12px": 10}, "btnFonts": {"18px/900": 1, "16px/400": 5}}
+  /analyse: {"h1": null, "pad": "8px / top 8px", "firstLeft": 8, "radii": {"4px": 2}, "btnFonts": {"16px/400": 6, "14px/700": 1, "14px/600": 3, "14px/400": 6, "12px/600": 5}}
+  /archive: {"h1": {"text": "Archive (10)", "size": "24px", "weight": "700", "left": 24, "top": 38}, "pad": "24px / top 24px", "firstLeft": 24, "radii": {"4px": 31}, "btnFonts": {"14px/600": 1, "16px/400": 10}}
+  /stats: {"h1": {"text": "Statistiques", "size": "24px", "weight": "700", "left": 24, "top": 36}, "pad": "24px / top 24px", "firstLeft": 24, "radii": {"8px": 7, "3.35544e+07px": 2, "4px": 5}, "btnFonts": {"16px/400": 6, "14px/600": 5}}
+  /import: {"h1": {"text": "♟ Importer depuis chess.com", "size": "24px", "weight": "700", "left": 16, "top": 28}, "pad": "16px / top 16px", "firstLeft": 16, "radii": {"4px": 3}, "btnFonts": {"16px/700": 1}}
+
+Jouer: 'Mon classement rapid : 781\n\nJouer'
+
+tab820x1180 /jouer en partie: {'mainOvx': 57, 'mainLeft': 176, 'boardLeft': 119, 'boardRight': 759, 'boardTop': 276, 'boardBottom': 916, 'vw': 820, 'vh': 1180, 'sq': 80}
+tab820x1180 /analyse: {'mainOvx': 191, 'mainLeft': 176, 'boardLeft': 25, 'boardRight': 665, 'vw': 820, 'sq': 80, 'scrollLeftMax': 191}
+
+land852x393 /jouer en partie: {'mainOvx': 0, 'mainLeft': 176, 'boardLeft': 209, 'boardRight': 507, 'boardTop': 50, 'boardBottom': 349, 'vw': 852, 'vh': 393, 'sq': 37}
+land852x393 /analyse: {'mainOvx': 4, 'mainLeft': 176, 'boardLeft': 212, 'boardRight': 511, 'vw': 852, 'sq': 37, 'scrollLeftMax': 4}

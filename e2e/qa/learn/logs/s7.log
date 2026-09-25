@@ -1,0 +1,26 @@
+== séance auto 1: domaine=endgame items=1 header='🏁 Finales1/1'
+   abandon: accueil? 1 | sessions en base: 0 | stored: None
+   relance après abandon: domaine= endgame
+     item 1/1 endgame: ✓ Réussi ! | (+26) | ↺ | Réessayer | ♞ | Analyser | Suivant
+   fin: 1/1 réussi | 🏁 Finales · classement 626
+== séance auto 2: domaine=tactic items=3 header='⚔️ Tactiques1/3'
+     item 1/3 tactic: ✗ Raté | (-19) | ↺ | Réessayer | ♞ | Analyser | Suivant
+     item 2/3 tactic: ✗ Raté | (-13) | ↺ | Réessayer | ♞ | Analyser | Suivant
+     item 3/3 tactic: ✗ Raté | (-13) | ↺ | Réessayer | ♞ | Analyser | Suivant
+   fin: 0/3 réussi | ⚔️ Tactiques · classement 1455
+== séance auto 3: domaine=opening items=1 header='📖 Ouvertures1/1'
+     item 1/1 opening: ✗ Raté | (-7) | ↺ | Réessayer | ♞ | Analyser | Suivant
+   fin: 0/1 réussi | 📖 Ouvertures · classement 793
+== séance auto 4: domaine=strategy items=2 header='🧠 Stratégie1/2'
+     item 1/2 strategy: ✗ Raté | (-12) | ↺ | Réessayer | ♞ | Analyser | Suivant
+     item 2/2 strategy: ✗ Raté | (-14) | ↺ | Réessayer | ♞ | Analyser | Suivant
+   fin: 0/2 réussi | 🧠 Stratégie · classement 774
+== séance auto 5: domaine=endgame items=1 header='🏁 Finales1/1'
+     item 1/1 endgame: ✓ Réussi ! | (+24) | ↺ | Réessayer | ♞ | Analyser | Suivant
+   fin: 1/1 réussi | 🏁 Finales · classement 650
+ORDRE: ['endgame', 'tactic', 'opening', 'strategy', 'endgame']
+ratings: {'learn-endgame': 650, 'learn-opening': 793, 'learn-strategy': 774, 'learn-tactic': 1455}
+finale avant Analyser: ✓ Réussi ! | (+14) | ↺ | Réessayer | ♞ | Analyser | Suivant {'f6': 'bK', 'a2': 'wQ', 'e1': 'wK'}
+ /analyse label: +0,43 |  | (+0,43) Qe4+ |  | (+0,19) Qe3+ |  | ← Retour à l'exercice | 8 | 7 | 6 | 5 | 4 | 3 | 2 | a | 1 | b | c | d | e | f | g | h | Position de départ | ⚙ | Options | ★ | Bilan | 🧭 | Explorer | ‹ | Précédent | › | Suivant
+ après retour: ✓ Réussi ! | ↺ | Réessayer | ♞ | Analyser | Suivant {'e5': 'bK', 'e2': 'wQ', 'e1': 'wK'} | board identique: False | eval: 0,00
+LOGS: ["CONSOLE.error: %s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same v", "CONSOLE.error: %s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same v", "CONSOLE.error: %s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same v"]

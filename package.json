@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "check": "npm run lint && npm run typecheck",
+    "test:e2e": "python3 e2e/run.py",
+    "test:e2e:dev": "python3 e2e/run.py --mode dev"
   },
   "dependencies": {
     "chess.js": "^1.4.0",

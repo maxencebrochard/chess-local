@@ -1,0 +1,151 @@
+{
+  "_": "API chess.com simulée pour les E2E (voir mock_chesscom dans e2e/helpers.py). Parties et adversaires fictifs. Toute URL absente d'ici fait échouer la suite.",
+  "routes": {
+    "https://api.chess.com/pub/player/popeye232/games/archives": {
+      "body": {
+        "archives": [
+          "https://api.chess.com/pub/player/popeye232/games/2026/07",
+          "https://api.chess.com/pub/player/popeye232/games/2026/08",
+          "https://api.chess.com/pub/player/popeye232/games/2026/09"
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/popeye232/games/2026/07": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/101",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"popeye232\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/101\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1790726400,
+            "white": {
+              "username": "popeye232",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/102",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"BotBravo\"]\n[Black \"popeye232\"]\n[Result \"0-1\"]\n[WhiteElo \"790\"]\n[BlackElo \"850\"]\n[TimeControl \"180+2\"]\n[Link \"https://www.chess.com/game/live/102\"]\n\n1. f3 e5 2. g4 Qh4# 0-1\n",
+            "time_control": "180+2",
+            "time_class": "blitz",
+            "end_time": 1790812800,
+            "white": {
+              "username": "BotBravo",
+              "rating": 790,
+              "result": "checkmated"
+            },
+            "black": {
+              "username": "popeye232",
+              "rating": 850,
+              "result": "win"
+            }
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/popeye232/games/2026/08": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/103",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"popeye232\"]\n[Black \"BotCharlie\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"845\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/103\"]\n\n1. e4 e5 2. Nf3 d6 3. Bc4 Bg4 4. Nc3 g6 5. Nxe5 Bxd1 6. Bxf7+ Ke7 7. Nd5# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1790899200,
+            "white": {
+              "username": "popeye232",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotCharlie",
+              "rating": 845,
+              "result": "checkmated"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/104",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"popeye232\"]\n[Black \"BotDelta\"]\n[Result \"0-1\"]\n[WhiteElo \"850\"]\n[BlackElo \"870\"]\n[TimeControl \"300\"]\n[Link \"https://www.chess.com/game/live/104\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 Nd4 4. Nxe5 Qg5 5. Nxf7 Qxg2 6. Rf1 Qxe4+ 7. Be2 Nf3# 0-1\n",
+            "time_control": "300",
+            "time_class": "blitz",
+            "end_time": 1790985600,
+            "white": {
+              "username": "popeye232",
+              "rating": 850,
+              "result": "checkmated"
+            },
+            "black": {
+              "username": "BotDelta",
+              "rating": 870,
+              "result": "win"
+            }
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/popeye232/games/2026/09": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/105",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"BotEcho\"]\n[Black \"popeye232\"]\n[Result \"1/2-1/2\"]\n[WhiteElo \"905\"]\n[BlackElo \"850\"]\n[TimeControl \"900+10\"]\n[Link \"https://www.chess.com/game/live/105\"]\n\n1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Be7 5. e3 O-O 6. Nf3 h6 7. Bh4 b6 1/2-1/2\n",
+            "time_control": "900+10",
+            "time_class": "rapid",
+            "end_time": 1791072000,
+            "white": {
+              "username": "BotEcho",
+              "rating": 905,
+              "result": "agreed"
+            },
+            "black": {
+              "username": "popeye232",
+              "rating": 850,
+              "result": "agreed"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/106",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"popeye232\"]\n[Black \"BotFoxtrot\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"930\"]\n[TimeControl \"180\"]\n[Link \"https://www.chess.com/game/live/106\"]\n\n1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3 e5 7. Nb3 Be6 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1791158400,
+            "white": {
+              "username": "popeye232",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotFoxtrot",
+              "rating": 930,
+              "result": "resigned"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/107",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"BotGolf\"]\n[Black \"popeye232\"]\n[Result \"0-1\"]\n[WhiteElo \"955\"]\n[BlackElo \"850\"]\n[TimeControl \"60\"]\n[Link \"https://www.chess.com/game/live/107\"]\n\n1. c4 e5 2. Nc3 Nf6 3. g3 d5 4. cxd5 Nxd5 5. Bg2 Nb6 6. Nf3 Nc6 0-1\n",
+            "time_control": "60",
+            "time_class": "bullet",
+            "end_time": 1791244800,
+            "white": {
+              "username": "BotGolf",
+              "rating": 955,
+              "result": "timeout"
+            },
+            "black": {
+              "username": "popeye232",
+              "rating": 850,
+              "result": "win"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,62 +1,59 @@
 """QA exhaustive : tous les boutons de l'app, un assert d'effet par bouton.
 
-Usage : python3 e2e/test_all_buttons.py            (dev local, port 5199)
-        BASE=https://… python3 e2e/test_all_buttons.py
+Usage : npm run test:e2e -- --suite all_buttons
 """
-import json
-import os
-from playwright.sync_api import sync_playwright
+from helpers import BASE, LIVE, Checker, click_square, desktop_context, mobile_context
 
-BASE = os.environ.get("BASE", "http://localhost:5199")
-SETTINGS = json.dumps({"state": {"themeId": "green", "showLegalMoves": True, "playSounds": False,
-                                 "chesscomUsername": "popeye232", "reviewDepth": "fast"}, "version": 0})
-errors = []
-
-
-def check(name, cond, detail=""):
-    print(f"[{'PASS' if cond else 'FAIL'}] {name} {detail}")
-    if not cond:
-        errors.append(name)
+# Pseudo de la fixture e2e/fixtures/chesscom.json (API chess.com simulée, sauf E2E_LIVE=1).
+SETTINGS = {"chesscomUsername": "popeye232"}
+# (onglet, texte attendu dans <main>). Analyse n'a pas le même marqueur selon le layout :
+# « Options » n'existe que dans la barre d'actions mobile, « Copier PGN » que dans le panneau desktop.
+NAV = [("Jouer", "Adversaire"), ("Puzzles", "Classement puzzles"), ("Apprendre", "Séance"),
+       ("Analyse", {"mobile": "Options", "desktop": "Copier PGN"}), ("Archive", "Archive"),
+       ("Stats", "Statistiques"), ("Accueil", "ChessLocal")]
 
 
-def click_square(page, square):
-    page.locator(f"[data-square='{square}']").click()
+def marker_for(marker, layout):
+    return marker[layout] if isinstance(marker, dict) else marker
+
+ck = Checker("all_buttons")
+check = ck.check
+
+
+def current_move(page):
+    """Texte du coup courant dans la liste, ou None."""
+    loc = page.locator("main [data-current='true']")
+    return loc.first.inner_text() if loc.count() else None
 
 
 def selected(btn):
     return "border-accent" in (btn.get_attribute("class") or "")
 
 
-with sync_playwright() as p:
+def suite(p):
     browser = p.chromium.launch(headless=True)
 
     # ---------- NAV MOBILE : 7 onglets ----------
-    ctx = browser.new_context(**p.devices["iPhone 14 Pro"])
+    ctx = mobile_context(p, browser, ck, SETTINGS)
     page = ctx.new_page()
-    page.add_init_script(f"localStorage.setItem('chess-local-settings', {json.dumps(SETTINGS)})")
-    page.goto(BASE)
+    page.goto(f"{BASE}/")
     page.wait_for_timeout(1500)
-    for label, marker in [("Jouer", "Adversaire"), ("Puzzles", "Classement puzzles"), ("Apprendre", "Séance"),
-                          ("Analyse", "Options"), ("Archive", "Archive"), ("Stats", "Statistiques"),
-                          ("Accueil", "ChessLocal")]:
+    for label, marker in NAV:
         page.locator("nav a", has_text=label).last.click()
         page.wait_for_timeout(700)
-        check(f"[nav mobile] {label}", page.locator(f"main :text('{marker}')").first.is_visible())
+        check(f"[nav mobile] {label}", page.locator(f"main :text('{marker_for(marker, 'mobile')}')").first.is_visible())
     ctx.close()
 
     # ---------- DESKTOP : le reste ----------
-    ctx = browser.new_context(viewport={"width": 1440, "height": 900},
-                              permissions=["clipboard-read", "clipboard-write"])
+    ctx = desktop_context(browser, ck, SETTINGS, permissions=["clipboard-read", "clipboard-write"])
     page = ctx.new_page()
-    page.add_init_script(f"localStorage.setItem('chess-local-settings', {json.dumps(SETTINGS)})")
-    page.on("pageerror", lambda e: print("PAGEERROR:", str(e)[:150]))
-    page.goto(BASE)
+    page.goto(f"{BASE}/")
     page.wait_for_timeout(1500)
 
-    for label in ["Jouer", "Puzzles", "Apprendre", "Analyse", "Archive", "Stats", "Accueil"]:
+    for label, marker in NAV:
         page.locator("nav a", has_text=label).first.click()
         page.wait_for_timeout(700)
-        check(f"[nav desktop] {label}", True)
+        check(f"[nav desktop] {label}", page.locator(f"main :text('{marker_for(marker, 'desktop')}')").first.is_visible())
 
     # Accueil : carte Problèmes + tuiles + stats
     tiles = [("Problèmes", "Classement puzzles"), ("Analyse", "Stockfish 18"), ("Puzzle Rush", "Survie"),
@@ -108,10 +105,12 @@ with sync_playwright() as p:
     check("[partie] ◀", page.locator("main [data-current='true']").count() == 1)
     page.click("main button:has-text('⏮')"); page.wait_for_timeout(250)
     check("[partie] ⏮", page.locator("main [data-current='true']").count() == 1)
+    at_first = current_move(page)
     page.click("main button:has-text('▶')"); page.wait_for_timeout(250)
-    check("[partie] ▶", True)
+    check("[partie] ▶ avance d'un coup", current_move(page) not in (None, at_first), f"({at_first} -> {current_move(page)})")
     page.click("main button:has-text('⏭')"); page.wait_for_timeout(250)
-    check("[partie] ⏭ (retour live)", True)
+    last_move = page.locator("main [data-current]").last.inner_text()
+    check("[partie] ⏭ (retour live)", current_move(page) == last_move, f"({current_move(page)} / dernier {last_move})")
     page.click("button:has-text('Abandonner')")
     page.wait_for_timeout(1200)
     check("[partie] Abandonner → modale", page.locator("text=gagnent").first.is_visible())
@@ -127,8 +126,7 @@ with sync_playwright() as p:
     page.click("button:has-text('Abandonner')")
     page.wait_for_timeout(1200)
     page.locator("div.fixed button", has_text="Bilan de la partie").click()
-    page.wait_for_selector("text=Démarrer le bilan", timeout=120000)
-    check("[modale] Bilan de la partie → résumé", True)
+    ck.appears("[modale] Bilan de la partie → résumé", page, "text=Démarrer le bilan", timeout=120000)
     page.click("header button:has-text('✕')")
     page.wait_for_timeout(400)
 
@@ -153,7 +151,7 @@ with sync_playwright() as p:
 
     # ---------- PUZZLES ----------
     page.locator("nav a", has_text="Puzzles").first.click()
-    page.wait_for_selector("text=Classement puzzles", timeout=15000)
+    ck.appears("[puzzles] page chargée", page, "text=Classement puzzles", timeout=15000)
     page.wait_for_timeout(1500)
     body_before = page.locator("[id^='chessboard-']").first.inner_html()
     page.click("button:has-text('Indice')")
@@ -252,8 +250,11 @@ with sync_playwright() as p:
     check("[analyse] bouton chess.com", "import" in page.url)
 
     # ---------- IMPORT ----------
-    page.wait_for_selector("text=vs ", timeout=30000)
+    ck.appears("[import] liste affichée", page, "main button:has-text('vs ')", timeout=30000)
     check("[import] liste chargée", page.locator("main button", has_text="vs ").count() >= 5)
+    if not LIVE:
+        # Sans ça, le check passerait aussi contre l'API réelle : on veut la preuve que c'est la fixture.
+        check("[import] ce sont les parties de la fixture", page.locator("main button", has_text="BotGolf").count() == 1)
     page.click("summary")
     page.wait_for_timeout(300)
     check("[import] details Raccourci s'ouvre", page.locator("text=Raccourcis").is_visible())
@@ -280,8 +281,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(500)
     check("[archive] ✕ supprime", page.locator("main a", has_text="Analyser").count() == before - 1)
     page.locator("main a", has_text="Bilan").first.click()
-    page.wait_for_selector("text=Démarrer le bilan", timeout=120000)
-    check("[archive] Bilan lance le review", True)
+    ck.appears("[archive] Bilan lance le review", page, "text=Démarrer le bilan", timeout=120000)
     page.click("header button:has-text('✕')")
 
     # ---------- STATS / RÉGLAGES ----------
@@ -310,5 +310,5 @@ with sync_playwright() as p:
     ctx.close()
     browser.close()
 
-print("=" * 50)
-print("TOUT PASSE" if not errors else f"ÉCHECS: {errors}")
+
+ck.run(suite)

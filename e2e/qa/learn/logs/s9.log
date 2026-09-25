@@ -1,0 +1,14 @@
+--- [eg_draw_fail] kp-defense-front obj=draw side=w elo_avant={'key': 'learn-endgame', 'value': 1400, 'games': 0} eval_init=0,00
+    1. Kf2      bot=f5f4     dt=0.4s eval=-11,34 verdict=None over=False plies=2
+    2. Kg1      bot=f4e3     dt=0.5s eval=-81,15 verdict=fail over=False plies=4
+   => verdict=fail mat=False pat=False insuff=False rep3=False elo {'key': 'learn-endgame', 'value': 1400, 'games': 0} -> {'key': 'learn-endgame', 'value': 1380, 'games': 1} delta_ui=(-20) fen=8/8/8/4p3/8/4k3/8/6K1 w - - 4 3
+ board Finales: {'x': 12, 'y': 140, 'w': 369}
+ board Tactiques: {'x': 6, 'y': 64, 'w': 381}
+ board Stratégie: {'x': 6, 'y': 64, 'w': 381}
+ board Ouvertures: {'x': 12, 'y': 146, 'w': 369}
+ cibles: ✕ feuille {'x': 342.703125, 'y': 76.171875, 'width': 34.296875, 'height': 40} | 'Voir le cours complet' None
+ cible 'Voir le cours complet': {'x': 98.921875, 'y': 478.625, 'width': 195.140625, 'height': 32}
+ aria:  [{'txt': '✕', 'aria': None, 'title': ''}, {'txt': '?', 'aria': None, 'title': 'Voir le cours'}]
+ 'Je vérifie' : tops du board observés = [104, 132] | frames avec le texte: 11 | durée: 146 ms | top pendant vérif: [132]
+ verdict: ✗ Raté | ↺ | Réessayer | ♞ | Analyser | Suivant
+LOGS: []
