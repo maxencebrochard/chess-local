@@ -33,7 +33,7 @@ VITE = os.path.join(BIN, "vite")
 HOST = "127.0.0.1"  # contexte sécurisé (service worker, presse-papiers) sans dépendre de la résolution de « localhost »
 SUBPATH = "/chess-local/"  # le build est servi sous le même sous-chemin que GitHub Pages
 APP_MARKER = "<title>ChessLocal"
-PROD_ONLY = {"pwa"}  # suites qui n'ont de sens que sur le build local (service worker, manifest, hors ligne)
+PROD_ONLY = {"pwa", "upgrade"}  # suites qui n'ont de sens que sur le build local (service worker, manifest, hors ligne, montée de version)
 
 READY_TIMEOUT_S = 60
 STOP_GRACE_S = 5
