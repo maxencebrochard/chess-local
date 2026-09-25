@@ -30,12 +30,6 @@ body {
   touch-action: none;
 }
 
-/* react-chessboard peint les coordonnées par-dessus la pièce, hors de sa zone de saisie :
-   un doigt posé sur le chiffre ou la lettre doit traverser et saisir la pièce. */
-.boardbox [data-square] > span {
-  pointer-events: none;
-}
-
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }

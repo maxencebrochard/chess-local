@@ -24,7 +24,7 @@ Les tests sont des suites E2E Playwright en Python (`e2e/test_*.py`), lancées p
 
 ```bash
 npm run test:e2e                          # build de prod servi sous /chess-local/ (comme GitHub Pages), toutes les suites
-npm run test:e2e -- --suite learn         # une seule suite : learn, v4, all_buttons, pwa (cumulable : --suite learn --suite v4)
+npm run test:e2e -- --suite learn         # une seule suite : learn, v4, all_buttons, pwa, touch (cumulable : --suite learn --suite touch)
 npm run test:e2e:dev                      # serveur de dev : StrictMode double les updaters et révèle les effets de bord mal placés
 BASE=https://maxencebrochard.github.io/chess-local npm run test:e2e   # contre la prod déployée, sans serveur local
 npm run test:e2e -- --suite all_buttons --live                        # API chess.com réelle au lieu de la fixture, hors gate
