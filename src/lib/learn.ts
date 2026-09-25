@@ -18,12 +18,16 @@ export const DOMAIN_META: Record<LearnDomain, { label: string; emoji: string; ra
   mistakes: { label: 'Mes erreurs', emoji: '🩹', ratingKey: null },
 }
 
+// Ce qui conclut une finale sur l'échiquier : mat, promotion, capture du matériel adverse, ou tenir la nulle.
+export type EndgameGoal = 'mate' | 'promote' | 'capture' | 'hold'
+
 export interface EndgameItem {
   id: string
   title: string
   fen: string
   side: 'w' | 'b'
   objective: 'win' | 'draw'
+  goal: EndgameGoal
   lesson: string
   difficulty: number
 }
@@ -52,9 +56,13 @@ export interface Session {
   items: SessionItem[]
 }
 
+// Items à portée d'Elo. À défaut, les plus proches (50, ou 3 pour un petit vivier comme les
+// finales) plutôt que tout le vivier : un débutant ne doit pas recevoir un puzzle à 2800.
 function near<T>(items: T[], diff: (t: T) => number, elo: number, span = 200): T[] {
   const close = items.filter((i) => Math.abs(diff(i) - elo) <= span)
-  return close.length ? close : items
+  if (close.length) return close
+  const keep = Math.min(50, Math.max(3, Math.floor(items.length / 10)))
+  return [...items].sort((a, b) => Math.abs(diff(a) - elo) - Math.abs(diff(b) - elo)).slice(0, keep)
 }
 
 function pick<T>(arr: T[]): T {

@@ -11,7 +11,7 @@ import { db } from '../lib/db'
 import { Engine } from '../lib/engine'
 import {
   buildSession, DOMAIN_META, domainRating, pickNextDomain, scoreItem,
-  type LearnDomain, type Session, type SessionItem,
+  type EndgameGoal, type LearnDomain, type Session, type SessionItem,
 } from '../lib/learn'
 import { openingDe, openingFamilyFr } from '../lib/openingNames'
 import { figurine, winPct } from '../lib/review'
@@ -454,56 +454,80 @@ function PuzzleExercise({ item, phase, onFinish }: ExerciseProps) {
 }
 
 // ---------- Finale contre Stockfish ----------
+// L'échiquier tranche (mat, pat, répétition, matériel, 50 coups), puis l'objectif de l'exercice
+// (`goal`) : mat sur l'échiquier, promotion, capture du matériel adverse, ou tenir la nulle.
+// L'évaluation ne sert qu'à confirmer une promotion ou une capture, et à détecter un avantage lâché.
 function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
   const eg = item.kind === 'endgame' ? item.endgame : null
+  // Séance restaurée depuis un stockage antérieur au champ `goal` : le mat ou la nulle restent l'objectif.
+  const goal: EndgameGoal = eg?.goal ?? (eg?.objective === 'draw' ? 'hold' : 'mate')
   const chessRef = useRef(new Chess(eg?.fen))
   const [fen, setFen] = useState(chessRef.current.fen())
-  const [liveCp, setLiveCp] = useState<number | null>(0)
+  const [liveCp, setLiveCp] = useState<number | null>(null)
+  const [liveMate, setLiveMate] = useState<number | null>(null)
+  // Motif du verdict, affiché à la place de l'objectif une fois l'exercice conclu.
+  const [outcome, setOutcome] = useState<{ ok: boolean; reason: string } | null>(null)
   const plies = useRef(0)
   const badStreak = useRef(0)
-  const goodStreak = useRef(0)
+  const promoted = useRef(false)
   const finished = useRef(false)
 
-  const conclude = useCallback((ok: boolean) => {
+  const conclude = useCallback((ok: boolean, reason: string) => {
     if (finished.current || phase !== 'play') return
     finished.current = true
+    setOutcome({ ok, reason })
     onFinish(ok)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onFinish, phase])
 
+  // Évaluation à profondeur fixe, ramenée au point de vue du joueur (mat > 0 = il mate), et barre
+  // mise à jour côté blanc, plafonnée à ±10 pour l'affichage.
+  const evaluate = useCallback(async (): Promise<{ cp: number; mate: number | null }> => {
+    const c = chessRef.current
+    const res = await getEngine().search({ fen: c.fen(), depth: 10, multipv: 1 })
+    const line = res.lines[0]
+    const sign = c.turn() === eg!.side ? 1 : -1
+    const mate = line?.scoreMate != null ? sign * line.scoreMate : null
+    const cp = mate !== null ? (mate > 0 ? 10000 : -10000) : sign * (line?.scoreCp ?? 0)
+    const white = eg!.side === 'w' ? 1 : -1
+    setLiveCp(Math.max(-1000, Math.min(1000, white * cp)))
+    setLiveMate(mate === null ? null : white * mate)
+    return { cp, mate }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eg, getEngine])
+
   const evalAndCheck = useCallback(async () => {
     if (!eg || finished.current) return
     const c = chessRef.current
+    const hold = goal === 'hold'
+    const missed = hold ? 'objectif atteint.' : "le gain t'a échappé."
     if (c.isCheckmate()) {
-      conclude(c.turn() !== eg.side) // mat donné par le joueur = succès (objectif win)
+      const mine = c.turn() !== eg.side
+      conclude(mine, mine ? 'Mat ! Objectif atteint.' : 'Tu es mat.')
       return
     }
-    if (c.isDraw()) {
-      conclude(eg.objective === 'draw')
+    if (c.isStalemate()) { conclude(hold, `Pat : la partie est nulle, ${missed}`); return }
+    if (c.isThreefoldRepetition()) { conclude(hold, `Nulle par répétition : ${missed}`); return }
+    if (c.isInsufficientMaterial()) { conclude(hold, `Plus assez de matériel pour mater : nulle, ${missed}`); return }
+    if (c.isDrawByFiftyMoves()) { conclude(hold, `Règle des 50 coups : nulle, ${missed}`); return }
+    const { cp, mate } = await evaluate()
+    if (finished.current) return
+    const winning = cp >= 300 || (mate !== null && mate > 0)
+    if (goal === 'promote' && promoted.current && winning) { conclude(true, "Pion promu : c'est gagné."); return }
+    if (goal === 'capture' && winning && c.board().flat().filter((p) => p && p.color !== eg.side).length === 1) {
+      conclude(true, 'Matériel adverse capturé : le reste est technique.')
       return
     }
-    const engine = getEngine()
-    const res = await engine.search({ fen: c.fen(), depth: 10, multipv: 1 })
-    const line = res.lines[0]
-    const cpTurn = line ? (line.scoreMate !== null ? (line.scoreMate > 0 ? 10000 : -10000) : (line.scoreCp ?? 0)) : 0
-    const cpPlayer = c.turn() === eg.side ? cpTurn : -cpTurn
-    setLiveCp(eg.side === 'w' ? cpPlayer : -cpPlayer)
-    if (eg.objective === 'win') {
-      if (cpPlayer >= 600) goodStreak.current++
-      else goodStreak.current = 0
-      if (cpPlayer <= 80) badStreak.current++
-      else badStreak.current = 0
-      if (goodStreak.current >= 6) conclude(true)
-      else if (badStreak.current >= 4) conclude(false)
-      else if (plies.current >= 60) conclude(cpPlayer >= 300)
+    if (hold) {
+      badStreak.current = cp <= -350 ? badStreak.current + 1 : 0
+      if (badStreak.current >= 4) conclude(false, 'La position est perdue.')
+      else if (plies.current >= 30 && badStreak.current === 0) conclude(true, 'Tu as tenu 15 coups sans faiblir : nulle acquise.')
     } else {
-      if (cpPlayer <= -350) badStreak.current++
-      else badStreak.current = 0
-      if (badStreak.current >= 4) conclude(false)
-      else if (plies.current >= 30) conclude(true)
+      badStreak.current = cp <= 80 ? badStreak.current + 1 : 0
+      if (badStreak.current >= 4) conclude(false, cp < -300 ? 'La position est perdue.' : "L'avantage est parti : la position est nulle.")
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eg, conclude, getEngine])
+  }, [eg, goal, conclude, evaluate])
 
   const botMove = useCallback(async () => {
     if (!eg || finished.current) return
@@ -523,16 +547,24 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eg, getEngine, evalAndCheck])
 
+  // Barre d'éval renseignée dès l'affichage, sans attendre le premier coup.
+  useEffect(() => {
+    if (eg && phase === 'play') void evaluate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   if (!eg) return null
 
   function handleMove(from: string, to: string, promotion?: string): boolean {
     const c = chessRef.current
     if (phase !== 'play' || c.turn() !== eg!.side) return false
+    let mv
     try {
-      c.move({ from, to, promotion: promotion ?? 'q' })
+      mv = c.move({ from, to, promotion: promotion ?? 'q' })
     } catch {
       return false
     }
+    if (mv.promotion) promoted.current = true
     plies.current++
     setFen(c.fen())
     void (async () => {
@@ -544,10 +576,16 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
 
   return (
     <div className="flex flex-col gap-2 px-3">
-      <div className="rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold">
-        Objectif : {eg.objective === 'win' ? 'gagne cette position' : 'tiens la nulle'} — trait aux {eg.side === 'w' ? 'Blancs' : 'Noirs'}
+      <div
+        className={`rounded px-3 py-1.5 text-center text-sm font-semibold ${
+          outcome ? (outcome.ok ? 'bg-accent/15 text-accent' : 'bg-red-900/40 text-red-200') : 'bg-surface-2'
+        }`}
+      >
+        {outcome
+          ? outcome.reason
+          : `Objectif : ${eg.objective === 'win' ? 'gagne cette position' : 'tiens la nulle'} - trait aux ${eg.side === 'w' ? 'Blancs' : 'Noirs'}`}
       </div>
-      <HEvalBar cp={liveCp} mate={null} />
+      <HEvalBar cp={liveCp} mate={liveMate} />
       <div className="flex justify-center">
         <div className="boardbox md:w-[min(56vh,520px)]">
           <Board fen={fen} orientation={eg.side} interactive={phase === 'play'} movableColor={eg.side} onMove={handleMove} />
