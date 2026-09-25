@@ -28,7 +28,8 @@
               "username": "BotAlpha",
               "rating": 812,
               "result": "checkmated"
-            }
+            },
+            "rules": "chess"
           },
           {
             "url": "https://www.chess.com/game/live/102",
@@ -45,7 +46,8 @@
               "username": "popeye232",
               "rating": 850,
               "result": "win"
-            }
+            },
+            "rules": "chess"
           }
         ]
       }
@@ -68,7 +70,8 @@
               "username": "BotCharlie",
               "rating": 845,
               "result": "checkmated"
-            }
+            },
+            "rules": "chess"
           },
           {
             "url": "https://www.chess.com/game/live/104",
@@ -85,7 +88,8 @@
               "username": "BotDelta",
               "rating": 870,
               "result": "win"
-            }
+            },
+            "rules": "chess"
           }
         ]
       }
@@ -108,7 +112,8 @@
               "username": "popeye232",
               "rating": 850,
               "result": "agreed"
-            }
+            },
+            "rules": "chess"
           },
           {
             "url": "https://www.chess.com/game/live/106",
@@ -125,7 +130,8 @@
               "username": "BotFoxtrot",
               "rating": 930,
               "result": "resigned"
-            }
+            },
+            "rules": "chess"
           },
           {
             "url": "https://www.chess.com/game/live/107",
@@ -142,9 +148,53 @@
               "username": "popeye232",
               "rating": 850,
               "result": "win"
+            },
+            "rules": "chess"
+          },
+          {
+            "url": "https://www.chess.com/game/live/108",
+            "pgn": "[Event \"Live Chess960\"]\n[Site \"Chess.com\"]\n[White \"popeye232\"]\n[Black \"BotHotel\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"860\"]\n[TimeControl \"180\"]\n[Variant \"Chess960\"]\n[SetUp \"1\"]\n[FEN \"bqnbrknr/pppppppp/8/8/8/8/PPPPPPPP/BQNBRKNR w KQkq - 0 1\"]\n[Link \"https://www.chess.com/game/live/108\"]\n\n1. e4 e5 2. Nf3 Nc6 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1791331200,
+            "rules": "chess960",
+            "white": {
+              "username": "popeye232",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotHotel",
+              "rating": 860,
+              "result": "resigned"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/daily/109",
+            "pgn": "[Event \"Daily Chess\"]\n[Site \"Chess.com\"]\n[White \"BotIndia\"]\n[Black \"popeye232\"]\n[Result \"1/2-1/2\"]\n[WhiteElo \"880\"]\n[BlackElo \"850\"]\n[TimeControl \"1/86400\"]\n[Link \"https://www.chess.com/game/daily/109\"]\n\n1. d4 {[%clk 23:59:10]} 1... d5 {[%clk 23:58:40]} 2. c4 {[%clk 23:50:00]} 2... e6 {[%clk 23:40:00]} 3. Nc3 {[%clk 23:30:00]} 3... Nf6 {[%clk 23:20:00]} 1/2-1/2\n",
+            "time_control": "1/86400",
+            "time_class": "daily",
+            "end_time": 1791417600,
+            "rules": "chess",
+            "white": {
+              "username": "BotIndia",
+              "rating": 880,
+              "result": "repetition"
+            },
+            "black": {
+              "username": "popeye232",
+              "rating": 850,
+              "result": "repetition"
             }
           }
         ]
+      }
+    },
+    "https://api.chess.com/pub/player/zz_qa_nobody_98765/games/archives": {
+      "status": 404,
+      "body": {
+        "code": 0,
+        "message": "User \"zz_qa_nobody_98765\" not found."
       }
     }
   }
