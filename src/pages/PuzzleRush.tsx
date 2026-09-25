@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Cta } from '../components/Cta'
-import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
+import { FAIL_FLASH_MS, PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
 import { db } from '../lib/db'
 import { loadPuzzles } from '../lib/puzzles'
 
 type RushMode = '3min' | '5min' | 'survival'
+type RushState = 'menu' | 'running' | 'done'
 const MODE_MS: Record<RushMode, number | null> = { '3min': 180_000, '5min': 300_000, survival: null }
+const NEXT_DELAY_MS = 400 // après un succès ; après un échec c'est la durée du flash rouge
+const NO_BEST: Record<RushMode, number> = { '3min': 0, '5min': 0, survival: 0 }
 
 // Difficulté croissante façon chess.com : démarre facile, monte avec le score.
 function targetRating(score: number): number {
   return 500 + score * 55
 }
 
-function pickRushPuzzle(all: PuzzleData[], score: number, used: Set<string>): PuzzleData {
+function pickRushPuzzle(all: PuzzleData[], score: number, used: Set<string>): PuzzleData | undefined {
   const target = targetRating(score)
   let pool = all.filter((p) => Math.abs(p.rating - target) < 100 && !used.has(p.id))
   if (pool.length === 0) pool = all.filter((p) => !used.has(p.id))
@@ -21,81 +24,148 @@ function pickRushPuzzle(all: PuzzleData[], score: number, used: Set<string>): Pu
 
 export default function PuzzleRush() {
   const [mode, setMode] = useState<RushMode>('3min')
-  const [state, setState] = useState<'menu' | 'running' | 'done'>('menu')
+  const [state, setState] = useState<RushState>('menu')
   const [score, setScore] = useState(0)
   const [strikes, setStrikes] = useState(0)
   const [timeLeft, setTimeLeft] = useState(0)
   const [puzzle, setPuzzle] = useState<PuzzleData | null>(null)
-  const [best, setBest] = useState<Record<RushMode, number>>({ '3min': 0, '5min': 0, survival: 0 })
+  const [best, setBest] = useState<Record<RushMode, number>>(NO_BEST)
+  const [newRecord, setNewRecord] = useState(false)
+  const [allPuzzles, setAllPuzzles] = useState<PuzzleData[] | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  // Miroirs hors rendu : verdicts, chrono et démontage lisent l'état à l'instant T, sans passer
+  // par un updater React (jamais d'effet de bord dans un updater : il peut être rejoué).
+  const stateRef = useRef<RushState>('menu')
+  const modeRef = useRef<RushMode>('3min')
   const usedRef = useRef(new Set<string>())
   const scoreRef = useRef(0)
-  const [allPuzzles, setAllPuzzles] = useState<PuzzleData[] | null>(null)
+  const strikesRef = useRef(0)
+  const bestRef = useRef<Record<RushMode, number>>(NO_BEST)
+  const endAtRef = useRef(0) // échéance du chrono (heure réelle)
+  const nextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function load() {
+    setLoadError(false)
+    loadPuzzles().then(setAllPuzzles).catch(() => setLoadError(true))
+  }
 
   useEffect(() => {
-    void loadPuzzles().then(setAllPuzzles)
+    load()
   }, [])
 
   useEffect(() => {
     void (async () => {
       const scores = await db.rushScores.toArray()
-      const b = { '3min': 0, '5min': 0, survival: 0 } as Record<RushMode, number>
+      const b = { ...NO_BEST }
       for (const s of scores) b[s.mode] = Math.max(b[s.mode], s.score)
+      // Jamais en dessous du miroir : un run vient peut-être d'y être ajouté avant son écriture.
+      for (const m of Object.keys(b) as RushMode[]) b[m] = Math.max(b[m], bestRef.current[m])
+      bestRef.current = b
       setBest(b)
     })()
   }, [state])
 
+  // Chrono sur l'heure réelle : une échéance, pas un compte de ticks. iOS suspend le JS d'une
+  // PWA en arrière-plan et un intervalle dérive sous charge : on recalcule au retour.
   useEffect(() => {
     if (state !== 'running' || MODE_MS[mode] === null) return
-    const interval = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1000) {
-          finish()
-          return 0
-        }
-        return t - 1000
-      })
-    }, 1000)
-    return () => clearInterval(interval)
+    const tick = () => {
+      const left = Math.max(0, endAtRef.current - Date.now())
+      setTimeLeft(Math.ceil(left / 1000) * 1000) // arrondi à la seconde : un rendu par seconde
+      if (left === 0) finish()
+    }
+    tick()
+    const interval = setInterval(tick, 250)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', tick)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, mode])
 
+  // Quitter la page en plein run (nav basse, lien) : le score est enregistré, pas perdu.
+  useEffect(
+    () => () => {
+      closeRun()
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+
+  function clearNextTimer() {
+    if (nextTimerRef.current) clearTimeout(nextTimerRef.current)
+    nextTimerRef.current = null
+  }
+
   function start(m: RushMode) {
     if (!allPuzzles) return
+    clearNextTimer()
+    modeRef.current = m
     setMode(m)
     usedRef.current = new Set()
     scoreRef.current = 0
+    strikesRef.current = 0
     setScore(0)
     setStrikes(0)
+    setNewRecord(false)
+    endAtRef.current = Date.now() + (MODE_MS[m] ?? 0)
     setTimeLeft(MODE_MS[m] ?? 0)
-    setPuzzle(pickRushPuzzle(allPuzzles, 0, usedRef.current))
+    setPuzzle(pickRushPuzzle(allPuzzles, 0, usedRef.current) ?? null)
+    stateRef.current = 'running'
     setState('running')
   }
 
+  // Clôt le run, une seule fois quelle que soit l'origine (3e erreur, chrono, Arrêter, démontage),
+  // et enregistre le score. Renvoie true pour un nouveau record, null si aucun run ne tournait.
+  function closeRun(): boolean | null {
+    if (stateRef.current !== 'running') return null
+    stateRef.current = 'done'
+    clearNextTimer()
+    const m = modeRef.current
+    const s = scoreRef.current
+    const record = s > bestRef.current[m]
+    bestRef.current = { ...bestRef.current, [m]: Math.max(bestRef.current[m], s) }
+    void db.rushScores.add({ mode: m, score: s, date: Date.now() })
+    return record
+  }
+
   function finish() {
-    setState((s) => {
-      if (s !== 'running') return s
-      void db.rushScores.add({ mode, score: scoreRef.current, date: Date.now() })
-      return 'done'
-    })
+    const record = closeRun()
+    if (record === null) return
+    setNewRecord(record)
+    setState('done')
+  }
+
+  function scheduleNext(ms: number) {
+    clearNextTimer()
+    nextTimerRef.current = setTimeout(() => {
+      nextTimerRef.current = null
+      if (stateRef.current !== 'running' || !allPuzzles) return
+      const next = pickRushPuzzle(allPuzzles, scoreRef.current, usedRef.current)
+      if (next) setPuzzle(next)
+      else finish() // plus aucun puzzle disponible
+    }, ms)
   }
 
   function handleComplete(success: boolean) {
-    if (state !== 'running' || !puzzle || !allPuzzles) return
+    if (stateRef.current !== 'running' || !puzzle || !allPuzzles) return
+    if (usedRef.current.has(puzzle.id)) return // un seul verdict par puzzle
     usedRef.current.add(puzzle.id)
     if (success) {
       scoreRef.current += 1
       setScore(scoreRef.current)
-      setTimeout(() => setPuzzle(pickRushPuzzle(allPuzzles, scoreRef.current, usedRef.current)), 400)
+      scheduleNext(NEXT_DELAY_MS)
+      return
+    }
+    strikesRef.current += 1
+    setStrikes(strikesRef.current)
+    // Le temps du flash rouge du coup faux, puis fin du run ou puzzle suivant.
+    if (strikesRef.current >= 3) {
+      clearNextTimer()
+      nextTimerRef.current = setTimeout(finish, FAIL_FLASH_MS)
     } else {
-      setStrikes((k) => {
-        const next = k + 1
-        if (next >= 3) {
-          setTimeout(finish, 300)
-        } else {
-          setTimeout(() => setPuzzle(pickRushPuzzle(allPuzzles, scoreRef.current, usedRef.current)), 400)
-        }
-        return next
-      })
+      scheduleNext(FAIL_FLASH_MS)
     }
   }
 
@@ -111,6 +181,12 @@ export default function PuzzleRush() {
         <p className="mb-6 text-neutral-400">
           Enchaîne un maximum de puzzles. Trois erreurs et c'est fini. La difficulté monte avec ton score.
         </p>
+        {loadError && (
+          <div className="mb-4 rounded-lg bg-surface-2 p-4 text-center">
+            <p className="mb-3 text-sm text-neutral-400">Impossible de charger les puzzles. Vérifie ta connexion, puis réessaie.</p>
+            <Cta onClick={load}>Réessayer</Cta>
+          </div>
+        )}
         <div className="space-y-3">
           {(['3min', '5min', 'survival'] as RushMode[]).map((m) => (
             <button
@@ -133,7 +209,7 @@ export default function PuzzleRush() {
   if (state === 'done') {
     return (
       <div className="mx-auto max-w-xl p-8 text-center">
-        <h1 className="mb-2 text-3xl font-bold">{score >= best[mode] && score > 0 ? '🏆 Nouveau record !' : 'Terminé'}</h1>
+        <h1 className="mb-2 text-3xl font-bold">{newRecord ? '🏆 Nouveau record !' : 'Terminé'}</h1>
         <p className="mb-1 text-6xl font-black text-accent">{score}</p>
         <p className="mb-6 text-neutral-400">puzzles résolus · record {Math.max(best[mode], score)}</p>
         <div className="flex justify-center gap-3">
