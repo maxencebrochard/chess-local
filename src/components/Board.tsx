@@ -147,6 +147,11 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
           arrows: arrows?.map((a) => ({ ...a })) ?? [],
           darkSquareStyle: { backgroundColor: theme.dark },
           lightSquareStyle: { backgroundColor: theme.light },
+          // Les coordonnées sont peintes par-dessus la pièce, hors de sa zone de saisie : un doigt
+          // posé sur le chiffre ou la lettre doit traverser et saisir la pièce (la lib fusionne
+          // ces styles avec ses défauts, la couleur et la taille sont conservées).
+          lightSquareNotationStyle: { pointerEvents: 'none' },
+          darkSquareNotationStyle: { pointerEvents: 'none' },
           dropSquareStyle: { boxShadow: 'inset 0 0 0 3px rgba(255,255,255,0.65)' },
           animationDurationInMs: 80,
           dragActivationDistance: 1,
