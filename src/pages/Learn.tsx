@@ -13,7 +13,7 @@ import {
   buildSession, DOMAIN_META, domainRating, pickNextDomain, scoreItem,
   type LearnDomain, type Session, type SessionItem,
 } from '../lib/learn'
-import { openingFamilyFr } from '../lib/openingNames'
+import { openingDe, openingFamilyFr } from '../lib/openingNames'
 import { figurine, winPct } from '../lib/review'
 import { sounds } from '../lib/sounds'
 import { useSettings } from '../store/settings'
@@ -370,7 +370,7 @@ function ExerciseView(props: ExerciseProps) {
     item.kind === 'endgame' ? { title: item.endgame.title, text: item.endgame.lesson }
     : item.kind === 'strategy' ? { title: item.card.title, text: item.card.lesson }
     : item.kind === 'tactic' ? { title: item.themeLabel, text: `Trois positions, un même motif : ${item.themeLabel.toLowerCase()}. Prends deux secondes pour le repérer avant de calculer — il est présent à chaque fois.` }
-    : item.kind === 'opening' ? { title: openingFamilyFr(item.line.name), text: `Objectif : dérouler les ${Math.ceil(item.depth / 2)} premiers coups de la ${openingFamilyFr(item.line.name)} sans te tromper. En cas d'erreur, je te montre le bon coup et on continue.` }
+    : item.kind === 'opening' ? { title: openingFamilyFr(item.line.name), text: `Objectif : dérouler les ${Math.ceil(item.depth / 2)} premiers coups ${openingDe(item.line.name)} sans te tromper. En cas d'erreur, je te montre le bon coup et on continue.` }
     : { title: 'Répare ta partie', text: `${item.mistake.gameLabel} : tu avais joué ${figurine(item.mistake.playedSan)}, et ce coup t'a coûté cher. Reprends la position et trouve plus fort.` }
 
   if (phase === 'lesson') {
