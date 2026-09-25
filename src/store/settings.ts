@@ -18,6 +18,16 @@ export const BOARD_THEMES: BoardTheme[] = [
 export type ReviewDepthSetting = 'fast' | 'balanced' | 'deep'
 export const REVIEW_DEPTHS: Record<ReviewDepthSetting, number> = { fast: 10, balanced: 12, deep: 16 }
 
+// Dernière configuration de l'écran Jouer (mode, bot, couleur, cadence), retrouvée à la visite suivante.
+export type PlayMode = 'bot' | 'local' | 'coach'
+export type PlayColor = 'w' | 'b' | 'random'
+export interface PlayConfig {
+  playMode: PlayMode
+  playBotId: string
+  playColor: PlayColor
+  playTcLabel: string
+}
+
 interface SettingsState {
   themeId: string
   setTheme: (id: string) => void
@@ -29,6 +39,11 @@ interface SettingsState {
   setChesscomUsername: (v: string) => void
   reviewDepth: ReviewDepthSetting
   setReviewDepth: (v: ReviewDepthSetting) => void
+  playMode: PlayMode
+  playBotId: string
+  playColor: PlayColor
+  playTcLabel: string
+  setPlayConfig: (v: Partial<PlayConfig>) => void
 }
 
 export const useSettings = create<SettingsState>()(
@@ -44,6 +59,11 @@ export const useSettings = create<SettingsState>()(
       setChesscomUsername: (chesscomUsername) => set({ chesscomUsername }),
       reviewDepth: 'balanced',
       setReviewDepth: (reviewDepth) => set({ reviewDepth }),
+      playMode: 'bot',
+      playBotId: 'nina',
+      playColor: 'w',
+      playTcLabel: '10 min',
+      setPlayConfig: (v) => set(v),
     }),
     { name: 'chess-local-settings' },
   ),

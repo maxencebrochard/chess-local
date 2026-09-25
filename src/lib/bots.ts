@@ -10,7 +10,7 @@ export interface Bot {
   description: string
   // Probabilité de jouer un coup aléatoire au lieu du coup moteur (bots faibles).
   randomness: number
-  movetimeMs: number
+  movetimeMs: number // réflexion en illimité ; bornée par la pendule sinon (botThinkBudget)
 }
 
 export const BOTS: Bot[] = [
@@ -36,4 +36,13 @@ export function botEngineOptions(bot: Bot): Record<string, string | number | boo
     UCI_LimitStrength: true,
     UCI_Elo: Math.max(1320, Math.min(3190, bot.elo)),
   }
+}
+
+// Budget de réflexion selon la pendule du bot : min(movetime, reste / 40 + 0,8 x incrément).
+// La latence artificielle (rythme naturel) est réduite dans la même proportion, et
+// supprimée sous 10 s. En illimité (null), le bot prend son movetime.
+export function botThinkBudget(bot: Bot, remainingMs: number | null, incMs: number): { movetimeMs: number; latencyScale: number } {
+  if (remainingMs === null) return { movetimeMs: bot.movetimeMs, latencyScale: 1 }
+  const movetimeMs = Math.max(20, Math.min(bot.movetimeMs, Math.floor(remainingMs / 40 + 0.8 * incMs)))
+  return { movetimeMs, latencyScale: remainingMs < 10_000 ? 0 : movetimeMs / bot.movetimeMs }
 }

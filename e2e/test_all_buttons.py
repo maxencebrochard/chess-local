@@ -30,6 +30,12 @@ def selected(btn):
     return "border-accent" in (btn.get_attribute("class") or "")
 
 
+def resign(page):
+    """Abandonner ouvre une feuille de confirmation : on confirme."""
+    page.click("button:has-text('Abandonner')")
+    page.get_by_role("button", name="Oui, abandonner", exact=True).click()
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
 
@@ -110,8 +116,11 @@ def suite(p):
     last_move = page.locator("main [data-current]").last.inner_text()
     check("[partie] ⏭ (retour live)", current_move(page) == last_move, f"({current_move(page)} / dernier {last_move})")
     page.click("button:has-text('Abandonner')")
+    page.wait_for_timeout(300)
+    check("[partie] Abandonner → confirmation", page.locator("text=Abandonner la partie ?").is_visible())
+    page.get_by_role("button", name="Oui, abandonner", exact=True).click()
     page.wait_for_timeout(1200)
-    check("[partie] Abandonner → modale", page.locator("text=gagnent").first.is_visible())
+    check("[partie] Oui, abandonner → modale", page.locator("text=gagnent").first.is_visible())
     check("[modale] delta classement", "Classement" in page.locator("body").inner_text())
     page.locator("div.fixed button", has_text="Nouvelle partie").click()
     page.wait_for_timeout(400)
@@ -121,7 +130,7 @@ def suite(p):
     page.wait_for_timeout(900)
     click_square(page, "d2"); page.wait_for_timeout(200); click_square(page, "d4")
     page.wait_for_timeout(3500)
-    page.click("button:has-text('Abandonner')")
+    resign(page)
     page.wait_for_timeout(1200)
     page.locator("div.fixed button", has_text="Bilan de la partie").click()
     ck.appears("[modale] Bilan de la partie → résumé", page, "text=Démarrer le bilan", timeout=120000)
@@ -140,7 +149,7 @@ def suite(p):
     click_square(page, "e7"); page.wait_for_timeout(200); click_square(page, "e5")
     page.wait_for_timeout(400)
     check("[local] deux camps jouent", page.locator("main [data-current]").count() == 2)
-    page.click("button:has-text('Abandonner')")
+    resign(page)
     page.wait_for_timeout(900)
     check("[local] abandon", page.locator("text=gagnent").first.is_visible())
     page.locator("div.fixed").click(position={"x": 10, "y": 10})

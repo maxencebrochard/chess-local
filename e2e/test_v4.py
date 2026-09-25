@@ -42,7 +42,16 @@ def suite(p):
     n1 = page.locator("main [data-current]").count()
     check("[coach] Annuler retire 2 demi-coups", n1 == n0 - 2, f"({n0} -> {n1})")
     page.screenshot(path=f"{SHOTS}/v4_coach.png")
+    # Sous deux demi-coups l'abandon annule la partie (ni classée ni archivée) : on rejoue e4 et on
+    # attend la réponse du bot pour finir une vraie partie non classée, après confirmation.
+    sq(page, "e2"); page.wait_for_timeout(200); sq(page, "e4")
+    for _ in range(100):
+        if page.locator("main [data-current]").count() >= 2:
+            break
+        page.wait_for_timeout(200)
+    check("[coach] partie reprise après Annuler (2 demi-coups)", page.locator("main [data-current]").count() >= 2)
     page.click("button:has-text('Abandonner')")
+    page.get_by_role("button", name="Oui, abandonner", exact=True).click()
     page.wait_for_timeout(1200)
     body = page.locator("div.fixed").inner_text()
     check("[coach] fin non classée (pas de delta)", "Classement :" not in body and "non classée" in body, f"({body[:60]}…)")
