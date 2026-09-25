@@ -248,8 +248,10 @@ def suite(p):
     check("[analyse] bouton chess.com", "import" in page.url)
 
     # ---------- IMPORT ----------
-    ck.appears("[import] liste affichée", page, "main button:has-text('vs ')", timeout=30000)
-    check("[import] liste chargée", page.locator("main button", has_text="vs ").count() >= 5)
+    # SEC-3 : rien ne part vers chess.com sans action, la liste ne s'affiche qu'après « Voir mes parties ».
+    page.get_by_role("button", name="Voir mes parties").click()
+    ck.appears("[import] liste affichée", page, "main button:has-text('contre ')", timeout=30000)
+    check("[import] liste chargée", page.locator("main button", has_text="contre ").count() >= 5)
     if not LIVE:
         # Sans ça, le check passerait aussi contre l'API réelle : on veut la preuve que c'est la fixture.
         check("[import] ce sont les parties de la fixture", page.locator("main button", has_text="BotGolf").count() == 1)
@@ -277,7 +279,9 @@ def suite(p):
     before = page.locator("main a", has_text="Analyser").count()
     page.locator("main button:has-text('✕')").first.click()
     page.wait_for_timeout(500)
-    check("[archive] ✕ supprime", page.locator("main a", has_text="Analyser").count() == before - 1)
+    # Suppression différée (ANA-24) : la ligne devient une barre « Annuler » ; l'effacement en base
+    # est prouvé par test_archive_import.py.
+    check("[archive] ✕ retire la ligne (suppression différée)", page.locator("main a", has_text="Analyser").count() == before - 1)
     page.locator("main a", has_text="Bilan").first.click()
     ck.appears("[archive] Bilan lance le review", page, "text=Démarrer le bilan", timeout=120000)
     page.click("header button:has-text('✕')")
