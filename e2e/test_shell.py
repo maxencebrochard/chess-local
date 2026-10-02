@@ -203,6 +203,22 @@ def suite(p):
         page.evaluate("() => { window.__E2E_BOOM = false }")
     tab(page, "Analyse").click()
     ck.appears("[boundary] re-tap après crash au chargement relance Analyse", page, "[id^='chessboard-']", timeout=5000)
+
+    # Le check précédent passe aussi avec `resetKey={location.key}` (rendu rejoué avec la
+    # transition). Celui-ci échoue avec : navigation de même chemin en replace APRÈS l'affichage
+    # du secours (nouvelle `location.key`, `pathname` inchangé), le secours doit rester.
+    with ck.expect_pageerror("E2E_BOOM_URLSEARCHPARAMS"):
+        page.evaluate("() => { window.__E2E_BOOM = true }")
+        tab(page, "Stats").click()
+        page.wait_for_timeout(300)
+        tab(page, "Analyse").click()
+        ck.appears("[boundary] crash avant navigation de même chemin", page, FALLBACK, timeout=5000)
+        page.evaluate("() => { window.__E2E_BOOM = false }")
+        page.wait_for_timeout(200)
+    page.evaluate("() => location.replace(location.href.split('#')[0] + '#/analyse?e2e=1')")
+    page.wait_for_timeout(1000)
+    check("[boundary] navigation de même chemin (replace) : secours maintenu",
+          hash_of(page) == "#/analyse?e2e=1" and page.locator(FALLBACK).is_visible(), f"({hash_of(page)})")
     ctx.close()
 
     # ---------- iPhone dans Safari (393x660) : TOUCH-4 ----------
