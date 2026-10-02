@@ -184,17 +184,21 @@ function LessonView({ id, lesson }: { id: string; lesson: Lesson }) {
                   ))}
                 </ul>
               </div>
-              {exercise && (
-                <Cta
-                  onClick={() =>
-                    navigate('/apprendre', { state: { endgame: exercise.id, returnTo: `/apprendre/finales/${id}?etape=${total}` } })
-                  }
-                >
-                  S'entraîner : {exercise.title}
-                </Cta>
+              {fromSession ? (
+                <Cta onClick={close}>Retour à la séance</Cta>
+              ) : (
+                exercise && (
+                  <Cta
+                    onClick={() =>
+                      navigate('/apprendre', { state: { endgame: exercise.id, returnTo: `/apprendre/finales/${id}?etape=${total}` } })
+                    }
+                  >
+                    S'entraîner : {exercise.title}
+                  </Cta>
+                )
               )}
               {next && (
-                <Cta variant={exercise ? 'secondary' : 'primary'} onClick={() => goCourse(`/apprendre/finales/${next}`)}>
+                <Cta variant={fromSession || exercise ? 'secondary' : 'primary'} onClick={() => goCourse(`/apprendre/finales/${next}`)}>
                   Leçon suivante
                 </Cta>
               )}
