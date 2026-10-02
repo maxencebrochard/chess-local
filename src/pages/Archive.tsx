@@ -121,17 +121,23 @@ export default function Archive() {
   }, [])
 
   async function loadMore() {
-    const rows = await newestFirst().offset(games.length).limit(PAGE).toArray()
-    setGames((gs) => [...gs, ...rows])
+    setBusy(true)
+    try {
+      const rows = await newestFirst().offset(games.length).limit(PAGE).toArray()
+      setGames((gs) => [...gs, ...rows])
+    } finally {
+      setBusy(false)
+    }
   }
 
   const commit = useCallback(async (id: number) => {
     setBusy(true)
+    setGames((gs) => gs.filter((g) => g.id !== id))
+    setTotal((n) => (n === null ? n : n - 1))
     try {
       await db.games.delete(id)
-      setGames((gs) => gs.filter((g) => g.id !== id))
-      setTotal(await db.games.count())
     } finally {
+      setPendingId((cur) => (cur === id ? null : cur))
       setBusy(false)
     }
   }, [])
@@ -142,7 +148,6 @@ export default function Archive() {
     if (!p) return
     window.clearTimeout(p.timer)
     pendingRef.current = null
-    setPendingId(null)
     void commit(p.id)
   }, [commit])
 
@@ -151,7 +156,6 @@ export default function Archive() {
       flush()
       const timer = window.setTimeout(() => {
         pendingRef.current = null
-        setPendingId(null)
         void commit(id)
       }, UNDO_MS)
       pendingRef.current = { id, timer }

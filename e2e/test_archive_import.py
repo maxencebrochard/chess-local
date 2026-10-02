@@ -225,10 +225,11 @@ def archive_mobile_standalone(p, browser):
     archive_layout(page, "852", 90)
     shot(page, "l12_archive_852")
 
+    # Double tap : la seconde lecture ne doit pas dupliquer la page suivante.
     if more.count():
-        more.first.click()
+        more.first.dblclick()
         page.wait_for_timeout(600)
-    ck.check("[archive 852] « Voir plus » charge les 10 restantes", links.count() == 60, f"({links.count()})")
+    ck.check("[archive 852] « Voir plus » (double tap) charge les 10 restantes, sans doublon", links.count() == 60, f"({links.count()})")
     ck.check("[archive 852] « Voir plus » disparaît quand tout est chargé", more.count() == 0)
 
     rows = page.locator("main li")
