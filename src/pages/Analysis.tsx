@@ -589,41 +589,51 @@ export default function Analysis() {
           <HEvalBar cp={m.evalAfterCp} mate={m.mateAfter} />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* Conteneur de taille : l'échiquier se borne à la hauteur de cette zone (cqh). */}
+        <div className="min-h-0 flex-1 overflow-y-auto [container-type:size]">
         <div className="px-3 py-2">
           {retry ? (
-            <CoachBubble mood={retry.status === 'found' ? 'happy' : 'thinking'} headline="🎯 À toi de jouer">
-              {retry.status === 'trying' && `Trouve mieux que ${figurine(m.san, moverColor)}. Joue ton coup sur l'échiquier.`}
-              {retry.status === 'checking' && `Je vérifie ${figurine(retry.lastTried ?? '', moverColor)}…`}
-              {retry.status === 'found' && `🎉 Trouvé ! ${figurine(retry.lastTried ?? '', moverColor)} ${retry.lastTried === retrySolution ? 'était exactement le coup.' : 'fait aussi le travail.'}`}
-              {retry.status === 'failed' && `${figurine(retry.lastTried ?? '', moverColor)} ne suffit pas non plus. Réessaie !`}
-              {retry.solutionShown && ` La solution était ${figurine(retrySolution ?? '', moverColor)}.`}
-              <div className="mt-2 flex gap-2">
-                {(retry.status === 'trying' || retry.status === 'failed') && (
+            <CoachBubble
+              mood={retry.status === 'found' ? 'happy' : 'thinking'}
+              headline="À toi de jouer"
+              fixed
+              actions={
+                <>
+                  {(retry.status === 'trying' || retry.status === 'failed') && (
+                    <button
+                      onClick={() => setRetry({ ...retry, solutionShown: true })}
+                      className="cursor-pointer rounded bg-neutral-200 px-2 py-1 text-xs font-bold hover:bg-neutral-300"
+                    >
+                      Solution
+                    </button>
+                  )}
                   <button
-                    onClick={() => setRetry({ ...retry, solutionShown: true })}
+                    onClick={() => setRetry(null)}
                     className="cursor-pointer rounded bg-neutral-200 px-2 py-1 text-xs font-bold hover:bg-neutral-300"
                   >
-                    💡 Solution
+                    {retry.status === 'found' ? 'Continuer' : 'Quitter'}
                   </button>
-                )}
-                <button
-                  onClick={() => setRetry(null)}
-                  className="cursor-pointer rounded bg-neutral-200 px-2 py-1 text-xs font-bold hover:bg-neutral-300"
-                >
-                  {retry.status === 'found' ? 'Continuer' : 'Quitter'}
-                </button>
-              </div>
+                </>
+              }
+            >
+              {/* Une seule chaîne : CoachBubble agrandit alors les figurines (FigText). */}
+              {(retry.status === 'trying' ? `Trouve mieux que ${figurine(m.san, moverColor)}. Joue ton coup sur l'échiquier.`
+                : retry.status === 'checking' ? `Je vérifie ${figurine(retry.lastTried ?? '', moverColor)}…`
+                : retry.status === 'found' ? `Trouvé ! ${figurine(retry.lastTried ?? '', moverColor)} ${retry.lastTried === retrySolution ? 'était exactement le coup.' : 'fait aussi le travail.'}`
+                : `${figurine(retry.lastTried ?? '', moverColor)} ne suffit pas. Réessaie !`)
+                + (retry.solutionShown ? ` La solution était ${figurine(retrySolution ?? '', moverColor)}.` : '')}
             </CoachBubble>
           ) : (
-            <CoachBubble cls={m.class} headline={comment?.headline ?? figurine(m.san, moverColor)} evalBadge={evalBadge} mood={mood}>
+            <CoachBubble cls={m.class} headline={comment?.headline ?? figurine(m.san, moverColor)} evalBadge={evalBadge} mood={comment?.mood ?? mood} fixed>
               {comment?.body ?? ''}
             </CoachBubble>
           )}
         </div>
 
         <div className="flex justify-center">
-          <div className="boardbox md:w-[min(56vh,520px)]">
+          {/* Bulle (16 + 116, 96 sous 700 px) + bande des coups (~43) : tout tient sans défiler.
+              Plancher de 200 px : en paysage, on défile plutôt que de perdre l'échiquier. */}
+          <div className="boardbox max-w-[max(200px,calc(100cqh_-_178px))] md:w-[min(56vh,520px)] [@media(max-height:700px)]:max-w-[max(200px,calc(100cqh_-_158px))]">
             <Board
               fen={retry ? retry.baseFen : viewFen}
               orientation={orientation}

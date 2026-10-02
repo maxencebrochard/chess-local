@@ -22,7 +22,7 @@ export interface ReviewedMove {
 
 export interface GameReview {
   moves: ReviewedMove[]
-  // Position de départ (FEN) et trait initial — départ custom possible (puzzle).
+  // Position de départ (FEN) et trait initial : départ custom possible (puzzle).
   startFen: string
   startTurn: 'w' | 'b'
   accuracyWhite: number
@@ -41,16 +41,16 @@ export const CLASS_META: Record<
   { label: string; headline: string; symbol: string; color: string }
 > = {
   brilliant: { label: 'Brillant', headline: 'brillant', symbol: '!!', color: '#1baca6' },
-  great: { label: 'Très bon', headline: 'un très bon coup', symbol: '!', color: '#5b8bb0' },
-  best: { label: 'Meilleur', headline: 'le meilleur', symbol: '★', color: '#81b64c' },
+  great: { label: 'Très bon', headline: 'un très bon coup', symbol: '!', color: '#4a7aa0' },
+  best: { label: 'Meilleur', headline: 'le meilleur coup', symbol: '★', color: '#81b64c' },
   excellent: { label: 'Excellent', headline: 'excellent', symbol: '👍', color: '#81b64c' },
   good: { label: 'Bon', headline: 'un bon coup', symbol: '✓', color: '#95b776' },
   book: { label: 'Théorique', headline: 'un coup théorique', symbol: '📖', color: '#a88865' },
   inaccuracy: { label: 'Imprécision', headline: 'une imprécision', symbol: '?!', color: '#f7c631' },
   mistake: { label: 'Erreur', headline: 'une erreur', symbol: '?', color: '#ffa459' },
-  miss: { label: 'Coup manqué', headline: 'une occasion manquée', symbol: '✗', color: '#ff7769' },
+  miss: { label: 'Occasion manquée', headline: 'une occasion manquée', symbol: '✗', color: '#ff7769' },
   missedWin: { label: 'Gain manqué', headline: 'un gain manqué', symbol: '−', color: '#ff7769' },
-  blunder: { label: 'Gaffe', headline: 'une gaffe', symbol: '??', color: '#fa412d' },
+  blunder: { label: 'Gaffe', headline: 'une gaffe', symbol: '??', color: '#d9301d' },
 }
 
 // SAN avec figurines (Nf3 -> ♘f3 / ♞f3 selon le camp), plus lisible partout.

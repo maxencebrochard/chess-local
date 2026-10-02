@@ -1,164 +1,156 @@
 // Coach post-partie : commentaires en français générés par règles depuis le
-// Game Review (classe du coup, delta d'éval, matériel, mat, meilleur coup).
-import { Chess, type Square } from 'chess.js'
+// Game Review (classe du coup, mat, matériel, pièce en prise, meilleur coup).
+// Les phrases vivent dans coachPhrases.ts, les détections dans motifs.ts : ici, on
+// choisit la situation la plus grave constatée sur l'échiquier, puis une variante.
+import { Chess, type PieceSymbol } from 'chess.js'
 import { CLASS_META, figurine, type GameReview, type MoveClass } from './review'
+import { Picker, type Vars } from './coachPhrases'
+import {
+  PIECE_FR, captureInfo, hangingAfter, isCheckmateFen, isStalemateFen, mateInOne, other, sanOf,
+} from './motifs'
 
 export interface CoachComment {
   moveIndex: number
-  // « ♗xa7 est une gaffe » — affiché en gras avec la pastille de classe.
+  // « ♗xa7 est une gaffe » : affiché en gras avec la pastille de classe.
   headline: string
   // Explication en langage naturel, sans répéter le coup.
   body: string
   // Coup meilleur suggéré, en SAN, quand le coup joué n'était pas le bon.
   betterMove?: string
+  // praise / warn / alarm sont les « moments clés » du bilan guidé ; neutral n'en est pas un.
   severity: 'praise' | 'neutral' | 'warn' | 'alarm'
+  mood: 'happy' | 'thinking' | 'worried'
 }
 
-const PIECE_NAMES: Record<string, string> = {
-  p: 'le pion', n: 'le cavalier', b: 'le fou', r: 'la tour', q: 'la dame', k: 'le roi',
-}
-const PIECE_VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
+const FAULTS: MoveClass[] = ['inaccuracy', 'mistake', 'miss', 'missedWin', 'blunder']
+const BAD_CLASSES: MoveClass[] = ['blunder', 'missedWin', 'miss', 'mistake']
 
-// SAN du meilleur coup depuis la position avant le coup joué.
-function bestMoveSan(fenBefore: string, uci: string): string | undefined {
-  try {
-    const c = new Chess(fenBefore)
-    return c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] }).san
-  } catch {
-    return undefined
-  }
+// Mat annoncé par le moteur contre le camp qui vient de jouer (nombre de coups), sinon 0.
+function mateAgainst(mateAfter: number | null, mover: 'w' | 'b'): number {
+  if (mateAfter === null || mateAfter === 0) return 0
+  return (mover === 'w' ? mateAfter < 0 : mateAfter > 0) ? Math.abs(mateAfter) : 0
 }
 
-// Ce que le meilleur coup accomplissait : mat, gain de matériel, ou rien de spécial.
-function bestMovePoint(fenBefore: string, bestUci: string): string {
-  try {
-    const c = new Chess(fenBefore)
-    const target = c.get(bestUci.slice(2, 4) as Square)
-    const mv = c.move({ from: bestUci.slice(0, 2), to: bestUci.slice(2, 4), promotion: bestUci[4] })
-    if (c.isCheckmate()) return ' qui matait immédiatement'
-    if (mv.san.includes('#')) return ' qui matait immédiatement'
-    if (target && PIECE_VALUE[target.type] >= 3) return ` qui gagnait ${PIECE_NAMES[target.type]}`
-    if (mv.san.includes('+')) return ' avec échec'
-    return ''
-  } catch {
-    return ''
-  }
-}
-
-// Ce que le coup joué a coûté : pièce pendue ?
-function hungPiece(fenAfter: string, moverColor: 'w' | 'b'): string | null {
-  // Détection simple : la meilleure réponse adverse capture une pièce non défendue de valeur ≥ 3.
-  // On approxime avec les captures disponibles gagnantes au SEE naïf (valeur cible > valeur attaquant si défendu, sinon valeur cible).
-  const c = new Chess(fenAfter)
-  let bestGain = 0
-  let bestPiece: string | null = null
-  for (const mv of c.moves({ verbose: true })) {
-    if (!mv.captured) continue
-    const victim = PIECE_VALUE[mv.captured]
-    if (victim < 3) continue
-    // Défendu ? On regarde si la case de capture est reprise possible.
-    const c2 = new Chess(fenAfter)
-    c2.move(mv.san)
-    const recaptures = c2.moves({ verbose: true }).filter((r) => r.to === mv.to && r.captured)
-    const gain = recaptures.length > 0 ? victim - PIECE_VALUE[mv.piece] : victim
-    if (gain > bestGain) {
-      bestGain = gain
-      bestPiece = mv.captured
-    }
-  }
-  if (bestGain >= 3 && bestPiece) return PIECE_NAMES[bestPiece]
-  void moverColor
-  return null
+// Numéro du coup au demi-coup i, depuis le compteur du FEN de départ : « 5. » ou « 5... ».
+function moveNumber(review: GameReview, i: number): string {
+  const full = parseInt(review.startFen.split(' ')[5] ?? '1', 10) || 1
+  const offset = review.startTurn === 'b' ? 1 : 0
+  const no = full + Math.floor((i + offset) / 2)
+  return colorAt(review, i) === 'w' ? `${no}.` : `${no}...`
 }
 
 export function coachComments(review: GameReview, playerColor: 'w' | 'b' | null): CoachComment[] {
   const comments: CoachComment[] = []
   const replay = new Chess(review.startFen)
+  const pick = new Picker(review.moves.length)
+  let lastCaptureSquare: string | null = null
+  let prevMateAgainst = 0
 
   review.moves.forEach((m, i) => {
-    const moverColor = replay.turn()
+    const mover = replay.turn()
     const fenBefore = replay.fen()
-    replay.move(m.san)
+    const played = replay.move(m.san)
     const fenAfter = replay.fen()
+    const headline = `${figurine(m.san, mover)} est ${CLASS_META[m.class].headline}`
+    const mated = isCheckmateFen(fenAfter)
+    const pat = isStalemateFen(fenAfter)
+    const against = mateAgainst(m.mateAfter, mover)
+    const wasAgainst = prevMateAgainst
+    prevMateAgainst = mateAgainst(m.mateAfter, other(mover))
+    const cap = captureInfo(fenBefore, m.uci, lastCaptureSquare)
+    lastCaptureSquare = played.captured ? played.to : null
 
-    // Le coach ne commente que les coups du joueur (les deux couleurs en partie locale).
-    if (playerColor && moverColor !== playerColor) return
-
-    const better = m.uci !== m.bestMoveUci ? bestMoveSan(fenBefore, m.bestMoveUci) : undefined
-    const betterFig = better ? figurine(better, moverColor) : undefined
-    const point = better ? bestMovePoint(fenBefore, m.bestMoveUci) : ''
-    const headline = `${figurine(m.san, moverColor)} est ${CLASS_META[m.class].headline}`
-    let body: string
-    let severity: CoachComment['severity'] = 'neutral'
-
-    switch (m.class) {
-      case 'brilliant':
-        body = 'Un sacrifice que la tactique justifie entièrement. Superbe vision !'
-        severity = 'praise'
-        break
-      case 'great':
-        body = "C'était le seul bon coup dans cette position. Bien vu."
-        severity = 'praise'
-        break
-      case 'best':
-        body = "Exactement ce que le moteur aurait joué. Rien à redire."
-        severity = 'praise'
-        break
-      case 'excellent':
-        body = 'Quasiment optimal. Ça tient la route.'
-        severity = 'praise'
-        break
-      case 'good':
-        body = better ? `Correct, même si ${betterFig} était un peu plus précis.` : 'Correct, la position reste saine.'
-        break
-      case 'book':
-        body = 'La théorie approuve. Terrain connu.'
-        break
-      case 'inaccuracy':
-        body = better ? `${betterFig}${point} gardait un meilleur contrôle de la position.` : 'La position glisse doucement.'
-        severity = 'warn'
-        break
-      case 'mistake': {
-        const hung = hungPiece(fenAfter, moverColor)
-        body = `${hung ? `${hung[0].toUpperCase()}${hung.slice(1)} peut maintenant être capturé. ` : ''}${better ? `Il fallait jouer ${betterFig}${point}.` : ''}`
-        severity = 'warn'
-        break
-      }
-      case 'miss': {
-        body = `L'adversaire venait de faire une faute et ça reste impuni. ${better ? `${betterFig}${point} punissait immédiatement.` : ''}`
-        severity = 'warn'
-        break
-      }
-      case 'missedWin': {
-        body = `Une position gagnante vient d'être jetée. ${better ? `${betterFig}${point} gardait la victoire en main.` : ''}`
-        severity = 'alarm'
-        break
-      }
-      case 'blunder': {
-        const hung = hungPiece(fenAfter, moverColor)
-        const missedMate = m.mateAfter !== null && (moverColor === 'w' ? m.mateAfter < 0 : m.mateAfter > 0)
-        body = `${hung ? `Ça abandonne ${hung}. ` : ''}${missedMate ? 'Et un mat forcé est maintenant au tableau. ' : ''}${better ? `${betterFig}${point} était nécessaire.` : ''}`
-        severity = 'alarm'
-        break
-      }
+    // Coup de l'adversaire : une bulle courte et neutre, jamais vide (ANA-36).
+    if (playerColor && mover !== playerColor) {
+      const key = mated ? 'post.adverse.mat' : pat ? 'post.adverse.pat' : BAD_CLASSES.includes(m.class) ? 'post.adverse.erreur' : 'post.adverse.generique'
+      comments.push({ moveIndex: i, headline, body: pick.say(key, i), severity: 'neutral', mood: key === 'post.adverse.erreur' ? 'happy' : 'thinking' })
+      return
     }
 
-    comments.push({
-      moveIndex: i,
-      headline,
-      body: body.trim() || 'Voyons la suite.',
-      betterMove: better,
-      severity,
-    })
+    const better = m.uci !== m.bestMoveUci ? sanOf(fenBefore, m.bestMoveUci) ?? undefined : undefined
+    const betterFig = better ? figurine(better, mover) : undefined
+    const bestMates = !!better && better.endsWith('#')
+    // {meilleur} n'existe que si un meilleur coup existe : le Picker écarte alors les variantes qui le citent.
+    const vars: Vars = { coup: figurine(m.san, mover) }
+    if (betterFig) vars.meilleur = betterFig
+    let key: string
+    let gender: 'm' | 'f' = 'm'
+    let severity: CoachComment['severity'] = 'neutral'
+    let mood: CoachComment['mood'] = 'thinking'
+
+    if (m.class === 'book') {
+      key = 'post.book.generique'
+    } else if (FAULTS.includes(m.class)) {
+      // Fautes : le plus grave d'abord (pat, mat autorisé, mat raté, pièce en prise), sinon la classe.
+      const hang = hangingAfter(fenBefore, fenAfter, mover, { to: played.to, captured: played.captured as PieceSymbol | undefined })
+      if (pat) key = 'faute.pat'
+      else if (against === 1) {
+        const reply = mateInOne(fenAfter)
+        vars.reponse = reply ? figurine(reply, other(mover)) : 'le prochain coup'
+        // « Déjà perdu » seulement si le meilleur coup n'évitait pas non plus le mat en 1.
+        const stillMated = !better || mateInOne(afterUci(fenBefore, m.bestMoveUci)) !== null
+        key = wasAgainst === 1 && stillMated ? 'faute.mat_en_1_deja' : 'faute.mat_en_1'
+      } else if (against > 1) {
+        vars.n = against
+        key = wasAgainst > 0 ? 'faute.mat_en_n_deja' : 'faute.mat_en_n'
+      } else if (bestMates) { key = 'faute.mat_manque'; vars.n = 1 }
+      else if (hang?.capturer && played.captured) {
+        gender = PIECE_FR[played.captured as PieceSymbol].genre
+        vars.cible = PIECE_FR[played.captured as PieceSymbol].defini
+        key = 'faute.mauvais_echange'
+      } else if (hang) {
+        gender = PIECE_FR[hang.piece].genre
+        Object.assign(vars, { piece: PIECE_FR[hang.piece].defini, case: hang.square, attaquant: PIECE_FR[hang.attacker].defini })
+        key = hang.defended ? 'faute.mal_defendue' : 'faute.piece_en_prise'
+      } else key = better ? `post.${m.class}.generique` : 'post.secours.generique'
+      severity = m.class === 'blunder' || m.class === 'missedWin' ? 'alarm' : 'warn'
+      mood = severity === 'alarm' ? 'worried' : 'thinking'
+    } else {
+      // Bons coups : mat, mat en 1 raté, prise, sinon la classe. best et excellent ne sont
+      // plus des moments clés (ANA-15) : seuls brillant et très bon restent en praise.
+      mood = 'happy'
+      if (mated) key = 'post.best.mat'
+      else if (bestMates) { key = 'faute.mat_manque'; vars.n = 1; mood = 'thinking' }
+      else if (cap && (cap.kind === 'gain' || cap.kind === 'reprise')) {
+        gender = PIECE_FR[cap.captured].genre
+        vars.cible = PIECE_FR[cap.captured].defini
+        key = cap.kind === 'reprise' ? 'post.best.reprise' : cap.clean ? 'post.best.gain_materiel' : 'post.best.gain_echange'
+      } else if (m.class === 'brilliant') {
+        gender = PIECE_FR[played.piece].genre
+        vars.piece = PIECE_FR[played.piece].defini
+        key = 'post.brilliant.sacrifice'
+      }
+      else if (m.class === 'great') key = 'post.great.seul_coup'
+      else if (m.class === 'good') key = better ? 'post.good.generique' : 'post.excellent.generique'
+      else if (m.class === 'excellent') key = 'post.excellent.generique'
+      else key = 'post.best.generique'
+      if (m.class === 'brilliant' || m.class === 'great') severity = 'praise'
+    }
+
+    comments.push({ moveIndex: i, headline, body: pick.say(key, i, vars, gender), betterMove: better, severity, mood })
   })
 
   return comments
+}
+
+// Position après un coup UCI (le coup est supposé légal : il vient du moteur).
+function afterUci(fen: string, uci: string): string {
+  const c = new Chess(fen)
+  try {
+    c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] })
+  } catch {
+    return fen
+  }
+  return c.fen()
 }
 
 // Couleur du joueur au demi-coup i, en tenant compte du trait initial.
 function colorAt(review: GameReview, i: number): 'w' | 'b' {
   return (i % 2 === 0) === (review.startTurn === 'w') ? 'w' : 'b'
 }
+
+// Précision en français : virgule décimale, une décimale au plus.
+const fr = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',')
 
 // Punchline courte du coach pour l'écran de résumé, façon chess.com.
 export function coachQuip(review: GameReview, playerColor: 'w' | 'b' | null): string {
@@ -167,15 +159,16 @@ export function coachQuip(review: GameReview, playerColor: 'w' | 'b' | null): st
   const o = report.opening[color]
   const m = report.middlegame[color]
   const e = report.endgame[color]
-  if (o === 'good' && (m === 'bad' || m === 'meh')) return "Le milieu de partie a dérapé, mais au moins l'ouverture était solide."
-  if (o !== 'good' && m === 'good') return "L'ouverture a piqué, mais tu t'es bien rattrapé au milieu de partie."
-  if (e === 'bad') return 'Tout se jouait dans la finale… et elle a glissé. Ça se travaille.'
-  if (e === 'good' && (m === 'bad' || o === 'bad')) return 'Belle finale ! Le début de partie mérite encore du travail.'
+  const pick = new Picker(review.moves.length + 1)
   const acc = color === 'w' ? review.accuracyWhite : review.accuracyBlack
-  if (acc >= 90) return 'Une partie très propre. Continue comme ça.'
-  if (acc >= 75) return 'Une partie solide, avec quelques occasions à ne plus laisser filer.'
-  if (acc >= 55) return 'Des hauts et des bas — on regarde les moments clés ensemble ?'
-  return 'Partie compliquée, mais chaque erreur est une leçon. Au travail.'
+  if (o === 'good' && (m === 'bad' || m === 'meh')) return pick.say('punchline.milieu_rate', 0)
+  if (o !== 'good' && m === 'good') return pick.say('punchline.remontee', 0)
+  if (e === 'bad') return pick.say('punchline.finale_ratee', 0)
+  if (o === 'bad') return pick.say('punchline.ouverture_ratee', 0)
+  if (acc >= 90) return pick.say('punchline.generique.excellent', 0)
+  if (acc >= 75) return pick.say('punchline.generique.solide', 0)
+  if (acc >= 55) return pick.say('punchline.generique.moyen', 0)
+  return pick.say('punchline.generique.difficile', 0)
 }
 
 // Verdict par phase et par couleur, pour l'écran de résumé.
@@ -252,15 +245,13 @@ function accuracyOnRange(review: GameReview, color: 'w' | 'b', from: number, to:
   return Math.round((accs.reduce((a, b) => a + b, 0) / accs.length) * 10) / 10
 }
 
-function phaseVerdict(acc: number | null): string {
-  if (acc === null) return 'pas de coup à évaluer'
+// Adjectifs invariables : ils qualifient « ouverture », « milieu de partie » et « finale ».
+function phaseVerdict(acc: number): string {
   if (acc >= 92) return 'impeccable'
   if (acc >= 80) return 'solide'
-  if (acc >= 65) return 'irrégulière'
+  if (acc >= 65) return 'en dents de scie'
   return 'difficile'
 }
-
-const BAD_CLASSES: MoveClass[] = ['blunder', 'missedWin', 'miss', 'mistake']
 
 // Résumé narratif d'ouverture de session du coach.
 export function coachSummary(review: GameReview, playerColor: 'w' | 'b' | null): string {
@@ -269,35 +260,49 @@ export function coachSummary(review: GameReview, playerColor: 'w' | 'b' | null):
   const rating = color === 'w' ? review.gameRatingWhite : review.gameRatingBlack
   const counts = review.counts[color]
   const phases = detectPhases(review)
+  const pick = new Picker(review.moves.length + 2)
   const parts: string[] = []
+  const own = review.moves.filter((_, i) => colorAt(review, i) === color).length
 
-  // Verdict global + game rating.
-  if (acc >= 90) parts.push(`Très belle partie : ${acc} % de précision — tu as joué comme un ~${rating}.`)
-  else if (acc >= 75) parts.push(`Partie solide (${acc} % de précision), niveau de jeu estimé ~${rating}.`)
-  else if (acc >= 55) parts.push(`${acc} % de précision, un niveau de jeu autour de ${rating} sur cette partie.`)
-  else parts.push(`Partie compliquée (${acc} % de précision, ~${rating}), mais on va en tirer les leçons.`)
+  // Verdict global + classement de la partie (pas de chiffres sous 5 coups, REV-15).
+  const vars: Vars = { precision: fr(acc), elo: rating }
+  if (own < 5) parts.push(pick.say('resume.verdict.courte', 0))
+  else if (acc >= 90) parts.push(pick.say('resume.verdict.excellent', 0, vars))
+  else if (acc >= 75) parts.push(pick.say('resume.verdict.solide', 0, vars))
+  else if (acc >= 55) parts.push(pick.say('resume.verdict.moyen', 0, vars))
+  else parts.push(pick.say('resume.verdict.difficile', 0, vars))
+
+  // Fin de partie prouvée par la position finale : mat ou pat.
+  const replay = new Chess(review.startFen)
+  review.moves.forEach((m) => replay.move(m.san))
+  const last = review.moves.length - 1
+  if (last >= 0 && replay.isCheckmate()) parts.push(pick.say(colorAt(review, last) === color ? 'resume.resultat.victoire_mat' : 'resume.resultat.defaite_mat', 1))
+  else if (last >= 0 && replay.isStalemate()) parts.push(pick.say('resume.resultat.pat', 1))
 
   // Compte des fautes, mis en avant.
   const faults: string[] = []
-  if (counts.blunder > 0) faults.push(`${counts.blunder} gaffe${counts.blunder > 1 ? 's' : ''}`)
-  if (counts.missedWin > 0) faults.push(`${counts.missedWin} gain${counts.missedWin > 1 ? 's' : ''} manqué${counts.missedWin > 1 ? 's' : ''}`)
-  if (counts.miss > 0) faults.push(`${counts.miss} occasion${counts.miss > 1 ? 's' : ''} manquée${counts.miss > 1 ? 's' : ''}`)
-  if (counts.mistake > 0) faults.push(`${counts.mistake} erreur${counts.mistake > 1 ? 's' : ''}`)
-  if (faults.length > 0) parts.push(`Au tableau : ${faults.join(', ')} — je te les montre une par une avec « Moment clé ».`)
-  else parts.push('Aucune faute sérieuse, très propre.')
-  if (counts.brilliant > 0) parts.push(`Et ${counts.brilliant === 1 ? 'un coup brillant' : `${counts.brilliant} coups brillants`} !`)
+  // « une erreur » plutôt que « 1 erreur » : le chiffre ne sert qu'au pluriel.
+  const plural = (n: number, s: string, p: string) => (n > 1 ? `${n} ${p}` : s)
+  if (counts.blunder > 0) faults.push(plural(counts.blunder, 'une gaffe', 'gaffes'))
+  if (counts.missedWin > 0) faults.push(plural(counts.missedWin, 'un gain manqué', 'gains manqués'))
+  if (counts.miss > 0) faults.push(plural(counts.miss, 'une occasion manquée', 'occasions manquées'))
+  if (counts.mistake > 0) faults.push(plural(counts.mistake, 'une erreur', 'erreurs'))
+  const nFaults = counts.blunder + counts.missedWin + counts.miss + counts.mistake
+  if (nFaults === 0) parts.push(pick.say('resume.fautes.aucune', 2))
+  else parts.push(pick.say(nFaults === 1 ? 'resume.fautes.une' : 'resume.fautes.liste', 2, { fautes: faults.join(', ') }))
+  if (counts.brilliant === 1) parts.push(pick.say('resume.brillant.un', 3))
+  else if (counts.brilliant > 1) parts.push(pick.say('resume.brillant.plusieurs', 3, { n: counts.brilliant }))
 
   // Récit par phases.
   const accOpen = accuracyOnRange(review, color, 0, phases.openingEnd + 1)
   const accMid = accuracyOnRange(review, color, phases.openingEnd + 1, phases.endgameStart)
   const accEnd = accuracyOnRange(review, color, phases.endgameStart, review.moves.length)
-  const phraseParts: string[] = []
-  if (accOpen !== null) phraseParts.push(`ouverture ${phaseVerdict(accOpen)} (${accOpen} %)`)
-  if (accMid !== null) phraseParts.push(`milieu de partie ${phaseVerdict(accMid)} (${accMid} %)`)
-  if (accEnd !== null) phraseParts.push(`finale ${phaseVerdict(accEnd)} (${accEnd} %)`)
-  if (phraseParts.length > 1) parts.push(`Le film : ${phraseParts.join(', ')}.`)
+  if (accOpen !== null && accMid !== null) {
+    const v: Vars = { v_ouverture: phaseVerdict(accOpen), v_milieu: phaseVerdict(accMid), v_finale: accEnd === null ? '' : phaseVerdict(accEnd) }
+    parts.push(pick.say(accEnd === null ? 'resume.phases.deux' : 'resume.phases.trois', 4, v))
+  }
 
-  // Le moment où la partie a basculé (plus gros drop du joueur).
+  // Le moment où la partie a basculé (plus gros drop du joueur), en figurines et numéroté.
   let pivotIdx = -1
   let pivotDrop = 12
   review.moves.forEach((m, i) => {
@@ -310,8 +315,7 @@ export function coachSummary(review: GameReview, playerColor: 'w' | 'b' | null):
     }
   })
   if (pivotIdx >= 0) {
-    const moveNo = Math.floor(pivotIdx / 2) + 1
-    parts.push(`La partie a basculé au ${moveNo}e coup : ${review.moves[pivotIdx].san}.`)
+    parts.push(pick.say('resume.pivot.coup', 5, { numero: moveNumber(review, pivotIdx), coup: figurine(review.moves[pivotIdx].san, color) }))
   }
 
   return parts.join(' ')

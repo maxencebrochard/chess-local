@@ -48,8 +48,8 @@ export function ReviewSummary({ review, whiteName, blackName, playerColor, onSta
           <span className="w-24 text-center text-sm font-semibold text-neutral-300">{whiteName}</span>
           <span className="w-24 text-center text-sm font-semibold text-neutral-300">{blackName}</span>
           <span className="text-[15px] font-semibold text-neutral-200">Précision</span>
-          <StatCard value={review.accuracyWhite.toFixed(1)} white />
-          <StatCard value={review.accuracyBlack.toFixed(1)} />
+          <StatCard value={fr(review.accuracyWhite)} white />
+          <StatCard value={fr(review.accuracyBlack)} />
         </div>
 
         {/* Tallies */}
@@ -78,7 +78,7 @@ export function ReviewSummary({ review, whiteName, blackName, playerColor, onSta
           <StatCard value={String(review.gameRatingWhite)} white />
           <StatCard value={String(review.gameRatingBlack)} />
           <PhaseRow label="Ouverture" verdicts={phases.opening} />
-          <PhaseRow label="Milieu de jeu" verdicts={phases.middlegame} />
+          <PhaseRow label="Milieu de partie" verdicts={phases.middlegame} />
           <PhaseRow label="Finale" verdicts={phases.endgame} />
         </div>
       </div>
@@ -91,6 +91,9 @@ export function ReviewSummary({ review, whiteName, blackName, playerColor, onSta
     </div>
   )
 }
+
+// Précision en français : virgule décimale.
+const fr = (n: number) => n.toFixed(1).replace('.', ',')
 
 function StatCard({ value, white = false }: { value: string; white?: boolean }) {
   return (

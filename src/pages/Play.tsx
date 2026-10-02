@@ -509,7 +509,7 @@ export default function Play() {
             {unrated && <span className="rounded bg-surface-3 px-2 py-0.5 text-xs text-neutral-400">non classée</span>}
           </div>
           <div className="px-3 py-2">
-            <CoachBubble mood={coachMsg?.mood ?? 'thinking'} cls={coachMsg?.cls ?? undefined}>
+            <CoachBubble mood={coachMsg?.mood ?? 'thinking'} cls={coachMsg?.cls ?? undefined} headline={coachMsg?.headline} fixed>
               {coachMsg?.text ?? '…'}
             </CoachBubble>
           </div>
