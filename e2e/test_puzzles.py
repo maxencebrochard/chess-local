@@ -501,6 +501,37 @@ def puzzles_suite(p, browser):
     ctx.close()
 
 
+def double_skip_suite(p, browser):
+    """Double tap sur « Passer » : un seul puzzle passé et noté, un seul nouveau tirage. Sans garde,
+    le 2e tap tirait aussitôt P2, puis la fin du 1er le remplaçait par P3 sans l'avoir noté."""
+    ctx, page, _ = open_page(p, browser, RUSH)
+    page.goto(f"{BASE}/#/puzzles")
+    ck.appears("[double Passer] page chargée", page, "text=Classement puzzles", timeout=30000)
+    pz = wait_puzzle(page, RUSH)
+    if not check("[double Passer] puzzle affiché", pz is not None) or not ck.appears(
+        "[double Passer] bouton Passer", page, "main button:has-text('Passer')"
+    ):
+        ctx.close()
+        return
+    # Avant et après l'amorce : chaque placement observé est rattaché à son puzzle.
+    ids = {board_after(z, n).board_fen(): z[0] for z in RUSH for n in (0, 1)}
+    # Les deux taps dans la même tâche : le 2e arrive forcément pendant que le 1er attend l'écriture
+    # de l'Elo. Deux taps tactiles espacés de quelques ms laissent parfois le 1er finir, et le 2e
+    # passe alors légitimement le puzzle suivant.
+    page.locator("main button", has_text="Passer").first.evaluate("(b) => { b.click(); b.click() }")
+    seen = [pz[0]]
+    for _ in range(50):
+        cur = ids.get(placement(page))
+        if cur and cur != seen[-1]:
+            seen.append(cur)
+        page.wait_for_timeout(50)
+    check("[double Passer] un seul nouveau puzzle tiré", len(seen) == 2, f"(puzzles vus : {seen})")
+    attempts = [(a["puzzleId"], a["success"]) for a in db_dump(page)["puzzleAttempts"]]
+    check("[double Passer] une seule tentative ratée, sur le puzzle passé", attempts == [(pz[0], False)], f"({attempts})")
+    shot(page, "puzzles_double_skip_852")
+    ctx.close()
+
+
 def promo_suite(p, browser):
     """Solution avec promotion (PUZ-2), en 393x660 (onglet Safari) pour les captures."""
     ctx, page, _ = open_page(p, browser, PROMO, standalone=False)
@@ -547,6 +578,7 @@ def suite(p):
         rush_suite(p, browser)
         rush_clock_suite(p, browser)
         puzzles_suite(p, browser)
+        double_skip_suite(p, browser)
         promo_suite(p, browser)
         error_suite(p, browser)
     finally:
