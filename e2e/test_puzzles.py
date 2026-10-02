@@ -220,6 +220,25 @@ def square_is_red(page, square):
     )
 
 
+def watch_red(page, square):
+    """Guette à chaque frame la case teintée en rouge ; `window.__redSeen` passe à true dès qu'elle l'est."""
+    page.evaluate(
+        """(sq) => {
+          window.__redSeen = false
+          const tick = () => {
+            const root = document.querySelector(`[data-square='${sq}']`)
+            if (root && [root, ...root.querySelectorAll('*')].some((n) => /rgba?\\(239, 68, 68/.test(getComputedStyle(n).backgroundColor))) {
+              window.__redSeen = true
+              return
+            }
+            requestAnimationFrame(tick)
+          }
+          requestAnimationFrame(tick)
+        }""",
+        square,
+    )
+
+
 def main_text(page):
     return page.locator("main").inner_text()
 
@@ -296,10 +315,13 @@ def rush_suite(p, browser):
     pz = wait_puzzle(page, RUSH)
     if check("[rush] premier puzzle affiché", pz is not None):
         w = wrong_move(pz, 1)
+        # La rafale puis une capture d'écran peuvent à elles seules dépasser le flash de 600 ms :
+        # le rouge est guetté dans la page pendant la rafale, sans la ralentir.
+        watch_red(page, w[2:4])
         quick_taps(page, w, w, w)
         page.wait_for_timeout(60)
+        check("[rush] coup faux montré en rouge (PUZ-6)", page.evaluate("() => window.__redSeen === true"))
         shot(page, "rush_wrong_flash_852")
-        check("[rush] coup faux montré en rouge (PUZ-6)", square_is_red(page, w[2:4]))
         page.wait_for_timeout(500)
         score, strikes = rush_state(page)
         check("[rush] 3 coups faux en rafale = 1 vie perdue, 0 point (PUZ-1)", (score, strikes) == (0, 1), f"(score {score}, vies perdues {strikes})")
