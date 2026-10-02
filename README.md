@@ -19,7 +19,7 @@ npm run preview
 
 ## Features
 
-- **Jouer** : 9 bots de 400 à 3200 Elo (Stockfish 18 WASM, force limitée par UCI_Elo + coups aléatoires pour les niveaux faibles), mode 2 joueurs sur le même écran, cadences bullet/blitz/rapide avec incrément, pendules, classement Elo local par cadence.
+- **Jouer** : 9 bots de 400 à 3200 Elo (Stockfish 18 WASM, force limitée par UCI_Elo + coups aléatoires pour les niveaux faibles), mode 2 joueurs sur le même écran, cadences bullet/blitz/rapide avec incrément, pendules, confirmation d'abandon, classement Elo local par cadence, partie en cours et dernière configuration retrouvées au retour.
 - **Puzzles** : 120 000 puzzles de la base lichess (CC0), stratifiés de 400 à 3200, chargés hors bundle (fetch lazy), classement puzzle Elo local, indices, séries.
 - **Puzzle Rush** : 3 min, 5 min ou survie, difficulté croissante, 3 erreurs éliminatoires, records sauvegardés.
 - **Analyse** : Stockfish 18 en continu (3 lignes), barre d'évaluation, bilan de partie façon Game Review V2 (Brillant → Gaffe dont Occasion manquée et Gain manqué, précision et Elo estimé par couleur, graphe d'évaluation cliquable), coach post-partie (résumé narratif par phases, commentaires en français générés par règles, navigation par moments clés, retry « trouve mieux » contre le moteur), explorer d'ouvertures (base ECO lichess, 3 800 lignes), import/export PGN et FEN. Profondeur du bilan réglable (Stats → Réglages).
