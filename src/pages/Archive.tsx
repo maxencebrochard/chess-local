@@ -19,7 +19,8 @@ interface RowProps {
   g: SavedGame
   pending: boolean
   onRemove: (id: number) => void
-  onUndo: () => void
+  // Absent quand la suppression est déjà lancée en base : plus rien à annuler.
+  onUndo?: () => void
 }
 
 // Carte d'une partie, mémoïsée : seule celle dont l'état change se re-rend.
@@ -43,7 +44,8 @@ const GameRow = memo(function GameRow({ g, pending, onRemove, onUndo }: RowProps
           <button
             autoFocus
             onClick={onUndo}
-            className="-my-1.5 h-11 cursor-pointer rounded px-4 text-sm font-semibold text-accent hover:bg-accent/20"
+            disabled={!onUndo}
+            className="-my-1.5 h-11 cursor-pointer rounded px-4 text-sm font-semibold text-accent hover:bg-accent/20 disabled:cursor-default disabled:opacity-40"
           >
             Annuler
           </button>
@@ -110,6 +112,9 @@ export default function Archive() {
   const [pendingId, setPendingId] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  // Parties dont la suppression en base est en cours : elles restent en barre, sans actions,
+  // même quand un second ✕ a déjà mis une autre partie en attente.
+  const [deleting, setDeleting] = useState<ReadonlySet<number>>(new Set())
   // Suppression en attente, lue par les nettoyages (sortie de page, page cachée) sans fermeture périmée.
   const pendingRef = useRef<{ id: number; timer: number } | null>(null)
 
@@ -133,12 +138,18 @@ export default function Archive() {
 
   const commit = useCallback(async (id: number) => {
     setBusy(true)
+    setDeleting((s) => new Set(s).add(id))
     try {
       await db.games.delete(id)
       setGames((gs) => gs.filter((g) => g.id !== id))
       setTotal((n) => (n === null ? n : n - 1))
     } finally {
       setPendingId((cur) => (cur === id ? null : cur))
+      setDeleting((s) => {
+        const next = new Set(s)
+        next.delete(id)
+        return next
+      })
       setBusy(false)
     }
   }, [])
@@ -221,9 +232,10 @@ export default function Archive() {
       {total === 0 && <p className="text-neutral-400">Aucune partie enregistrée. Va jouer !</p>}
 
       <ul className="space-y-1">
-        {games.map((g) => (
-          <GameRow key={g.id} g={g} pending={g.id === pendingId} onRemove={remove} onUndo={undo} />
-        ))}
+        {games.map((g) => {
+          const del = deleting.has(g.id!)
+          return <GameRow key={g.id} g={g} pending={del || g.id === pendingId} onRemove={remove} onUndo={del ? undefined : undo} />
+        })}
       </ul>
 
       {remaining > 0 && (
