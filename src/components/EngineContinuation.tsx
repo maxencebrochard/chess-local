@@ -356,7 +356,7 @@ function PlanPane({ startFen, playerColor, getEngine, onPlayFrom }: {
       const first = await engine.search({ fen: startFen, movetimeMs: PLAN_FIRST_MS, multipv: 1 })
       if (!alive) return
       setEvalW(whiteEval(first.lines[0], turn))
-      let { chess, played } = playUci(startFen, first.lines[0]?.pv ?? [first.bestMove])
+      let { chess, played } = playUci(startFen, (first.lines[0]?.pv ?? [first.bestMove]).slice(0, PLAN_PLIES))
       // La première PV s'affiche tout de suite ; la ligne s'allonge ensuite.
       setLine(played)
       setExtending(true)
