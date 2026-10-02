@@ -30,34 +30,39 @@ interface TableSpec {
   since: number // version du schéma qui introduit la table : absente d'un fichier plus ancien, elle est vidée
   pk: string
   labels: [string, string] // singulier, pluriel
+  fem: boolean // genre du libellé, pour accorder le participe (« 1 partie sera remplacée »)
   valid: (r: Row) => boolean // forme minimale : les champs présents depuis la création de la table
 }
 
 const SPECS: Record<TableName, TableSpec> = {
-  games: { since: 1, pk: 'id', labels: ['partie', 'parties'], valid: (r) => isStr(r.pgn) && isNum(r.date) },
+  games: { since: 1, pk: 'id', labels: ['partie', 'parties'], fem: true, valid: (r) => isStr(r.pgn) && isNum(r.date) },
   ratings: {
     since: 1,
     pk: 'key',
     labels: ['classement', 'classements'],
+    fem: false,
     valid: (r) => isStr(r.key) && r.key !== '' && isNum(r.value) && isNum(r.games),
   },
   puzzleAttempts: {
     since: 1,
     pk: 'id',
     labels: ['puzzle tenté', 'puzzles tentés'],
+    fem: false,
     valid: (r) => isStr(r.puzzleId) && isNum(r.date),
   },
-  rushScores: { since: 1, pk: 'id', labels: ['score Rush', 'scores Rush'], valid: (r) => isNum(r.score) && isNum(r.date) },
+  rushScores: { since: 1, pk: 'id', labels: ['score Rush', 'scores Rush'], fem: false, valid: (r) => isNum(r.score) && isNum(r.date) },
   mistakes: {
     since: 2,
     pk: 'id',
     labels: ['erreur à revoir', 'erreurs à revoir'],
+    fem: true,
     valid: (r) => isStr(r.fenBefore) && isStr(r.bestUci),
   },
   learnSessions: {
     since: 2,
     pk: 'id',
     labels: ['séance Apprendre', 'séances Apprendre'],
+    fem: true,
     valid: (r) => isStr(r.domain) && isStr(r.itemId),
   },
 }
@@ -76,6 +81,15 @@ export function describeCounts(counts: Counts, tables: readonly TableName[] = TA
   if (parts.length === 0) return 'aucune donnée'
   if (parts.length === 1) return parts[0]
   return `${parts.slice(0, -1).join(', ')} et ${parts[parts.length - 1]}`
+}
+
+// Futur passif accordé avec describeCounts(counts, tables) pour sujet : « 1 partie sera remplacée »,
+// « 2 parties seront remplacées », « 1 partie et 1 classement seront remplacés ».
+export function willBe(counts: Counts, participle: string, tables: readonly TableName[] = TABLES): string {
+  const shown = tables.filter((t) => counts[t] > 0)
+  const plural = shown.length > 1 || shown.some((t) => counts[t] > 1)
+  const fem = shown.every((t) => SPECS[t].fem)
+  return `${plural ? 'seront' : 'sera'} ${participle}${fem ? 'e' : ''}${plural ? 's' : ''}`
 }
 
 export async function currentCounts(): Promise<Counts> {

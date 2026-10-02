@@ -6,6 +6,7 @@ import {
   countLabel,
   currentCounts,
   describeCounts,
+  willBe,
   importBackup,
   inspectBackup,
   readLastExport,
@@ -385,8 +386,8 @@ export default function Stats() {
           <p>Sauvegarde {pending.plan.date ? `faite ${fmtDate(pending.plan.date)}` : 'sans date'}.</p>
           <p className="font-semibold text-neutral-100">
             {hasCurrent(pending.current)
-              ? `${describeCounts(pending.current)} seront remplacés par ${describeCounts(pending.plan.counts)}.`
-              : `Ta base est vide : ${describeCounts(pending.plan.counts)} seront ajoutés, rien ne sera perdu.`}
+              ? `${describeCounts(pending.current)} ${willBe(pending.current, 'remplacé')} par ${describeCounts(pending.plan.counts)}.`
+              : `Ta base est vide : ${describeCounts(pending.plan.counts)} ${willBe(pending.plan.counts, 'ajouté')}, rien ne sera perdu.`}
           </p>
           <ul className="space-y-0.5 text-xs text-neutral-400">
             {TABLES.filter((t) => pending.current[t] > 0 || pending.plan.counts[t] > 0).map((t) => (

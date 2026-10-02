@@ -317,6 +317,14 @@ def part_roundtrip(p, browser, tmp):
     empty = snapshot(page)
     check("[vierge] base vide", all(len(v) == 0 for v in empty.values()), f"({counts(empty)})")
     check("[vierge] dernier export : jamais", "jamais" in page.locator("[data-testid=last-export]").inner_text().lower())
+    # Accord du verbe avec le nombre et le genre de ce qui sera ajouté.
+    for n, phrase in ((1, "1 partie sera ajoutée,"), (2, "2 parties seront ajoutées,")):
+        tables = {t: [] for t in TABLES} | {"games": [game(20 + i, "1-0") for i in range(n)]}
+        choose_file(page, write_file(tmp, f"accord_{n}.json", backup_dict(**tables)))
+        if ck.appears(f"[accord] feuille ouverte ({n} partie(s))", page, "[data-testid=restore-sheet]"):
+            body = page.locator("[data-testid=restore-sheet]").inner_text()
+            check(f"[accord] « {phrase} »", phrase in body, f"({body[:200]!r})")
+            page.click("[data-testid=restore-cancel]")
     choose_file(page, path)
     if ck.appears("[restore] feuille de confirmation", page, "[data-testid=restore-sheet]"):
         body = page.locator("[data-testid=restore-sheet]").inner_text()
