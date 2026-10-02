@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { Board, type BoardArrow } from '../components/Board'
 import { CoachBubble } from '../components/CoachBubble'
+import { EngineContinuation, GoFurtherRow } from '../components/EngineContinuation'
 import { CourseSheet } from '../components/CourseSheet'
 import { Cta } from '../components/Cta'
 import { HEvalBar } from '../components/HEvalBar'
 import { PuzzlePlayer } from '../components/PuzzlePlayer'
+import { puzzleContinuationStart, puzzlePlayerColor, useExerciseContinuation } from '../components/useExerciseContinuation'
 import { courseFor, type Course } from '../lib/courses'
 import { db } from '../lib/db'
 import { Engine } from '../lib/engine'
@@ -361,10 +363,17 @@ interface ExerciseProps {
   ratingDelta: number | null
   course: Course | null
   onShowCourse: () => void
+  onPuzzleStep?: (step: number) => void
 }
 
 function ExerciseView(props: ExerciseProps) {
   const { item, phase, setPhase, onNext, course, onShowCourse } = props
+  // « Aller plus loin » (puzzles) : hors score, n'agit ni sur la phase ni sur le verdict.
+  const puzzle = item.kind === 'tactic' || item.kind === 'strategy' ? item.puzzle : null
+  const furthers = useExerciseContinuation(`${item.kind}:${itemKey(item)}`, phase === 'success' || phase === 'fail')
+  const furtherStart = puzzle && (phase === 'success' || phase === 'fail')
+    ? puzzleContinuationStart(puzzle, furthers.step, phase === 'success')
+    : null
 
   const lesson =
     item.kind === 'endgame' ? { title: item.endgame.title, text: item.endgame.lesson }
@@ -428,17 +437,39 @@ function ExerciseView(props: ExerciseProps) {
 
   return (
     <div className="flex flex-1 flex-col">
-      {(item.kind === 'tactic' || item.kind === 'strategy') && <PuzzleExercise {...props} />}
+      {(item.kind === 'tactic' || item.kind === 'strategy') && (
+        <PuzzleExercise {...props} onPuzzleStep={(s) => { if (phase === 'play') furthers.recordStep(s) }} />
+      )}
       {item.kind === 'endgame' && <EndgameExercise {...props} />}
       {item.kind === 'opening' && <OpeningExercise {...props} />}
       {item.kind === 'mistake' && <MistakeExercise {...props} />}
       {verdictBar}
+      {furtherStart && (
+        <GoFurtherRow
+          planLabel={item.kind === 'strategy' ? 'Voir le plan' : 'Voir la suite'}
+          planFirst={item.kind === 'strategy'}
+          onOpen={(mode) => furthers.open(mode, furtherStart)}
+        />
+      )}
+      {puzzle && furthers.overlay && (phase === 'success' || phase === 'fail') && (
+        <EngineContinuation
+          startFen={furthers.overlay.startFen}
+          playerColor={puzzlePlayerColor(puzzle)}
+          mode={furthers.overlay.mode}
+          initialMoves={furthers.overlay.moves}
+          initialResigned={furthers.overlay.resigned}
+          label={`Puzzle ${puzzle.id} (${puzzle.rating}), suite`}
+          returnTo="/apprendre"
+          onBeforeAnalyse={furthers.leave}
+          onClose={furthers.close}
+        />
+      )}
     </div>
   )
 }
 
 // ---------- Puzzle (tactique / stratégie) ----------
-function PuzzleExercise({ item, phase, onFinish }: ExerciseProps) {
+function PuzzleExercise({ item, phase, onFinish, onPuzzleStep }: ExerciseProps) {
   if (item.kind !== 'tactic' && item.kind !== 'strategy') return null
   const puzzle = item.kind === 'tactic' ? item.puzzle : item.puzzle
   return (
@@ -446,6 +477,7 @@ function PuzzleExercise({ item, phase, onFinish }: ExerciseProps) {
       <div className="boardbox md:w-[min(60vh,560px)]">
         <PuzzlePlayer
           puzzle={puzzle}
+          onStep={onPuzzleStep}
           onComplete={(ok) => {
             if (phase === 'play') onFinish(ok)
           }}

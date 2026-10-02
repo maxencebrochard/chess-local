@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { Chess, type Square } from 'chess.js'
 import { Chessboard } from 'react-chessboard'
 import { useSettings, currentTheme } from '../store/settings'
@@ -32,6 +32,10 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   const theme = currentTheme(themeId)
   const [selected, setSelected] = useState<Square | null>(null)
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null)
+  // Identifiant DOM propre à chaque échiquier : react-chessboard retrouve ses cases par
+  // getElementById (fin d'un tap tactile). Avec l'id par défaut partagé, un second échiquier
+  // monté (calque par-dessus un exercice) testait le tap contre les cases du premier.
+  const boardId = `chessboard-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
 
   const chess = useMemo(() => new Chess(fen), [fen])
 
@@ -134,6 +138,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
     <div className="relative select-none">
       <Chessboard
         options={{
+          id: boardId,
           position: fen,
           boardOrientation: orientation === 'w' ? 'white' : 'black',
           allowDragging: interactive,
