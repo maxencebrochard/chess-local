@@ -35,6 +35,10 @@ DEFAULT_SETTINGS = {
     "playSounds": False,
     "chesscomUsername": "",
     "reviewDepth": "fast",
+    "playMode": "bot",
+    "playBotId": "nina",
+    "playColor": "w",
+    "playTcLabel": "10 min",
 }
 
 
