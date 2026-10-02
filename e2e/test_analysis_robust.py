@@ -3,16 +3,11 @@
 Couvre ANA-1 (PGN avec en-tête FEN), ANA-2, ANA-3 et CP-2 (bilan jamais invalidé quand la ligne
 change), CP-4 (partie à 0 coup), ANA-9 (« Mes erreurs » : couleur et libellé), ANA-10 (moteur coupé
 = `stop` UCI réel), PERF-1 (recherche live bornée), PERF-2 (page cachée = `stop`), CP-6 (lignes de
-l'ancienne position avec le signe du nouveau trait), CP-7 (bilan lancé après le démontage), ANA-18
-(import vide), ANA-31 (`?game=` inconnu) et ANA-5 (nom d'ouverture long).
+l'ancienne position avec le signe du nouveau trait : barre qui passe en blanc pendant le recalcul
+d'un mat ou d'un avantage noir), CP-7 (bilan lancé après le démontage), ANA-18 (import vide),
+ANA-31 (`?game=` inconnu) et ANA-5 (nom d'ouverture long).
 
 Usage : npm run test:e2e -- --suite analysis_robust
-
-EN ATTENTE (lot L3-bis, effet d'analyse live : ANA-10 / PERF-1 / PERF-2 / CP-6) : les sept checks qui
-exigent un `stop` UCI réel à la coupure du moteur ou en arrière-plan, l'arrêt de la recherche live à la
-profondeur cible et des lignes taguées par position ne sont pas exécutés ; ils sont imprimés en `[SKIP]`
-par `skip()` et ne comptent pas comme des échecs. Les réactiver revient à remplacer chaque `skip(...)`
-par le `check(...)` conservé en commentaire juste au-dessus.
 """
 import time
 
@@ -21,10 +16,6 @@ from helpers import BASE, Checker, mobile_context, overflow_x, piece_on, shot, t
 ck = Checker("analysis_robust")
 check = ck.check
 
-
-def skip(name):
-    """Check documenté mais non exécuté : en attente du lot L3-bis (effet d'analyse live)."""
-    print(f"[SKIP] {name} : en attente du lot L3-bis (effet d'analyse live, ANA-10 / PERF-1 / PERF-2 / CP-6)")
 
 PGN_FEN = (
     '[SetUp "1"]\n'
@@ -46,6 +37,10 @@ PGN_DENSE = (
 # Blancs largement gagnants (+6) à chaque position : un libellé négatif ne peut venir que d'une
 # ligne de l'ancienne position affichée avec le signe du nouveau trait.
 PGN_PLUS6 = "1. e4 e5 2. Nf3 Qg5 3. Nxg5 Nc6 4. d4 Nf6 5. d5 Nb8 6. Nc3 h6"
+# Mat forcé pour les Noirs (deux tours contre roi) à chaque position du parcours.
+PGN_BLACK_MATE = '[SetUp "1"]\n[FEN "r5k1/1r6/8/8/4K3/8/8/8 b - - 0 1"]\n\n1... Rb4+ 2. Kd3 Ra3+ 3. Kc2'
+# Blancs une dame de moins dès le 6e demi-coup : avantage noir massif mais pas de mat.
+PGN_BLACK_UP = "1. e4 e5 2. Qg4 Nf6 3. Nf3 Nxg4 4. d4 Nc6 5. d5 Nb8 6. Nc3 h6"
 # 48 demi-coups sans théorie : en profondeur `deep`, le bilan reste ouvert assez longtemps pour agir.
 PGN_MEDIUM = (
     "1. c4 g6 2. d3 f5 3. e3 e6 4. Qh5 Nf6 5. Kd2 Ng8 6. Na3 Bb4+ 7. Kc2 a5 8. e4 Ke7 9. e5 Nh6 "
@@ -182,6 +177,36 @@ def eval_label(page):
     return page.locator("main .bg-neutral-800:visible span").first.inner_text()
 
 
+def start_bar_sampler(page):
+    """Relève la barre d'éval mobile (`HEvalBar`) à chaque mutation DOM et à chaque frame.
+
+    Le MutationObserver capte un état qui ne vit qu'un commit React (une frame rAF peut le rater) ;
+    la largeur lue est la cible inline du remplissage blanc, pas la valeur animée."""
+    page.evaluate(
+        """() => {
+          const bar = document.querySelector('main .h-7.bg-neutral-800')
+          window.__frames = []
+          const read = () => {
+            // Relu à chaque relevé : une barre remontée ne doit pas laisser lire un nœud détaché figé.
+            const bar = document.querySelector('main .h-7.bg-neutral-800')
+            if (!bar) return
+            const fill = bar.querySelector('div')
+            const label = bar.querySelector('span').textContent
+            window.__frames.push({ share: parseFloat(fill.style.width), label })
+          }
+          window.__obs = new MutationObserver(read)
+          window.__obs.observe(bar, { attributes: true, characterData: true, childList: true, subtree: true })
+          window.__sampling = true
+          const tick = () => { read(); if (window.__sampling) requestAnimationFrame(tick) }
+          requestAnimationFrame(tick)
+        }"""
+    )
+
+
+def stop_bar_sampler(page):
+    return page.evaluate("() => { window.__sampling = false; window.__obs.disconnect(); return window.__frames }")
+
+
 def toggle_engine(page, expect_label):
     page.locator("main button:visible", has_text="Options").click()
     page.locator("button:visible", has_text=f"Moteur : {expect_label}").click()
@@ -283,16 +308,16 @@ def suite(p):
     check("[perf1] recherche infinie lancée", "go infinite" in uci["sent"], f"({uci['sent'][-3:]})")
 
     def self_stopped():
+        # Un `stop` APRÈS le dernier `go infinite` (StrictMode : un premier `go` peut avoir été stoppé au remontage).
         s = uci["sent"]
-        return "stop" in s and s.index("stop", s.index("go infinite")) > s.index("go infinite") if "go infinite" in s else False
+        gos = [i for i, c in enumerate(s) if c == "go infinite"]
+        return bool(gos) and "stop" in s[gos[-1] + 1:]
 
-    # check("[perf1] `stop` envoyé sans aucune action de l'utilisateur", wait_until(page, self_stopped, 60000), f"({uci['sent'][-4:]})")
-    skip("[perf1] `stop` envoyé sans aucune action de l'utilisateur")
+    check("[perf1] `stop` envoyé sans aucune action de l'utilisateur", wait_until(page, self_stopped, 60000), f"({uci['sent'][-4:]})")
     n_go = sum(c.startswith("go") for c in uci["sent"])
     page.wait_for_timeout(2000)
     check("[perf1] aucune relance après l'arrêt", sum(c.startswith("go") for c in uci["sent"]) == n_go, f"({uci['sent'][-4:]})")
-    # check("[perf1] `bestmove` reçu (le moteur est vraiment au repos)", any(r.startswith("bestmove") for r in uci["recv"]), f"({uci['recv'][-3:]})")
-    skip("[perf1] `bestmove` reçu (le moteur est vraiment au repos)")
+    check("[perf1] `bestmove` reçu (le moteur est vraiment au repos)", any(r.startswith("bestmove") for r in uci["recv"]), f"({uci['recv'][-3:]})")
     check("[perf1] les lignes restent affichées après l'arrêt", page.locator(ENGINE_LINE).count() >= 1)
     page.close()
 
@@ -304,16 +329,21 @@ def suite(p):
     page.wait_for_timeout(500)
     load_text(page, PGN_DENSE)
     ck.appears("[ana10] lignes moteur affichées sur le milieu de partie", page, ENGINE_LINE, timeout=30000)
-    mark = len(uci["sent"])
+    sent = uci["sent"]
+    last_go = max((i for i, c in enumerate(sent) if c == "go infinite"), default=len(sent))
+    # Garde : la recherche live doit être encore en cours au moment de la coupure, sinon le check suivant ne prouve rien.
+    check("[ana10] recherche live encore en cours avant la coupure", last_go < len(sent) and "stop" not in sent[last_go + 1:], f"({sent[-4:]})")
+    mark = len(sent)
     toggle_engine(page, "activé")
     page.wait_for_timeout(1500)
     after = uci["sent"][mark:]
-    # check("[ana10] commande UCI `stop` envoyée à la coupure", "stop" in after, f"(après coupure : {after})")
-    skip("[ana10] commande UCI `stop` envoyée à la coupure")
+    check("[ana10] commande UCI `stop` envoyée à la coupure", "stop" in after, f"(après coupure : {after})")
     check("[ana10] aucun `go` après la coupure", not any(c.startswith("go") for c in after), f"({after})")
-    # labels = [eval_label(page) relevé 4 fois à 700 ms d'intervalle]
-    # check("[ana10] la barre d'éval ne bouge plus", len(set(labels)) == 1, f"({labels})")
-    skip("[ana10] la barre d'éval ne bouge plus")
+    labels = []
+    for _ in range(4):
+        labels.append(eval_label(page))
+        page.wait_for_timeout(700)
+    check("[ana10] la barre d'éval ne bouge plus", len(set(labels)) == 1, f"({labels})")
     mark = len(uci["sent"])
     tap_move(page, "h2", "h3")
     page.wait_for_timeout(1200)
@@ -335,8 +365,7 @@ def suite(p):
     )
     page.wait_for_timeout(1500)
     after = uci["sent"][mark:]
-    # check("[perf2] page cachée : `stop` envoyé", "stop" in after, f"({after})")
-    skip("[perf2] page cachée : `stop` envoyé")
+    check("[perf2] page cachée : `stop` envoyé", "stop" in after, f"({after})")
     check("[perf2] page cachée : aucun `go`", not any(c.startswith("go") for c in after), f"({after})")
     mark = len(uci["sent"])
     page.evaluate(
@@ -346,8 +375,7 @@ def suite(p):
           document.dispatchEvent(new Event('visibilitychange'))
         }"""
     )
-    # check("[perf2] page de nouveau visible : recherche relancée", wait_until(page, lambda: "go infinite" in uci["sent"][mark:], 5000), f"({uci['sent'][mark:]})")
-    skip("[perf2] page de nouveau visible : recherche relancée")
+    check("[perf2] page de nouveau visible : recherche relancée", wait_until(page, lambda: "go infinite" in uci["sent"][mark:], 5000), f"({uci['sent'][mark:]})")
     page.close()
 
     # ---------- CP-6 : jamais une ligne de l'ancienne position avec le signe du nouveau trait ----------
@@ -376,9 +404,39 @@ def suite(p):
     positive = [l for l in labels if l.startswith("+") and float(l[1:].replace(",", ".")) >= 3]
     negative = [l for l in labels if l.startswith("-")]
     check("[cp6] échantillonnage utile (des évals à +3 ou plus relevées)", len(labels) > 60 and len(positive) > 10, f"({len(labels)} frames, {len(positive)} positives)")
-    # check("[cp6] aucun libellé de signe inversé pendant 6 navigations", not negative, f"({sorted(set(negative))} sur {len(labels)} frames)")
-    skip("[cp6] aucun libellé de signe inversé pendant 6 navigations")
+    check("[cp6] aucun libellé de signe inversé pendant 6 navigations", not negative, f"({sorted(set(negative))} sur {len(labels)} frames)")
     page.close()
+
+    # ---------- CP-6 bis : avantage noir (mat et matériel), le bug vu sur iPhone ----------
+    # « La barre passe en blanc le temps que l'ordinateur réévalue, puis repasse en noir. »
+    # Chaque position du parcours est gagnante pour les Noirs : un remplissage blanc > 50 % ou un
+    # libellé positif ne peut venir que d'une éval de l'ancienne position avec le signe du nouveau trait.
+    for tag, text, steps in (("cp6-mat", PGN_BLACK_MATE, 4), ("cp6-noir", PGN_BLACK_UP, 5)):
+        page = open_analysis(ctx)
+        load_text(page, text)
+        ck.appears(f"[{tag}] lignes moteur affichées", page, ENGINE_LINE, timeout=30000)
+        page.wait_for_timeout(1500)
+        start_bar_sampler(page)
+        for _ in range(steps):  # positions jamais analysées : recalcul à chaque pas
+            page.locator("main button:visible", has_text="Précédent").click()
+            page.wait_for_timeout(700)
+        for _ in range(2):  # allers-retours sur des positions déjà analysées
+            for btn in ("Suivant", "Précédent"):
+                for _ in range(steps):
+                    page.locator("main button:visible", has_text=btn).click()
+                    page.wait_for_timeout(350)
+        frames = stop_bar_sampler(page)
+        black = [f for f in frames if f["share"] < 50]
+        inverted = [f for f in frames if f["share"] > 50 or f["label"].startswith("+")]
+        check(f"[{tag}] échantillonnage utile (barre côté noir relevée)", len(frames) > 30 and len(black) > 10,
+              f"({len(frames)} relevés, {len(black)} côté noir)")
+        check(f"[{tag}] la barre ne passe jamais côté blanc pendant le recalcul", not inverted,
+              f"({len(inverted)} relevés inversés sur {len(frames)} : {inverted[:4]})")
+        # Retomber au neutre pendant le recalcul (« M4 » puis « 0,00 » puis « M4 ») est le même saut, à moitié.
+        neutral = [f for f in frames if f["label"] == "0,00" or f["share"] == 50]
+        check(f"[{tag}] la barre ne retombe jamais au neutre pendant le recalcul", not neutral,
+              f"({len(neutral)} relevés neutres sur {len(frames)})")
+        page.close()
 
     # ---------- ANA-9 : « Mes erreurs » = fautes du joueur, avec le libellé de la partie ----------
     # Table `mistakes` partagée avec les scénarios précédents (le bilan d'ANA-1 y écrit sous

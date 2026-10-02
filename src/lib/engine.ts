@@ -25,7 +25,8 @@ export class Engine {
   private queue: Promise<unknown> = Promise.resolve()
   private searchId = 0
   private searching = false
-  onLines: ((lines: EngineLine[]) => void) | null = null
+  // Lignes au fil de l'eau, avec la FEN analysée : un score n'a de sens (et de signe) que pour sa position.
+  onLines: ((lines: EngineLine[], fen: string) => void) | null = null
   private currentLines: EngineLine[] = []
 
   constructor() {
@@ -80,7 +81,7 @@ export class Engine {
     this.searching = false
   }
 
-  private attachInfoListener(): () => void {
+  private attachInfoListener(fen: string): () => void {
     const id = ++this.searchId
     this.currentLines = []
     const infoListener = (line: string) => {
@@ -88,7 +89,7 @@ export class Engine {
       const parsed = parseInfo(line)
       if (!parsed) return
       this.currentLines[parsed.multipv - 1] = parsed
-      this.onLines?.(this.currentLines.filter(Boolean))
+      this.onLines?.(this.currentLines.filter(Boolean), fen)
     }
     this.listeners.add(infoListener)
     return () => this.listeners.delete(infoListener)
@@ -112,7 +113,7 @@ export class Engine {
     return this.exclusive(async () => {
       await this.ready
       await this.ensureIdle()
-      const detach = this.attachInfoListener()
+      const detach = this.attachInfoListener(opts.fen)
       if (opts.multipv) this.send(`setoption name MultiPV value ${opts.multipv}`)
       this.send(`position fen ${opts.fen}`)
       const done = this.waitFor((l) => l.startsWith('bestmove'))
@@ -131,7 +132,7 @@ export class Engine {
     return this.exclusive(async () => {
       await this.ready
       await this.ensureIdle()
-      this.attachInfoListener()
+      this.attachInfoListener(fen)
       this.send(`setoption name MultiPV value ${multipv}`)
       this.send(`position fen ${fen}`)
       this.searching = true
