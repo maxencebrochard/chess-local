@@ -125,6 +125,17 @@ function applyUci(chess: Chess, uci: string) {
   }
 }
 
+// Éval rapide d'une position, ramenée côté blanc avec le trait DE CETTE position (scores UCI du
+// point de vue du trait). Mat : ±10000 pour la jauge, et le nombre de coups pour le libellé.
+async function evalWhite(engine: Engine, fen: string, turn: 'w' | 'b'): Promise<{ whiteCp: number; whiteMate: number | null }> {
+  const res = await engine.search({ fen, depth: 10, multipv: 1 })
+  const line = res.lines[0]
+  const sign = turn === 'w' ? 1 : -1
+  if (!line) return { whiteCp: 0, whiteMate: null }
+  if (line.scoreMate !== null) return { whiteCp: sign * (line.scoreMate > 0 ? 10000 : -10000), whiteMate: sign * line.scoreMate }
+  return { whiteCp: sign * (line.scoreCp ?? 0), whiteMate: null }
+}
+
 export default function Play() {
   const navigate = useNavigate()
   const { playSounds, playMode, playBotId, playColor, playTcLabel, setPlayConfig } = useSettings()
@@ -167,6 +178,7 @@ export default function Play() {
   const coachEngineRef = useRef<Engine | null>(null) // pleine force, dédié à l'éval
   const [coachMsg, setCoachMsg] = useState<LiveComment | null>(null)
   const [liveCp, setLiveCp] = useState<number | null>(null) // point de vue blanc
+  const [liveMate, setLiveMate] = useState<number | null>(null) // point de vue blanc, 0 = mat sur l'échiquier
   const [unrated, setUnrated] = useState(false)
   const [hintArrow, setHintArrow] = useState<BoardArrow | null>(null)
   const [hintBusy, setHintBusy] = useState(false)
@@ -226,22 +238,21 @@ export default function Play() {
     liveChain.current = liveChain.current.then(async () => {
       if (seq !== gameSeq.current || gen !== takebackGen.current) return // partie finie ou coup annulé
       let whiteCp: number
+      let whiteMate: number | null = null
       if (mate) {
         whiteCp = moverColor === 'w' ? 10000 : -10000
+        whiteMate = 0
       } else if (over) {
         whiteCp = 0
       } else {
-        coachEngineRef.current ??= new Engine()
-        const res = await coachEngineRef.current.search({ fen, depth: 10, multipv: 1 })
-        const line = res.lines[0]
-        const cpPovTurn = line ? (line.scoreMate !== null ? (line.scoreMate > 0 ? 10000 : -10000) : (line.scoreCp ?? 0)) : 0
-        whiteCp = turnAfter === 'w' ? cpPovTurn : -cpPovTurn
+        ;({ whiteCp, whiteMate } = await evalWhite((coachEngineRef.current ??= new Engine()), fen, turnAfter))
       }
       if (seq !== gameSeq.current || gen !== takebackGen.current) return
       const cpBeforeMover = moverColor === 'w' ? lastWhiteCp.current : -lastWhiteCp.current
       const cpAfterMover = moverColor === 'w' ? whiteCp : -whiteCp
       lastWhiteCp.current = whiteCp
       setLiveCp(whiteCp)
+      setLiveMate(whiteMate)
       const cls = quickClass(cpBeforeMover, cpAfterMover, isBook)
       setCoachMsg(liveComment({ san, moverColor, byPlayer, cls, uciMoves }))
     })
@@ -516,6 +527,7 @@ export default function Play() {
     setBookBadge(null)
     lastWhiteCp.current = restored?.lastWhiteCp ?? 20
     setLiveCp(next.mode === 'coach' ? lastWhiteCp.current : null)
+    setLiveMate(null) // recalée par la prochaine éval (le mat n'est pas mémorisé dans la partie stockée)
     setCoachMsg(next.mode === 'coach' ? (restored ? { text: 'On reprend la partie.', cls: null, mood: 'thinking' } : greeting()) : null)
     statusRef.current = 'playing'
     setStatus('playing')
@@ -622,21 +634,22 @@ export default function Play() {
     setHintArrow(null)
     setBookBadge(null)
     saveGame()
-    // Recale l'éval sur la position restaurée.
+    // Recale l'éval sur la position restaurée. FEN et trait capturés MAINTENANT (relire `c.turn()`
+    // après l'await inverserait le signe si un coup est joué pendant la recherche), et passage par
+    // la chaîne live pour ne jamais croiser l'éval d'un coup ; jetée si la partie ou la reprise change.
     const seq = g.seq
     const gen = takebackGen.current
     const fenNow = c.fen()
-    void (async () => {
-      coachEngineRef.current ??= new Engine()
-      const res = await coachEngineRef.current.search({ fen: fenNow, depth: 10, multipv: 1 })
+    const turnNow = c.turn()
+    liveChain.current = liveChain.current.then(async () => {
       if (seq !== gameSeq.current || gen !== takebackGen.current) return
-      const line = res.lines[0]
-      const cpPovTurn = line ? (line.scoreMate !== null ? (line.scoreMate > 0 ? 10000 : -10000) : (line.scoreCp ?? 0)) : 0
-      const whiteCp = c.turn() === 'w' ? cpPovTurn : -cpPovTurn
+      const { whiteCp, whiteMate } = await evalWhite((coachEngineRef.current ??= new Engine()), fenNow, turnNow)
+      if (seq !== gameSeq.current || gen !== takebackGen.current) return
       lastWhiteCp.current = whiteCp
       setLiveCp(whiteCp)
+      setLiveMate(whiteMate)
       setCoachMsg({ text: 'On reprend ici. Cherche un meilleur plan.', cls: null, mood: 'thinking' })
-    })()
+    })
   }
 
   // --- Configuration : chaque choix est mémorisé dans les réglages ---
@@ -818,7 +831,7 @@ export default function Play() {
     return (
       <div className="mx-auto flex h-full max-w-2xl flex-col">
         <div className="px-3 pt-2">
-          <HEvalBar cp={liveCp} mate={null} />
+          <HEvalBar cp={liveCp} mate={liveMate} />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between px-3 pt-2 text-sm">

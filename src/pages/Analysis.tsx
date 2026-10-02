@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Chess, type Move } from 'chess.js'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Board, type BoardArrow } from '../components/Board'
@@ -29,6 +29,22 @@ interface RetryState {
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
+// Analyse live : 3 lignes, arrêt à la profondeur 22 (une recherche infinie vide la batterie).
+const LIVE_MULTIPV = 3
+const LIVE_DEPTH = 22
+// En dessous, les évals sont instables (jusqu'à 0,00 sur un mat) : jamais affichées, sauf mat annoncé.
+const MIN_SHOWN_DEPTH = 8
+const EVAL_CACHE_MAX = 300
+
+function minDepth(lines: EngineLine[]): number {
+  return lines.reduce((m, l) => Math.min(m, l.depth), Infinity)
+}
+
+// Recherche terminée pour cette position : toutes les lignes attendues à la profondeur cible.
+function liveComplete(lines: EngineLine[], expected: number): boolean {
+  return lines.length >= expected && minDepth(lines) >= LIVE_DEPTH
+}
+
 export default function Analysis() {
   const [params, setParams] = useSearchParams()
   const location = useLocation()
@@ -37,7 +53,15 @@ export default function Analysis() {
   const [startFen, setStartFen] = useState(START_FEN)
   const [moves, setMoves] = useState<Move[]>([])
   const [viewIndexRaw, setViewIndex] = useState(-1) // -1 = position de départ
-  const [lines, setLines] = useState<EngineLine[]>([])
+  // Évals live par FEN analysée : les scores UCI sont du point de vue du trait, une ligne n'est donc
+  // valable (et de bon signe) que pour SA position. Dans un ref (une copie de Map par `info` coûterait
+  // cher sur iPhone), avec un compteur pour redessiner.
+  const evalsRef = useRef(new Map<string, EngineLine[]>())
+  const [, bumpEvals] = useReducer((n: number) => n + 1, 0)
+  // Dernière éval live affichée, côté blanc : tenue pendant le calcul d'une position encore sans éval,
+  // au lieu de retomber au neutre (la barre ferait l'aller-retour à chaque coup).
+  const heldEvalRef = useRef<{ cp: number; mate: number | null } | null>(null)
+  const [hidden, setHidden] = useState(() => document.hidden)
   const [engineOn, setEngineOn] = useState(true)
   const [review, setReview] = useState<GameReview | null>(null)
   const [reviewProgress, setReviewProgress] = useState<number | null>(null)
@@ -167,34 +191,65 @@ export default function Analysis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Analyse infinie sur la position affichée. Coupée pendant un Game Review
-  // (deux recherches entrelacées sur le même worker) et pendant un retry
-  // (les lignes révéleraient la solution).
+  // Analyse live sur la position affichée. Coupée pendant un Game Review (deux recherches
+  // entrelacées sur le même worker), pendant un retry (les lignes révéleraient la solution),
+  // moteur désactivé, et page masquée (batterie).
   const reviewing = reviewProgress !== null
   const retrying = retry !== null
   const guidedNoLines = reviewStage === 'guided' && !showLines
+  const liveOn = engineOn && !reviewing && !retrying && reviewStage !== 'summary' && !guidedNoLines
+
   useEffect(() => {
-    if (!engineOn || reviewing || retrying || reviewStage === 'summary' || guidedNoLines) {
-      setLines([])
+    const onVisibility = () => setHidden(document.hidden)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
+
+  useEffect(() => {
+    // Sortie anticipée : jamais de `stop()` ici. Il fait `searchId++` hors mutex et viderait les
+    // lignes d'un bilan ou d'un Réessayer en vol. La recherche live, elle, est arrêtée par le
+    // nettoyage de l'exécution qui l'a lancée.
+    if (!liveOn) {
+      heldEvalRef.current = null
+      return
+    }
+    if (hidden || viewChess.isGameOver()) return
+    const fen = viewFen
+    const expected = Math.min(LIVE_MULTIPV, viewChess.moves().length)
+    // Cache lu dans le ref, pas en dépendance : l'effet ne doit tourner qu'au changement de position
+    // ou d'état, jamais à chaque `info` (il bouclerait stop/relance).
+    const done = evalsRef.current.get(fen)
+    if (done && liveComplete(done, expected)) {
+      // LRU : une position relue repasse en tête du cache.
+      evalsRef.current.delete(fen)
+      evalsRef.current.set(fen, done)
       return
     }
     engineRef.current ??= new Engine()
     const engine = engineRef.current
-    engine.onLines = setLines
     let cancelled = false
-    void (async () => {
-      await engine.stop()
-      if (cancelled || viewChess.isGameOver()) {
-        setLines([])
-        return
-      }
-      await engine.startInfinite(viewFen, 3)
-    })()
+    engine.onLines = (ls, lineFen) => {
+      if (cancelled || lineFen !== fen) return
+      const cache = evalsRef.current
+      const known = cache.get(fen)
+      // Plancher levé seulement si la ligne PRINCIPALE annonce un mat (c'est elle qui fait la barre).
+      if (minDepth(ls) < MIN_SHOWN_DEPTH && ls[0]?.scoreMate == null) return
+      // Une recherche relancée ne remplace l'éval connue qu'une fois au moins aussi profonde et complète.
+      if (known && (minDepth(ls) < minDepth(known) || ls.length < Math.min(known.length, expected))) return
+      cache.delete(fen)
+      cache.set(fen, ls)
+      if (cache.size > EVAL_CACHE_MAX) cache.delete(cache.keys().next().value!)
+      bumpEvals()
+      if (liveComplete(ls, expected)) void engine.stop()
+    }
+    void engine.startInfinite(fen, LIVE_MULTIPV)
     return () => {
       cancelled = true
+      engine.onLines = null
+      void engine.stop()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewFen, engineOn, reviewing, retrying, reviewStage, guidedNoLines])
+  }, [viewFen, liveOn, hidden])
 
   useEffect(() => {
     aliveRef.current = true
@@ -238,6 +293,7 @@ export default function Analysis() {
       const history = c.history({ verbose: true })
       if (history.length === 0 && !fen) return false // en-têtes seuls, rien à analyser
       cancelReview()
+      heldEvalRef.current = null // une autre partie : rien à tenir de l'ancienne
       setStartFen(fen ? new Chess(fen).fen() : START_FEN)
       setMoves(history)
       setViewIndex(history.length - 1)
@@ -259,6 +315,7 @@ export default function Analysis() {
     try {
       new Chess(fen)
       cancelReview()
+      heldEvalRef.current = null
       setStartFen(fen)
       setMoves([])
       setViewIndex(-1)
@@ -356,6 +413,8 @@ export default function Analysis() {
     return c.pgn()
   }
 
+  // Lignes live de la position AFFICHÉE uniquement (jamais celles d'une autre position).
+  const lines = (liveOn && evalsRef.current.get(viewFen)) || []
   // Eval affichée point de vue blanc.
   const topLine = lines[0] ?? null
   let evalCp: number | null = null
@@ -363,6 +422,8 @@ export default function Analysis() {
   if (viewChess.isCheckmate()) {
     evalMate = 0
     evalCp = viewChess.turn() === 'w' ? -10000 : 10000
+  } else if (viewChess.isGameOver()) {
+    evalCp = 0 // pat, répétition, 50 coups, matériel insuffisant : nulle, pas de recherche
   } else if (topLine) {
     const sign = viewChess.turn() === 'w' ? 1 : -1
     if (topLine.scoreMate !== null) evalMate = sign * topLine.scoreMate
@@ -370,7 +431,15 @@ export default function Analysis() {
   } else if (review && viewIndex >= 0) {
     evalCp = review.moves[viewIndex]?.evalAfterCp ?? null
     evalMate = review.moves[viewIndex]?.mateAfter ?? null
+  } else if (liveOn && heldEvalRef.current) {
+    // Position en cours de calcul : la barre reste sur la dernière éval affichée (déjà côté blanc).
+    evalCp = heldEvalRef.current.cp
+    evalMate = heldEvalRef.current.mate
   }
+  const liveEval = topLine && evalCp !== null ? { cp: evalCp, mate: evalMate } : null
+  useLayoutEffect(() => {
+    if (liveEval) heldEvalRef.current = liveEval
+  })
 
   const reviewedCurrent = review && viewIndex >= 0 ? review.moves[viewIndex] : null
 
@@ -736,7 +805,7 @@ export default function Analysis() {
               arrows={arrows}
             />
           </div>
-          {/* Bandeau ouverture, façon chess.com (mobile) — 1 ligne fixe */}
+          {/* Bandeau ouverture, façon chess.com (mobile), 1 ligne fixe */}
           <div className="truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold text-neutral-200 md:hidden">
             {opening ? openingFr(opening.name) : moves.length === 0 ? 'Position de départ' : 'Hors théorie'}
           </div>
