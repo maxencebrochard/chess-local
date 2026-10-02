@@ -180,6 +180,26 @@ def db_count(page):
     return page.evaluate(COUNT_JS)
 
 
+# Verrou : une transaction readwrite sur games, gardée vivante par des get() en boucle pendant ms,
+# retarde toute suppression de l'app (IndexedDB lente comme sur iOS Safari).
+HOLD_JS = """(ms) => new Promise((ready) => {
+  const r = indexedDB.open('chess-local')
+  r.onsuccess = () => {
+    const db = r.result
+    const st = db.transaction('games', 'readwrite').objectStore('games')
+    const end = Date.now() + ms
+    const spin = () => { if (Date.now() < end) st.get(1).onsuccess = spin }
+    spin()
+    st.transaction.oncomplete = () => db.close()
+    ready(true)
+  }
+})"""
+
+# État des deux premières cartes : « bar » (Partie supprimée) ou « act » (lien Analyser).
+TOP2_JS = """() => [...document.querySelectorAll('main li')].slice(0, 2)
+  .map((li) => li.querySelector('[role=status]') ? 'bar' : (li.querySelector('a') ? 'act' : '?')).join(',')"""
+
+
 def tap(name, locator):
     """Clique si l'élément existe, sinon échec nommé : un clic direct sur un élément absent
     (ancien code, régression) attendrait 30 s puis couperait la suite au lieu d'un [FAIL]."""
@@ -265,6 +285,27 @@ def archive_mobile_standalone(p, browser):
     ck.check("[archive 852] titre Archive (59)", page.locator("h1").inner_text().strip() == "Archive (59)", f"({page.locator('h1').inner_text()})")
     ck.check("[archive 852] la barre a disparu", page.locator("main [role='status']").count() == 0 and links.count() == 59)
 
+    # ✕ sur A puis ✕ sur B pendant une suppression lente : A, en cours d'effacement, reste une barre
+    # sans actions et sans Annuler actif ; elle ne redevient jamais une carte cliquable.
+    page.evaluate(HOLD_JS, 2000)
+    tap("[archive 852] ✕ sur A", rows.nth(0).get_by_role("button", name="Supprimer la partie"))
+    page.wait_for_timeout(100)
+    tap("[archive 852] ✕ sur B", rows.nth(1).get_by_role("button", name="Supprimer la partie"))
+    a_undo_disabled = rows.nth(0).get_by_role("button", name="Annuler").is_disabled()
+    seen = []
+    for _ in range(10):
+        seen.append(page.evaluate(TOP2_JS))
+        page.wait_for_timeout(80)
+    ck.check("[archive 852] ✕ A puis ✕ B, IndexedDB lente : A n'est jamais réaffichée active", all(s == "bar,bar" for s in seen), f"({seen})")
+    ck.check("[archive 852] A en cours d'effacement : son Annuler est désactivé", a_undo_disabled)
+    page.wait_for_timeout(2000)
+    ck.check("[archive 852] A finit supprimée en base", db_count(page) == 58, f"({db_count(page)})")
+    undo = page.get_by_role("button", name="Annuler")
+    if undo.count():
+        undo.first.click()
+        page.wait_for_timeout(300)
+    ck.check("[archive 852] Annuler restaure B", links.count() == 58 and page.locator("main [role='status']").count() == 0, f"({links.count()})")
+
     # Quitter la page pendant l'attente valide la suppression : rien ne ressuscite.
     x = rows.nth(0).get_by_role("button", name="Supprimer la partie")
     if x.count():
@@ -272,17 +313,17 @@ def archive_mobile_standalone(p, browser):
         page.wait_for_timeout(200)
     tap("[archive 852] nav Stats", page.locator("nav a:visible", has_text="Stats"))
     page.wait_for_timeout(800)
-    ck.check("[archive 852] quitter la page valide la suppression en attente", db_count(page) == 58, f"({db_count(page)})")
+    ck.check("[archive 852] quitter la page valide la suppression en attente", db_count(page) == 57, f"({db_count(page)})")
     tap("[archive 852] nav Archive", page.locator("nav a:visible", has_text="Archive"))
-    ck.appears("[archive 852] de retour : Archive (58)", page, "h1:has-text('Archive (58)')", timeout=5000)
+    ck.appears("[archive 852] de retour : Archive (57)", page, "h1:has-text('Archive (57)')", timeout=5000)
 
-    # Exporter tout relit la base (pas l'état paginé) : 58 parties dans le PGN.
+    # Exporter tout relit la base (pas l'état paginé) : 57 parties dans le PGN.
     with page.expect_download(timeout=10000) as dl:
         page.click("button:has-text('Exporter tout')")
     path = dl.value.path()
     with open(path, encoding="utf-8") as f:
         n_pgn = f.read().count('[Event "ChessLocal"]')
-    ck.check("[archive 852] export de toutes les parties de la base", n_pgn == 58, f"({n_pgn})")
+    ck.check("[archive 852] export de toutes les parties de la base", n_pgn == 57, f"({n_pgn})")
     ctx.close()
 
 
