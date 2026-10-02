@@ -16,11 +16,25 @@ TABS = [("Jouer", "#/jouer"), ("Puzzles", "#/puzzles"), ("Apprendre", "#/apprend
 # constructeur lève, donc le rendu d'Analyse plante là où une frontière doit l'attraper.
 # Le prototype natif est conservé pour les `instanceof` de react-router. Le même script
 # espionne `console.error` : la frontière doit laisser l'erreur visible en console.
+# Mode 'apres-replace' (armé via sessionStorage, consommé au chargement) : Analyse ne plante
+# qu'une fois son `navigate('.', { replace, state: null })` de montage passé (state vidé dans
+# l'historique) et tant que l'écran de secours n'est pas affiché, c'est-à-dire au rendu qui
+# suit le chargement de la partie, pas à un remontage de la page vide.
 BOOM = """
 (() => {
   const Native = window.URLSearchParams
+  if (location.protocol.startsWith('http')) {
+    const mode = sessionStorage.getItem('__E2E_BOOM')
+    sessionStorage.removeItem('__E2E_BOOM')
+    if (mode) window.__E2E_BOOM = mode
+  }
   function Boom(init) {
-    if (window.__E2E_BOOM === true) throw new Error('E2E_BOOM_URLSEARCHPARAMS')
+    const boom = window.__E2E_BOOM
+    if (boom === true) throw new Error('E2E_BOOM_URLSEARCHPARAMS')
+    if (boom === 'apres-replace' && history.state?.usr == null &&
+        !document.body.textContent.includes('Cette page a rencontré un problème')) {
+      throw new Error('E2E_BOOM_URLSEARCHPARAMS')
+    }
     return new Native(init)
   }
   Boom.prototype = Native.prototype
@@ -167,6 +181,28 @@ def suite(p):
     page.wait_for_timeout(1500)
     check("[boundary] Recharger : le drapeau ne survit pas", page.evaluate("() => window.__E2E_BOOM") is None)
     ck.appears("[boundary] Recharger rend Analyse", page, "[id^='chessboard-']", timeout=5000)
+
+    # Crash au rendu qui suit le chargement d'une partie par state de navigation : le
+    # `navigate('.', { replace, state: null })` de montage d'Analyse change `location.key`
+    # sans changer de chemin, il ne doit pas réarmer la frontière (sinon Analyse est remontée
+    # vide et la partie envoyée disparaît sans message). Avec React 19, le rendu planté est
+    # rejoué de façon synchrone avec toutes les mises à jour en attente, transition du routeur
+    # comprise : ce check fige le contrat plus qu'il ne reproduit un échec observé.
+    go(page, "#/")
+    page.evaluate("""() => {
+      sessionStorage.setItem('__E2E_BOOM', 'apres-replace')
+      history.replaceState({ usr: { pgn: '1. e4 e5 2. Nf3 Nc6', label: 'E2E' }, key: 'e2e', idx: 0 }, '', '#/analyse')
+    }""")
+    with ck.expect_pageerror("E2E_BOOM_URLSEARCHPARAMS"):
+        page.reload()
+        ck.appears("[boundary] crash après le chargement par state -> secours", page, FALLBACK, timeout=5000)
+        page.wait_for_timeout(1000)
+        check("[boundary] navigate('.', replace) de la page : secours maintenu", page.locator(FALLBACK).is_visible())
+        check("[boundary] navigate('.', replace) de la page : state consommé, chemin inchangé",
+              hash_of(page) == "#/analyse" and page.evaluate("() => history.state?.usr == null"), f"({hash_of(page)})")
+        page.evaluate("() => { window.__E2E_BOOM = false }")
+    tab(page, "Analyse").click()
+    ck.appears("[boundary] re-tap après crash au chargement relance Analyse", page, "[id^='chessboard-']", timeout=5000)
     ctx.close()
 
     # ---------- iPhone dans Safari (393x660) : TOUCH-4 ----------

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { HashRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import Home from './pages/Home'
@@ -43,6 +43,12 @@ function Shell() {
   // Sans barre finale : `#/apprendre/` doit allumer Apprendre.
   const pathname = location.pathname.replace(/\/+$/, '') || '/'
   const mainRef = useRef<HTMLElement>(null)
+  // Re-tap de l'onglet de la route courante : seul geste qui réarme la frontière sans
+  // changer de chemin.
+  const [retaps, setRetaps] = useState(0)
+  const onTabClick = (to: string) => {
+    if (to === pathname) setRetaps((t) => t + 1)
+  }
 
   // Chaque page s'ouvre en haut : `<main>` est le seul conteneur qui défile, et il est
   // partagé entre les routes. Dépend de `pathname` seul : un `navigate('.', { replace })`
@@ -68,6 +74,7 @@ function Shell() {
               key={n.to}
               to={n.to}
               replace
+              onClick={() => onTabClick(n.to)}
               aria-current={current}
               className={`rounded px-3 py-2 font-semibold transition ${
                 current ? 'bg-accent/20 text-accent' : 'text-neutral-300 hover:bg-surface-3'
@@ -84,10 +91,11 @@ function Shell() {
       </nav>
       <main ref={mainRef} className="pt-safe min-w-0 flex-1 overflow-y-auto">
         {/* La frontière ne couvre que les pages : les nav restent utilisables pendant le
-            secours. `location.key` : re-taper l'onglet courant depuis le secours relance la
-            page. Jamais de `key` sur les enfants : les `navigate('.', { replace })` des pages
-            changent la clé après un rendu réussi et remonteraient la page vide. */}
-        <ErrorBoundary resetKey={location.key}>
+            secours. Réarmée par un vrai changement de chemin ou un re-tap de l'onglet courant,
+            jamais par `location.key` : les `navigate('.', { replace, state: null })` que les
+            pages lancent au montage effaceraient un crash survenu juste après le chargement et
+            remonteraient la page vide. */}
+        <ErrorBoundary resetKey={`${pathname}#${retaps}`}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/jouer" element={<Play />} />
@@ -110,6 +118,7 @@ function Shell() {
               key={n.to}
               to={n.to}
               replace
+              onClick={() => onTabClick(n.to)}
               aria-current={current}
               className={`flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-semibold ${
                 current ? 'text-accent' : 'text-neutral-400'
