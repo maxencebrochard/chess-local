@@ -44,6 +44,32 @@ FLAG_SEQ = [
 
 ARROWS = ["◀", "⏮", "▶", "⏭"]
 
+# Rend la course « abandon pendant la réflexion du bot » déterministe : tant que `__heldUci` est un
+# tableau, les `bestmove` des workers Stockfish sont retenus au lieu d'être livrés à l'app (écouteur
+# posé dans le constructeur, donc avant `onmessage`). `__releaseUci()` les livre ensuite tels quels :
+# la réponse du bot arrive alors réellement après la fin de partie, et le moteur peut se libérer.
+HOLD_BESTMOVE = """(() => {
+  const Native = window.Worker
+  window.__heldUci = null
+  window.Worker = class extends Native {
+    constructor(...args) {
+      super(...args)
+      this.addEventListener('message', (e) => {
+        if (window.__heldUci && typeof e.data === 'string' && e.data.startsWith('bestmove')) {
+          e.stopImmediatePropagation()
+          window.__heldUci.push([this, e.data])
+        }
+      })
+    }
+  }
+  window.__releaseUci = () => {
+    const held = window.__heldUci ?? []
+    window.__heldUci = null
+    for (const [w, data] of held) w.dispatchEvent(new MessageEvent('message', { data }))
+    return held.length
+  }
+})()"""
+
 
 def goto_play(page):
     page.goto(f"{BASE}/#/jouer")
@@ -191,15 +217,18 @@ def suite(p):
     # ---------- Course : abandon pendant la réflexion de Maximus (partie classée, 3 demi-coups) ----------
     ctx = mobile_context(p, browser, ck, standalone=True)
     page = ctx.new_page()
+    page.add_init_script(HOLD_BESTMOVE)
     goto_play(page)
     setup(page, bot="Maximus", color="Blancs", tc="Illimité")
     tap_move(page, "e2", "e4")
     wait_plies(page, 2, 15000)
+    page.evaluate("() => { window.__heldUci = [] }")
     tap_move(page, "d2", "d4", pause=80)
     resign(page)
     ck.appears("[course] modale d'abandon", page, "text=Les Noirs gagnent", timeout=5000)
     n_modal = plies(page)
     check("[course] abandon pendant la réflexion (3 demi-coups à la modale)", n_modal == 3, f"({n_modal})")
+    page.evaluate("() => window.__releaseUci()")
     page.wait_for_timeout(5000)
     check("[course] aucun coup du bot après l'abandon (5 s)", plies(page) == n_modal, f"({plies(page)})")
     db = page.evaluate(IDB)
