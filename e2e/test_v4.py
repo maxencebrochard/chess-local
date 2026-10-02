@@ -54,7 +54,15 @@ def suite(p):
     page.goto(f"{BASE}/#/analyse")
     page.wait_for_timeout(3000)
     check("[analyse-m] HEvalBar en haut", page.locator("main .bg-neutral-800").first.is_visible())
-    check("[analyse-m] lignes compactes", "(" in page.locator("main").inner_text()[:400])
+    # Les lignes du moteur arrivent quand Stockfish a répondu : on attend leur apparition
+    # plutôt que de constater après un délai fixe (instable sur machine chargée).
+    try:
+        page.wait_for_function("() => document.querySelector('main')?.innerText.slice(0, 400).includes('(')",
+                               timeout=30000)
+        compact = True
+    except Exception:
+        compact = False
+    check("[analyse-m] lignes compactes", compact, f"({page.locator('main').inner_text()[:80]!r})")
     check("[analyse-m] bandeau Position de départ", page.locator("text=Position de départ").is_visible())
     check("[analyse-m] barre d'actions bas", page.locator("main button", has_text="Explorer").is_visible())
     check("[analyse-m] explorer caché par défaut", not page.locator("text=Explorer d'ouvertures").first.is_visible())
