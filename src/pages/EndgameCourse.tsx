@@ -35,6 +35,9 @@ const LESSON_BOARD = 'w-[min(calc(100vw-1.5rem),calc(100dvh-21rem),34rem)]'
 // ---------- Sommaire ----------
 export default function EndgameCourse() {
   const navigate = useNavigate()
+  const location = useLocation()
+  // Venu d'une leçon ouverte depuis une séance d'Apprendre : la séance reste à restaurer.
+  const fromSession = Boolean((location.state as { fromSession?: boolean } | null)?.fromSession)
   const [done, setDone] = useState<Set<string> | null>(null)
 
   useEffect(() => {
@@ -47,7 +50,7 @@ export default function EndgameCourse() {
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
       <button
-        onClick={() => navigate('/apprendre', { replace: true })}
+        onClick={() => navigate('/apprendre', { replace: true, state: fromSession ? { restore: true } : null })}
         className="mb-2 cursor-pointer text-sm font-semibold text-neutral-400 hover:text-white"
       >
         ← Apprendre
@@ -78,7 +81,7 @@ export default function EndgameCourse() {
                 <button
                   key={id}
                   data-lesson={id}
-                  onClick={() => navigate(`/apprendre/finales/${id}`)}
+                  onClick={() => navigate(`/apprendre/finales/${id}`, { state: { fromSession } })}
                   className="flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
                 >
                   <span
@@ -139,6 +142,7 @@ function LessonView({ id, lesson }: { id: string; lesson: Lesson }) {
 
   const close = () =>
     fromSession ? navigate('/apprendre', { replace: true, state: { restore: true } }) : navigate('/apprendre/finales', { replace: true })
+  const goCourse = (path: string) => navigate(path, { replace: true, state: { fromSession } })
   const next = nextLessonId(id)
   const exercise = lesson.exercise ? ENDGAMES.find((e) => e.id === lesson.exercise) : undefined
   const canContinue = !step || step.kind === 'diagram' || lineDone
@@ -190,11 +194,11 @@ function LessonView({ id, lesson }: { id: string; lesson: Lesson }) {
                 </Cta>
               )}
               {next && (
-                <Cta variant={exercise ? 'secondary' : 'primary'} onClick={() => navigate(`/apprendre/finales/${next}`, { replace: true })}>
+                <Cta variant={exercise ? 'secondary' : 'primary'} onClick={() => goCourse(`/apprendre/finales/${next}`)}>
                   Leçon suivante
                 </Cta>
               )}
-              <Cta variant="secondary" onClick={() => navigate('/apprendre/finales', { replace: true })}>
+              <Cta variant="secondary" onClick={() => goCourse('/apprendre/finales')}>
                 Sommaire
               </Cta>
             </div>

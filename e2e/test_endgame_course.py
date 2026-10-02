@@ -177,6 +177,25 @@ def suite(p):
     page.click("header button[aria-label='Fermer la leçon']")
     ck.appears("[exercice] ✕ de la leçon rend la séance", page, ".bg-white:has-text('Mat des deux tours')")
     check("[exercice] séance restaurée, pas l'accueil", page.get_by_role("button", name="C'est parti").is_visible())
+    # Leçon finie depuis la séance : « Sommaire » puis « ← Apprendre », ou « Leçon suivante » puis ✕,
+    # rendent aussi la séance.
+    for exit_label in ("Sommaire", "Leçon suivante"):
+        page.locator("button", has_text="Voir la leçon").click()
+        ck.appears(f"[séance → {exit_label}] leçon ouverte", page, "[data-testid='lesson-step']:has-text('1/3')")
+        continue_btn(page).click()
+        ck.appears(f"[séance → {exit_label}] ligne", page, "[data-testid='lesson-step']:has-text('2/3')")
+        finish_line(page)
+        continue_btn(page).click()
+        ck.appears(f"[séance → {exit_label}] bilan", page, "text=À retenir")
+        page.get_by_role("button", name=exit_label).click()
+        if exit_label == "Sommaire":
+            ck.appears("[séance → Sommaire] sommaire", page, "h1:has-text('Cours de finales')")
+            page.get_by_role("button", name="← Apprendre").click()
+        else:
+            ck.appears("[séance → Leçon suivante] leçon suivante", page, "[data-testid='lesson-step']:has-text('1/')")
+            page.click("header button[aria-label='Fermer la leçon']")
+        ck.appears(f"[séance → {exit_label}] séance rendue", page, ".bg-white:has-text('Mat des deux tours')")
+        check(f"[séance → {exit_label}] séance restaurée, pas l'accueil", page.get_by_role("button", name="C'est parti").is_visible())
     page.get_by_role("button", name="C'est parti").click()
     ck.appears("[exercice] échiquier de l'exercice", page, "text=Objectif")
     check("[exercice] position de rr-mate", piece_on(page, "a1") == "wR" and piece_on(page, "b1") == "wR")

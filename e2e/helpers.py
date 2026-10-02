@@ -14,6 +14,7 @@ fournit BASE. Lancer une suite à la main exige BASE :
 """
 import json
 import os
+import re
 from contextlib import contextmanager
 import signal
 import sys
@@ -28,6 +29,9 @@ os.makedirs(SHOTS, exist_ok=True)
 
 # E2E_LIVE=1 : l'API chess.com réelle remplace la fixture (jamais dans le gate : réseau = flaky).
 LIVE = os.environ.get("E2E_LIVE") == "1"
+
+# Bouton du domaine Finales (et pas la carte « Cours de finales »).
+FINALES = re.compile(r"^\W*Finales$")
 
 DEFAULT_SETTINGS = {
     "themeId": "green",

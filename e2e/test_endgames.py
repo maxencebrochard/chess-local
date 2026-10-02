@@ -12,17 +12,12 @@ sur une FEN reconstruite depuis le DOM : aucune dépendance à python-chess ni �
 
 Usage : npm run test:e2e -- --suite endgames
 """
-import re
 import json
 import os
 import subprocess
-import sys
 import time
 
-from helpers import BASE, E2E_DIR, Checker, drag_piece, mobile_context, shot, tap_move
-
-# Bouton du domaine Finales (et pas la carte « Cours de finales »).
-FINALES = re.compile(r"^\W*Finales$")
+from helpers import BASE, E2E_DIR, FINALES, Checker, drag_piece, mobile_context, shot, tap_move
 
 ROOT = os.path.dirname(E2E_DIR)
 ck = Checker("endgames")

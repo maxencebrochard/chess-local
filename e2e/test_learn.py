@@ -5,10 +5,7 @@ Usage : npm run test:e2e -- --suite learn
 import json
 import re
 
-from helpers import BASE, SHOTS, Checker, click_square as sq, mobile_context, overflow_x
-
-# Bouton du domaine Finales (et pas la carte « Cours de finales »).
-FINALES = re.compile(r"^\W*Finales$")
+from helpers import BASE, FINALES, SHOTS, Checker, click_square as sq, mobile_context, overflow_x
 
 PGN = "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nd4 4. Nxe5 Qg5 5. Nxf7 Qxg2 6. Rf1 Qxe4+ 7. Be2 Nf3#"
 ck = Checker("learn")
