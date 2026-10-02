@@ -56,6 +56,10 @@ BUILD_RE = re.compile(r"[`\"'](20\d\d-\d\d-\d\d \d\d:\d\d)[`\"']")
 RECORD_RE = re.compile(r"Record : (\d+)")
 LEADING_INT_RE = re.compile(r"^\s*(\d+)")
 MUTATION = os.environ.get("E2E_MUTATION", "")
+# Libellés d'interface propres à chaque build : l'ancien garde les siens, le nouveau a les siens.
+# Seuls des libellés vivent ici ; les chiffres et les données attendus sont communs aux deux builds.
+OLD_LABELS = {"archive_bot": "vs Noa"}
+NEW_LABELS = {"archive_bot": "contre Noa"}
 # Copie mutée du nouveau build : (motif dans le bundle, remplacement). Chaque motif doit
 # s'appliquer exactement une fois, sinon la « preuve » ne prouverait rien.
 MUTATIONS = {
@@ -367,8 +371,9 @@ def cards_of(cards):
     return got
 
 
-def displayed_ok(tag, page, base, exp):
-    """Une visite de chaque page qui affiche des données, un check par chiffre attendu."""
+def displayed_ok(tag, page, base, exp, labels):
+    """Une visite de chaque page qui affiche des données, un check par chiffre attendu.
+    `labels` : libellés du build affiché (OLD_LABELS ou NEW_LABELS)."""
     def has_all(needles):
         def fn():
             text = page.locator("main").first.inner_text()
@@ -405,7 +410,7 @@ def displayed_ok(tag, page, base, exp):
     page.goto(f"{base}/#/archive")
     ck.appears(f"{tag} archive chargée", page, "main h1:has-text('Archive')", timeout=15000)
     expect(f"{tag} archive : compteur et partie contre Noa listée",
-           wait_until(page, has_all([f"Archive ({exp['games']})"] + (["vs Noa"] if exp["games"] else []))))
+           wait_until(page, has_all([f"Archive ({exp['games']})"] + ([labels["archive_bot"]] if exp["games"] else []))))
 
     page.goto(f"{base}/#/stats")
     ck.appears(f"{tag} stats chargées", page, "text=Statistiques", timeout=15000)
@@ -774,7 +779,7 @@ def suite(p):
         if backup:
             compare_backup("[ancien]", before, backup)
         exp = expectations(before)
-        phase("affichage avant", displayed_ok, "[ancien]", page, base, exp)
+        phase("affichage avant", displayed_ok, "[ancien]", page, base, exp, OLD_LABELS)
         ctx.close()  # la PWA est quittée
         print(f"[upgrade] ancien build : {time.time() - t_start:.0f} s", flush=True)
 
@@ -800,7 +805,7 @@ def suite(p):
         # Instantané tout de suite : la mise à jour du service worker seule ne doit rien toucher.
         after = snapshot(page)
         compare_snapshots("[montée de version, avant usage]", before, after)
-        phase("affichage après", displayed_ok, "[nouveau]", page, base, exp)
+        phase("affichage après", displayed_ok, "[nouveau]", page, base, exp, NEW_LABELS)
         # Puis après usage : Dexie n'ouvre la base qu'à la première requête, donc un bloc
         # version(n) destructeur ou une purge au démarrage ne se voient qu'ici.
         compare_snapshots("[montée de version, après usage]", before, snapshot(page))
@@ -821,12 +826,20 @@ def suite(p):
             page.goto(f"{base}/#/stats")
             ck.appears("[restauration] nouveau build, profil vierge : bouton Restaurer", page, "button:has-text('Restaurer')", timeout=15000)
             page.set_input_files("input[type=file]", backup_path)
-            ck.appears("[restauration] message de confirmation", page, "text=Sauvegarde restaurée", timeout=15000)
+            # Nouveau flux : le fichier est d'abord validé, puis une feuille demande confirmation
+            # avant d'écraser la base. Profil vierge : elle doit annoncer que rien ne sera perdu.
+            # Sans feuille, pas de clic : les checks suivants échouent proprement au lieu d'une exception.
+            if ck.appears("[restauration] feuille de confirmation", page, "[data-testid=restore-sheet]", timeout=15000):
+                ck.appears("[restauration] feuille : base vide, rien ne sera perdu", page,
+                           "[data-testid=restore-sheet] >> text=Ta base est vide", timeout=5000)
+                page.click("[data-testid=restore-confirm]")
+            ck.appears("[restauration] message de fin de restauration", page,
+                       "[data-testid=backup-msg][data-kind=success] >> text=Sauvegarde restaurée", timeout=15000)
             page.reload()
             ck.appears("[restauration] app rechargée", page, "text=Statistiques", timeout=15000)
             restored = snapshot(page)
             compare_snapshots("[restauration]", before, restored)
-            phase("affichage après restauration", displayed_ok, "[restauration]", page, base, exp)
+            phase("affichage après restauration", displayed_ok, "[restauration]", page, base, exp, NEW_LABELS)
             ctx.close()
             browser.close()
         else:
