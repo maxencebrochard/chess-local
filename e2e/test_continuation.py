@@ -218,6 +218,9 @@ def suite(p):
     ck.appears("[plan] calque ouvert", page, DIALOG, timeout=5000)
     check("[plan] ligne du moteur d'au moins 4 demi-coups", wait_until(page, lambda: strip_count(page) >= 4, 30000),
           f"({strip_count(page)})")
+    # Le plan vise environ 10 demi-coups : ni la première PV ni le prolongement ne doivent le dépasser.
+    page.wait_for_timeout(3000)
+    check("[plan] ligne plafonnée à 10 demi-coups", strip_count(page) <= 10, f"({strip_count(page)})")
     page.locator(f"{DIALOG} button[aria-label='Début']").click()
     page.wait_for_timeout(300)
     check("[plan] départ = position où l'exercice s'est arrêté (cavalier d5, roi e8)",
