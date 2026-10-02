@@ -17,10 +17,7 @@ import subprocess
 import tempfile
 
 import coach_oracle as oracle
-from helpers import BASE, HOLD_BESTMOVE, SHOTS, Checker, click_square as sq, mobile_context
-
-# Bouton du domaine Finales (et pas la carte « Cours de finales »).
-FINALES = re.compile(r"^\W*Finales$")
+from helpers import BASE, FINALES, HOLD_BESTMOVE, SHOTS, Checker, click_square as sq, mobile_context
 
 ck = Checker("coach")
 check = ck.check

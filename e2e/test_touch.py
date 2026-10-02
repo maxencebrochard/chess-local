@@ -8,11 +8,7 @@ d'actions collante ne recouvre pas encore la rangée du bas (à 560 elle masque 
 
 Usage : npm run test:e2e -- --suite touch
 """
-import re
-from helpers import BASE, SHOTS, Checker, drag_piece, mobile_context, piece_on, scroll_state, sq_center, tap_square, touch_drag
-
-# Bouton du domaine Finales (et pas la carte « Cours de finales »).
-FINALES = re.compile(r"^\W*Finales$")
+from helpers import BASE, FINALES, SHOTS, Checker, drag_piece, mobile_context, piece_on, scroll_state, sq_center, tap_square, touch_drag
 
 ck = Checker("touch")
 check = ck.check
