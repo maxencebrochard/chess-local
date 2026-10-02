@@ -369,7 +369,7 @@ function ExerciseView(props: ExerciseProps) {
   const lesson =
     item.kind === 'endgame' ? { title: item.endgame.title, text: item.endgame.lesson }
     : item.kind === 'strategy' ? { title: item.card.title, text: item.card.lesson }
-    : item.kind === 'tactic' ? { title: item.themeLabel, text: `Trois positions, un même motif : ${item.themeLabel.toLowerCase()}. Prends deux secondes pour le repérer avant de calculer — il est présent à chaque fois.` }
+    : item.kind === 'tactic' ? { title: item.themeLabel, text: `Trois positions, un même motif : ${item.themeLabel.toLowerCase()}. Prends deux secondes pour le repérer avant de calculer : il est présent à chaque fois.` }
     : item.kind === 'opening' ? { title: openingFamilyFr(item.line.name), text: `Objectif : dérouler les ${Math.ceil(item.depth / 2)} premiers coups ${openingDe(item.line.name)} sans te tromper. En cas d'erreur, je te montre le bon coup et on continue.` }
     : { title: 'Répare ta partie', text: `${item.mistake.gameLabel} : tu avais joué ${figurine(item.mistake.playedSan)}, et ce coup t'a coûté cher. Reprends la position et trouve plus fort.` }
 
@@ -484,9 +484,11 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
   // mise à jour côté blanc, plafonnée à ±10 pour l'affichage.
   const evaluate = useCallback(async (): Promise<{ cp: number; mate: number | null }> => {
     const c = chessRef.current
-    const res = await getEngine().search({ fen: c.fen(), depth: 10, multipv: 1 })
+    const fen = c.fen()
+    const turn = c.turn()
+    const res = await getEngine().search({ fen, depth: 10, multipv: 1 })
     const line = res.lines[0]
-    const sign = c.turn() === eg!.side ? 1 : -1
+    const sign = turn === eg!.side ? 1 : -1
     const mate = line?.scoreMate != null ? sign * line.scoreMate : null
     const cp = mate !== null ? (mate > 0 ? 10000 : -10000) : sign * (line?.scoreCp ?? 0)
     const white = eg!.side === 'w' ? 1 : -1
@@ -667,7 +669,7 @@ function OpeningExercise({ item, phase, onFinish }: ExerciseProps) {
   return (
     <div className="flex flex-col gap-2 px-3">
       <div className="truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold">
-        {openingFamilyFr(line.name)} — les {Math.ceil(depth / 2)} premiers coups, côté {playerColor === 'w' ? 'blanc' : 'noir'}
+        {openingFamilyFr(line.name)}, les {Math.ceil(depth / 2)} premiers coups, côté {playerColor === 'w' ? 'blanc' : 'noir'}
       </div>
       {/* Hauteur réservée : l'apparition du message ne doit pas faire sauter le board. */}
       <p className={`min-h-[34px] rounded px-3 py-1.5 text-sm ${msg ? 'bg-red-900/40 text-red-200' : ''}`}>
@@ -734,7 +736,7 @@ function MistakeExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
   return (
     <div className="flex flex-col gap-2 px-3">
       <div className="rounded bg-surface-2 px-3 py-1.5 text-center text-sm">
-        <span className="font-semibold">{mistake.gameLabel}</span> — tu avais joué{' '}
+        <span className="font-semibold">{mistake.gameLabel}</span> : tu avais joué{' '}
         <span className="font-bold text-red-400">{figurine(mistake.playedSan, moverColor)}</span>. Trouve mieux.
       </div>
       {checking && <p className="text-center text-sm text-neutral-400">Je vérifie…</p>}

@@ -64,11 +64,27 @@ window.__qaWait = (pred) => new Promise((resolve) => {
 """
 
 
-def rnd_for(eg_id):
-    """Valeur de Math.random qui fait tomber pick() sur cette finale dans le vivier à 800 Elo."""
-    pool = [e["id"] for e in ENDGAMES if abs(e["difficulty"] - DEFAULT_ELO) <= POOL_SPAN]
+# Classement learn-endgame lu dans Dexie, comme buildSession (getRating : absent = DEFAULT_RATING).
+READ_RATING = """
+() => new Promise((resolve, reject) => {
+  const open = indexedDB.open('chess-local')
+  open.onerror = () => reject(open.error)
+  open.onsuccess = () => {
+    const db = open.result
+    if (!db.objectStoreNames.contains('ratings')) { db.close(); resolve(null); return }
+    const get = db.transaction('ratings').objectStore('ratings').get('learn-endgame')
+    get.onerror = () => { db.close(); reject(get.error) }
+    get.onsuccess = () => { db.close(); resolve(get.result ? get.result.value : null) }
+  }
+})
+"""
+
+
+def rnd_for(eg_id, elo):
+    """Valeur de Math.random qui fait tomber pick() sur cette finale dans le vivier à cet Elo."""
+    pool = [e["id"] for e in ENDGAMES if abs(e["difficulty"] - elo) <= POOL_SPAN]
     if eg_id not in pool:
-        raise RuntimeError(f"{eg_id} n'est pas dans le vivier à {DEFAULT_ELO} Elo : {pool}")
+        raise RuntimeError(f"{eg_id} n'est pas dans le vivier à {elo} Elo : {pool}")
     return (pool.index(eg_id) + 0.5) / len(pool)
 
 
@@ -133,7 +149,8 @@ def start_endgame(page, eg_id):
     """Ouvre Apprendre, force la finale servie, vérifie l'item lu dans sessionStorage, lance le jeu."""
     page.goto(f"{BASE}/#/apprendre")
     ck.appears("[séance] accueil Apprendre", page, "main button:has-text('Finales')")
-    page.evaluate("(x) => { window.__rndQ = [x] }", rnd_for(eg_id))
+    elo = page.evaluate(READ_RATING)
+    page.evaluate("(x) => { window.__rndQ = [x] }", rnd_for(eg_id, DEFAULT_ELO if elo is None else elo))
     page.locator("main button", has_text="Finales").first.tap()
     ck.appears(f"[séance] leçon {eg_id}", page, "text=C'est parti")
     raw = page.evaluate("() => sessionStorage.getItem('learn-session-v1')")
