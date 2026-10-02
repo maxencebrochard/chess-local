@@ -258,6 +258,19 @@ export default function Play() {
     [saveGame, releaseEngines],
   )
 
+  // PWA tuée en arrière-plan ou page rechargée : aucun démontage, l'instantané part ici.
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') saveGame()
+    }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('pagehide', saveGame)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('pagehide', saveGame)
+    }
+  }, [saveGame])
+
   const chess = chessRef.current
   const uciMoves = useMemo(
     () => chess.history({ verbose: true }).map((m) => m.lan),
