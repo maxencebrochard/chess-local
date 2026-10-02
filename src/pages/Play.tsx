@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
 import { Board, type BoardArrow } from '../components/Board'
@@ -43,6 +43,7 @@ interface GameOver {
   result: '1-0' | '0-1' | '1/2-1/2'
   termination: string
   cancelled?: boolean // moins de deux demi-coups : ni classement ni archive
+  saveFailed?: boolean // transaction refusée (stockage plein ou indisponible) : ni classement ni archive
   ratingBefore?: number
   ratingAfter?: number
 }
@@ -154,7 +155,7 @@ export default function Play() {
   const [confirmResign, setConfirmResign] = useState<{ cancel: boolean } | null>(null)
   const engineRef = useRef<Engine | null>(null)
   const gameRef = useRef<LiveGame | null>(null)
-  // Jeton de partie : incrémenté à chaque début, fin et démontage. Tout résultat asynchrone
+  // Jeton de partie : incrémenté à chaque début, fin, retour à la configuration et démontage. Tout résultat asynchrone
   // (coup du bot, éval, indication) le compare avant d'agir : une partie finie ou remplacée
   // ne reçoit plus rien, même si sa recherche moteur se termine après coup.
   const gameSeq = useRef(0)
@@ -305,7 +306,7 @@ export default function Play() {
       if (!g || statusRef.current !== 'playing') return // déjà finie (double tick, StrictMode)
       // Synchrone d'abord : plus aucun coup ni résultat moteur ne sera accepté.
       statusRef.current = 'over'
-      gameSeq.current++
+      const seq = ++gameSeq.current
       thinkingSeq.current = null
       setStatus('over')
       setConfirmResign(null)
@@ -332,24 +333,31 @@ export default function Play() {
       let id: number | undefined
       // Partie et classement dans une seule transaction : jamais l'un sans l'autre.
       // Seules des promesses Dexie sont attendues ici, sinon la transaction se ferme trop tôt.
-      await db.transaction('rw', db.games, db.ratings, async () => {
-        if (rated) {
-          ratingBefore = (await getRating(g.tc.timeClass)).value
-          ratingAfter = await applyRating(g.tc.timeClass, g.bot.elo, score as 0 | 0.5 | 1)
-        }
-        id = await db.games.add({
-          date: Date.now(),
-          mode: g.mode === 'local' ? 'local' : 'bot',
-          botId: g.mode !== 'local' ? g.bot.id : undefined,
-          playerColor: g.playerColor,
-          timeControl: g.tc.label,
-          timeClass: g.tc.timeClass,
-          pgn: c.pgn(),
-          result,
-          termination,
-          playerRatingAfter: ratingAfter,
+      try {
+        await db.transaction('rw', db.games, db.ratings, async () => {
+          if (rated) {
+            ratingBefore = (await getRating(g.tc.timeClass)).value
+            ratingAfter = await applyRating(g.tc.timeClass, g.bot.elo, score as 0 | 0.5 | 1)
+          }
+          id = await db.games.add({
+            date: Date.now(),
+            mode: g.mode === 'local' ? 'local' : 'bot',
+            botId: g.mode !== 'local' ? g.bot.id : undefined,
+            playerColor: g.playerColor,
+            timeControl: g.tc.label,
+            timeClass: g.tc.timeClass,
+            pgn: c.pgn(),
+            result,
+            termination,
+            playerRatingAfter: ratingAfter,
+          })
         })
-      })
+      } catch (err) {
+        console.warn('Partie non enregistrée :', err)
+        if (seq === gameSeq.current) setGameOver({ result, termination, saveFailed: true })
+        return
+      }
+      if (seq !== gameSeq.current) return // nouvelle partie ou retour à la configuration entre-temps
       if (ratingAfter !== undefined) setMyRating(ratingAfter)
       setSavedGameId(id ?? null)
       setGameOver({ result, termination, ratingBefore, ratingAfter })
@@ -529,7 +537,8 @@ export default function Play() {
   }
 
   // Restaure la partie en cours au montage (changement d'onglet, retour arrière, rechargement).
-  useEffect(() => {
+  // Avant la peinture : l'écran de configuration n'apparaît jamais, même brièvement.
+  useLayoutEffect(() => {
     const stored = readStoredGame()
     if (!stored) return
     const c = new Chess()
@@ -557,6 +566,7 @@ export default function Play() {
 
   function goSetup() {
     statusRef.current = 'setup'
+    gameSeq.current++
     gameRef.current = null
     writeStoredGame(null)
     setStatus('setup')
@@ -753,6 +763,9 @@ export default function Play() {
               {gameOver.ratingAfter - gameOver.ratingBefore})
             </span>
           </p>
+        )}
+        {gameOver.saveFailed && (
+          <p className="mb-4 text-sm text-red-400">Partie non enregistrée : stockage du navigateur plein ou indisponible.</p>
         )}
         {mode === 'coach' && unrated && !gameOver.cancelled && (
           <p className="mb-4 text-sm text-neutral-400">Partie non classée (aide du coach utilisée).</p>
