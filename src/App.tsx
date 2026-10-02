@@ -11,14 +11,16 @@ import Stats from './pages/Stats'
 import Import from './pages/Import'
 import Learn from './pages/Learn'
 import OpeningTrainer from './pages/OpeningTrainer'
+import Endgames from './pages/Endgames'
+import PositionPlay from './pages/PositionPlay'
 
-// `match` : routes rattachées à l'onglet (allumé, sans être la page du lien).
+// `match` : routes rattachées à l'onglet (allumé, sans être la page du lien), sous-chemins compris.
 const NAV = [
   { to: '/', icon: '♞', label: 'Accueil', match: [] as string[] },
   { to: '/jouer', icon: '♟', label: 'Jouer', match: [] as string[] },
   { to: '/puzzles', icon: '🧩', label: 'Puzzles', match: ['/rush'] },
-  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/ouvertures'] },
-  { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import'] },
+  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/ouvertures', '/finales'] },
+  { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import', '/analyse/jouer'] },
   { to: '/archive', icon: '📚', label: 'Archive', match: [] as string[] },
   { to: '/stats', icon: '📊', label: 'Stats', match: [] as string[] },
 ]
@@ -26,7 +28,7 @@ const NAV = [
 // `aria-current` : "page" sur la racine de l'onglet, "true" sur une route rattachée, absent sinon.
 function ariaCurrent(n: (typeof NAV)[number], pathname: string): 'page' | 'true' | undefined {
   if (pathname === n.to) return 'page'
-  if (n.match.includes(pathname)) return 'true'
+  if (n.match.some((m) => pathname === m || pathname.startsWith(`${m}/`))) return 'true'
   return undefined
 }
 
@@ -105,6 +107,9 @@ function Shell() {
             <Route path="/apprendre" element={<Learn />} />
             <Route path="/ouvertures" element={<OpeningTrainer />} />
             <Route path="/analyse" element={<Analysis />} />
+            <Route path="/analyse/jouer" element={<PositionPlay />} />
+            <Route path="/finales" element={<Endgames />} />
+            <Route path="/finales/:id" element={<Endgames />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/import" element={<Import />} />

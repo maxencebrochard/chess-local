@@ -79,6 +79,7 @@ export default function Analysis() {
   const [showLines, setShowLines] = useState(false)
   const [names, setNames] = useState<{ w: string; b: string }>({ w: 'Blancs', b: 'Noirs' })
   const [returnTo, setReturnTo] = useState<string | null>(null)
+  const [returnLabel, setReturnLabel] = useState("Retour à l'exercice")
   const [notice, setNotice] = useState<string | null>(null)
   const engineRef = useRef<Engine | null>(null)
   // Jeton du bilan en cours : tout résultat d'un bilan remplacé ou annulé est jeté.
@@ -122,8 +123,10 @@ export default function Analysis() {
       label?: string
       review?: boolean
       returnTo?: string
+      returnLabel?: string
     } | null
     if (state?.returnTo) setReturnTo(state.returnTo)
+    if (state?.returnLabel) setReturnLabel(state.returnLabel)
     // Position (+ séquence de coups optionnelle, ex : puzzle) : analyse live immédiate.
     if (state?.fen && !state.pgn) {
       if (loadFen(state.fen)) {
@@ -401,6 +404,14 @@ export default function Analysis() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moves, startFen, reviewDepth])
+
+  // Position affichée -> partie contre Stockfish à pleine force (`/analyse/jouer`).
+  function playFromHere() {
+    setShowOptions(false)
+    // `back` : de quoi rouvrir cette analyse au retour (elle ne persiste rien d'elle-même).
+    const back = { fen: startFen, uci: moves.map((m) => m.lan), viewIndex, orientation, label: gameMeta ?? undefined }
+    navigate('/analyse/jouer', { state: { fen: viewFen, label: gameMeta, back } })
+  }
 
   function currentPgn(): string | null {
     if (moves.length === 0) return null
@@ -788,10 +799,11 @@ export default function Analysis() {
         <div className="boardbox flex flex-col justify-center gap-2 md:ml-4 md:w-[min(76vh,640px)]">
           {returnTo && (
             <button
-              onClick={() => navigate(returnTo, { state: { restore: true } })}
+              // `replace` : l'analyse prend la place de l'aller, l'historique ne s'empile pas.
+              onClick={() => navigate(returnTo, { replace: true, state: { restore: true } })}
               className="flex w-fit cursor-pointer items-center gap-1 rounded px-1 py-1 text-sm font-semibold text-neutral-300 hover:text-white"
             >
-              ← Retour à l'exercice
+              ← {returnLabel}
             </button>
           )}
           <div className="w-full">
@@ -984,6 +996,12 @@ export default function Analysis() {
             Copier PGN
           </button>
         </div>
+        <button
+          onClick={playFromHere}
+          className="hidden w-full cursor-pointer rounded bg-surface-3 py-2 text-sm font-semibold hover:bg-surface-3/70 md:block"
+        >
+          ♟ Jouer contre le moteur depuis ici
+        </button>
 
         {book.length > 0 && (
           <div className={`${showExplorer ? '' : 'hidden md:block'} rounded bg-surface-2 p-2`}>
@@ -1049,6 +1067,7 @@ export default function Analysis() {
                 disabled={moves.length === 0}
                 onClick={() => { const pgn = currentPgn(); if (pgn) void navigator.clipboard.writeText(pgn); setShowOptions(false) }}
               />
+              <SheetBtn label="♟ Jouer contre le moteur depuis ici" onClick={playFromHere} />
               <SheetBtn label="Importer PGN ou FEN" onClick={() => { setShowOptions(false); setShowImport(true); setImportText(''); setImportError('') }} />
               <SheetBtn label="♟ Importer depuis chess.com" onClick={() => navigate('/import')} />
               <SheetBtn label="Fermer" onClick={() => setShowOptions(false)} />

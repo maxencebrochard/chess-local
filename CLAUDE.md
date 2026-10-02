@@ -77,10 +77,12 @@ Sous 1320 Elo (plancher de `UCI_Elo`), la faiblesse des bots vient de coups alé
 ### `/analyse` est le hub
 
 Les autres pages y envoient leur contenu par state de navigation :
-`navigate('/analyse', { state: { pgn | fen, uci?, viewIndex?, color?, orientation?, label?, review?, returnTo? } })`.
+`navigate('/analyse', { state: { pgn | fen, uci?, viewIndex?, color?, orientation?, label?, review?, returnTo?, returnLabel? } })`.
 Archive et fin de partie passent par `?game=<id>` (lecture dans Dexie), avec `&review=1` pour lancer le bilan directement.
 `Analysis.tsx` consomme `location.state` au montage puis fait `navigate('.', { replace: true, state: null })` pour qu'un refresh ne rejoue pas le chargement.
-`returnTo` affiche un bouton retour qui navigue avec `state: { restore: true }` ; `Learn.tsx` restaure alors sa séance depuis `sessionStorage`.
+`returnTo` affiche un bouton retour (libellé `returnLabel`, « Retour à l'exercice » par défaut) qui navigue avec `state: { restore: true }` ; `Learn.tsx` restaure alors sa séance depuis `sessionStorage`.
+Partie contre Stockfish depuis une position : `components/PositionGame.tsx` (logique pure dans `lib/positionGame.ts`), utilisé par `/finales/:id` (finales jouées jusqu'au bout, `pages/Endgames.tsx`) et `/analyse/jouer` (bouton « Jouer contre le moteur » de l'analyse, `pages/PositionPlay.tsx`).
+La partie en cours est rejouée depuis `localStorage['chess-local-position-game-v1']` ; les résultats des finales vont dans `learnSessions` (domaine `endgame-play`, hors Elo).
 
 ### Pipeline d'évaluation
 
