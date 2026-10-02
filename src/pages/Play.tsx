@@ -357,8 +357,8 @@ export default function Play() {
         if (seq === gameSeq.current) setGameOver({ result, termination, saveFailed: true })
         return
       }
-      if (seq !== gameSeq.current) return // nouvelle partie ou retour à la configuration entre-temps
       if (ratingAfter !== undefined) setMyRating(ratingAfter)
+      if (seq !== gameSeq.current) return // nouvelle partie ou retour à la configuration entre-temps
       setSavedGameId(id ?? null)
       setGameOver({ result, termination, ratingBefore, ratingAfter })
     },
