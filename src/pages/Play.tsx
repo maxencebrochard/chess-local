@@ -135,6 +135,7 @@ export default function Play() {
   const [colorChoice, setColorChoice] = useState<PlayColor>(playColor)
   const [tc, setTc] = useState<TimeControl>(() => TIME_CONTROLS.find((t) => t.label === playTcLabel) ?? TIME_CONTROLS[4])
   const [myRating, setMyRating] = useState<number | null>(null)
+  const myRatingClass = useRef<SavedGame['timeClass'] | null>(null) // cadence dont myRating affiche le classement
   // Le mode entraîneur joue sans pendule, sans écraser la cadence choisie pour les bots.
   const effectiveTc = mode === 'coach' ? UNLIMITED : tc
 
@@ -247,6 +248,7 @@ export default function Play() {
   }, [])
 
   useEffect(() => {
+    myRatingClass.current = effectiveTc.timeClass
     getRating(effectiveTc.timeClass).then((r) => setMyRating(r.value))
   }, [effectiveTc])
 
@@ -357,7 +359,7 @@ export default function Play() {
         if (seq === gameSeq.current) setGameOver({ result, termination, saveFailed: true })
         return
       }
-      if (ratingAfter !== undefined) setMyRating(ratingAfter)
+      if (ratingAfter !== undefined && myRatingClass.current === g.tc.timeClass) setMyRating(ratingAfter)
       if (seq !== gameSeq.current) return // nouvelle partie ou retour à la configuration entre-temps
       setSavedGameId(id ?? null)
       setGameOver({ result, termination, ratingBefore, ratingAfter })
