@@ -77,11 +77,11 @@ class Checker:
     def fail(self, name, detail=""):
         return self.check(name, False, detail)
 
-    def appears(self, name, page, selector, timeout=30000):
+    def appears(self, name, page, selector, timeout=30000, state="visible"):
         """Check « l'élément finit par apparaître » : un échec propre plutôt qu'une exception
-        qui interrompt la suite."""
+        qui interrompt la suite. `state="attached"` se contente de la présence dans le DOM."""
         try:
-            page.wait_for_selector(selector, timeout=timeout)
+            page.wait_for_selector(selector, timeout=timeout, state=state)
             return self.check(name, True)
         except Exception as e:  # TimeoutError de Playwright
             return self.check(name, False, f"({type(e).__name__} après {timeout} ms : {selector})")

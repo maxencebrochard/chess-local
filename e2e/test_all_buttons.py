@@ -40,8 +40,8 @@ def suite(p):
     page.wait_for_timeout(1500)
     for label, marker in NAV:
         page.locator("nav a", has_text=label).last.click()
-        page.wait_for_timeout(700)
-        check(f"[nav mobile] {label}", page.locator(f"main :text('{marker_for(marker, 'mobile')}')").first.is_visible())
+        # Attente bornée du marqueur plutôt qu'un délai fixe : Puzzles charge 16 Mo de puzzles.
+        ck.appears(f"[nav mobile] {label}", page, f"main :text('{marker_for(marker, 'mobile')}')", timeout=10000)
     ctx.close()
 
     # ---------- DESKTOP : le reste ----------
@@ -52,8 +52,7 @@ def suite(p):
 
     for label, marker in NAV:
         page.locator("nav a", has_text=label).first.click()
-        page.wait_for_timeout(700)
-        check(f"[nav desktop] {label}", page.locator(f"main :text('{marker_for(marker, 'desktop')}')").first.is_visible())
+        ck.appears(f"[nav desktop] {label}", page, f"main :text('{marker_for(marker, 'desktop')}')", timeout=10000)
 
     # Accueil : carte Problèmes + tuiles + stats
     tiles = [("Problèmes", "Classement puzzles"), ("Analyse", "Stockfish 18"), ("Puzzle Rush", "Survie"),
@@ -62,9 +61,8 @@ def suite(p):
         page.locator("nav a", has_text="Accueil").first.click()
         page.wait_for_timeout(400)
         page.locator("main a", has_text=title).first.click()
-        page.wait_for_timeout(700)
-        ok = page.locator(f"main :text('{marker}')").count() > 0 or page.locator(f"text={marker}").count() > 0
-        check(f"[accueil] tuile {title}", ok)
+        # Présence n'importe où dans la page, comme `text=` : `main` est inclus.
+        ck.appears(f"[accueil] tuile {title}", page, f":text('{marker}')", timeout=10000, state="attached")
 
     # ---------- JOUER : setup ----------
     page.locator("nav a", has_text="Jouer").first.click()
