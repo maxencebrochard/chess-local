@@ -1,0 +1,690 @@
+{
+  "chapters": [
+    {
+      "id": "mats",
+      "title": "Les mats élémentaires",
+      "lessons": ["mat-deux-tours", "mat-dame", "mat-tour"]
+    },
+    {
+      "id": "pions",
+      "title": "Roi et pions",
+      "lessons": [
+        "carre-du-pion",
+        "opposition",
+        "cases-cles",
+        "pion-de-tour",
+        "manoeuvre-de-reti"
+      ]
+    },
+    {
+      "id": "tours",
+      "title": "Finales de tours",
+      "lessons": ["lucena", "philidor", "tour-derriere-le-pion"]
+    },
+    {
+      "id": "dame",
+      "title": "Dame contre pion",
+      "lessons": ["dame-contre-pion"]
+    },
+    {
+      "id": "principes",
+      "title": "Principes",
+      "lessons": ["roi-actif", "pion-passe"]
+    }
+  ],
+  "lessons": {
+    "mat-deux-tours": {
+      "title": "Le mat des deux tours",
+      "summary": "L'escalier : deux tours repoussent le roi jusqu'au bord, sans l'aide de ton roi.",
+      "exercise": "rr-mate",
+      "keyPoints": [
+        "Une tour coupe une rangée, l'autre donne échec sur la suivante",
+        "Une tour attaquée s'éloigne à l'autre bout de sa rangée",
+        "Ton roi n'a pas besoin d'aider : les deux tours suffisent"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "8/8/8/4k3/R7/8/8/1R2K3 w - - 0 1",
+          "text": "L'escalier. Une tour sert de barrière : ici la tour en a4 garde la 4e rangée, le roi noir ne peut plus descendre. L'autre tour donne échec sur la rangée juste au-dessus (Tb5+), et le roi doit reculer d'un cran.",
+          "arrows": [["a4", "h4"], ["b1", "b5"]]
+        },
+        {
+          "kind": "line",
+          "fen": "8/8/8/4k3/8/8/8/RR2K3 w - - 0 1",
+          "text": "À toi : mate avec les deux tours, sans bouger ton roi. Commence par la barrière.",
+          "result": "win",
+          "moves": [
+            {"san": "Ra4", "text": "Ta tour coupe la 4e rangée : le roi noir est enfermé au-dessus.", "keeps": ["a1a2", "a1a3", "a1a4", "a1a5", "a1a6", "a1a7", "a1a8", "b1b2", "b1b3", "b1b4", "b1b5", "b1b6", "b1b7", "b1b8", "b1c1", "b1d1", "e1d1", "e1d2", "e1e2", "e1f1", "e1f2"]},
+            {"san": "Kd5", "text": "Il s'approche de tes tours."},
+            {"san": "Rb5+", "text": "Échec sur la 5e rangée : le roi doit monter d'un cran.", "keeps": ["a4a1", "a4a2", "a4a3", "a4a5", "a4a6", "a4a7", "a4a8", "a4b4", "a4c4", "a4d4", "a4e4", "a4f4", "a4g4", "a4h4", "b1a1", "b1b2", "b1b3", "b1b4", "b1b5", "b1b6", "b1b7", "b1b8", "b1c1", "b1d1", "e1d1", "e1d2", "e1e2", "e1f1", "e1f2"]},
+            {"san": "Kc6", "text": "Il attaque ta tour b5."},
+            {"san": "Rh5", "text": "Ne la défends pas : éloigne-la à l'autre bout de la même rangée. Elle garde toujours la 5e.", "keeps": ["a4a1", "a4a2", "a4a3", "a4a5", "a4a6", "a4a7", "a4a8", "a4b4", "a4c4", "a4d4", "a4e4", "a4f4", "a4g4", "a4h4", "b5a5", "b5b1", "b5b2", "b5b3", "b5b4", "b5b6", "b5b7", "b5b8", "b5c5", "b5d5", "b5e5", "b5f5", "b5g5", "b5h5", "e1d1", "e1d2", "e1e2", "e1f1", "e1f2"]},
+            {"san": "Kb6", "text": "Il garde a6 : l'échec Ta6+ n'est plus possible."},
+            {"san": "Rg4", "text": "Change de côté : depuis g4, ta tour pourra donner échec en g6, loin du roi noir.", "keeps": ["a4a1", "a4a2", "a4a3", "a4a5", "a4a6", "a4a7", "a4a8", "a4b4", "a4c4", "a4d4", "a4e4", "a4f4", "a4g4", "a4h4", "e1d1", "e1d2", "e1e2", "e1f1", "e1f2", "h5a5", "h5b5", "h5c5", "h5d5", "h5e5", "h5f5", "h5g5", "h5h1", "h5h2", "h5h3", "h5h4", "h5h6", "h5h7", "h5h8"]},
+            {"san": "Kc6"},
+            {"san": "Rg6+", "text": "Échec sur la 6e : le roi recule encore.", "keeps": ["e1d1", "e1d2", "e1e2", "e1f1", "e1f2", "g4a4", "g4b4", "g4c4", "g4d4", "g4e4", "g4f4", "g4g1", "g4g2", "g4g3", "g4g5", "g4g6", "g4g7", "g4g8", "g4h4", "h5a5", "h5b5", "h5c5", "h5d5", "h5e5", "h5f5", "h5g5", "h5h1", "h5h2", "h5h3", "h5h4", "h5h6", "h5h7", "h5h8"]},
+            {"san": "Kd7"},
+            {"san": "Rh7+", "text": "L'autre tour monte à son tour : échec sur la 7e.", "keeps": ["e1d1", "e1d2", "e1e2", "e1f1", "e1f2", "g6a6", "g6b6", "g6c6", "g6d6", "g6e6", "g6f6", "g6g1", "g6g2", "g6g3", "g6g4", "g6g5", "g6g7", "g6g8", "g6h6", "h5a5", "h5b5", "h5c5", "h5d5", "h5e5", "h5f5", "h5g5", "h5h1", "h5h2", "h5h3", "h5h4", "h5h6", "h5h7", "h5h8"]},
+            {"san": "Ke8"},
+            {"san": "Rg8#", "text": "Mat sur la 8e rangée !", "keeps": ["e1d1", "e1d2", "e1e2", "e1f1", "e1f2", "g6a6", "g6b6", "g6c6", "g6d6", "g6e6", "g6f6", "g6g1", "g6g2", "g6g3", "g6g4", "g6g5", "g6g7", "g6g8", "g6h6", "h7a7", "h7b7", "h7c7", "h7d7", "h7e7", "h7f7", "h7g7", "h7h1", "h7h2", "h7h3", "h7h4", "h7h5", "h7h6", "h7h8"]}
+          ],
+          "end": "Couper, puis donner échec sur la rangée suivante, en éloignant toute tour attaquée : c'est l'escalier."
+        }
+      ]
+    },
+    "mat-dame": {
+      "title": "Le mat roi et dame",
+      "summary": "La dame enferme, le roi s'approche, la dame resserre. Gare au pat.",
+      "exercise": "kq-mate",
+      "keyPoints": [
+        "La dame enferme le roi adverse dans une boîte qui rétrécit",
+        "Ton roi doit venir aider : la dame seule ne mate pas",
+        "Avant chaque coup, laisse au moins une case au roi adverse"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "8/3Q4/8/4k3/8/8/8/4K3 b - - 0 1",
+          "text": "La boîte. Depuis d7, la dame ferme la colonne d et la 7e rangée : le roi noir est enfermé dans le rectangle e1-h6. Ensuite, ton roi monte et la dame resserre la boîte.",
+          "arrows": [["d7", "d1"], ["d7", "h7"]]
+        },
+        {
+          "kind": "line",
+          "fen": "8/8/8/4k3/8/8/8/3QK3 w - - 0 1",
+          "text": "À toi : la dame coupe, ton roi s'approche, la dame resserre. Vérifie toujours que le roi noir garde une case.",
+          "result": "win",
+          "moves": [
+            {"san": "Qd7", "text": "La boîte : la colonne d et la 7e rangée sont fermées.", "keeps": ["d1a1", "d1a4", "d1b1", "d1b3", "d1c1", "d1c2", "d1d2", "d1d3", "d1d7", "d1d8", "d1e2", "d1f3", "d1g4", "d1h5", "e1d2", "e1e2", "e1f1", "e1f2"]},
+            {"san": "Ke4", "text": "Le roi noir reste au centre de sa boîte."},
+            {"san": "Kf2", "text": "Ton roi vient aider : sans lui, pas de mat.", "keeps": ["d7a4", "d7a7", "d7b5", "d7b7", "d7c6", "d7c7", "d7c8", "d7d1", "d7d2", "d7d6", "d7d8", "d7e6", "d7e7", "d7e8", "d7f7", "d7g4", "d7g7", "d7h3", "d7h7", "e1d1", "e1d2", "e1e2", "e1f1", "e1f2"]},
+            {"san": "Ke5"},
+            {"san": "Kf3", "text": "Il continue d'approcher.", "keeps": ["d7a4", "d7a7", "d7b5", "d7b7", "d7c6", "d7c7", "d7c8", "d7d1", "d7d2", "d7d3", "d7d8", "d7e7", "d7e8", "d7f7", "d7g4", "d7g7", "d7h3", "d7h7", "f2e1", "f2e2", "f2e3", "f2f1", "f2f3", "f2g1", "f2g2", "f2g3"]},
+            {"san": "Kf6"},
+            {"san": "Kf4", "text": "Les rois se rapprochent, la dame garde la boîte.", "keeps": ["d7a4", "d7a7", "d7b5", "d7b7", "d7c6", "d7c7", "d7c8", "d7d1", "d7d2", "d7d3", "d7d4", "d7d5", "d7d6", "d7d8", "d7e8", "d7g4", "d7h3", "d7h7", "f3e2", "f3e3", "f3e4", "f3f2", "f3f4", "f3g2", "f3g3", "f3g4"]},
+            {"san": "Kg6"},
+            {"san": "Qe7", "text": "La dame resserre : le roi noir est repoussé vers la colonne h.", "keeps": ["d7a4", "d7a7", "d7b5", "d7b7", "d7c6", "d7c7", "d7c8", "d7d1", "d7d2", "d7d3", "d7d4", "d7d5", "d7d6", "d7d8", "d7e6", "d7e7", "d7e8", "d7f5", "d7g4", "d7h3", "f4e3", "f4e4", "f4e5", "f4f3", "f4g3", "f4g4"]},
+            {"san": "Kh6"},
+            {"san": "Kf5", "text": "Ton roi prend g6 et g5. Il reste une case au roi noir, h5 : pas de pat.", "keeps": ["e7a3", "e7a7", "e7b4", "e7b7", "e7c5", "e7c7", "e7d6", "e7d7", "e7d8", "e7e1", "e7e2", "e7e3", "e7e4", "e7e5", "e7e6", "e7e8", "e7f6", "e7f8", "e7g5", "e7h4", "f4e3", "f4e4", "f4e5", "f4f3", "f4f5", "f4g3", "f4g4"]},
+            {"san": "Kh5"},
+            {"san": "Qh7#", "text": "Mat !", "keeps": ["e7a3", "e7a7", "e7b4", "e7b7", "e7c5", "e7c7", "e7d6", "e7d7", "e7d8", "e7e1", "e7e2", "e7e3", "e7e4", "e7e5", "e7e6", "e7e8", "e7f7", "e7f8", "e7g5", "e7g7", "e7h7", "f5e4", "f5e5", "f5e6", "f5f4", "f5f6"]}
+          ],
+          "end": "La dame a enfermé, le roi est venu, la dame a fini le travail, sans jamais laisser le roi noir sans case."
+        },
+        {
+          "kind": "diagram",
+          "fen": "6k1/8/5Q2/5K2/8/8/8/8 w - - 0 1",
+          "text": "Le piège. Ici, Rg6 ?? serait pat : le roi noir ne serait pas en échec et n'aurait plus aucune case. Avant chaque coup, compte les cases qu'il lui reste.",
+          "arrows": [["f5", "g6", "red"]],
+          "claim": "w"
+        }
+      ]
+    },
+    "mat-tour": {
+      "title": "Le mat roi et tour",
+      "summary": "Couper, faire face, donner échec : la tour et le roi travaillent ensemble.",
+      "exercise": "kr-mate",
+      "keyPoints": [
+        "La tour coupe le roi adverse sur une rangée ou une colonne",
+        "Ton roi se place face au roi adverse, une case entre eux",
+        "Un coup d'attente de la tour force l'adversaire à céder"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "8/8/8/4k3/8/8/8/R3K3 w - - 0 1",
+          "text": "Avec une seule tour, il faut l'aide du roi. D'abord la tour coupe le roi noir (Ta4). Puis ton roi monte, et chaque fois que les rois se font face, un échec de la tour repousse le roi noir d'une rangée.",
+          "arrows": [["a1", "a4"]],
+          "claim": "w"
+        },
+        {
+          "kind": "diagram",
+          "fen": "4k3/8/4K3/8/8/8/8/R7 w - - 0 1",
+          "text": "Le motif final. Les rois se font face, une case entre eux : le roi noir ne peut pas avancer. Ta8 ! est mat sur la dernière rangée.",
+          "arrows": [["a1", "a8"]],
+          "claim": "w"
+        },
+        {
+          "kind": "line",
+          "fen": "4k3/7R/3K4/8/8/8/8/8 w - - 0 1",
+          "text": "La tour retient le roi noir sur la 8e rangée, mais ton roi n'est pas encore face à lui. À toi.",
+          "result": "win",
+          "moves": [
+            {"san": "Ra7", "text": "Un coup d'attente : la tour reste sur la 7e, loin du roi noir. C'est à lui de bouger.", "keeps": ["d6c5", "d6c6", "d6c7", "d6d5", "d6e5", "d6e6", "h7a7", "h7b7", "h7c7", "h7d7", "h7e7", "h7g7", "h7h1", "h7h2", "h7h3", "h7h4", "h7h5", "h7h6", "h7h8"]},
+            {"san": "Kf8", "text": "Il évite d8, où Ta8 serait mat."},
+            {"san": "Ke6", "text": "Ton roi le suit, à un saut de cavalier.", "keeps": ["a7a1", "a7a2", "a7a3", "a7a4", "a7a5", "a7a6", "a7a8", "a7b7", "a7c7", "a7d7", "a7e7", "a7h7", "d6c5", "d6c6", "d6c7", "d6d5", "d6d7", "d6e5", "d6e6"]},
+            {"san": "Kg8"},
+            {"san": "Kf6", "text": "Il suit encore.", "keeps": ["a7a1", "a7a2", "a7a3", "a7a4", "a7a5", "a7a6", "a7a8", "a7b7", "a7c7", "a7d7", "a7e7", "a7f7", "e6d5", "e6d6", "e6d7", "e6e5", "e6e7", "e6f5", "e6f6"]},
+            {"san": "Kh8"},
+            {"san": "Kg6", "text": "Le roi noir n'a plus que g8 : il va devoir se placer face à ton roi.", "keeps": ["a7a1", "a7a2", "a7a3", "a7a4", "a7a5", "a7a6", "a7a8", "a7b7", "a7c7", "a7d7", "a7e7", "a7f7", "f6e5", "f6e6", "f6e7", "f6f5", "f6f7", "f6g5", "f6g6"]},
+            {"san": "Kg8"},
+            {"san": "Ra8#", "text": "Mat : rois face à face, la tour frappe la 8e rangée.", "keeps": ["a7a1", "a7a2", "a7a3", "a7a4", "a7a5", "a7a6", "a7a8", "a7b7", "a7c7", "a7d7", "a7e7", "a7f7", "a7g7", "a7h7", "g6f5", "g6f6", "g6g5", "g6h5", "g6h6"]}
+          ],
+          "end": "Couper, faire face, donner échec. Quand le roi adverse fuit l'opposition, un coup d'attente de la tour l'y ramène."
+        }
+      ]
+    },
+    "carre-du-pion": {
+      "title": "La règle du carré",
+      "summary": "Un coup d'œil suffit pour savoir si un roi rattrape un pion.",
+      "exercise": "kp-square",
+      "keyPoints": [
+        "Le carré va du pion à sa case de promotion, aussi large que haut",
+        "Si le roi adverse peut entrer dans le carré, il rattrape le pion",
+        "Sur sa case de départ, un pion avance de deux cases : compte depuis la case suivante"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "8/8/8/8/1P4k1/8/8/7K b - - 0 1",
+          "text": "Le carré du pion b4 va de b4 à f8. Si le roi adverse peut y entrer, il rattrape le pion. Trait aux Noirs : Rf5 entre dans le carré, la partie est nulle.",
+          "arrows": [["g4", "f5"]],
+          "marks": {
+            "b4": "green",
+            "b5": "green",
+            "b6": "green",
+            "b7": "green",
+            "b8": "green",
+            "c4": "green",
+            "c5": "green",
+            "c6": "green",
+            "c7": "green",
+            "c8": "green",
+            "d4": "green",
+            "d5": "green",
+            "d6": "green",
+            "d7": "green",
+            "d8": "green",
+            "e4": "green",
+            "e5": "green",
+            "e6": "green",
+            "e7": "green",
+            "e8": "green",
+            "f4": "green",
+            "f5": "green",
+            "f6": "green",
+            "f7": "green",
+            "f8": "green"
+          },
+          "claim": "draw"
+        },
+        {
+          "kind": "diagram",
+          "fen": "8/8/8/8/1P4k1/8/8/7K w - - 0 1",
+          "text": "Même position, trait aux Blancs : b5 ! Le carré rétrécit (de b5 à e8) et le roi noir ne peut plus y entrer. Le pion ira à dame.",
+          "arrows": [["b4", "b5"]],
+          "marks": {
+            "b5": "green",
+            "b6": "green",
+            "b7": "green",
+            "b8": "green",
+            "c5": "green",
+            "c6": "green",
+            "c7": "green",
+            "c8": "green",
+            "d5": "green",
+            "d6": "green",
+            "d7": "green",
+            "d8": "green",
+            "e5": "green",
+            "e6": "green",
+            "e7": "green",
+            "e8": "green"
+          },
+          "claim": "w"
+        },
+        {
+          "kind": "line",
+          "fen": "1k6/8/8/8/5p2/8/8/1K6 b - - 0 1",
+          "text": "Cette fois, le pion est à toi. Le roi blanc, en b1, est hors du carré du pion f4 (de f4 à c1). Cours !",
+          "result": "win",
+          "moves": [
+            {"san": "f3", "text": "Seul coup gagnant : le pion file avant que le roi blanc n'entre dans son carré.", "only": true, "keeps": ["f4f3"]},
+            {"san": "Kc2", "text": "Trop tard : le roi blanc reste hors du carré."},
+            {"san": "f2", "text": "Seul coup gagnant : toujours tout droit.", "only": true, "keeps": ["f3f2"]},
+            {"san": "Kd2"},
+            {"san": "f1=Q", "text": "Promotion : une dame, la partie est gagnée.", "keeps": ["f2f1q", "f2f1r"]}
+          ],
+          "end": "Compte le carré avant de bouger : si le roi adverse ne peut pas y entrer, le pion promeut tout seul."
+        }
+      ]
+    },
+    "opposition": {
+      "title": "L'opposition",
+      "summary": "Rois face à face : celui qui doit jouer cède le passage.",
+      "exercise": "kp-opposition-1",
+      "keyPoints": [
+        "Opposition : rois face à face, une case entre eux",
+        "Le camp qui doit jouer cède le passage",
+        "En finale de pions, avance le roi avant le pion"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "8/8/4k3/8/4K3/4P3/8/8 b - - 0 1",
+          "text": "Les rois se font face, une case entre eux : c'est l'opposition. Celui qui doit jouer doit s'écarter. Ici les Noirs ont le trait : ton roi passera, c'est gagné.",
+          "marks": {
+            "e5": "yellow"
+          },
+          "claim": "w"
+        },
+        {
+          "kind": "diagram",
+          "fen": "8/8/4k3/8/4K3/4P3/8/8 w - - 0 1",
+          "text": "Même position, mais c'est à toi de jouer : c'est toi qui dois céder le passage. Bien défendue, la partie est nulle. Même position, seul le trait a changé, et le résultat aussi.",
+          "marks": {
+            "e5": "yellow"
+          },
+          "claim": "draw"
+        },
+        {
+          "kind": "line",
+          "fen": "8/4k3/8/3K4/4P3/8/8/8 w - - 0 1",
+          "text": "Ton roi en d5 veut atteindre d6, e6 ou f6, devant son pion. Trouve le coup qui prend l'opposition.",
+          "result": "win",
+          "moves": [
+            {"san": "Ke5", "text": "Seul coup gagnant : face au roi noir, une case entre vous. Il doit céder du terrain.", "only": true, "keeps": ["d5e5"]},
+            {"san": "Kf7", "text": "Il s'écarte d'un côté."},
+            {"san": "Kd6", "text": "Ton roi passe de l'autre côté, devant son pion.", "keeps": ["e5d5", "e5d6", "e5f5"]},
+            {"san": "Kf6"},
+            {"san": "e5+", "text": "Le pion avance enfin, protégé par ton roi.", "keeps": ["d6d5", "e4e5"]},
+            {"san": "Kf7"},
+            {"san": "Kd7", "text": "Ton roi contrôle e7 et e8 : plus rien n'arrête le pion.", "keeps": ["d6d7", "e5e6"]},
+            {"san": "Kf8"},
+            {"san": "e6", "keeps": ["d7d6", "d7d8", "d7e6", "e5e6"]},
+            {"san": "Kg7"},
+            {"san": "e7", "keeps": ["d7c6", "d7c7", "d7c8", "d7d6", "d7d8", "d7e7", "d7e8", "e6e7"]},
+            {"san": "Kf7"},
+            {"san": "e8=Q+", "text": "Promotion avec échec.", "keeps": ["d7d8", "e7e8q", "e7e8r"]}
+          ],
+          "end": "Prendre l'opposition, puis contourner : le roi ouvre la route, le pion suit."
+        }
+      ]
+    },
+    "cases-cles": {
+      "title": "Les cases clés",
+      "summary": "Les cases où ton roi gagne la finale roi et pion, quel que soit le trait.",
+      "exercise": "kp-king-front",
+      "keyPoints": [
+        "Pion avant sa 5e rangée : les cases clés sont deux rangées devant lui",
+        "Roi sur une case clé, pion à l'abri : la finale est gagnée, quel que soit le trait",
+        "Vise les cases clés, pas la case juste devant le pion"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "8/8/4k3/8/4K3/8/4P3/8 b - - 0 1",
+          "text": "Les cases clés d'un pion qui n'a pas dépassé sa 4e rangée sont les trois cases deux rangées devant lui : ici d4, e4 et f4. Ton roi est en e4 : c'est gagné, même si les Noirs ont le trait.",
+          "marks": {
+            "d4": "green",
+            "e4": "green",
+            "f4": "green"
+          },
+          "claim": "w"
+        },
+        {
+          "kind": "diagram",
+          "fen": "4k3/8/3K4/4P3/8/8/8/8 b - - 0 1",
+          "text": "Pion en 5e ou 6e rangée : six cases clés, sur les deux rangées devant lui (ici d6, e6, f6, d7, e7 et f7). Ton roi est en d6 : c'est gagné, même si les Noirs ont le trait.",
+          "marks": {
+            "d6": "green",
+            "e6": "green",
+            "f6": "green",
+            "d7": "green",
+            "e7": "green",
+            "f7": "green"
+          },
+          "claim": "w"
+        },
+        {
+          "kind": "line",
+          "fen": "4k3/8/3K4/8/4P3/8/8/8 w - - 0 1",
+          "text": "Ton roi est déjà en d6, une case clé du pion e4. Termine le travail : mène le pion à dame.",
+          "result": "win",
+          "moves": [
+            {"san": "Ke6", "text": "Ton roi se place devant le pion, face au roi noir.", "keeps": ["d6e6", "e4e5"]},
+            {"san": "Kf8"},
+            {"san": "Kd7", "text": "Il contrôle e7 et e8 : la route du pion est libre.", "keeps": ["e4e5", "e6d5", "e6d6", "e6d7", "e6f6"]},
+            {"san": "Kf7"},
+            {"san": "e5", "keeps": ["d7d6", "e4e5"]},
+            {"san": "Kf8"},
+            {"san": "e6", "keeps": ["d7d6", "d7d8", "d7e6", "e5e6"]},
+            {"san": "Kg7"},
+            {"san": "e7", "keeps": ["d7c6", "d7c7", "d7c8", "d7d6", "d7d8", "d7e7", "d7e8", "e6e7"]},
+            {"san": "Kf7"},
+            {"san": "e8=Q+", "text": "Promotion.", "keeps": ["d7d8", "e7e8q", "e7e8r"]}
+          ],
+          "end": "Une fois sur une case clé, ton roi escorte le pion jusqu'au bout."
+        }
+      ]
+    },
+    "pion-de-tour": {
+      "title": "Le pion de tour",
+      "summary": "Le pion de la colonne a ou h : la forteresse du coin.",
+      "exercise": "rook-pawn-corner",
+      "keyPoints": [
+        "Pion a ou h : le roi défenseur qui atteint le coin fait nulle",
+        "Le pat est le grand allié du défenseur",
+        "Un fou qui ne contrôle pas la case de promotion ne change rien"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "7k/8/8/6KP/8/8/8/5B2 w - - 0 1",
+          "text": "Avec un pion a ou h, le roi qui se réfugie dans le coin de promotion fait nulle. Même un fou en plus n'y change rien s'il ne contrôle pas la case de promotion : ici h8 est noire, le fou va sur les cases blanches.",
+          "marks": {
+            "h8": "red"
+          },
+          "claim": "draw"
+        },
+        {
+          "kind": "line",
+          "fen": "7k/8/6KP/8/8/8/8/8 b - - 0 1",
+          "text": "Tu défends avec le roi noir. Reste collé au coin h8 : c'est ta forteresse.",
+          "result": "draw",
+          "moves": [
+            {"san": "Kg8", "text": "Seul coup légal, et c'est le bon : tu restes devant le pion.", "only": true, "keeps": ["h8g8"]},
+            {"san": "h7+", "text": "Le pion avance avec échec."},
+            {"san": "Kh8", "text": "Seul coup qui tient : en f8, le pion irait à dame.", "only": true, "keeps": ["g8h8"]},
+            {"san": "Kh6", "text": "Le roi blanc protège son pion."}
+          ],
+          "end": "Pat ! Le roi noir n'a plus de coup et n'est pas en échec : nulle. Le pion de tour ne gagne pas contre un roi installé dans le coin."
+        }
+      ]
+    },
+    "manoeuvre-de-reti": {
+      "title": "La manœuvre de Réti",
+      "summary": "Un roi en diagonale poursuit deux buts à la fois.",
+      "exercise": "active-king-draw",
+      "keyPoints": [
+        "En diagonale, un roi avance aussi vite qu'en ligne droite",
+        "Un coup qui sert deux buts gagne souvent le temps décisif",
+        "Ne déclare jamais une finale de pions perdue sans compter"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "7K/8/k1P5/7p/8/8/8/8 w - - 0 1",
+          "text": "L'étude de Réti (1921). Ton roi semble perdu : trop loin du pion h, trop loin pour aider ton pion c. Pourtant, en descendant la diagonale, il poursuit les deux buts à la fois.",
+          "arrows": [["h8", "g7"], ["g7", "f6"], ["f6", "e5"]],
+          "claim": "draw"
+        },
+        {
+          "kind": "line",
+          "fen": "7K/8/k1P5/7p/8/8/8/8 w - - 0 1",
+          "text": "Trouve la route du roi blanc : chaque pas doit menacer deux choses.",
+          "result": "draw",
+          "moves": [
+            {"san": "Kg7", "text": "Seul coup qui sauve : le roi descend la diagonale, vers le pion h et vers ton pion c.", "only": true, "keeps": ["h8g7"]},
+            {"san": "h4", "text": "Le pion noir file."},
+            {"san": "Kf6", "text": "Seul coup : tu menaces à la fois de rattraper le pion h et d'aller soutenir ton pion c.", "only": true, "keeps": ["g7f6"]},
+            {"san": "Kb6", "text": "Le roi noir s'approche de ton pion c."},
+            {"san": "Ke5", "text": "Seul coup : s'il prend c6, ton roi entre dans le carré du pion h (Rf4). Sinon, tu soutiens ton pion.", "only": true, "keeps": ["f6e5"]},
+            {"san": "h3", "text": "Les Noirs poussent leur pion."},
+            {"san": "Kd6", "text": "Seul coup : ton roi rejoint son pion. Les deux pions vont à dame ensemble.", "only": true, "keeps": ["e5d6"]},
+            {"san": "h2"},
+            {"san": "c7", "text": "Seul coup : ton pion file, protégé par ton roi.", "only": true, "keeps": ["c6c7"]},
+            {"san": "h1=Q"},
+            {"san": "c8=Q", "text": "Seul coup : dame contre dame, la partie est nulle.", "only": true, "keeps": ["c7c8q"]}
+          ],
+          "end": "Un roi qui semblait trop loin a sauvé la partie : en diagonale, il marchait vers deux buts à la fois."
+        }
+      ]
+    },
+    "lucena": {
+      "title": "La position de Lucena",
+      "summary": "La finale de tours gagnante à connaître : construire le pont.",
+      "exercise": "lucena",
+      "keyPoints": [
+        "Tour en 4e rangée avant de sortir le roi",
+        "Le roi sort de devant le pion, puis descend vers la tour adverse",
+        "Quand les échecs arrivent, la tour s'interpose : c'est le pont"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "3K4/3P2k1/8/8/8/8/2r5/5R2 w - - 0 1",
+          "text": "La position de Lucena : ton pion est en 7e, ton roi devant lui, ta tour coupe le roi noir sur la colonne f. Le problème : dès que ton roi sort, la tour noire l'assaille d'échecs.",
+          "arrows": [["f1", "f4"]],
+          "claim": "w"
+        },
+        {
+          "kind": "line",
+          "fen": "3K4/3P2k1/8/8/8/8/2r5/5R2 w - - 0 1",
+          "text": "La méthode du pont. Premier temps : ta tour monte en 4e rangée.",
+          "result": "win",
+          "moves": [
+            {"san": "Rf4", "text": "La tour se prépare à faire écran sur la 4e rangée : c'est le pont.", "keeps": ["d8e7", "d8e8", "f1a1", "f1b1", "f1d1", "f1e1", "f1f3", "f1f4", "f1f5", "f1g1", "f1h1"]},
+            {"san": "Rc1", "text": "Les Noirs attendent."},
+            {"san": "Ke7", "text": "Ton roi sort de devant son pion. La tour noire va donner échec.", "keeps": ["d8e7", "d8e8", "f4a4", "f4b4", "f4d4", "f4e4", "f4f2", "f4f3", "f4f5", "f4g4", "f4h4"]},
+            {"san": "Re1+"},
+            {"san": "Kd6", "text": "Ton roi descend vers la tour adverse.", "keeps": ["e7d6", "e7d8"]},
+            {"san": "Rd1+"},
+            {"san": "Ke6", "keeps": ["d6c6", "d6c7", "d6e6", "d6e7"]},
+            {"san": "Re1+"},
+            {"san": "Kd5", "text": "Encore un pas : ta tour en f4 est prête.", "keeps": ["e6d5", "e6d6", "e6f5"]},
+            {"san": "Rd1+"},
+            {"san": "Rd4", "text": "Le pont : ta tour s'interpose, plus d'échec possible.", "keeps": ["d5c6", "d5e6", "f4d4"]},
+            {"san": "Ra1"},
+            {"san": "d8=Q", "text": "Promotion.", "keeps": ["d4a4", "d4b4", "d4c4", "d4d2", "d4d3", "d4e4", "d4f4", "d4g4", "d4h4", "d5c4", "d5c5", "d5c6", "d5d6", "d5e4", "d5e5", "d5e6", "d7d8q", "d7d8r"]}
+          ],
+          "end": "Tour en 4e, roi qui sort, échecs épuisés, puis la tour fait écran : le pont est construit."
+        }
+      ]
+    },
+    "philidor": {
+      "title": "La défense Philidor",
+      "summary": "La défense de base en finale de tours : 6e rangée, puis échecs par derrière.",
+      "exercise": "philidor",
+      "keyPoints": [
+        "Roi devant le pion, tour sur ta 3e rangée (la 6e vue des Blancs)",
+        "Tant que le pion n'avance pas, attends sur cette rangée",
+        "Quand le pion avance, tour au fond et échecs par derrière"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "3k4/7R/r7/3PK3/8/8/8/8 b - - 0 1",
+          "text": "La position de Philidor. Ton roi est devant le pion, ta tour garde la 6e rangée : le roi blanc ne peut pas y monter sans recevoir des échecs.",
+          "orientation": "b",
+          "arrows": [["a6", "h6"]],
+          "claim": "draw"
+        },
+        {
+          "kind": "line",
+          "fen": "3k4/7R/r7/3PK3/8/8/8/8 b - - 0 1",
+          "text": "Tu défends. Premier principe : ta tour reste sur la 6e rangée tant que le pion n'y est pas.",
+          "result": "draw",
+          "moves": [
+            {"san": "Rb6", "text": "Un coup d'attente, toujours sur la 6e rangée.", "keeps": ["a6a1", "a6a2", "a6a3", "a6a4", "a6b6", "a6g6", "d8c8", "d8e8"]},
+            {"san": "d6", "text": "Le pion arrive en 6e : c'est le signal."},
+            {"san": "Rb1", "text": "Ta tour file au fond pour donner échec par derrière : le roi blanc ne trouvera plus d'abri.", "keeps": ["b6b1", "b6b2", "b6b3", "b6b4"]},
+            {"san": "Ke6"},
+            {"san": "Re1+", "text": "Seul coup : échec, et ce n'est que le début.", "only": true, "keeps": ["b1e1"]},
+            {"san": "Kd5"},
+            {"san": "Rd1+", "text": "Échec encore.", "keeps": ["d8c8", "d8e8", "e1a1", "e1b1", "e1c1", "e1d1", "e1e2", "e1e3", "e1f1", "e1g1"]},
+            {"san": "Kc6"},
+            {"san": "Rc1+", "text": "Seul coup : le roi blanc n'a toujours pas d'abri.", "only": true, "keeps": ["d1c1"]},
+            {"san": "Kd5"},
+            {"san": "Rd1+", "keeps": ["c1a1", "c1b1", "c1c2", "c1c3", "c1d1", "c1e1", "c1f1", "c1g1", "d8c8", "d8e8"]}
+          ],
+          "end": "Le roi blanc ne peut pas échapper aux échecs : nulle."
+        }
+      ]
+    },
+    "tour-derriere-le-pion": {
+      "title": "La tour derrière le pion passé",
+      "summary": "La règle de Tarrasch : la tour se place derrière le pion passé.",
+      "keyPoints": [
+        "Tour derrière le pion passé, le tien comme celui de l'adversaire",
+        "Une tour devant un pion est passive",
+        "Ton roi vient ensuite chasser la tour qui bloque"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "8/r5kp/P7/8/8/6P1/6K1/R7 w - - 0 1",
+          "text": "Ta tour derrière ton pion passé le soutient à chaque pas. La tour noire, devant lui, ne peut que le bloquer : elle est passive. Ici, c'est gagné.",
+          "arrows": [["a1", "a6"]],
+          "claim": "w"
+        },
+        {
+          "kind": "diagram",
+          "fen": "R7/P5kp/8/8/8/6P1/r7/6K1 w - - 0 1",
+          "text": "Rôles inversés : ta tour est devant le pion, la tour noire derrière. Ta tour est prisonnière en a8, la tour noire est active : nulle.",
+          "arrows": [["a2", "a7"]],
+          "claim": "draw"
+        },
+        {
+          "kind": "line",
+          "fen": "r7/7k/8/P7/2K5/8/8/R7 w - - 0 1",
+          "text": "Ta tour est derrière le pion, la tour noire devant. Avance le pion et amène ton roi chasser la tour noire.",
+          "result": "win",
+          "moves": [
+            {"san": "a6", "text": "Le pion avance, ta tour le soutient de loin.", "keeps": ["a1a2", "a1a3", "a1a4", "a1h1", "a5a6", "c4b3", "c4b4", "c4b5", "c4c3", "c4c5", "c4d3", "c4d4", "c4d5"]},
+            {"san": "Rc8+", "text": "Échec par la colonne c."},
+            {"san": "Kb5", "text": "Ton roi s'abrite en se rapprochant du pion.", "keeps": ["c4b3", "c4b4", "c4b5", "c4d3", "c4d4", "c4d5"]},
+            {"san": "Ra8", "text": "La tour noire revient devant le pion."},
+            {"san": "a7", "text": "Encore un pas : la tour noire est réduite à garder a8.", "keeps": ["a1a2", "a1a3", "a1a4", "a1a5", "a1c1", "a1d1", "a1e1", "a1f1", "a1g1", "a1h1", "a6a7", "b5a5", "b5b4", "b5b6", "b5c4", "b5c5", "b5c6"]},
+            {"san": "Kg6", "text": "Le roi noir accourt, trop tard."},
+            {"san": "Kb6", "text": "Ton roi marche vers b7.", "keeps": ["a1a2", "a1a3", "a1a4", "a1a5", "a1a6", "a1g1", "b5a6", "b5b4", "b5b6", "b5c4", "b5c5", "b5c6"]},
+            {"san": "Kf5"},
+            {"san": "Kb7", "text": "Ton roi attaque la tour noire.", "keeps": ["a1a2", "a1a3", "a1a4", "a1a5", "a1a6", "a1b1", "a1c1", "a1d1", "a1e1", "a1f1", "a1g1", "a1h1", "b6a6", "b6b5", "b6b7", "b6c5", "b6c6", "b6c7"]},
+            {"san": "Rd8", "text": "Elle doit quitter a8."},
+            {"san": "a8=Q", "text": "Promotion. Si la tour noire prend la dame, ta tour reprend : gagné.", "keeps": ["a1a2", "a1a3", "a1a4", "a1a5", "a1a6", "a1b1", "a1c1", "a1d1", "a1e1", "a1f1", "a1g1", "a1h1", "a7a8q", "a7a8r", "b7a6", "b7b6", "b7c6", "b7c7"]}
+          ],
+          "end": "La tour derrière le pion passé le pousse ; la tour adverse, devant lui, finit chassée par ton roi."
+        }
+      ]
+    },
+    "dame-contre-pion": {
+      "title": "Dame contre pion",
+      "summary": "Gagner contre un pion en 7e : l'escalier des échecs.",
+      "keyPoints": [
+        "Contre un pion central ou de cavalier en 7e, la dame gagne",
+        "Échecs pour forcer le roi devant son pion, puis un pas de ton roi",
+        "Pion de fou ou de tour : attention au pat, souvent nulle"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "8/8/8/4K3/8/8/2kp4/6Q1 w - - 0 1",
+          "text": "Le pion noir est à un pas de la promotion, soutenu par son roi. Contre un pion central, la dame gagne : ses échecs forcent le roi noir à se placer devant son pion, et ton roi en profite pour avancer.",
+          "claim": "w"
+        },
+        {
+          "kind": "line",
+          "fen": "8/8/8/4K3/8/8/2kp4/6Q1 w - - 0 1",
+          "text": "Commence par immobiliser le pion.",
+          "result": "win",
+          "moves": [
+            {"san": "Qf2", "text": "La dame cloue le pion sur son roi : il ne peut pas avancer.", "keeps": ["g1c5", "g1f2", "g1g2", "g1g6", "g1h2"]},
+            {"san": "Kd3", "text": "Le roi noir libère son pion."},
+            {"san": "Qf5+", "text": "Les échecs commencent.", "keeps": ["f2d4", "f2f1", "f2f3", "f2f5", "f2g1", "f2g3"]},
+            {"san": "Ke2"},
+            {"san": "Qe4+", "keeps": ["f5c2", "f5e4", "f5g4", "f5h5"]},
+            {"san": "Kf1"},
+            {"san": "Qd3+", "keeps": ["e4a4", "e4b1", "e4c2", "e4c4", "e4d3", "e4d4", "e4d5", "e4f3", "e4f4", "e4f5", "e4g4", "e4h1"]},
+            {"san": "Ke1"},
+            {"san": "Qe3+", "text": "Pour garder son pion, le roi noir doit aller en d1, devant lui.", "keeps": ["d3c3", "d3e3", "d3e4", "d3g3"]},
+            {"san": "Kd1", "text": "Il bloque lui-même son pion."},
+            {"san": "Kd4", "text": "Le temps gagné : ton roi s'approche.", "keeps": ["e3a3", "e3a7", "e3b3", "e3b6", "e3c3", "e3c5", "e3d3", "e3d4", "e3e4", "e3f2", "e3f3", "e3f4", "e3g1", "e3g3", "e3g5", "e3h3", "e3h6", "e5d4", "e5d5", "e5d6", "e5e4", "e5e6", "e5f4", "e5f5", "e5f6"]},
+            {"san": "Kc2"},
+            {"san": "Qc3+", "text": "Même manœuvre, pour le renvoyer en d1.", "keeps": ["e3c3", "e3d3", "e3e2", "e3e4", "e3f2"]},
+            {"san": "Kd1"},
+            {"san": "Ke3", "text": "Encore un pas : ton roi touche le pion.", "keeps": ["c3a1", "c3a3", "c3a5", "c3b2", "c3b3", "c3b4", "c3c4", "c3c5", "c3c6", "c3c7", "c3c8", "c3d3", "c3e3", "c3f3", "c3g3", "c3h3", "d4c4", "d4c5", "d4d3", "d4d5", "d4e3", "d4e4", "d4e5"]},
+            {"san": "Ke1"},
+            {"san": "Qxd2+", "text": "Le pion tombe.", "keeps": ["c3a1", "c3a3", "c3a5", "c3b3", "c3b4", "c3c2", "c3c4", "c3c6", "c3c7", "c3d2", "c3d4", "c3e5", "c3f6", "c3g7", "c3h8", "e3d3", "e3d4", "e3e4", "e3f3", "e3f4"]},
+            {"san": "Kf1"},
+            {"san": "Qf2#", "text": "Mat.", "keeps": ["d2a2", "d2a5", "d2b2", "d2b4", "d2c1", "d2c2", "d2c3", "d2d1", "d2d3", "d2d4", "d2d5", "d2d6", "d2d7", "d2d8", "d2e2", "d2f2", "d2h2", "e3d3", "e3d4", "e3e4", "e3f3", "e3f4"]}
+          ],
+          "end": "Échecs jusqu'à mettre le roi devant son pion, puis un pas de ton roi, et on recommence."
+        },
+        {
+          "kind": "diagram",
+          "fen": "6K1/8/8/8/8/1Q6/2p5/k7 w - - 0 1",
+          "text": "Exception : contre un pion de fou ou de tour, le roi noir se réfugie dans le coin. Ici, Dxc2 ?? serait pat. Si ton roi est trop loin pour aider, c'est nulle.",
+          "arrows": [["b3", "c2", "red"]],
+          "claim": "draw"
+        }
+      ]
+    },
+    "roi-actif": {
+      "title": "Le roi actif",
+      "summary": "En finale, le roi devient une pièce d'attaque.",
+      "keyPoints": [
+        "En finale, centralise ton roi tôt",
+        "Un roi actif attaque les pions faibles adverses",
+        "Un roi passif ne peut que regarder"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "8/5k2/1p6/p2K4/P7/1P6/8/8 w - - 0 1",
+          "text": "En finale, le roi est une pièce forte. Ici ton roi, au centre, entre en c6 puis prend b6 : le roi noir, resté en f7, arrive trop tard. C'est gagné.",
+          "arrows": [["d5", "c6"], ["c6", "b6"]],
+          "claim": "w"
+        },
+        {
+          "kind": "diagram",
+          "fen": "8/2k5/1p6/p2K4/P7/1P6/8/8 w - - 0 1",
+          "text": "Même structure, roi noir en c7 : il garde b6, c6 et d6, ton roi ne passe plus. Nulle. La place des rois décide de tout.",
+          "claim": "draw"
+        },
+        {
+          "kind": "line",
+          "fen": "8/5k2/1p6/p2K4/P7/1P6/8/8 w - - 0 1",
+          "text": "Ton roi est actif, celui des Noirs est loin. Va chercher les pions noirs.",
+          "result": "win",
+          "moves": [
+            {"san": "Kc6", "text": "Ton roi entre : b6 va tomber.", "keeps": ["d5c4", "d5c6", "d5d6"]},
+            {"san": "Ke7", "text": "Le roi noir accourt."},
+            {"san": "Kxb6", "keeps": ["c6b5", "c6b6", "c6b7", "c6c7"]},
+            {"san": "Kd7"},
+            {"san": "Kxa5", "text": "Les deux pions noirs sont tombés.", "keeps": ["b6a5", "b6a6", "b6a7", "b6b5", "b6b7", "b6c5"]}
+          ],
+          "end": "Ton roi actif a gagné deux pions : il te reste deux pions contre un roi seul, une finale gagnée."
+        }
+      ]
+    },
+    "pion-passe": {
+      "title": "Le pion passé éloigné",
+      "summary": "Un pion passé loin des rois attire le roi adverse hors du jeu.",
+      "keyPoints": [
+        "Un pion passé éloigné attire le roi adverse",
+        "Pousse-le pour détourner le roi, puis frappe de l'autre côté",
+        "Les pions passés sont faits pour avancer"
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "8/8/4k3/7p/P3K2P/8/8/8 w - - 0 1",
+          "text": "Ton pion a est un pion passé éloigné : aucun pion noir ne peut l'arrêter, et il est loin des rois. Le roi noir devra aller le chercher. Pendant ce temps, ton roi mangera le pion h.",
+          "arrows": [["a4", "a5"]],
+          "marks": {
+            "h5": "red"
+          },
+          "claim": "w"
+        },
+        {
+          "kind": "line",
+          "fen": "8/8/4k3/7p/P3K2P/8/8/8 w - - 0 1",
+          "text": "Avance ton pion passé, puis profite de l'absence du roi noir.",
+          "result": "win",
+          "moves": [
+            {"san": "a5", "text": "Ton pion passé avance : le roi noir doit le surveiller.", "keeps": ["a4a5", "e4d3", "e4d4", "e4e3", "e4f3", "e4f4"]},
+            {"san": "Kd6"},
+            {"san": "a6", "text": "Encore un pas.", "keeps": ["a5a6", "e4d3", "e4d4", "e4e3", "e4f3", "e4f4", "e4f5"]},
+            {"san": "Kc6", "text": "Le roi noir court après lui."},
+            {"san": "Kf5", "text": "Ton roi part de l'autre côté.", "keeps": ["a6a7", "e4d3", "e4d4", "e4e3", "e4e5", "e4f3", "e4f4", "e4f5"]},
+            {"san": "Kb6"},
+            {"san": "Kg5", "keeps": ["a6a7", "f5e4", "f5e5", "f5e6", "f5f4", "f5f6", "f5g5", "f5g6"]},
+            {"san": "Kxa6", "text": "Le pion a est tombé, mais le roi noir est loin."},
+            {"san": "Kxh5", "text": "Le pion h tombe : ton pion h ira à dame, le roi noir est trop loin.", "keeps": ["g5f4", "g5f5", "g5f6", "g5g6", "g5h5", "g5h6"]}
+          ],
+          "end": "Le pion passé éloigné a attiré le roi noir loin du jeu : ton roi a gagné de l'autre côté."
+        }
+      ]
+    }
+  }
+}

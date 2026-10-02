@@ -13,13 +13,14 @@ import Learn from './pages/Learn'
 import OpeningTrainer from './pages/OpeningTrainer'
 import Endgames from './pages/Endgames'
 import PositionPlay from './pages/PositionPlay'
+import EndgameCourse, { EndgameLesson } from './pages/EndgameCourse'
 
 // `match` : routes rattachées à l'onglet (allumé, sans être la page du lien), sous-chemins compris.
 const NAV = [
   { to: '/', icon: '♞', label: 'Accueil', match: [] as string[] },
   { to: '/jouer', icon: '♟', label: 'Jouer', match: [] as string[] },
   { to: '/puzzles', icon: '🧩', label: 'Puzzles', match: ['/rush'] },
-  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/ouvertures', '/finales'] },
+  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/finales'] },
   { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import', '/analyse/jouer'] },
   { to: '/archive', icon: '📚', label: 'Archive', match: [] as string[] },
   { to: '/stats', icon: '📊', label: 'Stats', match: [] as string[] },
@@ -112,6 +113,8 @@ function Shell() {
             <Route path="/rush" element={<PuzzleRush />} />
             <Route path="/apprendre" element={<Learn />} />
             <Route path="/ouvertures" element={<OpeningTrainer />} />
+            <Route path="/apprendre/finales" element={<EndgameCourse />} />
+            <Route path="/apprendre/finales/:id" element={<EndgameLesson />} />
             <Route path="/analyse" element={<Analysis />} />
             <Route path="/analyse/jouer" element={<PositionPlay />} />
             <Route path="/finales" element={<Endgames />} />

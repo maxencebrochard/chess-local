@@ -8,7 +8,11 @@ d'actions collante ne recouvre pas encore la rangée du bas (à 560 elle masque 
 
 Usage : npm run test:e2e -- --suite touch
 """
+import re
 from helpers import BASE, SHOTS, Checker, drag_piece, mobile_context, piece_on, scroll_state, sq_center, tap_square, touch_drag
+
+# Bouton du domaine Finales (et pas la carte « Cours de finales »).
+FINALES = re.compile(r"^\W*Finales$")
 
 ck = Checker("touch")
 check = ck.check
@@ -182,7 +186,7 @@ def suite(p):
     # ---------- Non-régression : le diagramme d'un cours laisse défiler la feuille ----------
     ctx, page, _ = open_page(p, browser, "apprendre", 660)
     ck.appears("[cours] accueil Apprendre", page, "main button:has-text('Finales')")
-    page.locator("main button", has_text="Finales").click()
+    page.locator("main button", has_text=FINALES).click()
     ck.appears("[cours] leçon affichée", page, "text=Voir le cours complet")
     page.click("text=Voir le cours complet")
     ck.appears("[cours] diagramme affiché", page, "div.fixed [data-square='a1']")
