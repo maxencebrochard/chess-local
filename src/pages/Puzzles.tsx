@@ -47,6 +47,7 @@ export default function Puzzles() {
   const [ratingDelta, setRatingDelta] = useState<number | null>(null)
   const [scored, setScored] = useState(false) // rating déjà appliqué (1er essai)
   const scoredRef = useRef(false) // même garde, hors du cycle de rendu : jamais deux écritures d'Elo
+  const skippingRef = useRef(false) // « Passer » en cours : un double tap ne tire pas deux puzzles
   const [streak, setStreak] = useState(0)
   const [hint, setHint] = useState<string | null>(null)
   const [attemptKey, setAttemptKey] = useState(0)
@@ -81,9 +82,7 @@ export default function Puzzles() {
 
   // Tirage suivant ; un chargement de puzzles.json en échec donne l'état d'erreur, pas une pageerror.
   const goNext = useCallback(
-    (currentRating: number) => {
-      pickPuzzle(currentRating).catch(() => setLoadError(true))
-    },
+    (currentRating: number) => pickPuzzle(currentRating).catch(() => setLoadError(true)),
     [pickPuzzle],
   )
 
@@ -167,9 +166,14 @@ export default function Puzzles() {
 
   // « Passer » vaut un échec : un puzzle classé ne s'évite pas sans perdre de points.
   async function skip() {
-    if (rating === null) return
-    const after = await score(false)
-    goNext(after ?? rating)
+    if (rating === null || skippingRef.current) return
+    skippingRef.current = true
+    try {
+      const after = await score(false)
+      await goNext(after ?? rating)
+    } finally {
+      skippingRef.current = false
+    }
   }
 
   const themesLabel = useMemo(
