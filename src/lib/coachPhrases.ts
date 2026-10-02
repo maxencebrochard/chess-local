@@ -65,30 +65,36 @@ export const PHRASES: Record<string, Variant[]> = {
   'post.best.mat_du_couloir': [
     'Mat du couloir ! Le roi adverse est enfermé derrière ses propres pièces.',
     "Échec et mat sur la dernière rangée. Le roi adverse n'avait aucune case de fuite.",
-    'Le mat du couloir, un grand classique : une rangée sans défenseur, un roi sans air.',
-    "Mat ! Ton adversaire a oublié de donner une case de fuite à son roi.",
+    'Le mat du couloir, un grand classique : un roi muré derrière ses propres pièces.',
+    'Mat ! Ton adversaire a oublié de donner une case de fuite à son roi.',
   ],
   'post.best.mat_en_n': [
     'Tu restes sur le chemin du mat : mat en {n} au plus.',
     'Mat forcé en {n}. Continue à chercher les échecs en priorité.',
-    "C'est le coup le plus rapide vers le mat (en {n}). Ne relâche pas ton calcul.",
+    'Le mat est forcé (en {n} au plus). Ne relâche pas ton calcul.',
     'La position est gagnée de force : mat en {n} si tu ne relâches rien.',
   ],
   'post.best.fourchette': [
     'Fourchette ! {coup} attaque {cible} et {cible2} en même temps.',
-    "Double attaque : {cible} et {cible2} sont visés d'un seul coup.",
+    { m: "Double attaque : {cible} et {cible2} sont visés d'un seul coup.", f: "Double attaque : {cible} et {cible2} sont visées d'un seul coup." },
     "Belle fourchette sur {cible} et {cible2}. À ton adversaire de choisir ce qu'il sauve.",
     "{coup} vise {cible} et {cible2} d'un seul coup. Le motif à retenir : la fourchette.",
   ],
   'post.best.clouage': [
-    'Clouage : {cible} ne peut plus bouger sans exposer {cible2}.',
-    "Tu cloues {cible} sur {cible2}. Une pièce clouée défend mal : pense à l'attaquer encore.",
-    '{coup} cloue {cible}. Derrière, {cible2} est la vraie cible.',
-    'Bon clouage sur {cible}. Ajoute un attaquant dessus et la pression grandit.',
+    'Clouage : si {cible} bouge, {cible2} est à découvert juste derrière.',
+    '{coup} cloue {cible} sur {cible2}. Une pièce clouée est une cible : attaque-la encore.',
+    'Tu cloues {cible} devant {cible2}. Bouger la première coûterait la seconde.',
+    'Bon clouage sur {cible} : {cible2} est juste derrière, sur la même ligne.',
+  ],
+  'post.best.clouage_absolu': [
+    "Clouage : {cible} ne peut plus bouger, le roi adverse est juste derrière.",
+    '{coup} cloue {cible} sur le roi adverse. Une pièce clouée devient une cible.',
+    { m: "Tu cloues {cible} sur son roi : il n'a plus le droit de quitter la ligne.", f: "Tu cloues {cible} sur son roi : elle n'a plus le droit de quitter la ligne." },
+    { m: 'Bon clouage : {cible} est immobilisé devant le roi adverse.', f: 'Bon clouage : {cible} est immobilisée devant le roi adverse.' },
   ],
   'post.best.enfilade': [
-    "Enfilade : {cible} doit s'écarter, et {cible2} se retrouve en prise juste derrière.",
-    "Tu attaques {cible} en ligne avec {cible2} : quand la première pièce s'écarte, la seconde est visée.",
+    { m: 'Enfilade : {cible} est attaqué, et {cible2} se trouve juste derrière, sur la même ligne.', f: 'Enfilade : {cible} est attaquée, et {cible2} se trouve juste derrière, sur la même ligne.' },
+    "Tu attaques {cible} en ligne avec {cible2} derrière : c'est une enfilade.",
     "Belle enfilade. C'est un clouage inversé : la pièce la plus précieuse est devant.",
     '{coup} transperce la ligne : {cible} devant, {cible2} derrière.',
   ],
@@ -182,10 +188,10 @@ export const PHRASES: Record<string, Variant[]> = {
   ],
   // ---------------------------------------------------------------- bilan : motifs des fautes (toutes classes)
   'faute.pat': [
-    "Pat ! Le roi adverse n'est pas en échec mais n'a plus aucun coup légal : partie nulle. {meilleur} gagnait.",
+    "Pat ! Le roi adverse n'est pas en échec mais n'a plus aucun coup légal : partie nulle. Le moteur préférait {meilleur}.",
     'Attention au pat : en finale, laisse toujours un coup légal à ton adversaire. {meilleur} évitait le piège.',
     "Partie nulle par pat. Avant de resserrer l'étau, vérifie que le roi adverse garde un coup légal.",
-    "C'est pat, donc nulle, alors que {meilleur} gagnait. Le réflexe : donner échec ou laisser de l'air.",
+    "C'est pat, donc nulle. Le moteur préférait {meilleur}. Le réflexe : laisser un coup légal au roi adverse.",
   ],
   'faute.mat_en_1': [
     'Ce coup autorise un mat en 1 : {reponse}. Avant de jouer, vérifie toujours les échecs adverses.',
@@ -200,9 +206,9 @@ export const PHRASES: Record<string, Variant[]> = {
     'Ton adversaire mate avec {reponse}. La défense avait déjà cédé : cherche le vrai tournant plus tôt.',
   ],
   'faute.mat_en_n': [
-    'Ce coup permet un mat forcé en {n}. {meilleur} gardait ton roi en sécurité.',
+    'Ce coup permet un mat forcé en {n}. Le moteur préférait {meilleur}.',
     'Ton roi ne tient plus : mat en {n} pour ton adversaire. Il fallait jouer {meilleur}.',
-    "Après ce coup, l'attaque adverse est décisive (mat en {n}). {meilleur} défendait encore.",
+    "Après ce coup, l'attaque adverse est décisive (mat en {n}). Le moteur préférait {meilleur}.",
     'Tu ouvres la porte à un mat en {n}. Quand ton roi est visé, la défense passe avant tout.',
   ],
   'faute.mat_en_n_deja': [
@@ -212,9 +218,9 @@ export const PHRASES: Record<string, Variant[]> = {
     'Mat forcé en {n} contre toi. Ici, plus rien ne sauvait ton roi.',
   ],
   'faute.mat_du_couloir_subi': [
-    'Mat du couloir ! Ton roi est enfermé derrière ses pions : {reponse} fait mat.',
+    'Mat du couloir ! Ton roi est enfermé derrière ses propres pièces : {reponse} fait mat.',
     "Ton roi n'a aucune case de fuite sur sa rangée : {reponse} fait mat. Pense à lui donner de l'air.",
-    'Attention à la dernière rangée : sans case de fuite, une tour ou une dame adverse suffit à mater.',
+    'Attention à la dernière rangée : sans case de fuite, {reponse} suffit à mater.',
     'Tu oublies la faiblesse du couloir : {reponse} mate sur la dernière rangée.',
   ],
   'faute.mat_manque': [
@@ -226,12 +232,12 @@ export const PHRASES: Record<string, Variant[]> = {
   'faute.mat_du_couloir_manque': [
     "Mat du couloir manqué : {meilleur} matait sur la dernière rangée, le roi adverse n'avait aucune case.",
     '{meilleur} faisait mat : le roi adverse était enfermé derrière ses propres pièces.',
-    'Regarde la dernière rangée adverse : sans défenseur ni case de fuite, {meilleur} terminait la partie.',
+    'Regarde la dernière rangée adverse : sans case de fuite, {meilleur} terminait la partie.',
     "Le motif à retenir : le mat du couloir. {meilleur} l'exécutait immédiatement.",
   ],
   'faute.piece_en_prise': [
     { m: "{Piece} n'est pas défendu en {case} : ton adversaire peut le prendre gratuitement.", f: "{Piece} n'est pas défendue en {case} : ton adversaire peut la prendre gratuitement." },
-    'Après ce coup, {piece} reste en prise en {case}. Le moteur préférait {meilleur}.',
+    'Après ce coup, {piece} est en prise en {case}. Le moteur préférait {meilleur}.',
     { m: 'Regarde {piece} en {case} : attaqué et sans défenseur. Le moteur préférait {meilleur}.', f: 'Regarde {piece} en {case} : attaquée et sans défenseur. Le moteur préférait {meilleur}.' },
     { m: '{Piece} est laissé sans protection en {case}. Avant chaque coup, vérifie ce que tu ne défends plus.', f: '{Piece} est laissée sans protection en {case}. Avant chaque coup, vérifie ce que tu ne défends plus.' },
   ],
@@ -242,10 +248,10 @@ export const PHRASES: Record<string, Variant[]> = {
     "Compte la valeur des pièces : {attaquant} contre {piece}, c'est toi qui y perds. Le moteur préférait {meilleur}.",
   ],
   'faute.sous_defendue': [
-    { m: "{Piece} en {case} est attaqué plus de fois qu'il n'est défendu : l'échange tourne mal pour toi.", f: "{Piece} en {case} est attaquée plus de fois qu'elle n'est défendue : l'échange tourne mal pour toi." },
+    { m: "{Piece} en {case} n'est pas assez défendu : {attaquant} le prend et l'échange tourne mal pour toi.", f: "{Piece} en {case} n'est pas assez défendue : {attaquant} la prend et l'échange tourne mal pour toi." },
     "Compte les attaquants et les défenseurs de {case} : le compte n'y est pas, tu y perds du matériel.",
     { m: '{Piece} est trop peu défendu en {case}. Une reprise ne suffira pas.', f: '{Piece} est trop peu défendue en {case}. Une reprise ne suffira pas.' },
-    'En {case}, {piece} manque de défenseurs. Ajoute-en un, ou déplace la pièce.',
+    'En {case}, {piece} manque de défenseurs. Il fallait en ajouter un, ou déplacer la pièce.',
   ],
   'faute.mauvais_echange': [
     'Tu donnes plus que tu ne prends dans cet échange. Compte la valeur des pièces avant de capturer.',
@@ -255,15 +261,15 @@ export const PHRASES: Record<string, Variant[]> = {
   ],
   'faute.autorise_fourchette': [
     'Ce coup autorise une fourchette : {reponse} attaque {cible} et {cible2} en même temps.',
-    'Après {reponse}, {cible} et {cible2} sont attaqués à la fois.',
+    { m: 'Après {reponse}, {cible} et {cible2} sont attaqués à la fois.', f: 'Après {reponse}, {cible} et {cible2} sont attaquées à la fois.' },
     'Attention aux doubles attaques : {reponse} vise {cible} et {cible2}.',
-    'Tes pièces sont mal coordonnées : {reponse} les prend en fourchette ({cible} et {cible2}).',
+    '{reponse} prend {cible} et {cible2} en fourchette. Repère ces cases avant de jouer.',
   ],
   'faute.autorise_clouage': [
-    'Ce coup permet un clouage : après {reponse}, {cible} ne peut plus bouger sans exposer {cible2}.',
-    '{reponse} va clouer {cible} sur {cible2}. Une pièce clouée ne défend plus rien.',
-    'Tu alignes {cible} et {cible2} : {reponse} en profite tout de suite.',
-    "Attention aux alignements : {cible} devant {cible2}, c'est une invitation au clouage.",
+    { m: 'Ce coup permet un clouage : après {reponse}, {cible} est cloué sur {cible2}.', f: 'Ce coup permet un clouage : après {reponse}, {cible} est clouée sur {cible2}.' },
+    '{reponse} va clouer {cible} sur {cible2}. Une pièce clouée devient une cible facile.',
+    "Attention aux alignements : {reponse} cloue {cible} devant {cible2}.",
+    { m: 'Après {reponse}, {cible} se retrouve cloué : {cible2} est juste derrière.', f: 'Après {reponse}, {cible} se retrouve clouée : {cible2} est juste derrière.' },
   ],
   'faute.prise_gratuite': [
     { m: "{Cible} était en prise et tu ne l'as pas pris. {meilleur} gagnait du matériel.", f: "{Cible} était en prise et tu ne l'as pas prise. {meilleur} gagnait du matériel." },
@@ -278,15 +284,15 @@ export const PHRASES: Record<string, Variant[]> = {
     "Cherche les cases d'où une pièce attaque deux cibles : ici, {meilleur} visait {cible} et {cible2}.",
   ],
   'faute.clouage_manque': [
-    'Tu rates un clouage : {meilleur} immobilisait {cible} devant {cible2}.',
-    '{meilleur} clouait {cible} sur {cible2}. Une pièce clouée devient une cible facile.',
-    'Le motif à voir ici : le clouage. Après {meilleur}, {cible} ne pouvait plus bouger.',
+    'Tu rates un clouage : {meilleur} clouait {cible} sur {cible2}.',
+    '{meilleur} clouait {cible} devant {cible2}. Une pièce clouée devient une cible facile.',
+    'Le motif à voir ici : le clouage. {meilleur} alignait {cible} et {cible2}.',
     "Regarde l'alignement entre {cible} et {cible2} : {meilleur} l'exploitait tout de suite.",
   ],
   'faute.droit_au_roque_perdu': [
-    'Avec ce coup, tu perds le droit de roquer. Ton roi va rester au centre.',
+    "Avec ce coup, tu perds le droit de roquer. Ton roi ne pourra plus se mettre à l'abri ainsi.",
     'Ce coup te prive du roque pour toute la partie. Le moteur préférait {meilleur}.',
-    'Tu ne pourras plus roquer. Avec un roi au centre, chaque ligne ouverte devient dangereuse.',
+    'Tu ne pourras plus roquer. Sans roque, chaque ligne ouverte vers ton roi devient dangereuse.',
     'Attention au droit au roque : une fois perdu, il ne revient pas.',
   ],
   'faute.roque_tardif': [
@@ -296,10 +302,10 @@ export const PHRASES: Record<string, Variant[]> = {
     "Sécurité d'abord : {meilleur} réglait la question du roi avant de passer à l'action.",
   ],
   'faute.simplification': [
-    'Avec du matériel en plus, échange les pièces : {meilleur} simplifiait vers une finale favorable.',
+    'Avec du matériel en plus, échange les pièces : {meilleur} simplifiait la position.',
     "{meilleur} échangeait {cible}. Quand tu as l'avantage matériel, chaque échange te rapproche du gain.",
     "Tu évites l'échange alors qu'il t'arrangeait : moins il reste de pièces, plus ton avantage pèse.",
-    'Simplifie quand tu es devant. {meilleur} retirait à ton adversaire des chances de contre-jeu.',
+    'Simplifie quand tu es devant. {meilleur} retirait des pièces à ton adversaire.',
   ],
   // ---------------------------------------------------------------- bilan : coups de l'adversaire
   'post.adverse.generique': [
@@ -636,6 +642,48 @@ export const PHRASES: Record<string, Variant[]> = {
     'Mat ! Tu as conclu comme il faut.',
     "{coup}, et c'est mat. Bien joué !",
   ],
+  'live.joueur.autorise_mat': [
+    'Attention : {reponse} fait mat ! Tu peux annuler le coup.',
+    'Ce coup laisse un mat en 1 : {reponse}. Annule et protège ton roi.',
+    'Danger : ton adversaire mate avec {reponse}.',
+    'Mat en 1 pour ton adversaire ({reponse}). Le bouton Annuler est là pour ça.',
+  ],
+  'live.joueur.autorise_mat_n': [
+    'Attention : ton adversaire a maintenant un mat forcé en {n}.',
+    'Ce coup ouvre la porte à un mat en {n}. Tu peux annuler le coup.',
+    'Danger pour ton roi : mat forcé en {n} pour ton adversaire.',
+    'Ton roi est en grand danger : mat en {n} au plus. Annule si tu veux réessayer.',
+  ],
+  'live.joueur.autorise_fourchette': [
+    'Attention : {reponse} ferait une fourchette sur {cible} et {cible2}.',
+    'Ce coup permet {reponse}, qui attaque {cible} et {cible2} à la fois.',
+    'Gare à la fourchette : {reponse} viserait {cible} et {cible2}. Tu peux annuler.',
+    'Danger : {reponse} prendrait {cible} et {cible2} en fourchette.',
+  ],
+  'live.joueur.mat_manque': [
+    'Il y avait mat en 1 avec {meilleur} !',
+    '{meilleur} faisait mat. Cherche toujours les échecs en premier.',
+    'Mat en 1 manqué : {meilleur}. Tu peux annuler et le jouer.',
+    'Regarde mieux : {meilleur} terminait la partie (mat en 1).',
+  ],
+  'live.joueur.fourchette_manquee': [
+    '{meilleur} faisait une fourchette sur {cible} et {cible2}.',
+    'Fourchette manquée : {meilleur} attaquait {cible} et {cible2}.',
+    'Il y avait une double attaque : {meilleur}, sur {cible} et {cible2}.',
+    'Regarde {meilleur} : {cible} et {cible2} étaient pris en fourchette.',
+  ],
+  'live.joueur.fourchette': [
+    'Fourchette ! Tu attaques {cible} et {cible2} en même temps.',
+    'Double attaque sur {cible} et {cible2}. Bien vu !',
+    { m: 'Belle fourchette : {cible} et {cible2} sont visés.', f: 'Belle fourchette : {cible} et {cible2} sont visées.' },
+    "Fourchette sur {cible} et {cible2} : ton adversaire ne pourra pas tout sauver.",
+  ],
+  'live.joueur.clouage': [
+    { m: 'Clouage : {cible} est cloué sur {cible2}.', f: 'Clouage : {cible} est clouée sur {cible2}.' },
+    'Tu cloues {cible} devant {cible2}. Ajoute un attaquant dessus !',
+    'Bon clouage : {cible2} est juste derrière {cible}.',
+    { m: '{Cible} est cloué : s\'il bouge, {cible2} est à découvert.', f: '{Cible} est clouée : si elle bouge, {cible2} est à découvert.' },
+  ],
   'live.joueur.roque': [
     "{coup} : roi à l'abri, tour en jeu. Parfait.",
     'Bon roque. Ton roi est en sécurité.',
@@ -671,7 +719,7 @@ export const PHRASES: Record<string, Variant[]> = {
     'Cadeau avec {coup}. Trouve le coup qui punit.',
   ],
   'live.adversaire.piece_en_prise': [
-    { m: "Regarde bien : {cible} adverse n'est plus défendu en {case}.", f: "Regarde bien : {cible} adverse n'est plus défendue en {case}." },
+    { m: "Regarde bien : {cible} adverse n'est pas défendu en {case}.", f: "Regarde bien : {cible} adverse n'est pas défendue en {case}." },
     "{coup} laisse {cible} en prise en {case}. À toi d'en profiter !",
     { m: '{Cible} adverse est attaqué en {case}, sans défenseur. Vois-tu le coup ?', f: '{Cible} adverse est attaquée en {case}, sans défenseur. Vois-tu le coup ?' },
     "Il y a du matériel à prendre en {case}. Vérifie juste que ce n'est pas un piège.",
@@ -687,6 +735,12 @@ export const PHRASES: Record<string, Variant[]> = {
     '{coup} : {cible} disparaît. Regarde si une reprise est possible.',
     "{coup}. Avant de reprendre, vérifie s'il n'y a pas encore mieux.",
     'Prise en face. Compte le matériel, puis choisis ta réponse.',
+  ],
+  'live.adversaire.fourchette': [
+    { m: 'Fourchette adverse : {cible} et {cible2} sont attaqués en même temps.', f: 'Fourchette adverse : {cible} et {cible2} sont attaquées en même temps.' },
+    'Attention, double attaque sur {cible} et {cible2}. Limite la casse.',
+    'Ton adversaire fait une fourchette sur {cible} et {cible2}.',
+    { m: 'Fourchette ! {cible} et {cible2} sont attaqués par la même pièce.', f: 'Fourchette ! {cible} et {cible2} sont attaquées par la même pièce.' },
   ],
   'live.adversaire.mat': [
     '{coup} : échec et mat. La partie est finie, on en tire les leçons au bilan.',

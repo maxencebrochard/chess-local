@@ -1,12 +1,17 @@
 // Coach post-partie : commentaires en français générés par règles depuis le
-// Game Review (classe du coup, mat, matériel, pièce en prise, meilleur coup).
+// Game Review (classe du coup, mat, matériel, motifs tactiques, meilleur coup).
 // Les phrases vivent dans coachPhrases.ts, les détections dans motifs.ts : ici, on
 // choisit la situation la plus grave constatée sur l'échiquier, puis une variante.
+// Un motif n'est nommé que si un détecteur l'a vérifié sur la position : sinon, le
+// générique de la classe parle.
 import { Chess, type PieceSymbol } from 'chess.js'
 import { CLASS_META, figurine, type GameReview, type MoveClass } from './review'
-import { Picker, type Vars } from './coachPhrases'
+import { openingForMoves } from './openings'
+import { openingFamilyFr } from './openingNames'
+import { Picker, type Gender, type Vars } from './coachPhrases'
 import {
-  PIECE_FR, captureInfo, hangingAfter, isCheckmateFen, isStalemateFen, mateInOne, other, sanOf,
+  PIECE_FR, PIECE_VALUE, backRankMate, captureInfo, castlingInfo, fork, isCheckmateFen, isStalemateFen,
+  mateInOne, materialBalance, other, passedPawn, pinOrSkewer, sanOf, type Fork, type LineMotif,
 } from './motifs'
 
 export interface CoachComment {
@@ -24,11 +29,12 @@ export interface CoachComment {
 
 const FAULTS: MoveClass[] = ['inaccuracy', 'mistake', 'miss', 'missedWin', 'blunder']
 const BAD_CLASSES: MoveClass[] = ['blunder', 'missedWin', 'miss', 'mistake']
+const START_FEN = new Chess().fen()
 
-// Mat annoncé par le moteur contre le camp qui vient de jouer (nombre de coups), sinon 0.
-function mateAgainst(mateAfter: number | null, mover: 'w' | 'b'): number {
+// Mat annoncé par le moteur contre le camp `side` (nombre de coups), sinon 0.
+function mateAgainst(mateAfter: number | null, side: 'w' | 'b'): number {
   if (mateAfter === null || mateAfter === 0) return 0
-  return (mover === 'w' ? mateAfter < 0 : mateAfter > 0) ? Math.abs(mateAfter) : 0
+  return (side === 'w' ? mateAfter < 0 : mateAfter > 0) ? Math.abs(mateAfter) : 0
 }
 
 // Numéro du coup au demi-coup i, depuis le compteur du FEN de départ : « 5. » ou « 5... ».
@@ -39,98 +45,276 @@ function moveNumber(review: GameReview, i: number): string {
   return colorAt(review, i) === 'w' ? `${no}.` : `${no}...`
 }
 
+// Deux pièces nommées ensemble : participe au féminin seulement si les deux le sont.
+const pairGender = (a: PieceSymbol, b: PieceSymbol): Gender => (PIECE_FR[a].genre === 'f' && PIECE_FR[b].genre === 'f' ? 'f' : 'm')
+
+// Le coup de réponse `reply` fait-il encore ce motif après le meilleur coup ? Un coup devenu
+// illégal compte comme empêché. Sert à n'accuser un coup que d'un motif qu'il a permis.
+function stillAfterBest<T>(fenBefore: string, best: string | undefined, reply: string, detect: (fen: string, uci: string) => T | null): boolean {
+  if (!best) return true
+  const fen = afterUci(fenBefore, best)
+  return fen !== fenBefore && detect(fen, reply) !== null
+}
+
+// Pièce du joueur que la meilleure réponse adverse gagne vraiment (prise nette ≥ 2 une fois
+// les reprises comptées ; pour la pièce qui vient de capturer, ce qu'elle a pris est déduit).
+function lostToReply(fenAfter: string, reply: string | undefined, moved: { to: string; captured?: PieceSymbol }) {
+  if (!reply) return null
+  const cap = captureInfo(fenAfter, reply, null)
+  if (!cap) return null
+  const capturer = moved.to === cap.square && !!moved.captured
+  const loss = cap.net - (capturer ? PIECE_VALUE[moved.captured!] : 0)
+  if (loss < 2) return null
+  const c = new Chess(fenAfter)
+  const mover = other(c.turn())
+  return {
+    piece: cap.captured, square: cap.square, attacker: cap.by, capturer,
+    defended: c.attackers(cap.square, mover).length > 0,
+    cheaper: PIECE_VALUE[cap.by] < PIECE_VALUE[cap.captured],
+  }
+}
+
+function forkVars(f: Fork, own: boolean): { vars: Vars; gender: Gender } {
+  const name = (p: PieceSymbol) => (own ? PIECE_FR[p].ton : PIECE_FR[p].defini)
+  return { vars: { cible: name(f.targets[0]), cible2: name(f.targets[1]) }, gender: pairGender(f.targets[0], f.targets[1]) }
+}
+
+function lineVars(l: LineMotif, own: boolean): { vars: Vars; gender: Gender } {
+  const name = (p: PieceSymbol) => (own ? PIECE_FR[p].ton : PIECE_FR[p].defini)
+  return { vars: { cible: name(l.front), cible2: name(l.rear) }, gender: PIECE_FR[l.front].genre }
+}
+
 export function coachComments(review: GameReview, playerColor: 'w' | 'b' | null): CoachComment[] {
   const comments: CoachComment[] = []
   const replay = new Chess(review.startFen)
   const pick = new Picker(review.moves.length)
+  const book = review.startFen === START_FEN
+  const ucis: string[] = []
+  const passedFiles = new Set<string>()
   let lastCaptureSquare: string | null = null
-  let prevMateAgainst = 0
+  let lastFamily: string | null = null
 
   review.moves.forEach((m, i) => {
     const mover = replay.turn()
     const fenBefore = replay.fen()
     const played = replay.move(m.san)
     const fenAfter = replay.fen()
+    ucis.push(m.uci)
     const headline = `${figurine(m.san, mover)} est ${CLASS_META[m.class].headline}`
     const mated = isCheckmateFen(fenAfter)
     const pat = isStalemateFen(fenAfter)
+    const prevMate = i > 0 ? review.moves[i - 1].mateAfter : null
+    // Mat contre le joueur après son coup / avant son coup ; mat pour lui avant / après.
     const against = mateAgainst(m.mateAfter, mover)
-    const wasAgainst = prevMateAgainst
-    prevMateAgainst = mateAgainst(m.mateAfter, other(mover))
+    const wasAgainst = mateAgainst(prevMate, mover)
+    const wasFor = mateAgainst(prevMate, other(mover))
+    const forAfter = mateAgainst(m.mateAfter, other(mover))
     const cap = captureInfo(fenBefore, m.uci, lastCaptureSquare)
     lastCaptureSquare = played.captured ? played.to : null
+    const fam = book && m.class === 'book' ? familyFr(ucis) : null
 
     // Coup de l'adversaire : une bulle courte et neutre, jamais vide (ANA-36).
     if (playerColor && mover !== playerColor) {
+      if (fam) lastFamily = fam
       const key = mated ? 'post.adverse.mat' : pat ? 'post.adverse.pat' : BAD_CLASSES.includes(m.class) ? 'post.adverse.erreur' : 'post.adverse.generique'
       comments.push({ moveIndex: i, headline, body: pick.say(key, i), severity: 'neutral', mood: key === 'post.adverse.erreur' ? 'happy' : 'thinking' })
       return
     }
 
-    const better = m.uci !== m.bestMoveUci ? sanOf(fenBefore, m.bestMoveUci) ?? undefined : undefined
+    const bestUci = m.uci !== m.bestMoveUci ? m.bestMoveUci : undefined
+    const better = bestUci ? sanOf(fenBefore, bestUci) ?? undefined : undefined
+    const best = better ? bestUci : undefined
     const betterFig = better ? figurine(better, mover) : undefined
     const bestMates = !!better && better.endsWith('#')
+    // Meilleure réponse adverse vue par le moteur (pv[0] de la position après le coup).
+    const reply = review.moves[i + 1]?.bestMoveUci
     // {meilleur} n'existe que si un meilleur coup existe : le Picker écarte alors les variantes qui le citent.
     const vars: Vars = { coup: figurine(m.san, mover) }
     if (betterFig) vars.meilleur = betterFig
     let key: string
-    let gender: 'm' | 'f' = 'm'
+    let gender: Gender = 'm'
     let severity: CoachComment['severity'] = 'neutral'
     let mood: CoachComment['mood'] = 'thinking'
+    // Situation à motif : ses marqueurs et son genre rejoignent ceux du coup.
+    const withMotif = (k: string, extra: { vars: Vars; gender: Gender }): string => {
+      Object.assign(vars, extra.vars)
+      gender = extra.gender
+      return k
+    }
 
     if (m.class === 'book') {
-      key = 'post.book.generique'
+      // Ouverture nommée quand sa famille change ; sortie de théorie sur le dernier coup
+      // théorique du joueur (son coup suivant n'est plus dans les livres).
+      const nextOwn = review.moves[i + 2]
+      if (fam && fam !== lastFamily) {
+        vars.ouverture = fam
+        key = 'post.book.nommee'
+      } else if (nextOwn && nextOwn.class !== 'book') key = 'post.book.sortie'
+      else key = 'post.book.generique'
+      if (fam) lastFamily = fam
     } else if (FAULTS.includes(m.class)) {
-      // Fautes : le plus grave d'abord (pat, mat autorisé, mat raté, pièce en prise), sinon la classe.
-      const hang = hangingAfter(fenBefore, fenAfter, mover, { to: played.to, captured: played.captured as PieceSymbol | undefined })
-      if (pat) key = 'faute.pat'
-      else if (against === 1) {
-        const reply = mateInOne(fenAfter)
-        vars.reponse = reply ? figurine(reply, other(mover)) : 'le prochain coup'
-        // « Déjà perdu » seulement si le meilleur coup n'évitait pas non plus le mat en 1.
-        const stillMated = !better || mateInOne(afterUci(fenBefore, m.bestMoveUci)) !== null
-        key = wasAgainst === 1 && stillMated ? 'faute.mat_en_1_deja' : 'faute.mat_en_1'
-      } else if (against > 1) {
-        vars.n = against
-        key = wasAgainst > 0 ? 'faute.mat_en_n_deja' : 'faute.mat_en_n'
-      } else if (bestMates) { key = 'faute.mat_manque'; vars.n = 1 }
-      else if (hang?.capturer && played.captured) {
-        gender = PIECE_FR[played.captured as PieceSymbol].genre
-        vars.cible = PIECE_FR[played.captured as PieceSymbol].defini
-        key = 'faute.mauvais_echange'
-      } else if (hang) {
-        gender = PIECE_FR[hang.piece].genre
-        Object.assign(vars, { piece: PIECE_FR[hang.piece].defini, case: hang.square, attaquant: PIECE_FR[hang.attacker].defini })
-        key = hang.defended ? 'faute.mal_defendue' : 'faute.piece_en_prise'
-      } else key = better ? `post.${m.class}.generique` : 'post.secours.generique'
+      key = faultKey()
       severity = m.class === 'blunder' || m.class === 'missedWin' ? 'alarm' : 'warn'
       mood = severity === 'alarm' ? 'worried' : 'thinking'
     } else {
-      // Bons coups : mat, mat en 1 raté, prise, sinon la classe. best et excellent ne sont
-      // plus des moments clés (ANA-15) : seuls brillant et très bon restent en praise.
       mood = 'happy'
-      if (mated) key = 'post.best.mat'
-      else if (bestMates) { key = 'faute.mat_manque'; vars.n = 1; mood = 'thinking' }
-      else if (cap && (cap.kind === 'gain' || cap.kind === 'reprise')) {
-        gender = PIECE_FR[cap.captured].genre
-        vars.cible = PIECE_FR[cap.captured].defini
-        key = cap.kind === 'reprise' ? 'post.best.reprise' : cap.clean ? 'post.best.gain_materiel' : 'post.best.gain_echange'
-      } else if (m.class === 'brilliant') {
-        gender = PIECE_FR[played.piece].genre
-        vars.piece = PIECE_FR[played.piece].defini
-        key = 'post.brilliant.sacrifice'
-      }
-      else if (m.class === 'great') key = 'post.great.seul_coup'
-      else if (m.class === 'good') key = better ? 'post.good.generique' : 'post.excellent.generique'
-      else if (m.class === 'excellent') key = 'post.excellent.generique'
-      else key = 'post.best.generique'
+      key = goodKey()
+      if (key.startsWith('faute.')) mood = 'thinking'
       if (m.class === 'brilliant' || m.class === 'great') severity = 'praise'
     }
 
     comments.push({ moveIndex: i, headline, body: pick.say(key, i, vars, gender), betterMove: better, severity, mood })
+
+    // Fautes : le plus grave d'abord, le motif vérifié ensuite, le générique de la classe en dernier.
+    function faultKey(): string {
+      if (pat) return 'faute.pat'
+      if (against === 1) {
+        // La réponse du moteur si elle mate, sinon le premier mat en 1 trouvé.
+        const replyMates = !!reply && isCheckmateFen(afterUci(fenAfter, reply))
+        const mateUci = replyMates ? reply! : null
+        const mateSan = mateUci ? sanOf(fenAfter, mateUci) : mateInOne(fenAfter)
+        vars.reponse = mateSan ? figurine(mateSan, other(mover)) : 'le prochain coup'
+        // « {meilleur} empêchait le mat » seulement si c'est vérifié ; « déjà perdu » seulement
+        // si le meilleur coup laissait aussi un mat en 1.
+        const prevented = !!best && mateInOne(afterUci(fenBefore, best)) === null
+        if (!prevented) delete vars.meilleur
+        if (mateUci && backRankMate(fenAfter, mateUci)) return 'faute.mat_du_couloir_subi'
+        return wasAgainst === 1 && !prevented ? 'faute.mat_en_1_deja' : 'faute.mat_en_1'
+      }
+      if (against > 1) {
+        vars.n = against
+        return wasAgainst > 0 ? 'faute.mat_en_n_deja' : 'faute.mat_en_n'
+      }
+      if (bestMates) {
+        vars.n = 1
+        return backRankMate(fenBefore, best!) ? 'faute.mat_du_couloir_manque' : 'faute.mat_manque'
+      }
+      if (wasFor > 0 && forAfter === 0 && best) {
+        vars.n = wasFor
+        return 'faute.mat_manque'
+      }
+      const lost = lostToReply(fenAfter, reply, { to: played.to, captured: played.captured as PieceSymbol | undefined })
+      if (lost?.capturer) {
+        gender = PIECE_FR[played.captured as PieceSymbol].genre
+        vars.cible = PIECE_FR[played.captured as PieceSymbol].defini
+        return 'faute.mauvais_echange'
+      }
+      if (reply) {
+        const f = fork(fenAfter, reply)
+        if (f && !stillAfterBest(fenBefore, best, reply, fork)) {
+          vars.reponse = figurine(sanOf(fenAfter, reply)!, other(mover))
+          return withMotif('faute.autorise_fourchette', forkVars(f, true))
+        }
+      }
+      if (lost) {
+        gender = PIECE_FR[lost.piece].genre
+        Object.assign(vars, { piece: PIECE_FR[lost.piece].ton, case: lost.square, attaquant: PIECE_FR[lost.attacker].defini })
+        return !lost.defended ? 'faute.piece_en_prise' : lost.cheaper ? 'faute.mal_defendue' : 'faute.sous_defendue'
+      }
+      if (reply) {
+        const l = pinOrSkewer(fenAfter, reply)
+        if (l?.kind === 'clouage' && !stillAfterBest(fenBefore, best, reply, pinOrSkewer)) {
+          vars.reponse = figurine(sanOf(fenAfter, reply)!, other(mover))
+          return withMotif('faute.autorise_clouage', lineVars(l, true))
+        }
+      }
+      if (best) {
+        const f = fork(fenBefore, best)
+        if (f) {
+          return withMotif('faute.fourchette_manquee', forkVars(f, false))
+        }
+        const bc = captureInfo(fenBefore, best, null)
+        if (bc && bc.clean && bc.net >= 2) {
+          gender = PIECE_FR[bc.captured].genre
+          vars.cible = PIECE_FR[bc.captured].defini
+          return 'faute.prise_gratuite'
+        }
+        const l = pinOrSkewer(fenBefore, best)
+        if (l?.kind === 'clouage') {
+          return withMotif('faute.clouage_manque', lineVars(l, false))
+        }
+        if (better!.startsWith('O-O')) return 'faute.roque_tardif'
+      }
+      const castle = castlingInfo(fenBefore, fenAfter, m.san, mover)
+      if (castle?.kind === 'droit_perdu') return 'faute.droit_au_roque_perdu'
+      if (best && !played.captured && materialBalance(fenBefore, mover) >= 3) {
+        const bc = captureInfo(fenBefore, best, null)
+        if (bc && bc.kind === 'echange' && bc.captured !== 'p') {
+          vars.cible = PIECE_FR[bc.captured].defini
+          return 'faute.simplification'
+        }
+      }
+      return better ? `post.${m.class}.generique` : 'post.secours.generique'
+    }
+
+    // Bons coups : mat, mat raté, mat forcé, motif joué, prise, roque, pion passé, sinon la classe.
+    // best et excellent ne sont plus des moments clés (ANA-15) : seuls brillant et très bon le restent.
+    function goodKey(): string {
+      if (mated) return backRankMate(fenBefore, m.uci) ? 'post.best.mat_du_couloir' : 'post.best.mat'
+      if (bestMates) {
+        vars.n = 1
+        return backRankMate(fenBefore, best!) ? 'faute.mat_du_couloir_manque' : 'faute.mat_manque'
+      }
+      if (wasFor > 0 && best && (forAfter === 0 || forAfter >= wasFor) && (forAfter > 0 || m.winPctAfter >= 90)) {
+        vars.n = wasFor
+        return 'post.excellent.mat_plus_rapide'
+      }
+      if (!best && forAfter > 0) {
+        vars.n = forAfter
+        return 'post.best.mat_en_n'
+      }
+      if (m.class === 'brilliant') {
+        gender = PIECE_FR[played.piece].genre
+        vars.piece = PIECE_FR[played.piece].defini
+        return 'post.brilliant.sacrifice'
+      }
+      const f = fork(fenBefore, m.uci)
+      if (f) {
+        return withMotif('post.best.fourchette', forkVars(f, false))
+      }
+      const l = pinOrSkewer(fenBefore, m.uci)
+      if (l) {
+        return withMotif(l.kind === 'enfilade' ? 'post.best.enfilade' : l.rear === 'k' ? 'post.best.clouage_absolu' : 'post.best.clouage', lineVars(l, false))
+      }
+      if (m.class === 'great') {
+        if (cap?.kind === 'reprise') {
+          gender = PIECE_FR[cap.captured].genre
+          Object.assign(vars, { cible: PIECE_FR[cap.captured].defini, case: cap.square })
+          return 'post.great.reprise'
+        }
+        const wb = m.winPctBefore
+        const wa = m.winPctAfter
+        if ((wb < 45 && wa >= 50) || (wb >= 45 && wb < 55 && wa >= 70)) return 'post.great.retournement'
+        return 'post.great.seul_coup'
+      }
+      if (cap && (cap.kind === 'gain' || cap.kind === 'reprise')) {
+        gender = PIECE_FR[cap.captured].genre
+        vars.cible = PIECE_FR[cap.captured].defini
+        return cap.kind === 'reprise' ? 'post.best.reprise' : cap.clean ? 'post.best.gain_materiel' : 'post.best.gain_echange'
+      }
+      if (m.san.startsWith('O-O')) return 'post.best.roque'
+      const pp = passedPawn(fenBefore, m.uci)
+      if (pp && !passedFiles.has(pp.square[0])) {
+        passedFiles.add(pp.square[0])
+        vars.case = pp.square
+        return 'post.best.pion_passe'
+      }
+      if (m.class === 'good') return better ? 'post.good.generique' : 'post.excellent.generique'
+      if (m.class === 'excellent') return 'post.excellent.generique'
+      return 'post.best.generique'
+    }
   })
 
   return comments
+}
+
+// Famille d'ouverture en français après ces coups, ou null si inconnue ou non traduite
+// (une famille sans traduction resterait en anglais : on ne la nomme pas).
+function familyFr(ucis: string[]): string | null {
+  const o = openingForMoves(ucis)
+  if (!o) return null
+  const fam = openingFamilyFr(o.name)
+  return fam !== o.name.split(':')[0].trim() ? fam : null
 }
 
 // Position après un coup UCI (le coup est supposé légal : il vient du moteur).
@@ -200,36 +384,47 @@ export function phaseReport(review: GameReview): PhaseReport {
   }
 }
 
-// Découpage en phases : ouverture = jusqu'au dernier coup de théorie (fallback
-// 16 demi-coups) ; finale = quand il reste ≤ 6 pièces hors pions et rois.
+// Découpage en phases : ouverture = jusqu'au dernier coup de théorie (fallback 16 demi-coups),
+// aucune sur un départ custom (position de puzzle, FEN importé) ; finale = dès qu'il reste
+// ≤ 6 pièces hors pions et rois, d'emblée si la position de départ en a déjà ≤ 6, et
+// seulement si elle dure au moins 8 demi-coups (sinon ces coups restent au milieu de partie).
 export interface GamePhases {
   openingEnd: number // index du dernier demi-coup d'ouverture (-1 si aucun)
   endgameStart: number // index du premier demi-coup de finale (moves.length si jamais atteinte)
 }
 
-export function detectPhases(review: GameReview): GamePhases {
-  let openingEnd = -1
-  review.moves.forEach((m, i) => {
-    if (m.class === 'book') openingEnd = i
-  })
-  if (openingEnd === -1) openingEnd = Math.min(15, review.moves.length - 1)
+const MIN_ENDGAME_PLIES = 8
 
+function minorAndMajor(c: Chess): number {
+  let n = 0
+  for (const row of c.board()) for (const sq of row) if (sq && sq.type !== 'p' && sq.type !== 'k') n++
+  return n
+}
+
+export function detectPhases(review: GameReview): GamePhases {
+  const total = review.moves.length
   const replay = new Chess(review.startFen)
-  let endgameStart = review.moves.length
-  for (let i = 0; i < review.moves.length; i++) {
+  if (minorAndMajor(replay) <= 6) return { openingEnd: -1, endgameStart: 0 }
+
+  let openingEnd = -1
+  if (review.startFen === START_FEN) {
+    review.moves.forEach((m, i) => {
+      if (m.class === 'book') openingEnd = i
+    })
+    if (openingEnd === -1) openingEnd = Math.min(15, total - 1)
+  }
+
+  let endgameStart = total
+  for (let i = 0; i < total; i++) {
     replay.move(review.moves[i].san)
-    let pieces = 0
-    for (const row of replay.board()) {
-      for (const sq of row) {
-        if (sq && sq.type !== 'p' && sq.type !== 'k') pieces++
-      }
-    }
-    if (pieces <= 6) {
+    if (minorAndMajor(replay) <= 6) {
       endgameStart = i + 1
       break
     }
   }
-  return { openingEnd, endgameStart: Math.max(endgameStart, openingEnd + 1) }
+  endgameStart = Math.max(endgameStart, openingEnd + 1)
+  if (total - endgameStart < MIN_ENDGAME_PLIES) endgameStart = total
+  return { openingEnd, endgameStart }
 }
 
 // Précision d'une couleur sur une tranche de demi-coups.
@@ -293,11 +488,11 @@ export function coachSummary(review: GameReview, playerColor: 'w' | 'b' | null):
   if (counts.brilliant === 1) parts.push(pick.say('resume.brillant.un', 3))
   else if (counts.brilliant > 1) parts.push(pick.say('resume.brillant.plusieurs', 3, { n: counts.brilliant }))
 
-  // Récit par phases.
+  // Récit par phases : seulement sur une vraie partie (30 demi-coups et plus).
   const accOpen = accuracyOnRange(review, color, 0, phases.openingEnd + 1)
   const accMid = accuracyOnRange(review, color, phases.openingEnd + 1, phases.endgameStart)
   const accEnd = accuracyOnRange(review, color, phases.endgameStart, review.moves.length)
-  if (accOpen !== null && accMid !== null) {
+  if (review.moves.length >= 30 && accOpen !== null && accMid !== null) {
     const v: Vars = { v_ouverture: phaseVerdict(accOpen), v_milieu: phaseVerdict(accMid), v_finale: accEnd === null ? '' : phaseVerdict(accEnd) }
     parts.push(pick.say(accEnd === null ? 'resume.phases.deux' : 'resume.phases.trois', 4, v))
   }

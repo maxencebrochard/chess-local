@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, u
 import { Chess, type Move } from 'chess.js'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Board, type BoardArrow } from '../components/Board'
-import { CoachBubble } from '../components/CoachBubble'
+import { CoachAvatar, CoachBubble } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
 import { EvalBar } from '../components/EvalBar'
 import { EvalGraph } from '../components/EvalGraph'
@@ -914,7 +914,9 @@ export default function Analysis() {
             }}
           >
             <div className="flex items-start gap-2">
-              <span className="text-2xl leading-none">🧑‍🏫</span>
+              <span className="shrink-0">
+                <CoachAvatar size={32} mood={viewIndex === -1 ? 'happy' : coachCurrent?.mood ?? 'thinking'} />
+              </span>
               <p className="min-h-10 text-sm leading-snug text-neutral-200">
                 {viewIndex === -1
                   ? coach.summary

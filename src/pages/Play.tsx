@@ -109,13 +109,15 @@ function applyUci(chess: Chess, uci: string) {
 
 // Éval rapide d'une position, ramenée côté blanc avec le trait DE CETTE position (scores UCI du
 // point de vue du trait). Mat : ±10000 pour la jauge, et le nombre de coups pour le libellé.
-async function evalWhite(engine: Engine, fen: string, turn: 'w' | 'b'): Promise<{ whiteCp: number; whiteMate: number | null }> {
+// `bestUci` : pv[0], le meilleur coup du camp au trait (repère du coach live).
+async function evalWhite(engine: Engine, fen: string, turn: 'w' | 'b'): Promise<{ whiteCp: number; whiteMate: number | null; bestUci: string | null }> {
   const res = await engine.search({ fen, depth: 10, multipv: 1 })
   const line = res.lines[0]
   const sign = turn === 'w' ? 1 : -1
-  if (!line) return { whiteCp: 0, whiteMate: null }
-  if (line.scoreMate !== null) return { whiteCp: sign * (line.scoreMate > 0 ? 10000 : -10000), whiteMate: sign * line.scoreMate }
-  return { whiteCp: sign * (line.scoreCp ?? 0), whiteMate: null }
+  if (!line) return { whiteCp: 0, whiteMate: null, bestUci: null }
+  const bestUci = line.pv[0] ?? null
+  if (line.scoreMate !== null) return { whiteCp: sign * (line.scoreMate > 0 ? 10000 : -10000), whiteMate: sign * line.scoreMate, bestUci }
+  return { whiteCp: sign * (line.scoreCp ?? 0), whiteMate: null, bestUci }
 }
 
 export default function Play() {
@@ -166,6 +168,7 @@ export default function Play() {
   const [hintBusy, setHintBusy] = useState(false)
   const [bookBadge, setBookBadge] = useState<string | null>(null)
   const lastWhiteCp = useRef(20) // éval blanche avant le dernier coup
+  const lastBestUci = useRef<string | null>(null) // meilleur coup du moteur dans la position courante
   const unratedRef = useRef(false)
   const takebackGen = useRef(0) // incrémenté par Annuler : une éval lancée avant est jetée
 
@@ -221,22 +224,28 @@ export default function Play() {
       if (seq !== gameSeq.current || gen !== takebackGen.current) return // partie finie ou coup annulé
       let whiteCp: number
       let whiteMate: number | null = null
+      let replyUci: string | null = null
       if (mate) {
         whiteCp = moverColor === 'w' ? 10000 : -10000
         whiteMate = 0
       } else if (over) {
         whiteCp = 0
       } else {
-        ;({ whiteCp, whiteMate } = await evalWhite((coachEngineRef.current ??= new Engine()), fen, turnAfter))
+        ;({ whiteCp, whiteMate, bestUci: replyUci } = await evalWhite((coachEngineRef.current ??= new Engine()), fen, turnAfter))
       }
       if (seq !== gameSeq.current || gen !== takebackGen.current) return
+      // Mat pour le camp qui vient de jouer (positif) ou contre lui (négatif), pour le coach live.
+      const mateFor = whiteMate === null || whiteMate === 0 ? null : moverColor === 'w' ? whiteMate : -whiteMate
       const cpBeforeMover = moverColor === 'w' ? lastWhiteCp.current : -lastWhiteCp.current
       const cpAfterMover = moverColor === 'w' ? whiteCp : -whiteCp
+      const bestUci = lastBestUci.current
       lastWhiteCp.current = whiteCp
+      lastBestUci.current = replyUci
       setLiveCp(whiteCp)
       setLiveMate(whiteMate)
-      const cls = quickClass(cpBeforeMover, cpAfterMover, isBook)
-      setCoachMsg(liveComment({ san, moverColor, byPlayer, cls, uciMoves }))
+      const playedUci = uciMoves[uciMoves.length - 1]
+      const cls = quickClass(cpBeforeMover, cpAfterMover, isBook, bestUci === playedUci)
+      setCoachMsg(liveComment({ san, moverColor, byPlayer, cls, uciMoves, bestUci, replyUci, mateFor }))
     })
   }, [])
 
@@ -508,6 +517,7 @@ export default function Play() {
     setHintBusy(false)
     setBookBadge(null)
     lastWhiteCp.current = restored?.lastWhiteCp ?? 20
+    lastBestUci.current = null // recalé par la prochaine éval
     setLiveCp(next.mode === 'coach' ? lastWhiteCp.current : null)
     setLiveMate(null) // recalée par la prochaine éval (le mat n'est pas mémorisé dans la partie stockée)
     setCoachMsg(next.mode === 'coach' ? (restored ? { text: 'On reprend la partie.', cls: null, mood: 'thinking' } : greeting()) : null)
@@ -616,18 +626,21 @@ export default function Play() {
     setHintArrow(null)
     setBookBadge(null)
     saveGame()
-    // Recale l'éval sur la position restaurée. FEN et trait capturés MAINTENANT (relire `c.turn()`
-    // après l'await inverserait le signe si un coup est joué pendant la recherche), et passage par
-    // la chaîne live pour ne jamais croiser l'éval d'un coup ; jetée si la partie ou la reprise change.
+    // Recale l'éval et le meilleur coup sur la position restaurée. FEN et trait capturés MAINTENANT
+    // (relire `c.turn()` après l'await inverserait le signe si un coup est joué pendant la recherche),
+    // et passage par la chaîne live pour ne jamais croiser l'éval d'un coup ; jetée si la partie ou
+    // la reprise change.
     const seq = g.seq
     const gen = takebackGen.current
     const fenNow = c.fen()
     const turnNow = c.turn()
+    lastBestUci.current = null
     liveChain.current = liveChain.current.then(async () => {
       if (seq !== gameSeq.current || gen !== takebackGen.current) return
-      const { whiteCp, whiteMate } = await evalWhite((coachEngineRef.current ??= new Engine()), fenNow, turnNow)
+      const { whiteCp, whiteMate, bestUci } = await evalWhite((coachEngineRef.current ??= new Engine()), fenNow, turnNow)
       if (seq !== gameSeq.current || gen !== takebackGen.current) return
       lastWhiteCp.current = whiteCp
+      lastBestUci.current = bestUci
       setLiveCp(whiteCp)
       setLiveMate(whiteMate)
       setCoachMsg({ text: 'On reprend ici. Cherche un meilleur plan.', cls: null, mood: 'thinking' })
