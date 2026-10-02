@@ -109,6 +109,7 @@ export default function Archive() {
   const [total, setTotal] = useState<number | null>(null)
   const [pendingId, setPendingId] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   // Suppression en attente, lue par les nettoyages (sortie de page, page cachée) sans fermeture périmée.
   const pendingRef = useRef<{ id: number; timer: number } | null>(null)
 
@@ -121,21 +122,21 @@ export default function Archive() {
   }, [])
 
   async function loadMore() {
-    setBusy(true)
+    setLoadingMore(true)
     try {
       const rows = await newestFirst().offset(games.length).limit(PAGE).toArray()
       setGames((gs) => [...gs, ...rows])
     } finally {
-      setBusy(false)
+      setLoadingMore(false)
     }
   }
 
   const commit = useCallback(async (id: number) => {
     setBusy(true)
-    setGames((gs) => gs.filter((g) => g.id !== id))
-    setTotal((n) => (n === null ? n : n - 1))
     try {
       await db.games.delete(id)
+      setGames((gs) => gs.filter((g) => g.id !== id))
+      setTotal((n) => (n === null ? n : n - 1))
     } finally {
       setPendingId((cur) => (cur === id ? null : cur))
       setBusy(false)
@@ -228,7 +229,7 @@ export default function Archive() {
       {remaining > 0 && (
         <button
           onClick={() => void loadMore()}
-          disabled={busy}
+          disabled={busy || loadingMore}
           className="mt-3 w-full cursor-pointer rounded bg-surface-2 py-3 text-sm font-semibold text-neutral-300 hover:bg-surface-3 disabled:opacity-40"
         >
           Voir plus ({remaining} restante{remaining > 1 ? 's' : ''})
