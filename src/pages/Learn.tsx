@@ -19,7 +19,7 @@ import { openingDe, openingFamilyFr } from '../lib/openingNames'
 import { figurine, winPct } from '../lib/review'
 import { sounds } from '../lib/sounds'
 import { useSettings } from '../store/settings'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 type ItemPhase = 'lesson' | 'play' | 'success' | 'fail'
 
@@ -326,6 +326,17 @@ export default function Learn() {
           « Mes erreurs » se remplit automatiquement quand tu fais le bilan d'une partie.
         </p>
       )}
+      <Link
+        to="/ouvertures"
+        className="mt-4 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
+      >
+        <span className="text-2xl">🧭</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Entraîneur d'ouvertures</span>
+          <span className="block text-xs text-neutral-400">Sicilienne, écossaise, gambit dame… variante par variante</span>
+        </span>
+        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
+      </Link>
     </div>
   )
 }

@@ -52,7 +52,11 @@ export interface Mistake {
 export interface LearnSession {
   id?: number
   date: number
-  domain: string // endgame | tactic | opening | strategy | mistakes
+  // endgame | tactic | opening | strategy | mistakes, ou opening-drill (entraîneur d'ouvertures).
+  // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
+  // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
+  // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).
+  domain: string
   itemId: string
   success: 0 | 1
   ratingAfter: number | null
