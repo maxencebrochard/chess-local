@@ -16,6 +16,7 @@ import re
 import subprocess
 import tempfile
 
+import coach_oracle as oracle
 from helpers import BASE, SHOTS, Checker, click_square as sq, mobile_context
 
 ck = Checker("coach")
@@ -65,7 +66,8 @@ def texts_part():
                        cwd=ROOT, capture_output=True, text=True)
     if not check("[textes] bundle rolldown", r.returncode == 0, (r.stderr or r.stdout)[-300:]):
         return
-    r = subprocess.run(["node", os.path.join(E2E, "coach_texts.mjs"), bundle], cwd=ROOT, capture_output=True, text=True)
+    r = subprocess.run(["node", os.path.join(E2E, "coach_texts.mjs"), bundle, os.path.join(ROOT, "public", "puzzles.json")],
+                       cwd=ROOT, capture_output=True, text=True)
     if not check("[textes] harnais Node", r.returncode == 0, r.stderr[-400:]):
         return
     data = json.loads(r.stdout)
@@ -172,6 +174,90 @@ def texts_part():
     bl = next(r for r in live if r["label"] == "blunder" and r["i"] == 2)
     check("[live] la gaffe du joueur nomme le coup en figurine", "♕h5" in (bl["text"] or "") + (bl["headline"] or ""), f"({bl['text']})")
     check("[live] salutations variées", len(set(data["greetings"])) >= 3, f"({len(set(data['greetings']))} distinctes sur 12)")
+    q = data.get("quick") or {}
+    want = {"noBest": "excellent", "best": "best", "drop3": "excellent", "drop5": "good", "drop8": "inaccuracy", "drop15": "mistake", "drop25": "blunder"}
+    check("[live] quickClass : meilleur seulement pour le coup du moteur, seuils de review.ts", q == want, f"({q})")
+    motifs_part(data)
+
+
+# Seuils minimaux de phrases par motif sur les positions réelles : prouvent que chaque
+# détecteur est branché (bilan et live), pas seulement écrit.
+MIN_CLAIMS = {"fourchette": 40, "clouage": 5, "enfilade": 3, "couloir": 5, "pion_passe": 3, "mat_en_1": 20, "prise_gratuite": 10, "non_defendue": 3}
+MIN_LIVE = {"fourchette": 10, "mat_en_1": 3}
+
+
+def motifs_part(data):
+    """Détecteurs contre l'oracle python-chess, puis chaque motif annoncé revérifié sur l'échiquier."""
+    rows = data.get("detectors") or []
+    check("[motifs] détecteurs exercés sur des positions de puzzles", len(rows) > 2000, f"({len(rows)} coups)")
+    mism = {"fork": [], "line": [], "br": [], "pp": []}
+    pos = dict.fromkeys(mism, 0)
+    for r in rows:
+        f = oracle.fork(r["fen"], r["uci"])
+        if sorted(f or []) != sorted(r["fork"] or []):
+            mism["fork"].append((r["id"], r["j"], r["fork"], f))
+        lm = oracle.line_motif(r["fen"], r["uci"])
+        if (list(lm) if lm else None) != r["line"]:
+            mism["line"].append((r["id"], r["j"], r["line"], lm))
+        if oracle.back_rank_mate(r["fen"], r["uci"]) != r["br"]:
+            mism["br"].append((r["id"], r["j"], r["br"]))
+        if oracle.passed_pawn_created(r["fen"], r["uci"]) != r["pp"]:
+            mism["pp"].append((r["id"], r["j"], r["pp"]))
+        pos["fork"] += bool(r["fork"]); pos["line"] += bool(r["line"]); pos["br"] += r["br"]; pos["pp"] += r["pp"]
+    abs_bad = [(r["id"], r["j"]) for r in rows if r["line"] and r["line"][0] == "clouage" and r["line"][2] == "k" and not oracle.absolute_pin(r["fen"], r["uci"])]
+    abs_n = sum(1 for r in rows if r["line"] and r["line"][0] == "clouage" and r["line"][2] == "k")
+    check(f"[motifs] chaque clouage sur le roi est un clouage absolu pour python-chess (Board.pin, {abs_n} cas)", abs_n > 0 and not abs_bad, f"({abs_bad[:3]})")
+    check("[motifs] aucune exception dans le harnais (marqueur manquant, détecteur)", not data.get("errors"), f"({len(data.get('errors') or [])} : {(data.get('errors') or [])[:2]})")
+    for k, label in (("fork", "fourchette"), ("line", "clouage / enfilade"), ("br", "mat du couloir"), ("pp", "pion passé créé")):
+        check(f"[motifs] {label} : détecteur identique à l'oracle python-chess sur chaque coup ({pos[k]} positifs)",
+              rows and not mism[k] and pos[k] > 0, f"({len(mism[k])} écarts : {mism[k][:2]})")
+    # Rappel sur les thèmes lichess (un thème porte sur tout le puzzle : rappel seulement).
+    by = {}
+    for r in rows:
+        by.setdefault(r["id"], []).append(r)
+    fork_tag = [rs for rs in by.values() if "fork" in rs[0]["themes"].split()]
+    fork_hit = [rs for rs in fork_tag if any(r["fork"] for r in rs if r["j"] % 2 == 1 and r["j"] < len(rs) - 1)]
+    check("[motifs] rappel fourchette sur les puzzles étiquetés « fork » ≥ 90 %", fork_tag and len(fork_hit) >= 0.9 * len(fork_tag), f"({len(fork_hit)}/{len(fork_tag)})")
+    br_tag = [rs for rs in by.values() if "backRankMate" in rs[0]["themes"].split()]
+    br_hit = [rs for rs in br_tag if rs[-1]["br"]]
+    check("[motifs] rappel mat du couloir sur les puzzles « backRankMate » ≥ 90 %", br_tag and len(br_hit) >= 0.9 * len(br_tag), f"({len(br_hit)}/{len(br_tag)})")
+    hand = data.get("hand") or []
+    for h in hand:
+        got = {k: h["got"][k] for k in h["want"]}
+        if "fork" in got and got["fork"]:
+            got["fork"] = sorted(got["fork"]); h["want"]["fork"] = sorted(h["want"]["fork"])
+        check(f"[motifs] cas à la main : {h['label']}", got == h["want"], f"(obtenu {got}, attendu {h['want']})")
+
+    # Chaque motif annoncé par le coach doit exister sur l'échiquier.
+    def audit_all(name, items, mins):
+        counts, errors = {}, []
+        for it in items:
+            claims, errs = oracle.audit(it)
+            for c in claims:
+                counts[c] = counts.get(c, 0) + 1
+            errors += [f"{it['label']}#{it.get('i', '')} {e} « {it['body'][:70]} »" for e in errs]
+        check(f"[{name}] chaque motif annoncé existe sur l'échiquier ({sum(counts.values())} annonces)", not errors, f"({len(errors)} : {errors[:3]})")
+        for motif, n in mins.items():
+            check(f"[{name}] motif « {motif} » branché (≥ {n} annonces)", counts.get(motif, 0) >= n, f"({counts.get(motif, 0)})")
+        return counts
+
+    scen = [{**c, "label": s["label"], "mover": c.get("mover") or "w"} for s in data["scenarios"] for c in s["comments"] if c.get("fenBefore")]
+    audit_all("bilan, scénarios", scen, {})
+    audit_all("bilan, puzzles", data.get("puzzleComments") or [], MIN_CLAIMS)
+    audit_all("live, puzzles", data.get("puzzleLive") or [], MIN_LIVE)
+    narrative = re.compile(r"Phase par phase|Le fil de la partie|Ton ouverture a été|En résumé : une ouverture")
+    custom = next(s for s in data["scenarios"] if s["label"] == "custom_black")
+    check("[phases] départ custom : pas de phase d'ouverture", bool(custom.get("phases")) and custom["phases"]["opening"] == {"w": "none", "b": "none"}, f"({custom.get('phases')})")
+    ref_w = next(s for s in data["scenarios"] if s["label"] == "ref_w")
+    check("[phases] partie de 14 demi-coups : pas de récit par phases", narrative.search(ref_w["summary"]) is None, f"({ref_w['summary'][:120]})")
+    long_ = next(s for s in data["scenarios"] if s["label"] == "long")
+    check("[phases] partie de 120 demi-coups : récit par phases", narrative.search(long_["summary"]) is not None, f"({long_['summary'][:120]})")
+    # Garde-fou de régression (secondes de gel), large : la machine de test peut être chargée.
+    check("[motifs] coach rapide : 120 demi-coups commentés en moins de 800 ms (Node)", long_.get("ms", 1e9) < 800, f"({long_.get('ms', 0):.0f} ms)")
+    guided = [c["body"] for s in data["scenarios"] for c in s["comments"]] + [c["body"] for c in data.get("puzzleComments") or []] \
+        + [r["text"] or "" for r in (data.get("puzzleLive") or []) + data["live"]]
+    too_long = sorted({b for b in guided if len(b) > 135}, key=len, reverse=True)
+    check("[motifs] bulles (bilan et live) : corps de 135 caractères au plus", not too_long, f"({len(too_long)} : {too_long[:2]})")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -238,24 +324,24 @@ def centred(name, m, tol=2.0):
     return check(name, abs(dx) <= tol and abs(dy) <= tol and inside, f"(dx={dx:+.1f} dy={dy:+.1f} px, dans le cercle : {inside})")
 
 
-def seed_bot_game(page):
+def seed_bot_game(page, pgn=PGN, color="w", result="0-1"):
     """Partie contre un bot dans la table Dexie `games` : `reviewColor` posé, coups adverses commentés."""
     page.goto(f"{BASE}/#/archive")
     page.wait_for_timeout(800)
-    return page.evaluate("""(pgn) => new Promise((resolve, reject) => {
+    return page.evaluate("""([pgn, color, result]) => new Promise((resolve, reject) => {
       const req = indexedDB.open('chess-local')
       req.onerror = () => reject(req.error)
       req.onsuccess = () => {
         const db = req.result
         const tx = db.transaction('games', 'readwrite')
         const add = tx.objectStore('games').add({
-          date: Date.now(), mode: 'bot', botId: 'noa', playerColor: 'w', timeControl: 'illimité',
-          timeClass: 'unlimited', pgn, result: '0-1', termination: 'mat',
+          date: Date.now(), mode: 'bot', botId: 'noa', playerColor: color, timeControl: 'illimité',
+          timeClass: 'unlimited', pgn, result, termination: 'mat',
         })
         add.onsuccess = () => resolve(add.result)
         add.onerror = () => reject(add.error)
       }
-    })""", PGN)
+    })""", [pgn, color, result])
 
 
 def run_review(page, game_id, tag):
@@ -371,6 +457,63 @@ def display_852(p, browser):
     return game_id
 
 
+# Partie de l'Opéra (Morphy, 1858), vue des Noirs : bilan Stockfish réel, chaque bulle auditée.
+OPERA = ("1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5 6. Bc4 Nf6 7. Qb3 Qe7 8. Nc3 c6 9. Bg5 b5 "
+         "10. Nxb5 cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7 Rxd7 14. Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8#")
+
+
+# L'Immortelle (Anderssen, 1851), vue des Blancs : sacrifices, mat final ♗e7#.
+IMMORTELLE = ("1. e4 e5 2. f4 exf4 3. Bc4 Qh4+ 4. Kf1 b5 5. Bxb5 Nf6 6. Nf3 Qh6 7. d3 Nh5 8. Nh4 Qg5 9. Nf5 c6 "
+              "10. g4 Nf6 11. Rg1 cxb5 12. h4 Qg6 13. h5 Qg5 14. Qf3 Ng8 15. Bxf4 Qf6 16. Nc3 Bc5 17. Nd5 Qxb2 "
+              "18. Bd6 Bxg1 19. e5 Qxa1+ 20. Ke2 Na6 21. Nxg7+ Kd8 22. Qf6+ Nxf6 23. Be7#")
+
+
+def real_game_audit(p, browser):
+    audit_game(p, browser, "opéra", OPERA, "b", "1-0")
+    audit_game(p, browser, "immortelle", IMMORTELLE, "w", "1-0")
+
+
+def audit_game(p, browser, tag, pgn, color, result):
+    import chess
+    import chess.pgn
+    import io
+    ctx = mobile_context(p, browser, ck, standalone=True)
+    page = ctx.new_page()
+    game_id = seed_bot_game(page, pgn, color, result)
+    if not run_review(page, game_id, tag):
+        ctx.close()
+        return
+    page.click("text=Démarrer le bilan")
+    page.wait_for_timeout(600)
+    page.locator(".fixed button[data-current]").first.click()
+    page.wait_for_timeout(400)
+    bodies = []
+    while len(bodies) < 80:
+        m = metrics(page, ".fixed")
+        bodies.append(m["bodyText"] if m else "")
+        cta = page.locator(".fixed button", has_text=re.compile(r"^(Suivant|Résumé)$")).last
+        if cta.inner_text().strip() == "Résumé":
+            break
+        cta.click()
+        page.wait_for_timeout(300)
+    board = chess.pgn.read_game(io.StringIO(pgn)).board()
+    moves = list(chess.pgn.read_game(io.StringIO(pgn)).mainline_moves())
+    rows, claims, errors = [], {}, []
+    for i, mv in enumerate(moves[:len(bodies)]):
+        fb = board.fen()
+        mover = "w" if board.turn else "b"
+        board.push(mv)
+        row = {"label": tag, "i": i, "body": bodies[i], "fenBefore": fb, "fenAfter": board.fen(), "uci": mv.uci(), "mover": mover, "cls": None, "any": True}
+        cl, errs = oracle.audit(row)
+        for c in cl:
+            claims[c] = claims.get(c, 0) + 1
+        errors += [f"{i} {e} « {bodies[i][:60]} »" for e in errs]
+    check(f"[{tag}] bilan Stockfish réel parcouru en entier ({len(moves)} demi-coups)", len(bodies) == len(moves), f"({len(bodies)})")
+    check(f"[{tag}] chaque motif annoncé existe sur l'échiquier ({claims})", not errors, f"({errors[:3]})")
+    page.screenshot(path=f"{SHOTS}/coach_{tag}_852.png")
+    ctx.close()
+
+
 def display_660(p, browser):
     ctx = mobile_context(p, browser, ck, standalone=False)
     page = ctx.new_page()
@@ -412,6 +555,7 @@ def suite(p):
     browser = p.chromium.launch(headless=True)
     display_852(p, browser)
     display_660(p, browser)
+    real_game_audit(p, browser)
     browser.close()
 
 
