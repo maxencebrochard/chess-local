@@ -376,15 +376,17 @@ function ExerciseView(props: ExerciseProps) {
   if (phase === 'lesson') {
     return (
       <div className="flex flex-1 flex-col justify-center gap-3 p-4">
-        <CoachBubble mood="happy" headline={lesson.title}>{lesson.text}</CoachBubble>
-        {course && (
-          <button
-            onClick={onShowCourse}
-            className="mx-auto cursor-pointer rounded-full bg-surface-2 px-4 py-1.5 text-sm font-semibold text-neutral-300 hover:bg-surface-3"
-          >
-            ❓ Voir le cours complet
-          </button>
-        )}
+        <CoachBubble
+          mood="happy"
+          headline={lesson.title}
+          footer={course && (
+            <button onClick={onShowCourse} className="cursor-pointer text-sm font-semibold text-accent underline underline-offset-2">
+              Voir le cours complet
+            </button>
+          )}
+        >
+          {lesson.text}
+        </CoachBubble>
         <Cta className="w-full" onClick={() => setPhase('play')}>
           C'est parti
         </Cta>
@@ -585,7 +587,7 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
       >
         {outcome
           ? outcome.reason
-          : `Objectif : ${eg.objective === 'win' ? 'gagne cette position' : 'tiens la nulle'} - trait aux ${eg.side === 'w' ? 'Blancs' : 'Noirs'}`}
+          : `Objectif : ${eg.objective === 'win' ? 'gagne cette position' : 'tiens la nulle'}, trait aux ${eg.side === 'w' ? 'Blancs' : 'Noirs'}`}
       </div>
       <HEvalBar cp={liveCp} mate={liveMate} />
       <div className="flex justify-center">
@@ -669,7 +671,7 @@ function OpeningExercise({ item, phase, onFinish }: ExerciseProps) {
   return (
     <div className="flex flex-col gap-2 px-3">
       <div className="truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold">
-        {openingFamilyFr(line.name)}, les {Math.ceil(depth / 2)} premiers coups, côté {playerColor === 'w' ? 'blanc' : 'noir'}
+        {openingFamilyFr(line.name)} : les {Math.ceil(depth / 2)} premiers coups, côté {playerColor === 'w' ? 'blanc' : 'noir'}
       </div>
       {/* Hauteur réservée : l'apparition du message ne doit pas faire sauter le board. */}
       <p className={`min-h-[34px] rounded px-3 py-1.5 text-sm ${msg ? 'bg-red-900/40 text-red-200' : ''}`}>
