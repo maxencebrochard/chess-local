@@ -88,6 +88,7 @@ Archive et fin de partie passent par `?game=<id>` (lecture dans Dexie), avec `&r
 `MoveClass`, `CLASS_META` (libellés, couleurs, symboles) et les seuils vivent uniquement là.
 En dépendent : `coach.ts` (commentaires post-partie générés par règles), `liveCoach.ts` (classe rapide du mode entraîneur), `ReviewSummary`, `EvalGraph`, `MoveList`.
 Un bilan écrit les fautes dans la table `mistakes`, rejouées ensuite dans Apprendre → Mes erreurs.
+L'entraîneur d'ouvertures (`/ouvertures`, `src/lib/openingTrainer.ts`) enregistre ses tentatives dans `learnSessions` avec le domaine `opening-drill` (format d'`itemId` documenté dans `db.ts`) ; `pickNextDomain` les ignore.
 
 ### Persistance
 

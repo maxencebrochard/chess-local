@@ -73,7 +73,10 @@ function pick<T>(arr: T[]): T {
 // une fois sur trois quand il y a du stock.
 export async function pickNextDomain(): Promise<LearnDomain> {
   const pending = await db.mistakes.where('solved').equals(0).count()
-  const sessions = await db.learnSessions.orderBy('date').reverse().limit(30).toArray()
+  // Filtre avant la limite : les tentatives de l'entraîneur d'ouvertures (domaine
+  // 'opening-drill') ne doivent pas chasser les domaines d'Apprendre de la fenêtre.
+  const learnDomains = new Set<string>(Object.keys(DOMAIN_META))
+  const sessions = await db.learnSessions.orderBy('date').reverse().filter((s) => learnDomains.has(s.domain)).limit(30).toArray()
   if (pending > 0) {
     const sinceMistakes = sessions.findIndex((s) => s.domain === 'mistakes')
     if (sinceMistakes === -1 || sinceMistakes >= 3) return 'mistakes'
