@@ -52,7 +52,7 @@ export interface Mistake {
 export interface LearnSession {
   id?: number
   date: number
-  // endgame | tactic | opening | strategy | mistakes, ou opening-drill (entraîneur d'ouvertures).
+  // endgame | tactic | opening | strategy | mistakes | endgame-play, ou opening-drill (entraîneur d'ouvertures).
   // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
   // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
   // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).
@@ -60,6 +60,7 @@ export interface LearnSession {
   itemId: string
   success: 0 | 1
   ratingAfter: number | null
+  fen?: string // finales jouées jusqu'au bout : position de départ (champ non indexé)
 }
 
 export const db = new Dexie('chess-local') as Dexie & {

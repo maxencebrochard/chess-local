@@ -3,6 +3,7 @@
 // de la PWA efface tout. La restauration est la seule opération destructive de l'app, donc :
 // validation du fichier ENTIER d'abord (inspectBackup, pur), puis UNE transaction Dexie.
 import { db } from './db'
+import { POSITION_GAME_KEY } from './positionGame'
 import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, useSettings } from '../store/settings'
 import { BOTS } from './bots'
 import { TIME_CONTROLS } from './timeControls'
@@ -14,9 +15,10 @@ export const MAX_BACKUP_BYTES = 50 * 1024 * 1024
 const MAX_SETTING_STRING = 100 // un pseudo chess.com fait moins de 30 caractères
 // Clé additive, hors sauvegarde et hors réglages : date du dernier export réussi.
 const LAST_EXPORT_KEY = 'chess-local-last-export'
-// Clés de l'app dans localStorage (le persist Zustand et la date du dernier export) et clé de la
-// séance d'Apprendre dans sessionStorage : les seules que la réinitialisation a le droit de toucher.
-const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY]
+// Clés de l'app dans localStorage (le persist Zustand, la date du dernier export, la partie contre
+// le moteur en cours) et clé de la séance d'Apprendre dans sessionStorage : les seules que la
+// réinitialisation a le droit de toucher.
+const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY]
 const LEARN_SESSION_KEY = 'learn-session-v1'
 
 export const TABLES = ['games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions'] as const

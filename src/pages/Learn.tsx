@@ -310,6 +310,16 @@ export default function Learn() {
           </button>
         ))}
         <button
+          onClick={() => navigate('/finales')}
+          className="col-span-2 flex cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
+        >
+          <span className="text-2xl">🏁</span>
+          <span className="min-w-0">
+            <span className="block font-bold">Jouer une finale jusqu'au bout</span>
+            <span className="block text-xs text-neutral-400">Contre Stockfish, sans limite de coups</span>
+          </span>
+        </button>
+        <button
           onClick={() => void start('mistakes')}
           disabled={mistakeCount === 0}
           className="col-span-2 flex cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3 disabled:cursor-default disabled:opacity-40"
