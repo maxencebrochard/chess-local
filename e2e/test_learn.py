@@ -247,6 +247,13 @@ def suite(p):
     check("[analyse] Analyser ouvre /analyse", "#/analyse" in page.url or page.evaluate("() => location.hash") == "#/analyse")
     back_btn = page.locator("button", has_text="Retour à l'exercice")
     check("[analyse] bouton retour visible", back_btn.is_visible())
+    # Partie contre le moteur depuis cette analyse puis retour : l'analyse rouverte garde son
+    # bouton de retour vers l'exercice.
+    page.locator("main button", has_text="Options").click()
+    page.locator("button", has_text="Jouer contre le moteur").locator("visible=true").click()
+    ck.appears("[analyse] partie contre le moteur", page, "[data-testid='position-game']")
+    page.get_by_role("button", name="Retour").click()
+    ck.appears("[analyse] retour de la partie : bouton retour à l'exercice", page, "button:has-text(\"Retour à l'exercice\")")
     back_btn.click()
     page.wait_for_timeout(800)
     check("[learn] retour restaure la séance", page.evaluate("() => location.hash") == "#/apprendre")

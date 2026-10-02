@@ -421,7 +421,15 @@ export default function Analysis() {
   function playFromHere() {
     setShowOptions(false)
     // `back` : de quoi rouvrir cette analyse au retour (elle ne persiste rien d'elle-même).
-    const back = { fen: startFen, uci: moves.map((m) => m.lan), viewIndex, orientation, label: gameMeta ?? undefined }
+    const back = {
+      fen: startFen,
+      uci: moves.map((m) => m.lan),
+      viewIndex,
+      orientation,
+      label: gameMeta ?? undefined,
+      returnTo: returnTo ?? undefined,
+      returnLabel,
+    }
     navigate('/analyse/jouer', { state: { fen: viewFen, label: gameMeta, back } })
   }
 
