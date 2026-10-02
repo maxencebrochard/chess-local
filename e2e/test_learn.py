@@ -3,8 +3,12 @@
 Usage : npm run test:e2e -- --suite learn
 """
 import json
+import re
 
 from helpers import BASE, SHOTS, Checker, click_square as sq, mobile_context, overflow_x
+
+# Bouton du domaine Finales (et pas la carte « Cours de finales »).
+FINALES = re.compile(r"^\W*Finales$")
 
 PGN = "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nd4 4. Nxe5 Qg5 5. Nxf7 Qxg2 6. Rf1 Qxe4+ 7. Be2 Nf3#"
 ck = Checker("learn")
@@ -107,7 +111,7 @@ def suite(p):
     page.screenshot(path=f"{SHOTS}/learn_home.png")
 
     # --- Séance Finales (leçon -> cours -> jeu) ---
-    page.locator("main button", has_text="Finales").click()
+    page.locator("main button", has_text=FINALES).click()
     page.wait_for_timeout(1200)
     check("[learn] leçon finale affichée", page.locator(".bg-white").first.is_visible())
     page.screenshot(path=f"{SHOTS}/learn_lesson.png")

@@ -12,6 +12,7 @@ sur une FEN reconstruite depuis le DOM : aucune dépendance à python-chess ni �
 
 Usage : npm run test:e2e -- --suite endgames
 """
+import re
 import json
 import os
 import subprocess
@@ -19,6 +20,9 @@ import sys
 import time
 
 from helpers import BASE, E2E_DIR, Checker, drag_piece, mobile_context, shot, tap_move
+
+# Bouton du domaine Finales (et pas la carte « Cours de finales »).
+FINALES = re.compile(r"^\W*Finales$")
 
 ROOT = os.path.dirname(E2E_DIR)
 ck = Checker("endgames")
@@ -151,7 +155,7 @@ def start_endgame(page, eg_id):
     ck.appears("[séance] accueil Apprendre", page, "main button:has-text('Finales')")
     elo = page.evaluate(READ_RATING)
     page.evaluate("(x) => { window.__rndQ = [x] }", rnd_for(eg_id, DEFAULT_ELO if elo is None else elo))
-    page.locator("main button", has_text="Finales").first.tap()
+    page.locator("main button", has_text=FINALES).tap()
     ck.appears(f"[séance] leçon {eg_id}", page, "text=C'est parti")
     raw = page.evaluate("() => sessionStorage.getItem('learn-session-v1')")
     served = None

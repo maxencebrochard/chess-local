@@ -52,6 +52,8 @@ Autres scripts :
 
 - `node scripts/prepare-data.mjs` régénère `public/puzzles.json` et `src/data/openings.json`.
   Il lit `data/puzzles_full.csv` (dump lichess décompressé), absent du repo : seuls les `data/openings_*.tsv` sont versionnés.
+- `python3 scripts/verify-endgame-course.py` revérifie `src/data/endgameCourse.json` contre les tables de finales lichess (réseau) et réécrit son tampon `scripts/endgame-course.verified`.
+  À lancer après toute modification du cours de finales : sans tampon à jour, `scripts/check-endgame-course.mjs` (suite `endgame_course`) échoue.
 - `scripts/deploy.sh` build puis force-push `dist/` sur la branche `gh-pages`.
   Action sortante : ne pas le lancer sans demande explicite.
 - `?debug-uci` dans l'URL logge le trafic UCI en console.
@@ -112,7 +114,8 @@ Un nouvel asset lourd ou une nouvelle extension doit être couvert par `globPatt
 ### Données
 
 `public/puzzles.json` : 120 000 puzzles lichess au format compact `[id, fen, moves, rating, themes]`, hors bundle, chargés une fois par `loadPuzzles()`.
-`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français).
+`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`).
+Une leçon terminée est une ligne `learnSessions` `{ domain: 'course', itemId: 'finales:<id>' }` : les ids de leçons sont figés (`FROZEN_IDS` du contrôle).
 Les noms d'ouvertures sont en anglais dans les données et traduits à l'affichage par `openingNames.ts`.
 
 ### UI

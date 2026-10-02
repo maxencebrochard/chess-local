@@ -73,9 +73,9 @@ function pick<T>(arr: T[]): T {
 // une fois sur trois quand il y a du stock.
 export async function pickNextDomain(): Promise<LearnDomain> {
   const pending = await db.mistakes.where('solved').equals(0).count()
-  // Filtre avant la limite : les tentatives de l'entraîneur d'ouvertures (domaine 'opening-drill')
-  // et les finales jouées jusqu'au bout (domaine 'endgame-play') ne doivent pas chasser les domaines
-  // d'Apprendre de la fenêtre.
+  // Filtre avant la limite : les tentatives de l'entraîneur d'ouvertures (domaine 'opening-drill'),
+  // les finales jouées jusqu'au bout (domaine 'endgame-play') et les leçons du cours de finales
+  // (domaine 'course') ne doivent pas chasser les domaines d'Apprendre de la fenêtre.
   const learnDomains = new Set<string>(Object.keys(DOMAIN_META))
   const sessions = await db.learnSessions.orderBy('date').reverse().filter((s) => learnDomains.has(s.domain)).limit(30).toArray()
   if (pending > 0) {
@@ -156,6 +156,12 @@ export async function buildSession(domain: LearnDomain): Promise<Session> {
     difficulty: 0,
   }))
   return { domain, items }
+}
+
+// Séance sur un exercice de finale précis (bouton « S'entraîner » d'une leçon du cours).
+export function buildEndgameSession(id: string): Session | null {
+  const item = ENDGAMES.find((e) => e.id === id)
+  return item ? { domain: 'endgame', items: [{ kind: 'endgame', endgame: item, difficulty: item.difficulty }] } : null
 }
 
 // Enregistre le résultat d'un item et met à jour l'Elo du domaine.

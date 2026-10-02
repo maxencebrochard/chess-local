@@ -10,9 +10,10 @@ import { PuzzlePlayer } from '../components/PuzzlePlayer'
 import { puzzleContinuationStart, puzzlePlayerColor, useExerciseContinuation } from '../components/useExerciseContinuation'
 import { courseFor, type Course } from '../lib/courses'
 import { db } from '../lib/db'
+import { completedLessons, lessonForExercise, LESSON_IDS } from '../lib/endgameCourse'
 import { Engine } from '../lib/engine'
 import {
-  buildSession, DOMAIN_META, domainRating, pickNextDomain, scoreItem,
+  buildEndgameSession, buildSession, DOMAIN_META, domainRating, pickNextDomain, scoreItem,
   type EndgameGoal, type LearnDomain, type Session, type SessionItem,
 } from '../lib/learn'
 import { openingDe, openingFamilyFr } from '../lib/openingNames'
@@ -31,6 +32,7 @@ interface StoredSession {
   phase: ItemPhase
   results: boolean[]
   scoredItems: number[]
+  returnTo?: string // leçon du cours de finales à rouvrir en fin de séance
 }
 
 export default function Learn() {
@@ -47,6 +49,8 @@ export default function Learn() {
   const [loading, setLoading] = useState(false)
   const [retryTick, setRetryTick] = useState(0)
   const [showCourse, setShowCourse] = useState(false)
+  const [returnTo, setReturnTo] = useState<string | null>(null)
+  const [lessonsDone, setLessonsDone] = useState(0)
   const scoredItems = useRef(new Set<number>())
   const engineRef = useRef<Engine | null>(null)
 
@@ -56,6 +60,8 @@ export default function Learn() {
     )
     setRatings(Object.fromEntries(entries))
     setMistakeCount(await db.mistakes.where('solved').equals(0).count())
+    const done = await completedLessons()
+    setLessonsDone(LESSON_IDS.filter((id) => done.has(id)).length)
   }, [])
 
   useEffect(() => {
@@ -71,9 +77,22 @@ export default function Learn() {
   )
 
   // Retour depuis l'analyseur (bouton « Analyser ») : restaure la séance en cours.
+  // Venue d'une leçon (« S'entraîner ») : séance sur l'exercice demandé, avec retour au cours.
   useEffect(() => {
-    const state = location.state as { restore?: boolean } | null
-    if (state?.restore) {
+    const state = location.state as { restore?: boolean; endgame?: string; returnTo?: string } | null
+    if (state?.endgame) {
+      const s = buildEndgameSession(state.endgame)
+      if (s) {
+        setSession(s)
+        setItemIdx(0)
+        setResults([])
+        setRatingDelta(null)
+        scoredItems.current.clear()
+        setPhase('lesson')
+        setReturnTo(state.returnTo ?? null)
+      }
+      navigate('.', { replace: true, state: null })
+    } else if (state?.restore) {
       const raw = sessionStorage.getItem(SESSION_KEY)
       if (raw) {
         try {
@@ -83,6 +102,7 @@ export default function Learn() {
           setPhase(saved.phase)
           setResults(saved.results)
           scoredItems.current = new Set(saved.scoredItems)
+          setReturnTo(saved.returnTo ?? null)
         } catch {}
       }
       navigate('.', { replace: true, state: null })
@@ -93,12 +113,12 @@ export default function Learn() {
   // Persiste la séance active pour pouvoir la restaurer après un aller-retour vers l'analyseur.
   useEffect(() => {
     if (session && session.items.length > 0) {
-      const stored: StoredSession = { session, itemIdx, phase, results, scoredItems: [...scoredItems.current] }
+      const stored: StoredSession = { session, itemIdx, phase, results, scoredItems: [...scoredItems.current], returnTo: returnTo ?? undefined }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
     } else {
       sessionStorage.removeItem(SESSION_KEY)
     }
-  }, [session, itemIdx, phase, results])
+  }, [session, itemIdx, phase, results, returnTo])
 
   function getEngine(): Engine {
     engineRef.current ??= new Engine()
@@ -117,6 +137,7 @@ export default function Learn() {
       setRatingDelta(null)
       scoredItems.current.clear()
       setPhase('lesson')
+      setReturnTo(null)
     } finally {
       setLoading(false)
     }
@@ -194,6 +215,16 @@ export default function Learn() {
     }
   }
 
+  // Quitte la séance : vers la leçon d'origine si elle vient du cours, sinon accueil d'Apprendre.
+  function closeSession() {
+    setSession(null)
+    setResults([])
+    if (returnTo) {
+      setReturnTo(null)
+      navigate(returnTo, { replace: true })
+    }
+  }
+
   // ---------- Écran de fin de séance ----------
   if (session && session.items.length === 0) {
     const ok = results.filter(Boolean).length
@@ -210,12 +241,19 @@ export default function Learn() {
               <> · classement <b className="text-white">{ratings[session.domain]}</b></>
             )}
           </p>
-          <Cta className="w-full" onClick={() => void start()}>
+          {returnTo && (
+            <Cta className="w-full" onClick={closeSession}>
+              Retour au cours
+            </Cta>
+          )}
+          <Cta variant={returnTo ? 'secondary' : 'primary'} className="w-full" onClick={() => void start()}>
             Encore une séance
           </Cta>
-          <Cta variant="secondary" className="w-full" onClick={() => { setSession(null); setResults([]) }}>
-            Terminer
-          </Cta>
+          {!returnTo && (
+            <Cta variant="secondary" className="w-full" onClick={closeSession}>
+              Terminer
+            </Cta>
+          )}
         </div>
       </div>
     )
@@ -231,7 +269,7 @@ export default function Learn() {
         <div className="mx-auto flex min-h-full max-w-2xl flex-col">
           <header className="flex items-center px-3 py-1">
             <button
-              onClick={() => { setSession(null); setResults([]) }}
+              onClick={closeSession}
               className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white"
             >
               ✕
@@ -347,6 +385,29 @@ export default function Learn() {
         </span>
         <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
       </Link>
+
+      <p className="mt-5 mb-2 text-sm font-semibold text-neutral-400">Cours :</p>
+      <button
+        onClick={() => navigate('/apprendre/finales')}
+        className="flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
+      >
+        <span className="text-2xl">📚</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Cours de finales</span>
+          <span className="mt-1 flex items-center gap-2">
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
+              <span
+                className="block h-full rounded-full bg-accent"
+                style={{ width: `${(lessonsDone / LESSON_IDS.length) * 100}%` }}
+              />
+            </span>
+            <span data-testid="course-card-progress" className="text-xs font-semibold text-neutral-400">
+              {lessonsDone}/{LESSON_IDS.length} leçons
+            </span>
+          </span>
+        </span>
+        <span className="text-xl text-neutral-500">›</span>
+      </button>
     </div>
   )
 }
@@ -395,6 +456,8 @@ function ExerciseView(props: ExerciseProps) {
   const furtherStart = puzzle && (phase === 'success' || phase === 'fail')
     ? puzzleContinuationStart(puzzle, furthers.step, phase === 'success')
     : null
+  const navigate = useNavigate()
+  const lessonId = item.kind === 'endgame' ? lessonForExercise(item.endgame.id) : null
 
   const lesson =
     item.kind === 'endgame' ? { title: item.endgame.title, text: item.endgame.lesson }
@@ -409,10 +472,22 @@ function ExerciseView(props: ExerciseProps) {
         <CoachBubble
           mood="happy"
           headline={lesson.title}
-          footer={course && (
-            <button onClick={onShowCourse} className="cursor-pointer text-sm font-semibold text-accent underline underline-offset-2">
-              Voir le cours complet
-            </button>
+          footer={(course || lessonId) && (
+            <span className="flex flex-wrap gap-x-4 gap-y-1">
+              {course && (
+                <button onClick={onShowCourse} className="cursor-pointer text-sm font-semibold text-accent underline underline-offset-2">
+                  Voir le cours complet
+                </button>
+              )}
+              {lessonId && (
+                <button
+                  onClick={() => navigate(`/apprendre/finales/${lessonId}`, { state: { fromSession: true } })}
+                  className="cursor-pointer text-sm font-semibold text-accent underline underline-offset-2"
+                >
+                  Voir la leçon
+                </button>
+              )}
+            </span>
           )}
         >
           {lesson.text}

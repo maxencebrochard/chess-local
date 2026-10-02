@@ -19,6 +19,9 @@ import tempfile
 import coach_oracle as oracle
 from helpers import BASE, HOLD_BESTMOVE, SHOTS, Checker, click_square as sq, mobile_context
 
+# Bouton du domaine Finales (et pas la carte « Cours de finales »).
+FINALES = re.compile(r"^\W*Finales$")
+
 ck = Checker("coach")
 check = ck.check
 
@@ -373,7 +376,7 @@ def display_852(p, browser):
     # --- Leçon d'Apprendre ---
     page.goto(f"{BASE}/#/apprendre")
     page.wait_for_timeout(1500)
-    page.locator("main button", has_text="Finales").click()
+    page.locator("main button", has_text=FINALES).click()
     page.wait_for_timeout(1500)
     m = metrics(page, ".fixed")
     centred("[leçon 852] avatar centré dans son cercle", m)
@@ -582,7 +585,7 @@ def display_660(p, browser):
     page = ctx.new_page()
     page.goto(f"{BASE}/#/apprendre")
     page.wait_for_timeout(1500)
-    page.locator("main button", has_text="Finales").click()
+    page.locator("main button", has_text=FINALES).click()
     page.wait_for_timeout(1500)
     centred("[leçon 660] avatar centré", metrics(page, ".fixed"))
     page.screenshot(path=f"{SHOTS}/coach_lesson_660.png")
