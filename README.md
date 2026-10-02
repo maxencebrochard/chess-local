@@ -26,7 +26,7 @@ npm run preview
 - **Import chess.com** : page `/import` — pseudo chess.com (API publique, sans login) → liste des parties récentes → bilan en un tap ; ou coller un lien de partie ; ou Raccourci Apple pour partager depuis l'app chess.com (instructions dans la page).
 - **Sons** : set standard lichess (move, capture, fin de partie, low time, réussite/échec puzzle), préchargés via WebAudio.
 - **Archive** : toutes les parties sauvegardées (IndexedDB), relecture, bilan en un clic, export PGN global.
-- **Stats** : classements par cadence, bilan V/N/D, thèmes d'échiquier, réglages.
+- **Stats** : classements par cadence, bilan V/N/D, thèmes d'échiquier, réglages, sauvegarde et restauration de toutes les données (fichier JSON), état du stockage, réinitialisation de l'app.
 
 ## Architecture
 
