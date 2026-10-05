@@ -670,7 +670,7 @@ export const PHRASES: Record<string, Variant[]> = {
     '{meilleur} faisait une fourchette sur {cible} et {cible2}.',
     'Fourchette manquée : {meilleur} attaquait {cible} et {cible2}.',
     'Il y avait une double attaque : {meilleur}, sur {cible} et {cible2}.',
-    'Regarde {meilleur} : {cible} et {cible2} étaient pris en fourchette.',
+    { m: 'Regarde {meilleur} : {cible} et {cible2} étaient pris en fourchette.', f: 'Regarde {meilleur} : {cible} et {cible2} étaient prises en fourchette.' },
   ],
   'live.joueur.fourchette': [
     'Fourchette ! Tu attaques {cible} et {cible2} en même temps.',
