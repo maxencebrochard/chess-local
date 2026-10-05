@@ -555,7 +555,7 @@ export default function Play() {
           lastWhiteMate.current = whiteMate
           setLiveCp(whiteCp)
           setLiveMate(whiteMate)
-          saveGame()
+          if (chessRef.current.fen() === fenNow) saveGame()
         })
       }
       if (c.turn() !== next.color) {
@@ -680,7 +680,7 @@ export default function Play() {
       lastWhiteMate.current = whiteMate
       setLiveCp(whiteCp)
       setLiveMate(whiteMate)
-      saveGame()
+      if (chessRef.current.fen() === fenNow) saveGame()
       setCoachMsg({ text: 'On reprend ici. Cherche un meilleur plan.', cls: null, mood: 'thinking' })
     })
   }
