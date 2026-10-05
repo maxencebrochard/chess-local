@@ -3,7 +3,9 @@
 // de la PWA efface tout. La restauration est la seule opération destructive de l'app, donc :
 // validation du fichier ENTIER d'abord (inspectBackup, pur), puis UNE transaction Dexie.
 import { db } from './db'
-import { BOARD_THEMES, REVIEW_DEPTHS, useSettings } from '../store/settings'
+import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, useSettings } from '../store/settings'
+import { BOTS } from './bots'
+import { TIME_CONTROLS } from './timeControls'
 
 // Version du format de fichier = version du schéma Dexie : une table ajoutée = nouveau bloc
 // `db.version(n)` = nouvelle version de sauvegarde, avec son `since` dans SPECS.
@@ -237,7 +239,8 @@ function settingsDefaults(): SettingsValues {
 
 // Ne garde que les réglages connus du store, du bon type, de taille raisonnable et parmi les
 // valeurs que l'interface sait afficher : un blob abîmé ou trafiqué ne peut ni écraser une action
-// (`setTheme: "x"`), ni poser un thème ou une profondeur inconnus, ni saturer le localStorage.
+// (`setTheme: "x"`), ni poser un thème, une profondeur, un mode, une couleur, un bot ou une cadence
+// inconnus, ni saturer le localStorage.
 // Retourne null si le blob n'est pas lisible.
 function cleanSettings(raw: unknown): SettingsValues | null {
   if (!isStr(raw)) return null
@@ -258,6 +261,11 @@ function cleanSettings(raw: unknown): SettingsValues | null {
   }
   if (!BOARD_THEMES.some((t) => t.id === state.themeId)) state.themeId = defaults.themeId
   if (!Object.hasOwn(REVIEW_DEPTHS, String(state.reviewDepth))) state.reviewDepth = defaults.reviewDepth
+  // Réglages de l'écran Jouer : même principe, une valeur hors liste revient au défaut.
+  if (!PLAY_MODES.some((m) => m === state.playMode)) state.playMode = defaults.playMode
+  if (!PLAY_COLORS.some((c) => c === state.playColor)) state.playColor = defaults.playColor
+  if (!BOTS.some((b) => b.id === state.playBotId)) state.playBotId = defaults.playBotId
+  if (!TIME_CONTROLS.some((t) => t.label === state.playTcLabel)) state.playTcLabel = defaults.playTcLabel
   return state
 }
 
