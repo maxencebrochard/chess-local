@@ -7,6 +7,7 @@ import { Cta } from '../components/Cta'
 import { EvalBar } from '../components/EvalBar'
 import { EvalGraph } from '../components/EvalGraph'
 import { HEvalBar } from '../components/HEvalBar'
+import { EngineLineRow } from '../components/EngineLineRow'
 import { MoveList } from '../components/MoveList'
 import { MoveStrip } from '../components/MoveStrip'
 import { ReviewSummary } from '../components/ReviewSummary'
@@ -23,6 +24,8 @@ interface RetryState {
   moveIndex: number
   baseFen: string // position avant le coup fautif
   status: 'trying' | 'checking' | 'found' | 'failed'
+  // Essai dont la vérification moteur est en cours : son verdict ne s'applique qu'à lui (CP-11).
+  attemptId?: number
   lastTried?: string
   solutionShown?: boolean
 }
@@ -81,6 +84,13 @@ export default function Analysis() {
   const [returnTo, setReturnTo] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const engineRef = useRef<Engine | null>(null)
+  // Moteur de la vérification de Réessayer, séparé de l'analyse live : le `stop()` du nettoyage
+  // de l'effet live ne doit jamais toucher une vérification en vol.
+  const checkEngineRef = useRef<Engine | null>(null)
+  // Jeton des vérifications de Réessayer : incrémenté à chaque essai vérifié, à chaque Réessayer
+  // et à chaque sortie du mode Réessayer. Un verdict dont le jeton n'est plus le dernier est jeté.
+  const attemptSeq = useRef(0)
+  const checkInFlight = useRef(false)
   // Jeton du bilan en cours : tout résultat d'un bilan remplacé ou annulé est jeté.
   const reviewAbortRef = useRef<AbortController | null>(null)
   const aliveRef = useRef(false)
@@ -263,6 +273,8 @@ export default function Analysis() {
       // Null obligatoire : StrictMode rejoue les effets, un worker terminé ne doit pas être réutilisé.
       engineRef.current?.quit()
       engineRef.current = null
+      checkEngineRef.current?.quit()
+      checkEngineRef.current = null
     }
   }, [])
 
@@ -300,7 +312,7 @@ export default function Analysis() {
       setReview(null)
       setReviewColor(null)
       setReviewStage(null)
-      setRetry(null)
+      clearRetry()
       setGameMeta(null)
       const h = c.header()
       const clean = (v: string | null | undefined, fallback: string) => (v && v !== '?' ? v : fallback)
@@ -322,7 +334,7 @@ export default function Analysis() {
       setReview(null)
       setReviewColor(null)
       setReviewStage(null)
-      setRetry(null)
+      clearRetry()
       setGameMeta(null)
       return true
     } catch {
@@ -347,7 +359,7 @@ export default function Analysis() {
       cancelReview()
       setReview(null)
       setReviewStage(null)
-      setRetry(null)
+      clearRetry()
       return true
     } catch {
       return false
@@ -518,8 +530,26 @@ export default function Analysis() {
     return c.fen()
   }
 
+  // Une vérification abandonnée ne doit pas retarder la suivante : `stop()` passe par le mutex et
+  // attendrait la fin de sa recherche. Le moteur de vérification est jeté, le prochain essai en
+  // recrée un.
+  function abandonCheck() {
+    attemptSeq.current++
+    if (!checkInFlight.current) return
+    checkInFlight.current = false
+    checkEngineRef.current?.quit()
+    checkEngineRef.current = null
+  }
+
   function startRetry(idx: number) {
+    abandonCheck()
     setRetry({ moveIndex: idx, baseFen: fenBeforeMove(idx), status: 'trying' })
+  }
+
+  // Sortie du mode Réessayer : une vérification encore en vol ne rendra plus de verdict.
+  function clearRetry() {
+    abandonCheck()
+    setRetry(null)
   }
 
   const retrySolution = useMemo(() => {
@@ -534,7 +564,7 @@ export default function Analysis() {
   }, [retry, review])
 
   function handleRetryMove(from: string, to: string, promotion?: string): boolean {
-    if (!retry || !review || retry.status === 'checking' || retry.status === 'found') return false
+    if (!aliveRef.current || !retry || !review || retry.status === 'checking' || retry.status === 'found') return false
     const c = new Chess(retry.baseFen)
     let move
     try {
@@ -550,12 +580,15 @@ export default function Analysis() {
       return true
     }
     // Un autre coup peut aussi être bon : on demande au moteur.
-    setRetry({ ...retry, status: 'checking', lastTried: move.san })
+    const id = ++attemptSeq.current
+    setRetry({ ...retry, attemptId: id, status: 'checking', lastTried: move.san })
     void (async () => {
-      engineRef.current ??= new Engine()
-      const engine = engineRef.current
-      await engine.stop()
+      const engine = (checkEngineRef.current ??= new Engine())
+      checkInFlight.current = true
       const res = await engine.search({ fen: c.fen(), depth: REVIEW_DEPTHS[reviewDepth], multipv: 1 })
+      if (!aliveRef.current || attemptSeq.current !== id) return
+      checkInFlight.current = false
+      // Sans ligne, la position après le coup est finie (pat, nulle) : éval nulle.
       const line = res.lines[0]
       const cpAfterUser = line
         ? -(line.scoreMate !== null ? (line.scoreMate > 0 ? 10000 : -10000) : (line.scoreCp ?? 0))
@@ -563,35 +596,12 @@ export default function Analysis() {
       const drop = m.winPctBefore - winPct(cpAfterUser)
       const ok = drop < 5
       if (playSounds) (ok ? sounds.success : sounds.fail)()
-      setRetry((r) => (r ? { ...r, status: ok ? 'found' : 'failed' } : r))
+      setRetry((r) => (r && r.attemptId === id && r.status === 'checking' ? { ...r, status: ok ? 'found' : 'failed' } : r))
     })()
     return true
   }
 
   const lastMove = viewIndex >= 0 ? { from: moves[viewIndex].from, to: moves[viewIndex].to } : null
-
-  function sanLine(line: EngineLine): string {
-    const c = new Chess(viewFen)
-    const sans: string[] = []
-    for (const uci of line.pv.slice(0, 8)) {
-      try {
-        sans.push(c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] }).san)
-      } catch {
-        break
-      }
-    }
-    return sans.join(' ')
-  }
-
-  function lineScore(line: EngineLine): string {
-    const sign = viewChess.turn() === 'w' ? 1 : -1
-    if (line.scoreMate !== null) {
-      const m = sign * line.scoreMate
-      return `M${Math.abs(m)}${m < 0 ? ' (adv.)' : ''}`
-    }
-    const cp = (sign * (line.scoreCp ?? 0)) / 100
-    return ((cp > 0 ? '+' : '') + cp.toFixed(2)).replace('.', ',')
-  }
 
   // --- Écran résumé du bilan (style chess.com, plein écran par-dessus la nav) ---
   if (reviewStage === 'summary' && review) {
@@ -645,7 +655,7 @@ export default function Analysis() {
       <div className="mx-auto flex h-full max-w-2xl flex-col">
         <header className="flex items-center px-3 py-1">
           <button
-            onClick={() => { setRetry(null); setReviewStage('summary') }}
+            onClick={() => { clearRetry(); setReviewStage('summary') }}
             className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white"
           >
             ←
@@ -677,7 +687,7 @@ export default function Analysis() {
                     </button>
                   )}
                   <button
-                    onClick={() => setRetry(null)}
+                    onClick={() => clearRetry()}
                     className="cursor-pointer rounded bg-neutral-200 px-2 py-1 text-xs font-bold hover:bg-neutral-300"
                   >
                     {retry.status === 'found' ? 'Continuer' : 'Quitter'}
@@ -720,10 +730,7 @@ export default function Analysis() {
         {showLines && !retry && (
           <div className="space-y-0.5 px-3 pt-2">
             {lines.slice(0, 2).map((l) => (
-              <div key={l.multipv} className="flex gap-2 truncate text-sm">
-                <span className="w-14 shrink-0 font-bold text-neutral-100">{lineScore(l)}</span>
-                <span className="truncate text-neutral-400">{sanLine(l)}</span>
-              </div>
+              <EngineLineRow key={l.multipv} line={l} fen={viewFen} />
             ))}
           </div>
         )}
@@ -732,7 +739,7 @@ export default function Analysis() {
           sans={moves.map((mv) => mv.san)}
           classes={review.moves.map((mv) => mv.class)}
           currentIndex={viewIndex}
-          onSelect={(i) => { setRetry(null); setViewIndex(i) }}
+          onSelect={(i) => { clearRetry(); setViewIndex(i) }}
           startTurn={startTurn}
         />
         </div>
@@ -744,7 +751,7 @@ export default function Analysis() {
           <Cta
             className="flex-1"
             onClick={() => {
-              setRetry(null)
+              clearRetry()
               setShowBest(false)
               if (viewIndex >= moves.length - 1) setReviewStage('summary')
               else setViewIndex(viewIndex + 1)
@@ -758,8 +765,6 @@ export default function Analysis() {
     )
   }
 
-  const compactLines = lines.slice(0, 2).map((l) => `(${lineScore(l)}) ${sanLine(l)}`)
-
   return (
     <div className="flex h-full flex-col items-center justify-start gap-1.5 p-2 md:flex-row md:items-stretch md:justify-center md:gap-4 md:p-4">
       {/* Barre d'éval horizontale + lignes compactes : mobile uniquement */}
@@ -768,11 +773,15 @@ export default function Analysis() {
         {/* Hauteur fixe (2 lignes) : le board ne doit jamais sauter quand les lignes arrivent. */}
         {engineOn && (
           <div className="mt-1.5 h-[38px] space-y-0.5 overflow-hidden">
-            {[0, 1].map((i) => (
-              <p key={i} className="truncate text-[13px] leading-[17px] text-neutral-400">
-                {compactLines[i] ?? (i === 0 ? (viewChess.isGameOver() ? 'Partie terminée.' : 'Calcul…') : ' ')}
-              </p>
-            ))}
+            {[0, 1].map((i) =>
+              lines[i] ? (
+                <EngineLineRow key={i} line={lines[i]} fen={viewFen} compact />
+              ) : (
+                <p key={i} className="h-[17px] truncate text-[13px] leading-[17px] text-neutral-400">
+                  {i === 0 ? (viewChess.isGameOver() ? 'Partie terminée.' : 'Calcul…') : ' '}
+                </p>
+              ),
+            )}
           </div>
         )}
       </div>
@@ -846,9 +855,8 @@ export default function Analysis() {
           <div className="hidden space-y-1 rounded bg-surface-2 p-2 md:block">
             {lines.length === 0 && <p className="px-1 text-sm text-neutral-500">{viewChess.isGameOver() ? 'Partie terminée.' : 'Calcul…'}</p>}
             {lines.map((l) => (
-              <div key={l.multipv} className="flex gap-2 truncate px-1 text-sm">
-                <span className="w-14 shrink-0 font-bold text-neutral-100">{lineScore(l)}</span>
-                <span className="truncate text-neutral-400">{sanLine(l)}</span>
+              <div key={l.multipv} className="px-1">
+                <EngineLineRow line={l} fen={viewFen} />
               </div>
             ))}
           </div>

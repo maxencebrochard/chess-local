@@ -2,12 +2,14 @@
 // vider tout l'écran (PWA à tuer sur iPhone). Les nav restent hors frontière, donc
 // utilisables ; un changement de route (`resetKey`) réarme la frontière.
 import { Component, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Cta } from './Cta'
 
 interface Props {
   /** Clé de réinitialisation : quand elle change, l'erreur est oubliée et les enfants re-rendus. */
   resetKey: string
+  /** « Revenir à l'accueil » : fourni par la coquille, qui change `resetKey` (navigation vers
+   *  l'accueil, ou re-tap si le crash a eu lieu sur l'accueil lui-même). */
+  onHome: () => void
   children: ReactNode
 }
 
@@ -34,15 +36,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
-      return <Fallback error={this.state.error} onReset={() => this.setState({ error: null })} />
+      return <Fallback onHome={this.props.onHome} />
     }
     return this.props.children
   }
 }
 
-// Écran de secours. Composant fonction séparé : le bouton a besoin de `useNavigate`.
-function Fallback({ error, onReset }: { error: Error; onReset: () => void }) {
-  const navigate = useNavigate()
+// Écran de secours. Le détail technique part en console (main.tsx), pas à l'écran.
+function Fallback({ onHome }: { onHome: () => void }) {
   return (
     <div className="mx-auto flex h-full max-w-md flex-col justify-center gap-4 p-6">
       <div className="text-4xl" aria-hidden="true">
@@ -53,23 +54,13 @@ function Fallback({ error, onReset }: { error: Error; onReset: () => void }) {
         Cette page a rencontré un problème. Tes parties enregistrées, classements et progrès ne sont pas touchés.
       </p>
       <div className="flex flex-col gap-3">
-        {/* Reset explicite AVANT de naviguer : un crash sur l'accueil lui-même ne se relèverait pas sinon. */}
-        <Cta
-          onClick={() => {
-            onReset()
-            navigate('/', { replace: true })
-          }}
-        >
-          Revenir à l'accueil
-        </Cta>
+        {/* Un seul mécanisme de réarmement, `resetKey` : jamais de reset local, qui remonterait
+            la page plantée sur l'ancien chemin avant la navigation (second crash). */}
+        <Cta onClick={onHome}>Revenir à l'accueil</Cta>
         <Cta variant="secondary" onClick={() => location.reload()}>
           Recharger
         </Cta>
       </div>
-      <details className="text-xs text-neutral-500">
-        <summary className="cursor-pointer">Détail technique</summary>
-        <pre className="mt-2 whitespace-pre-wrap break-words">{error.message}</pre>
-      </details>
     </div>
   )
 }

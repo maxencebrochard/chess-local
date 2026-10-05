@@ -12,7 +12,7 @@ sans attendre une minute par scénario.
 
 Usage : npm run test:e2e -- --suite play_lifecycle   (aussi en `npm run test:e2e:dev`, StrictMode)
 """
-from helpers import BASE, Checker, mobile_context, shot, tap_move
+from helpers import BASE, HOLD_BESTMOVE, Checker, mobile_context, shot, tap_move
 
 ck = Checker("play_lifecycle")
 check = ck.check
@@ -44,31 +44,21 @@ FLAG_SEQ = [
 
 ARROWS = ["◀", "⏮", "▶", "⏭"]
 
-# Rend la course « abandon pendant la réflexion du bot » déterministe : tant que `__heldUci` est un
-# tableau, les `bestmove` des workers Stockfish sont retenus au lieu d'être livrés à l'app (écouteur
-# posé dans le constructeur, donc avant `onmessage`). `__releaseUci()` les livre ensuite tels quels :
-# la réponse du bot arrive alors réellement après la fin de partie, et le moteur peut se libérer.
-HOLD_BESTMOVE = """(() => {
-  const Native = window.Worker
-  window.__heldUci = null
-  window.Worker = class extends Native {
-    constructor(...args) {
-      super(...args)
-      this.addEventListener('message', (e) => {
-        if (window.__heldUci && typeof e.data === 'string' && e.data.startsWith('bestmove')) {
-          e.stopImmediatePropagation()
-          window.__heldUci.push([this, e.data])
-        }
-      })
-    }
+# Relevé de l'étiquette de la barre d'éval (`HEvalBar`) dès le premier rendu, à chaque mutation :
+# un « +100,00 » qui ne vivrait qu'un commit serait vu.
+EVAL_LABEL_SPY = """(() => {
+  window.__evalLabels = []
+  const read = () => {
+    const span = document.querySelector('main [data-eval-label]')
+    const t = span ? span.textContent : null
+    if (t && window.__evalLabels[window.__evalLabels.length - 1] !== t) window.__evalLabels.push(t)
   }
-  window.__releaseUci = () => {
-    const held = window.__heldUci ?? []
-    window.__heldUci = null
-    for (const [w, data] of held) w.dispatchEvent(new MessageEvent('message', { data }))
-    return held.length
-  }
+  new MutationObserver(read).observe(document, { childList: true, subtree: true, characterData: true, attributes: true })
 })()"""
+
+# Partie de l'entraîneur où les Blancs, au trait, matent en 1 (Qxf7#) : rejouée depuis le début
+# par la restauration, comme une vraie partie en cours.
+COACH_M1 = ["e4", "e5", "Bc4", "Nc6", "Qh5", "Nf6"]
 
 
 def goto_play(page):
@@ -413,6 +403,37 @@ def suite(p):
           f"({plies(page)})")
     check("[coach] toujours classée après restauration", page.locator("text=non classée").count() == 0)
     check("[coach] actions du coach disponibles", page.locator("main button", has_text="Indication").count() == 1)
+    ctx.close()
+
+    # ---------- Reprise d'une partie de l'entraîneur sur un mat : « M1 », jamais « +100,00 » ----------
+    ctx = mobile_context(p, browser, ck, standalone=True)
+    ctx.add_init_script(EVAL_LABEL_SPY)
+    page = ctx.new_page()
+    goto_play(page)
+    # Instantané au format d'avant le correctif (sans `lastWhiteMate`), tel qu'une PWA déjà
+    # installée l'a écrit : le mat n'y figure que sous la forme +10000.
+    page.evaluate("""(sans) => localStorage.setItem('chess-local-play-game', JSON.stringify({
+      mode: 'coach', botId: 'noa', playerColor: 'w', tcLabel: '10 min', sans,
+      clocks: { w: 0, b: 0 }, unrated: false, lastWhiteCp: 10000, savedAt: Date.now() }))""", COACH_M1)
+    page.reload()
+    ck.appears("[coach mat] partie restaurée", page, "main [data-eval-label]", timeout=10000)
+    got = False
+    for _ in range(75):
+        if page.evaluate("() => window.__evalLabels.at(-1)") == "M1":
+            got = True
+            break
+        page.wait_for_timeout(200)
+    labels = page.evaluate("() => window.__evalLabels")
+    check("[coach mat] ancien instantané : la barre finit sur « M1 » (mat recalculé à la reprise)", got, f"({labels})")
+    shot(page, "play_coach_mat_reprise")
+    # Second rechargement : l'instantané est réécrit par l'app (pagehide) ; le mat doit s'afficher
+    # dès le premier rendu, sans passer par « +100,00 ».
+    page.reload()
+    ck.appears("[coach mat] partie restaurée (2)", page, "main [data-eval-label]", timeout=10000)
+    page.wait_for_timeout(3000)
+    labels = page.evaluate("() => window.__evalLabels")
+    check("[coach mat] reprise : « M1 » affiché", bool(labels) and labels[-1] == "M1", f"({labels})")
+    check("[coach mat] reprise : jamais « +100,00 »", not any("100,00" in l for l in labels), f"({labels})")
     ctx.close()
     browser.close()
 

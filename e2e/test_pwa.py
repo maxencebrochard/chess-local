@@ -19,9 +19,9 @@ ROUTES = [("", "Problèmes"), ("jouer", "Adversaire"), ("puzzles", "Classement p
 SUBPATH = urlparse(BASE).path.rstrip("/") + "/"  # "/chess-local/"
 PRECACHED = ["engine/stockfish-18-lite-single.wasm", "engine/stockfish-18-lite-single.js", "puzzles.json",
              "sounds/Move.mp3", "index.html"]
-# Ligne moteur de l'analyse mobile, par exemple « (+0,32) e4 e5 Cf3 ». Seul Stockfish la produit :
-# la barre d'éval, elle, affiche « 0,00 » par défaut, moteur en panne compris.
-ENGINE_LINE = "main p:text-matches('^\\\\([+-]?(\\\\d+,\\\\d\\\\d|M\\\\d+)\\\\) \\\\S')"
+# Score d'une ligne moteur de l'analyse mobile, par exemple « +0,32 » ou « -M3 ». Seul Stockfish
+# le produit : la barre d'éval, elle, affiche « 0,00 » par défaut, moteur en panne compris.
+ENGINE_LINE = "main [data-engine-line]:visible [data-engine-score]:text-matches('^[+-]?(\\\\d+,\\\\d\\\\d|M\\\\d+)$')"
 ck = Checker("pwa")
 check = ck.check
 

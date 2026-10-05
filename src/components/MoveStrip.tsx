@@ -51,7 +51,7 @@ export function MoveStrip({ sans, classes, currentIndex, onSelect, startTurn = '
             >
               {figurine(san, (i % 2 === 0) === (startTurn === 'w') ? 'w' : 'b')}
             </button>
-            {cls && SHOWN.includes(cls) && <ClassIcon cls={cls} size={16} />}
+            {cls && SHOWN.includes(cls) && <ClassIcon cls={cls} size={18} />}
           </span>
         )
       })}

@@ -2,7 +2,9 @@
 
 Usage : npm run test:e2e -- --suite learn
 """
-from helpers import BASE, SHOTS, Checker, click_square as sq, mobile_context
+import json
+
+from helpers import BASE, SHOTS, Checker, click_square as sq, mobile_context, overflow_x
 
 PGN = "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nd4 4. Nxe5 Qg5 5. Nxf7 Qxg2 6. Rf1 Qxe4+ 7. Be2 Nf3#"
 ck = Checker("learn")
@@ -18,8 +20,79 @@ if (navigator.storage && navigator.storage.persist) {
 """
 
 
+# LEARN-10 : `puzzles.json` remplacé par un mat en 1 portant tous les thèmes (même méthode que
+# test_continuation) : quel que soit le thème tiré, la séance Tactiques sert ce puzzle.
+# Amorce ...Nc3, puis Ra8#. Un coup du roi (g1f1) est faux.
+MATE_IN_1 = ["L10", "6k1/5ppp/8/8/4n3/8/5PPP/R5K1 b - - 0 1", "e4c3 a1a8"]
+THEMES = (
+    "fork pin skewer discoveredAttack mateIn1 mateIn2 mateIn3 backRankMate hangingPiece sacrifice "
+    "deflection attraction promotion trappedPiece intermezzo defensiveMove rookEndgame pawnEndgame "
+    "zugzwang exposedKing discoveredCheck advancedPawn kingsideAttack quietMove"
+)
+
+# Géométrie de la barre de verdict, lue sans dépendre de ses classes : le libellé est le span
+# qui contient « Réussi » ou « Raté », la barre est son parent. Les lignes de texte sont comptées
+# par les rectangles du texte (Range), donc un « ! » rejeté seul à la ligne compte pour deux.
+VERDICT_GEOM = r"""() => {
+  const label = [...document.querySelectorAll('main span')].find((s) => /^(✓ Réussi|✗ Raté)/.test(s.textContent.trim()))
+  if (!label) return null
+  let bar = label.parentElement
+  while (bar && !bar.querySelector('button')) bar = bar.parentElement
+  const lines = (el) => {
+    const r = document.createRange()
+    r.selectNodeContents(el)
+    return new Set([...r.getClientRects()].filter((q) => q.width > 0).map((q) => Math.round(q.top))).size
+  }
+  const delta = [...bar.querySelectorAll('span')].find((s) => /^\(?[+-]\d+\)?$/.test(s.textContent.trim()))
+  const next = [...bar.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Suivant')
+  const b = bar.getBoundingClientRect(), n = next.getBoundingClientRect(), l = label.getBoundingClientRect()
+  return {
+    text: label.textContent.trim(), labelLines: lines(label),
+    delta: delta ? delta.textContent.trim() : null, deltaLines: delta ? lines(delta) : 0,
+    barH: Math.round(b.height), left: Math.round(l.left), right: Math.round(window.innerWidth - n.right),
+  }
+}"""
+
+
+def verdict_bar(p, browser, standalone):
+    """LEARN-10 : à 393 px, verdict et delta sur une ligne chacun, barre compacte, marges symétriques."""
+    tag = f"verdict {'852' if standalone else '660'}"
+    ctx = mobile_context(p, browser, ck, standalone=standalone, service_workers="block")
+    body = json.dumps([[MATE_IN_1[0], MATE_IN_1[1], MATE_IN_1[2], 1000, THEMES]])
+    ctx.route("**/puzzles.json", lambda route: route.fulfill(status=200, content_type="application/json", body=body))
+    page = ctx.new_page()
+    for outcome, (frm, to) in (("réussi", ("a1", "a8")), ("raté", ("g1", "f1"))):
+        page.goto(f"{BASE}/#/apprendre")
+        page.wait_for_timeout(1200)
+        page.locator("main button", has_text="Tactiques").click()
+        if not ck.appears(f"[{tag}] {outcome} : leçon", page, "button:has-text(\"C'est parti\")", timeout=20000):
+            break
+        page.get_by_role("button", name="C'est parti").click()
+        page.wait_for_timeout(1500)  # amorce ...Nc3 jouée
+        sq(page, frm)
+        page.wait_for_timeout(200)
+        sq(page, to)
+        ck.appears(f"[{tag}] {outcome} : verdict affiché", page, "text=Suivant", timeout=8000)
+        page.wait_for_timeout(600)
+        g = page.evaluate(VERDICT_GEOM)
+        if not check(f"[{tag}] {outcome} : barre de verdict trouvée", g is not None):
+            break
+        check(f"[{tag}] {outcome} : libellé « {g['text']} » sur une seule ligne", g["labelLines"] == 1, f"({g['labelLines']} lignes)")
+        check(f"[{tag}] {outcome} : delta d'Elo affiché sur une ligne", g["delta"] is not None and g["deltaLines"] == 1, f"({g['delta']}, {g['deltaLines']} lignes)")
+        # Une seule rangée : la hauteur est celle du bouton Suivant (52 px) plus les marges de 8 px.
+        check(f"[{tag}] {outcome} : barre sur une rangée (≤ 68 px)", g["barH"] <= 68, f"({g['barH']} px)")
+        check(f"[{tag}] {outcome} : marges symétriques de 12 px", abs(g["left"] - 12) <= 1 and abs(g["right"] - 12) <= 1, f"(gauche {g['left']}, droite {g['right']})")
+        check(f"[{tag}] {outcome} : aucun débordement horizontal", overflow_x(page) == 0)
+        page.screenshot(path=f"{SHOTS}/learn_verdict_{outcome}_{'852' if standalone else '660'}.png")
+        page.click("header button:has-text('✕')")
+        page.wait_for_timeout(400)
+    ctx.close()
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
+    verdict_bar(p, browser, standalone=True)
+    verdict_bar(p, browser, standalone=False)
     ctx = mobile_context(p, browser, ck)
     ctx.add_init_script(SPY_PERSIST)
     page = ctx.new_page()

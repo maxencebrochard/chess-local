@@ -47,7 +47,21 @@ PGN_MEDIUM = (
     "10. Nb1 Qf8 11. Qd1 c6 12. Ne2 a4 13. Bd2 Ra5 14. Be3 Rxe5 15. Bc1 Bd6 16. g4 Rc5 17. a3 f4 "
     "18. Nd4 Na6 19. Rg1 Qd8 20. Nxc6+ Kf7 21. Nxd8+ Ke7 22. f3 Rb5 23. Nf7 Nf5 24. Nd8 Rg8"
 )
-ENGINE_LINE = "main p.truncate:has-text('(')"
+ENGINE_LINE = "main [data-engine-line]:visible"
+# Mat en 1 de chaque camp, au trait (…♜a8# et ♖a8#) : la ligne principale annonce un mat.
+FEN_BLACK_M1 = "6K1/8/6k1/8/8/8/8/r7 b - - 0 1"
+FEN_WHITE_M1 = "6k1/8/6K1/8/8/8/8/R7 w - - 0 1"
+# Lignes moteur visibles (zone compacte mobile), lues sans dépendre du balisage : texte et
+# hauteur de chaque ligne, hauteur de la zone qui les contient.
+ENGINE_LINES_JS = """() => {
+  const visible = (sel) => [...document.querySelectorAll(sel)].filter((e) => e.offsetParent)
+  // Balisage d'avant le correctif : les lignes étaient des <p class="truncate"> sans attribut.
+  const rows = visible('main [data-engine-line]').length ? visible('main [data-engine-line]') : visible('main p.truncate')
+  return {
+    rows: rows.map((e) => ({ text: e.innerText.replace(/\\s+/g, ' ').trim(), h: Math.round(e.getBoundingClientRect().height) })),
+    zoneH: rows.length ? Math.round(rows[0].parentElement.getBoundingClientRect().height) : null,
+  }
+}"""
 
 
 def open_analysis(ctx, query="", hash_query=""):
@@ -436,6 +450,21 @@ def suite(p):
         neutral = [f for f in frames if f["label"] == "0,00" or f["share"] == 50]
         check(f"[{tag}] la barre ne retombe jamais au neutre pendant le recalcul", not neutral,
               f"({len(neutral)} relevés neutres sur {len(frames)})")
+        page.close()
+
+    # ---------- Lignes moteur : typographie d'un mat (« -M1 », pas « (M1 (adv.)) ») ----------
+    for tag, fen, score, move in (("lignes-noir", FEN_BLACK_M1, "-M1", "1… ♜a8#"), ("lignes-blanc", FEN_WHITE_M1, "M1", "1. ♖a8#")):
+        page = open_analysis(ctx)
+        load_text(page, fen)
+        got = wait_until(page, lambda: any("M1" in r["text"] for r in page.evaluate(ENGINE_LINES_JS)["rows"]), 30000)
+        info = page.evaluate(ENGINE_LINES_JS)
+        first = info["rows"][0]["text"] if info["rows"] else ""
+        check(f"[{tag}] ligne principale « {score} » en tête", got and (first == score or first.startswith(score + " ")), f"({first!r})")
+        check(f"[{tag}] ni parenthèses ni « adv. »", got and "(" not in first and "adv" not in first, f"({first!r})")
+        check(f"[{tag}] coups numérotés en figurines (« {move} »)", move in first, f"({first!r})")
+        check(f"[{tag}] zone de 38 px, lignes de 17 px (l'échiquier ne bouge pas)",
+              info["zoneH"] == 38 and all(r["h"] == 17 for r in info["rows"]), f"(zone {info['zoneH']}, lignes {[r['h'] for r in info['rows']]})")
+        shot(page, f"analysis_lignes_{tag}")
         page.close()
 
     # ---------- ANA-9 : « Mes erreurs » = fautes du joueur, avec le libellé de la partie ----------
