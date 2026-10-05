@@ -53,15 +53,17 @@ export interface LearnSession {
   id?: number
   date: number
   // endgame | tactic | opening | strategy | mistakes | endgame-play | course (leçon du cours de
-  // finales terminée), ou opening-drill (entraîneur d'ouvertures).
+  // finales terminée), opening-drill (entraîneur d'ouvertures) ou mats (une série de « Mats éclair »).
   // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
   // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
   // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).
+  // mats : itemId = `<exercice>:<cadence>`, ex. `chrono-kq:30s`, `mate-2:3min`.
   domain: string
   itemId: string
   success: 0 | 1
   ratingAfter: number | null
   fen?: string // finales jouées jusqu'au bout : position de départ (champ non indexé)
+  score?: number // mats : mats réussis dans la série (champ non indexé)
 }
 
 export const db = new Dexie('chess-local') as Dexie & {

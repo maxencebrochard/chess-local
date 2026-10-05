@@ -318,6 +318,13 @@ export default function Puzzles() {
         >
           ⚡ Puzzle Rush
         </button>
+
+        <button
+          onClick={() => navigate('/mats')}
+          className="cursor-pointer rounded-lg bg-surface-2 py-2.5 font-semibold text-neutral-200 hover:bg-surface-3"
+        >
+          ♚ Mats éclair
+        </button>
       </div>
     </div>
   )

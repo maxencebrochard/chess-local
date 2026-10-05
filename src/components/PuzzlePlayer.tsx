@@ -23,8 +23,9 @@ interface PuzzlePlayerProps {
   puzzle: PuzzleData
   // Appelé une seule fois par puzzle, dès le verdict : succès (toute la séquence) ou échec
   // (premier coup faux, l'échiquier est alors verrouillé). `step` est l'index dans
-  // `puzzle.moves` du coup attendu à ce moment : la solution du coup raté.
-  onComplete: (success: boolean, step: number) => void
+  // `puzzle.moves` du coup attendu à ce moment : la solution du coup raté. `fen` : position
+  // réellement atteinte (sur un succès, elle peut différer de la solution : autre mat accepté).
+  onComplete: (success: boolean, step: number, fen: string) => void
   // Notifie l'avancement dans la séquence (index du prochain coup attendu).
   onStep?: (stepIndex: number) => void
   hintSquare?: string | null
@@ -93,7 +94,7 @@ export function PuzzlePlayer({ puzzle, onComplete, onStep, hintSquare }: PuzzleP
       if (playSounds) sounds.fail()
       // Verdict immédiat et échiquier verrouillé : un seul coup faux par puzzle.
       setDone(true)
-      onComplete(false, stepIndex)
+      onComplete(false, stepIndex, c.fen())
       // Le coup faux reste visible, cases en rouge, puis la position revient.
       setFen(c.fen())
       setWrongMove({ from: move.from, to: move.to })
@@ -112,7 +113,7 @@ export function PuzzlePlayer({ puzzle, onComplete, onStep, hintSquare }: PuzzleP
     if (next >= puzzle.moves.length || c.isCheckmate()) {
       if (playSounds) sounds.success()
       setDone(true)
-      onComplete(true, next)
+      onComplete(true, next, c.fen())
       return true
     }
     if (playSounds) (move.san.includes('x') ? sounds.capture : sounds.move)()

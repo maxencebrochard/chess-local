@@ -54,6 +54,8 @@ Autres scripts :
   Il lit `data/puzzles_full.csv` (dump lichess décompressé), absent du repo : seuls les `data/openings_*.tsv` sont versionnés.
 - `python3 scripts/verify-endgame-course.py` revérifie `src/data/endgameCourse.json` contre les tables de finales lichess (réseau) et réécrit son tampon `scripts/endgame-course.verified`.
   À lancer après toute modification du cours de finales : sans tampon à jour, `scripts/check-endgame-course.mjs` (suite `endgame_course`) échoue.
+- `python3 scripts/prepare-mates.py` régénère `src/data/mateDrills.json` (positions « contre la montre » de /mats, vérifiées sur `tablebase.lichess.ovh`, réseau requis).
+- `node scripts/prepare-mates-index.mjs` régénère `src/data/mateIndex.json` (puzzles classés par géométrie de mat avec `src/lib/mateNet.ts`) : à relancer après `prepare-data.mjs` ; la suite `mats` vérifie qu'il est à jour (`--check`).
 - `scripts/deploy.sh` build puis force-push `dist/` sur la branche `gh-pages`.
   Action sortante : ne pas le lancer sans demande explicite.
 - `?debug-uci` dans l'URL logge le trafic UCI en console.
