@@ -33,7 +33,7 @@ export function MoveList({ sans, currentIndex, onSelect, classes }: MoveListProp
         }`}
       >
         {figurine(sans[idx], idx % 2 === 0 ? 'w' : 'b')}
-        {marked && <ClassIcon cls={cls} size={14} />}
+        {marked && <ClassIcon cls={cls} size={18} />}
       </button>
     )
   }

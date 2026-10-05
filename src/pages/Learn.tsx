@@ -415,31 +415,35 @@ function ExerciseView(props: ExerciseProps) {
   }
 
   const verdictBar = (phase === 'success' || phase === 'fail') && (
+    // Une seule rangée à 393 px (LEARN-10) : verdict et delta empilés dans un bloc qui ne
+    // rétrécit pas (un libellé ne passe jamais à la ligne), actions serrées à droite.
     <div className="flex items-center gap-2 px-3 py-2">
-      <span className={`text-lg font-black ${phase === 'success' ? 'text-accent' : 'text-red-400'}`}>
-        {phase === 'success' ? '✓ Réussi !' : '✗ Raté'}
-      </span>
-      {props.ratingDelta !== null && props.ratingDelta !== 0 && (
-        <span className={props.ratingDelta > 0 ? 'text-accent' : 'text-red-400'}>
-          ({props.ratingDelta > 0 ? '+' : ''}{props.ratingDelta})
+      <div className="flex shrink-0 flex-col whitespace-nowrap">
+        <span className={`text-lg leading-tight font-black ${phase === 'success' ? 'text-accent' : 'text-red-400'}`}>
+          {phase === 'success' ? '✓ Réussi !' : '✗ Raté'}
         </span>
-      )}
-      <div className="ml-auto flex items-center gap-2">
+        {props.ratingDelta !== null && props.ratingDelta !== 0 && (
+          <span className={`text-sm leading-tight font-semibold ${props.ratingDelta > 0 ? 'text-accent' : 'text-red-400'}`}>
+            {props.ratingDelta > 0 ? '+' : ''}{props.ratingDelta}
+          </span>
+        )}
+      </div>
+      <div className="ml-auto flex items-center gap-1">
         <button
           onClick={props.onRetry}
-          className="flex cursor-pointer flex-col items-center rounded px-2 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
+          className="flex cursor-pointer flex-col items-center rounded px-1.5 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
         >
           <span className="text-lg leading-none">↺</span>
           Réessayer
         </button>
         <button
           onClick={props.onAnalyse}
-          className="flex cursor-pointer flex-col items-center rounded px-2 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
+          className="flex cursor-pointer flex-col items-center rounded px-1.5 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
         >
           <span className="text-lg leading-none">♞</span>
           Analyser
         </button>
-        <Cta className="px-6 py-2 text-base" onClick={onNext}>
+        <Cta className="ml-1 px-5 py-2 text-base" onClick={onNext}>
           Suivant
         </Cta>
       </div>

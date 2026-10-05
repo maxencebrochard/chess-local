@@ -66,8 +66,7 @@ def suite(p):
     # Les lignes du moteur arrivent quand Stockfish a répondu : on attend leur apparition
     # plutôt que de constater après un délai fixe (instable sur machine chargée).
     try:
-        page.wait_for_function("() => document.querySelector('main')?.innerText.slice(0, 400).includes('(')",
-                               timeout=30000)
+        page.wait_for_function("() => !!document.querySelector('main [data-engine-line] [data-engine-score]')", timeout=30000)
         compact = True
     except Exception:
         compact = False

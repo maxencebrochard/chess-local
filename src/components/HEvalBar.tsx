@@ -21,6 +21,7 @@ export function HEvalBar({ cp, mate }: HEvalBarProps) {
     <div className="relative h-7 w-full overflow-hidden rounded bg-neutral-800">
       <div className="absolute inset-y-0 left-0 bg-neutral-100 transition-all duration-300" style={{ width: `${share}%` }} />
       <span
+        data-eval-label
         className={`absolute top-1/2 left-2 -translate-y-1/2 text-xs font-black ${share > 12 ? 'text-neutral-900' : 'text-neutral-100'}`}
       >
         {label}

@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url'
 // engine.ts lit `location` au chargement du module : stub avant l'import.
 globalThis.location = { href: '' }
 const bundle = await import(pathToFileURL(process.argv[2]).href)
-const { Chess, coachComments, coachSummary, coachQuip, liveComment, greeting, CLASS_META, winPct } = bundle
+const { Chess, coachComments, coachSummary, coachQuip, liveComment, greeting, CLASS_META, winPct, PHRASES } = bundle
 const PUZZLES = JSON.parse(readFileSync(process.argv[3], 'utf8'))
 // Un détecteur absent ou à l'ancienne signature ne doit pas faire tomber tout le harnais :
 // la suite doit pouvoir montrer QUELS checks échouent (preuve d'échec).
@@ -218,6 +218,11 @@ out.live.push(...livePath('mate', 'e4 e5 Bc4 Nc6 Qh5 Nf6 Qxf7#', 'w', (i, mv, c)
 out.live.push(...livePath('botcheck', 'e4 d5 exd5 Qxd5 Nc3 Qe5+', 'w', (i) => (i === 5 ? 'good' : 'excellent')))
 out.live.push(...livePath('botblunder', 'e4 e5 Nf3 f6 Nxe5 fxe5', 'w', (i) => (i === 3 ? 'blunder' : i === 4 ? 'best' : i === 5 ? 'mistake' : 'good')))
 for (let i = 0; i < 12; i++) out.greetings.push(greeting().text)
+// Banque brute de l'entraîneur en direct (toutes les variantes, accords compris) : le titre de la
+// bulle porte déjà le coup, aucune phrase ne doit le répéter via {coup}.
+out.liveBank = Object.entries(PHRASES)
+  .filter(([key]) => key.startsWith('live.'))
+  .flatMap(([key, variants]) => variants.flatMap((v) => (typeof v === 'string' ? [v] : [v.m, v.f])).map((text) => ({ key, text })))
 
 // Accord des phrases à deux cibles : chaque variante rendue avec deux cibles du même genre.
 const PAIRS = { m: ['le fou', 'le cavalier'], f: ['la dame', 'la tour'] }

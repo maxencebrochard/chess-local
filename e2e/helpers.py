@@ -42,6 +42,35 @@ DEFAULT_SETTINGS = {
 }
 
 
+# Rend déterministes les courses avec une recherche moteur (abandon pendant la réflexion du bot,
+# vérification de Réessayer abandonnée) : tant que `__heldUci` est un tableau, les `bestmove` des
+# workers Stockfish sont retenus au lieu d'être livrés à l'app (écouteur posé dans le constructeur,
+# donc avant `onmessage`). `__releaseUci()` les livre ensuite tels quels : la réponse du moteur
+# arrive alors réellement après l'action de la suite (fin de partie, Quitter), et le moteur peut se
+# libérer. À poser en init script, et à armer (`__heldUci = []`) juste avant la recherche visée.
+HOLD_BESTMOVE = """(() => {
+  const Native = window.Worker
+  window.__heldUci = null
+  window.Worker = class extends Native {
+    constructor(...args) {
+      super(...args)
+      this.addEventListener('message', (e) => {
+        if (window.__heldUci && typeof e.data === 'string' && e.data.startsWith('bestmove')) {
+          e.stopImmediatePropagation()
+          window.__heldUci.push([this, e.data])
+        }
+      })
+    }
+  }
+  window.__releaseUci = () => {
+    const held = window.__heldUci ?? []
+    window.__heldUci = null
+    for (const [w, data] of held) w.dispatchEvent(new MessageEvent('message', { data }))
+    return held.length
+  }
+})()"""
+
+
 def base_url():
     """URL de l'app testée. Pas de valeur par défaut : un port codé en dur a déjà fait tester
     un serveur mort, puis un serveur fantôme. C'est e2e/run.py qui démarre le serveur."""
@@ -104,24 +133,29 @@ class Checker:
     def _on_pageerror(self, e):
         msg = str(e)
         for exp in reversed(self._expected):
-            if exp["pattern"] in msg:
+            if any(p in msg for p in exp["patterns"]):
                 exp["seen"].append(msg)
-                self.check(f"[pageerror attendu] {exp['pattern']}", True, f"({msg[:120]})")
+                # Simple trace : le check est celui de la sortie du bloc (« survenu »), qui peut échouer.
+                print(f"[info] pageerror attendu ({msg[:120]})", flush=True)
                 return
         self.fail("[pageerror] exception non rattrapée dans la page", f"({msg[:300]})")
 
     @contextmanager
     def expect_pageerror(self, pattern):
-        """Pendant le bloc, un `pageerror` dont le message contient `pattern` est un PASS attendu
-        (crash provoqué par la suite) ; à la sortie, échec si aucun n'est survenu. Hors bloc, rien
-        ne change : tout `pageerror` reste un échec."""
-        exp = {"pattern": pattern, "seen": []}
+        """Pendant le bloc, un `pageerror` dont le message contient `pattern` (ou l'une des chaînes
+        d'un tuple : un message React diffère entre dev et prod minifiée) est attendu (crash
+        provoqué par la suite) ; à la sortie, échec si aucun n'est survenu. Hors bloc, rien ne
+        change : tout `pageerror` reste un échec."""
+        patterns = (pattern,) if isinstance(pattern, str) else tuple(pattern)
+        pattern = " | ".join(patterns)
+        exp = {"patterns": patterns, "seen": []}
         self._expected.append(exp)
         try:
             yield exp
         finally:
             self._expected.remove(exp)
-            self.check(f"[pageerror attendu] {pattern} survenu", len(exp["seen"]) >= 1, "(aucun pageerror correspondant)")
+            seen = len(exp["seen"]) >= 1
+            self.check(f"[pageerror attendu] {pattern} survenu", seen, "" if seen else "(aucun pageerror correspondant)")
 
     def run(self, body):
         """Exécute `body(p)` puis sort. Le navigateur est toujours fermé (sortie du `with`),

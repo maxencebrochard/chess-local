@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 
 import coach_oracle as oracle
-from helpers import BASE, SHOTS, Checker, click_square as sq, mobile_context
+from helpers import BASE, HOLD_BESTMOVE, SHOTS, Checker, click_square as sq, mobile_context
 
 ck = Checker("coach")
 check = ck.check
@@ -172,7 +172,13 @@ def texts_part():
     chk = next(r for r in live if r["label"] == "botcheck" and r["i"] == 5)
     check("[live] l'échec du bot est signalé", chk["text"] and "échec" in chk["text"].lower(), f"({chk['text']})")
     bl = next(r for r in live if r["label"] == "blunder" and r["i"] == 2)
-    check("[live] la gaffe du joueur nomme le coup en figurine", "♕h5" in (bl["text"] or "") + (bl["headline"] or ""), f"({bl['text']})")
+    check("[live] la gaffe du joueur : le titre nomme le coup en figurine", bl["headline"] == "♕h5", f"({bl['headline']})")
+    repeated = [r for r in live if r["headline"] and (r["text"] or "").startswith(r["headline"])]
+    check("[live] le texte ne recommence pas par le coup du titre", not repeated, f"({[r['text'][:40] for r in repeated][:3]})")
+    bank = data.get("liveBank") or []
+    with_coup = [b for b in bank if "{coup}" in b["text"]]
+    check("[live] banque : aucune phrase ne répète le coup ({coup})", bank and not with_coup,
+          f"({len(with_coup)} sur {len(bank)} : {[b['key'] for b in with_coup][:3]})")
     check("[live] salutations variées", len(set(data["greetings"])) >= 3, f"({len(set(data['greetings']))} distinctes sur 12)")
     q = data.get("quick") or {}
     want = {"noBest": "excellent", "best": "best", "drop3": "excellent", "drop5": "good", "drop8": "inaccuracy", "drop15": "mistake", "drop25": "blunder"}
@@ -361,6 +367,7 @@ def run_review(page, game_id, tag):
 
 def display_852(p, browser):
     ctx = mobile_context(p, browser, ck, standalone=True)
+    ctx.add_init_script(HOLD_BESTMOVE)  # armé seulement pour la course CP-11, bilan terminé
     page = ctx.new_page()
 
     # --- Leçon d'Apprendre ---
@@ -442,7 +449,15 @@ def display_852(p, browser):
     check("[guidé 852] échiquier immobile d'un coup à l'autre", len(board_ys) == 1, f"(y = {sorted(board_ys)})")
     check("[guidé 852] corps de bulle sans défilement à chaque pas", not overflow, f"({overflow[:3]})")
     icons = page.evaluate(CONTRAST_JS, ".fixed")
-    check("[guidé 852] pastilles de la bande ≥ 18 px", icons and min(i["size"] for i in icons) >= 18, f"({icons and min(i['size'] for i in icons)})")
+    # Pastilles de la bande de coups (à côté d'un bouton de coup), hors badge de l'échiquier et bulle.
+    strip = page.evaluate("""() => [...document.querySelectorAll('.fixed [data-class-icon]')].filter(e => e.offsetParent).map(e => {
+      const b = e.parentElement.querySelector('button[data-current]')
+      if (!b) return null
+      const i = e.getBoundingClientRect(), r = b.getBoundingClientRect()
+      return { size: Math.round(i.width), dy: Math.abs((i.top + i.height / 2) - (r.top + r.height / 2)) }
+    }).filter(Boolean)""")
+    check("[guidé 852] pastilles de la bande à 18 px exactement", strip and all(s["size"] == 18 for s in strip), f"({sorted({s['size'] for s in strip})})")
+    check("[guidé 852] pastilles centrées sur leur coup dans la bande", strip and all(s["dy"] <= 1 for s in strip), f"({[s['dy'] for s in strip if s['dy'] > 1][:4]})")
     # 7.♗e2 : mat autorisé, Réessayer disponible
     page.locator(".fixed button[data-current]", has_text="e2").first.click()
     page.wait_for_timeout(500)
@@ -463,6 +478,44 @@ def display_852(p, browser):
     centred("[réessayer 852] avatar centré", m_r)
     visible("[réessayer 852] avatar réellement visible", m_r)
     page.screenshot(path=f"{SHOTS}/coach_retry_852.png")
+
+    # CP-11 : vérification moteur abandonnée (Quitter pendant « Je vérifie… »), puis nouvel essai.
+    # Le bestmove de la vérification est retenu jusqu'après le nouvel essai : son verdict ne doit
+    # jamais s'appliquer à l'essai suivant. 7.♗e2 rejoué (seul autre coup légal : ♕e2, la solution).
+    page.evaluate("() => { window.__heldUci = [] }")
+    sq(page, "c4"); page.wait_for_timeout(200); sq(page, "e2")
+    ck.appears("[cp11] vérification en cours", page, ".fixed .bg-white >> text=Je vérifie", timeout=5000)
+    page.locator(".fixed .bg-white button", has_text="Quitter").click()
+    page.wait_for_timeout(300)
+    page.locator(".fixed button", has_text="Réessayer").click()
+    page.wait_for_timeout(300)
+    released = page.evaluate("() => window.__releaseUci()")
+    check("[cp11] le bestmove de la vérification abandonnée était bien retenu", released >= 1, f"({released})")
+    page.wait_for_timeout(1500)
+    bubble = page.locator(".fixed .bg-white").first.inner_text()
+    check("[cp11] le verdict de l'essai abandonné ne touche pas le nouvel essai",
+          "Trouve mieux" in bubble and "ne suffit pas" not in bubble and "Trouvé" not in bubble, f"({bubble[:80]!r})")
+    sq(page, "c4"); page.wait_for_timeout(200); sq(page, "e2")
+    ck.appears("[cp11] le nouvel essai est vérifié normalement", page, ".fixed .bg-white >> text=ne suffit pas", timeout=20000)
+
+    # Vérification abandonnée encore EN VOL au moment du nouvel essai : son bestmove reste retenu,
+    # le nouvel essai ne doit pas l'attendre (mutex du moteur) et rend son propre verdict.
+    page.locator(".fixed .bg-white button", has_text="Quitter").click()
+    page.wait_for_timeout(300)
+    page.locator(".fixed button", has_text="Réessayer").click()
+    page.wait_for_timeout(300)
+    page.evaluate("() => { window.__heldUci = [] }")
+    sq(page, "c4"); page.wait_for_timeout(200); sq(page, "e2")
+    ck.appears("[cp11] vérification en cours (2)", page, ".fixed .bg-white >> text=Je vérifie", timeout=5000)
+    page.locator(".fixed .bg-white button", has_text="Quitter").click()
+    page.wait_for_timeout(300)
+    page.locator(".fixed button", has_text="Réessayer").click()
+    page.wait_for_timeout(300)
+    # Les bestmove déjà retenus restent bloqués ; les suivants passent.
+    page.evaluate("() => { window.__stash = window.__heldUci; window.__heldUci = null }")
+    sq(page, "c4"); page.wait_for_timeout(200); sq(page, "e2")
+    ck.appears("[cp11] nouvel essai vérifié sans attendre la vérification abandonnée", page, ".fixed .bg-white >> text=ne suffit pas", timeout=20000)
+    page.evaluate("() => { for (const [w, data] of window.__stash ?? []) w.dispatchEvent(new MessageEvent('message', { data })) }")
     ctx.close()
     return game_id
 

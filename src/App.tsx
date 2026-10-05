@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { HashRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import Home from './pages/Home'
 import Play from './pages/Play'
@@ -41,6 +41,7 @@ export default function App() {
 // Coquille rendue DANS le routeur (il lui faut `useLocation`).
 function Shell() {
   const location = useLocation()
+  const navigate = useNavigate()
   // Sans barre finale : `#/apprendre/` doit allumer Apprendre.
   const pathname = location.pathname.replace(/\/+$/, '') || '/'
   const mainRef = useRef<HTMLElement>(null)
@@ -49,6 +50,11 @@ function Shell() {
   const [retaps, setRetaps] = useState(0)
   const onTabClick = (to: string) => {
     if (to === pathname) setRetaps((t) => t + 1)
+  }
+  // « Revenir à l'accueil » de l'écran de secours : même règle qu'un tap sur l'onglet Accueil.
+  const goHome = () => {
+    if (pathname === '/') setRetaps((t) => t + 1)
+    else navigate('/', { replace: true })
   }
 
   // Chaque page s'ouvre en haut : `<main>` est le seul conteneur qui défile, et il est
@@ -70,14 +76,14 @@ function Shell() {
             // `replace` : une navigation vers une racine d'onglet n'empile jamais d'entrée
             // d'historique, sinon le swipe-back iOS (bord gauche) a toujours une cible et
             // sort de la partie en cours. Les descentes (`navigate('/analyse', { state })`,
-            // tuiles de l'accueil) restent des push.
+            // tuiles Puzzle Rush et chess.com de l'accueil) restent des push.
             <Link
               key={n.to}
               to={n.to}
               replace
               onClick={() => onTabClick(n.to)}
               aria-current={current}
-              className={`rounded px-3 py-2 font-semibold transition ${
+              className={`flex min-h-11 items-center rounded px-3 py-2 font-semibold transition ${
                 current ? 'bg-accent/20 text-accent' : 'text-neutral-300 hover:bg-surface-3'
               }`}
             >
@@ -96,7 +102,7 @@ function Shell() {
             jamais par `location.key` : les `navigate('.', { replace, state: null })` que les
             pages lancent au montage effaceraient un crash survenu juste après le chargement et
             remonteraient la page vide. */}
-        <ErrorBoundary resetKey={`${pathname}#${retaps}`}>
+        <ErrorBoundary resetKey={`${pathname}#${retaps}`} onHome={goHome}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/jouer" element={<Play />} />

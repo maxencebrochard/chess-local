@@ -25,10 +25,10 @@ export default function Home() {
   ]
 
   const tiles = [
-    { to: '/analyse', icon: '🔍', title: 'Analyse', desc: 'Stockfish 18, bilan, coach' },
-    { to: '/rush', icon: '⚡', title: 'Puzzle Rush', desc: '3 min, 5 min ou survie' },
-    { to: '/archive', icon: '📚', title: 'Archive', desc: `${nbGames} partie${nbGames > 1 ? 's' : ''}` },
-    { to: '/import', icon: '♟', title: 'chess.com', desc: 'Importer tes parties' },
+    { to: '/analyse', icon: '🔍', title: 'Analyse', desc: 'Stockfish 18, bilan, coach', tab: true },
+    { to: '/rush', icon: '⚡', title: 'Puzzle Rush', desc: '3 min, 5 min ou survie', tab: false },
+    { to: '/archive', icon: '📚', title: 'Archive', desc: `${nbGames} partie${nbGames > 1 ? 's' : ''}`, tab: true },
+    { to: '/import', icon: '♟', title: 'chess.com', desc: 'Importer tes parties', tab: false },
   ]
 
   return (
@@ -37,9 +37,13 @@ export default function Home() {
         ♞ Chess<span className="text-accent">Local</span>
       </h1>
 
+      {/* Navigations d'onglet (racines de la nav) en `replace`, comme la nav basse : le swipe-back
+          iOS ne ramène pas à l'accueil en pleine partie. Puzzle Rush et chess.com sont des
+          descentes (/rush, /import), empilées. */}
       {/* Carte Problèmes, façon chess.com */}
       <Link
         to="/puzzles"
+        replace
         className="mb-4 block rounded-2xl bg-gradient-to-br from-[#4e7837] to-[#2e4a20] p-5 shadow-lg transition hover:brightness-110"
       >
         <div className="flex items-center justify-between gap-4">
@@ -58,7 +62,7 @@ export default function Home() {
       {/* Cartes stats horizontales */}
       <div className="mb-4 grid grid-cols-4 gap-2">
         {statCards.map((s) => (
-          <Link key={s.label} to="/stats" className="rounded-xl bg-surface-2 p-3 text-center transition hover:bg-surface-3">
+          <Link key={s.label} to="/stats" replace className="rounded-xl bg-surface-2 p-3 text-center transition hover:bg-surface-3">
             <div className="text-2xl">{s.icon}</div>
             <div className="text-xl font-black">{s.value}</div>
             <div className="text-xs text-neutral-400">{s.label}</div>
@@ -69,7 +73,7 @@ export default function Home() {
       {/* Tuiles secondaires */}
       <div className="mb-4 grid grid-cols-2 gap-2">
         {tiles.map((t) => (
-          <Link key={t.to} to={t.to} className="flex items-center gap-3 rounded-xl bg-surface-2 p-3 transition hover:bg-surface-3">
+          <Link key={t.to} to={t.to} replace={t.tab} className="flex items-center gap-3 rounded-xl bg-surface-2 p-3 transition hover:bg-surface-3">
             <span className="text-2xl">{t.icon}</span>
             <span>
               <span className="block font-bold">{t.title}</span>
@@ -81,7 +85,7 @@ export default function Home() {
 
       {/* CTA Jouer géant, collé en bas */}
       <div className="mt-auto md:mt-4">
-        <Cta className="w-full py-4 text-2xl" onClick={() => navigate('/jouer')}>
+        <Cta className="w-full py-4 text-2xl" onClick={() => navigate('/jouer', { replace: true })}>
           Jouer
         </Cta>
       </div>

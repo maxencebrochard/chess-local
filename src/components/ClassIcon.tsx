@@ -5,10 +5,11 @@ import { CLASS_META, type MoveClass } from '../lib/review'
 
 interface ClassIconProps {
   cls: MoveClass
-  size?: number // px, jamais rendu sous 18 px pour rester lisible
+  // Diamètre exact en px. 18 px est le minimum lisible sur iPhone (listes de coups) ; au-delà,
+  // l'appelant choisit la taille qui tient dans la hauteur de sa ligne.
+  size?: number
 }
 
-const MIN_SIZE = 18
 const DARK = '#262421'
 
 // Luminance relative (WCAG) d'une couleur #rrggbb.
@@ -22,7 +23,7 @@ function luminance(hex: string): number {
 
 export function ClassIcon({ cls, size = 24 }: ClassIconProps) {
   const meta = CLASS_META[cls]
-  const px = Math.max(MIN_SIZE, size)
+  const px = size
   const isEmoji = cls === 'book' || cls === 'excellent'
   return (
     <span

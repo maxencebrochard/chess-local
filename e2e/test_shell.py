@@ -46,6 +46,20 @@ BOOM = """
 """
 FALLBACK = "text=Cette page a rencontré un problème"
 
+# Écrit (ou efface, avec None) une ligne de la table Dexie `ratings`, directement dans IndexedDB.
+RATING_ROW = """(row) => new Promise((resolve, reject) => {
+  const req = indexedDB.open('chess-local')
+  req.onerror = () => reject(req.error)
+  req.onsuccess = () => {
+    const db = req.result
+    const tx = db.transaction('ratings', 'readwrite')
+    if (row) tx.objectStore('ratings').put(row)
+    else tx.objectStore('ratings').delete('rapid')
+    tx.oncomplete = () => { db.close(); resolve(true) }
+    tx.onerror = () => { db.close(); reject(tx.error) }
+  }
+})"""
+
 
 def tab(page, label):
     """Onglet visible portant ce libellé (la nav latérale est masquée sur mobile, la basse sur desktop)."""
@@ -92,7 +106,30 @@ def suite(p):
     page = ctx.new_page()
     tabs_do_not_stack(page, "touch-6 mobile")
 
-    # Descente empilée : une tuile de l'accueil reste un push (le swipe-back a une cible),
+    # Accueil : une tuile vers une racine d'onglet est une navigation d'onglet, en replace (le
+    # swipe-back iOS ne ramène pas à l'accueil en pleine partie) ; Puzzle Rush et chess.com
+    # (/rush, /import) sont des descentes, empilées.
+    for name, loc, expected in (
+        ("CTA Jouer", page.get_by_role("button", name="Jouer", exact=True), "#/jouer"),
+        ("carte Problèmes", page.locator("main a", has_text="Résolvez"), "#/puzzles"),
+        ("carte Rapide", page.locator("main a", has_text="Rapide"), "#/stats"),
+        ("tuile Analyse", page.locator("main a", has_text="Stockfish 18"), "#/analyse"),
+        ("tuile Archive", page.locator("main a", has_text="Archive"), "#/archive"),
+    ):
+        go(page, "#/")
+        before = hist(page)
+        loc.first.click()
+        page.wait_for_timeout(600)
+        check(f"[accueil] {name} -> {expected}", hash_of(page) == expected, f"({hash_of(page)})")
+        check(f"[accueil] {name} : navigation d'onglet, history.length stable", hist(page) == before, f"({before} -> {hist(page)})")
+    go(page, "#/")
+    before = hist(page)
+    page.locator("main a", has_text="Importer tes parties").click()
+    page.wait_for_timeout(600)
+    check("[push] tuile chess.com -> #/import, empile une entrée", hash_of(page) == "#/import" and hist(page) == before + 1,
+          f"({hash_of(page)}, {before} -> {hist(page)})")
+
+    # Descente empilée : la tuile Puzzle Rush reste un push (le swipe-back a une cible),
     # et /rush allume l'onglet Puzzles (GLOB-6).
     go(page, "#/")
     before = hist(page)
@@ -182,6 +219,24 @@ def suite(p):
     check("[boundary] Recharger : le drapeau ne survit pas", page.evaluate("() => window.__E2E_BOOM") is None)
     ck.appears("[boundary] Recharger rend Analyse", page, "[id^='chessboard-']", timeout=5000)
 
+    # Crash sur l'accueil lui-même : « Revenir à l'accueil » ne change pas de chemin, il doit
+    # quand même réarmer la frontière. Crash provoqué par un classement illisible en base (un objet
+    # rendu comme texte), réparé avant le tap.
+    go(page, "#/stats")
+    page.evaluate(RATING_ROW, {"key": "rapid", "value": {"e2e": "boom"}})
+    # Message de React 19 en dev, et son code minifié en prod (erreur n° 31).
+    with ck.expect_pageerror(("Objects are not valid as a React child", "react.dev/errors/31")):
+        tab(page, "Accueil").click()
+        ck.appears("[boundary] crash sur l'accueil -> secours", page, FALLBACK, timeout=5000)
+        page.wait_for_timeout(200)
+        check("[boundary] secours sans bloc technique en anglais", page.locator("main", has_text="Détail technique").count() == 0)
+    page.evaluate(RATING_ROW, None)
+    page.get_by_role("button", name="Revenir à l'accueil").click()
+    page.wait_for_timeout(800)
+    check("[boundary] crash sur l'accueil : Revenir à l'accueil rend l'accueil",
+          hash_of(page) == "#/" and page.locator("text=Résolvez !").is_visible() and page.locator(FALLBACK).count() == 0,
+          f"({hash_of(page)})")
+
     # Crash au rendu qui suit le chargement d'une partie par state de navigation : le
     # `navigate('.', { replace, state: null })` de montage d'Analyse change `location.key`
     # sans changer de chemin, il ne doit pas réarmer la frontière (sinon Analyse est remontée
@@ -240,6 +295,9 @@ def suite(p):
     page = ctx.new_page()
     tabs_do_not_stack(page, "touch-6 desktop")
     check("[glob-9] nav latérale nommée", page.locator("nav[aria-label]").locator("visible=true").count() == 1)
+    side = page.locator("nav a").locator("visible=true")
+    heights = [round(side.nth(i).bounding_box()["height"]) for i in range(side.count())]
+    check("[glob-9] nav latérale : 7 cibles de 44 px de haut au moins", len(heights) == 7 and min(heights) >= 44, f"({heights})")
     ctx.close()
     browser.close()
 

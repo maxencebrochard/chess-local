@@ -56,6 +56,9 @@ interface StoredGame {
   clocks: { w: number; b: number }
   unrated: boolean
   lastWhiteCp: number
+  // Mat annoncé par la dernière éval (côté blanc, en coups). Absent des instantanés écrits avant
+  // son ajout : la reprise recalcule de toute façon l'éval.
+  lastWhiteMate?: number | null
   savedAt: number
 }
 
@@ -169,6 +172,7 @@ export default function Play() {
   const [bookBadge, setBookBadge] = useState<string | null>(null)
   const lastWhiteCp = useRef(20) // éval blanche avant le dernier coup
   const lastBestUci = useRef<string | null>(null) // meilleur coup du moteur dans la position courante
+  const lastWhiteMate = useRef<number | null>(null) // mat de cette même éval (libellé « M3 »)
   const unratedRef = useRef(false)
   const takebackGen = useRef(0) // incrémenté par Annuler : une éval lancée avant est jetée
 
@@ -185,6 +189,7 @@ export default function Play() {
       clocks: clocksRef.current,
       unrated: unratedRef.current,
       lastWhiteCp: lastWhiteCp.current,
+      lastWhiteMate: lastWhiteMate.current,
       savedAt: Date.now(),
     })
   }, [])
@@ -241,13 +246,17 @@ export default function Play() {
       const bestUci = lastBestUci.current
       lastWhiteCp.current = whiteCp
       lastBestUci.current = replyUci
+      lastWhiteMate.current = whiteMate
       setLiveCp(whiteCp)
       setLiveMate(whiteMate)
+      // L'instantané écrit au coup précédait cette éval : il est remis à jour avec elle, tant que
+      // la position n'a pas bougé (sinon l'éval décrirait une autre position que les coups sauvés).
+      if (chessRef.current.fen() === fen) saveGame()
       const playedUci = uciMoves[uciMoves.length - 1]
       const cls = quickClass(cpBeforeMover, cpAfterMover, isBook, bestUci === playedUci)
       setCoachMsg(liveComment({ san, moverColor, byPlayer, cls, uciMoves, bestUci, replyUci, mateFor }))
     })
-  }, [])
+  }, [saveGame])
 
   useEffect(() => {
     myRatingClass.current = effectiveTc.timeClass
@@ -488,7 +497,7 @@ export default function Play() {
   // Démarre une partie (neuve, ou restaurée depuis l'instantané avec ses coups et ses pendules).
   function beginGame(
     next: { mode: PlayMode; bot: Bot; color: 'w' | 'b'; tc: TimeControl },
-    restored: { chess: Chess; clocks: { w: number; b: number }; unrated: boolean; lastWhiteCp: number } | null,
+    restored: { chess: Chess; clocks: { w: number; b: number }; unrated: boolean; lastWhiteCp: number; lastWhiteMate: number | null } | null,
   ) {
     const gameTc = next.mode === 'coach' ? UNLIMITED : next.tc
     const c = restored?.chess ?? new Chess()
@@ -518,8 +527,11 @@ export default function Play() {
     setBookBadge(null)
     lastWhiteCp.current = restored?.lastWhiteCp ?? 20
     lastBestUci.current = null // recalé par la prochaine éval
+    // Posé tout de suite, pas après l'éval : sous StrictMode, le `saveGame` du démontage qui
+    // sépare les deux montages relit ce ref.
+    lastWhiteMate.current = restored?.lastWhiteMate ?? null
     setLiveCp(next.mode === 'coach' ? lastWhiteCp.current : null)
-    setLiveMate(null) // recalée par la prochaine éval (le mat n'est pas mémorisé dans la partie stockée)
+    setLiveMate(next.mode === 'coach' ? lastWhiteMate.current : null)
     setCoachMsg(next.mode === 'coach' ? (restored ? { text: 'On reprend la partie.', cls: null, mood: 'thinking' } : greeting()) : null)
     statusRef.current = 'playing'
     setStatus('playing')
@@ -528,6 +540,24 @@ export default function Play() {
       engineRef.current ??= new Engine()
       void engineRef.current.setOptions(botEngineOptions(next.bot))
       if (next.mode === 'coach') coachEngineRef.current ??= new Engine()
+      // Reprise en mode entraîneur : l'instantané a pu être écrit avant la fin de l'éval du
+      // dernier coup (ou par une version qui ne gardait pas le mat). L'éval de la position
+      // reprise est recalculée par la chaîne live, comme après Annuler.
+      if (next.mode === 'coach' && restored) {
+        const seq = gameSeq.current
+        const fenNow = c.fen()
+        const turnNow = c.turn()
+        liveChain.current = liveChain.current.then(async () => {
+          if (seq !== gameSeq.current || takebackGen.current !== 0) return
+          const { whiteCp, whiteMate } = await evalWhite((coachEngineRef.current ??= new Engine()), fenNow, turnNow)
+          if (seq !== gameSeq.current || takebackGen.current !== 0) return
+          lastWhiteCp.current = whiteCp
+          lastWhiteMate.current = whiteMate
+          setLiveCp(whiteCp)
+          setLiveMate(whiteMate)
+          saveGame()
+        })
+      }
       if (c.turn() !== next.color) {
         const seq = gameSeq.current
         setTimeout(() => {
@@ -565,7 +595,13 @@ export default function Play() {
         color: stored.playerColor === 'b' ? 'b' : 'w',
         tc: TIME_CONTROLS.find((t) => t.label === stored.tcLabel) ?? TIME_CONTROLS[4],
       },
-      { chess: c, clocks: stored.clocks, unrated: !!stored.unrated, lastWhiteCp: stored.lastWhiteCp ?? 20 },
+      {
+        chess: c,
+        clocks: stored.clocks,
+        unrated: !!stored.unrated,
+        lastWhiteCp: stored.lastWhiteCp ?? 20,
+        lastWhiteMate: typeof stored.lastWhiteMate === 'number' ? stored.lastWhiteMate : null,
+      },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -641,8 +677,10 @@ export default function Play() {
       if (seq !== gameSeq.current || gen !== takebackGen.current) return
       lastWhiteCp.current = whiteCp
       lastBestUci.current = bestUci
+      lastWhiteMate.current = whiteMate
       setLiveCp(whiteCp)
       setLiveMate(whiteMate)
+      saveGame()
       setCoachMsg({ text: 'On reprend ici. Cherche un meilleur plan.', cls: null, mood: 'thinking' })
     })
   }

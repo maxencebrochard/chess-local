@@ -25,13 +25,12 @@ interface PuzzlePlayerProps {
   // (premier coup faux, l'échiquier est alors verrouillé). `step` est l'index dans
   // `puzzle.moves` du coup attendu à ce moment : la solution du coup raté.
   onComplete: (success: boolean, step: number) => void
-  onFirstWrong?: () => void
   // Notifie l'avancement dans la séquence (index du prochain coup attendu).
   onStep?: (stepIndex: number) => void
   hintSquare?: string | null
 }
 
-export function PuzzlePlayer({ puzzle, onComplete, onFirstWrong, onStep, hintSquare }: PuzzlePlayerProps) {
+export function PuzzlePlayer({ puzzle, onComplete, onStep, hintSquare }: PuzzlePlayerProps) {
   const { playSounds } = useSettings()
   const chessRef = useRef(new Chess(puzzle.fen))
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -94,7 +93,6 @@ export function PuzzlePlayer({ puzzle, onComplete, onFirstWrong, onStep, hintSqu
       if (playSounds) sounds.fail()
       // Verdict immédiat et échiquier verrouillé : un seul coup faux par puzzle.
       setDone(true)
-      onFirstWrong?.()
       onComplete(false, stepIndex)
       // Le coup faux reste visible, cases en rouge, puis la position revient.
       setFen(c.fen())

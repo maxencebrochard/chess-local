@@ -9,11 +9,12 @@ if (navigator.storage?.persist) {
   void navigator.storage.persist()
 }
 
-// Une erreur attrapée par la frontière d'erreur (App.tsx) reste journalisée ET ré-émise
-// sur `window` : les suites E2E ne détectent un écran blanc que par `pageerror`.
+// Une erreur attrapée par la frontière d'erreur (App.tsx) reste journalisée, avec la pile des
+// composants (où le rendu a planté), ET ré-émise sur `window` : les suites E2E ne détectent un
+// écran blanc que par `pageerror`.
 createRoot(document.getElementById('root')!, {
-  onCaughtError: (error) => {
-    console.error(error)
+  onCaughtError: (error, info) => {
+    console.error(error, info.componentStack)
     reportError(error)
   },
 }).render(
