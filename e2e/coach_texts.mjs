@@ -190,6 +190,8 @@ out.scenarios.push(scenario('stalemate', '7k/8/6K1/5Q2/8/8/8/8 w - - 0 1', 'Qf7'
 // FEN custom, trait aux Noirs, compteur de coups à 4 : numéro du coup pivot (COACH-11).
 out.scenarios.push(scenario('custom_black', 'r1bqkbnr/pp1p1ppp/2n5/1N2p3/4P3/5N2/PPPP1PPP/R1BQKB1R b KQkq - 0 4', 'Qf6 d3 a6 Nc3',
   { 0: { cls: 'blunder', best: 'd6', wb: 45, wa: 12 }, 1: { cls: 'miss', best: 'Nc7+', wb: 88, wa: 60 }, 3: { cls: 'miss', best: 'Nc7+', wb: 88, wa: 58 } }, 'w'))
+// Départ custom joué sans faute par les Blancs : pas d'ouverture, donc pas de « remontée ».
+out.scenarios.push(scenario('custom_clean', 'r1bqkbnr/pp1p1ppp/2n5/1N2p3/4P3/5N2/PPPP1PPP/R1BQKB1R b KQkq - 0 4', 'Qf6 d3 a6 Nc3', {}, 'w'))
 const long = randomGame(120, 20260925)
 out.scenarios.push(scenario('long', START, long.sans, long.ann, null))
 
@@ -216,6 +218,22 @@ out.live.push(...livePath('mate', 'e4 e5 Bc4 Nc6 Qh5 Nf6 Qxf7#', 'w', (i, mv, c)
 out.live.push(...livePath('botcheck', 'e4 d5 exd5 Qxd5 Nc3 Qe5+', 'w', (i) => (i === 5 ? 'good' : 'excellent')))
 out.live.push(...livePath('botblunder', 'e4 e5 Nf3 f6 Nxe5 fxe5', 'w', (i) => (i === 3 ? 'blunder' : i === 4 ? 'best' : i === 5 ? 'mistake' : 'good')))
 for (let i = 0; i < 12; i++) out.greetings.push(greeting().text)
+
+// Accord des phrases à deux cibles : chaque variante rendue avec deux cibles du même genre.
+const PAIRS = { m: ['le fou', 'le cavalier'], f: ['la dame', 'la tour'] }
+out.pairs = []
+for (const key of Object.keys(bundle.PHRASES)) {
+  for (const [g, [cible, cible2]] of Object.entries(PAIRS)) {
+    const vars = { cible, cible2, coup: '♘e5', meilleur: '♘e5', reponse: '♘e5' }
+    const seen = new Set()
+    for (let i = 0; i < 64; i++) {
+      let t = null
+      try { t = new bundle.Picker(i).say(key, i, vars, g) } catch { break }
+      if (t && t.includes(`${cible} et ${cible2}`)) seen.add(t)
+    }
+    for (const text of seen) out.pairs.push({ key, gender: g, text })
+  }
+}
 // quickClass : « meilleur » réservé au pv[0] du moteur ; seuils alignés sur review.ts (3,5 / 7 / 10 / 20).
 const cpForDrop = (d) => cpFromWin(50 - d)
 out.quick = {

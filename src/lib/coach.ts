@@ -346,7 +346,7 @@ export function coachQuip(review: GameReview, playerColor: 'w' | 'b' | null): st
   const pick = new Picker(review.moves.length + 1)
   const acc = color === 'w' ? review.accuracyWhite : review.accuracyBlack
   if (o === 'good' && (m === 'bad' || m === 'meh')) return pick.say('punchline.milieu_rate', 0)
-  if (o !== 'good' && m === 'good') return pick.say('punchline.remontee', 0)
+  if ((o === 'meh' || o === 'bad') && m === 'good') return pick.say('punchline.remontee', 0)
   if (e === 'bad') return pick.say('punchline.finale_ratee', 0)
   if (o === 'bad') return pick.say('punchline.ouverture_ratee', 0)
   if (acc >= 90) return pick.say('punchline.generique.excellent', 0)

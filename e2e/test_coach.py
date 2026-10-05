@@ -248,6 +248,16 @@ def motifs_part(data):
     narrative = re.compile(r"Phase par phase|Le fil de la partie|Ton ouverture a été|En résumé : une ouverture")
     custom = next(s for s in data["scenarios"] if s["label"] == "custom_black")
     check("[phases] départ custom : pas de phase d'ouverture", bool(custom.get("phases")) and custom["phases"]["opening"] == {"w": "none", "b": "none"}, f"({custom.get('phases')})")
+    clean = next(s for s in data["scenarios"] if s["label"] == "custom_clean")
+    check("[phases] départ custom sans faute : la punchline ne parle pas d'ouverture",
+          re.search(r"ouverture|[Dd]épart|début|premiers coups", clean["quip"]) is None, f"({clean['quip']})")
+    pairs = data.get("pairs") or []
+    fem = [p for p in pairs if p["gender"] == "f"]
+    bad = [p["text"] for p in fem if re.search(r"\b(?:pris|attaqués|visés|cloués|alignés|menacés)\b", p["text"])]
+    check(f"[accord] deux cibles féminines : participe au féminin pluriel ({len(fem)} phrases)", fem and not bad, f"({bad[:2]})")
+    masc = [p for p in pairs if p["gender"] == "m"]
+    bad = [p["text"] for p in masc if re.search(r"\b(?:prises|attaquées|visées|clouées|alignées|menacées)\b", p["text"])]
+    check(f"[accord] deux cibles masculines : participe au masculin pluriel ({len(masc)} phrases)", masc and not bad, f"({bad[:2]})")
     ref_w = next(s for s in data["scenarios"] if s["label"] == "ref_w")
     check("[phases] partie de 14 demi-coups : pas de récit par phases", narrative.search(ref_w["summary"]) is None, f"({ref_w['summary'][:120]})")
     long_ = next(s for s in data["scenarios"] if s["label"] == "long")
