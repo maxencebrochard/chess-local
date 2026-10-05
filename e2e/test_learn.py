@@ -3,7 +3,6 @@
 Usage : npm run test:e2e -- --suite learn
 """
 import json
-import re
 
 from helpers import BASE, FINALES, SHOTS, Checker, click_square as sq, mobile_context, overflow_x
 
