@@ -19,8 +19,10 @@ export type ReviewDepthSetting = 'fast' | 'balanced' | 'deep'
 export const REVIEW_DEPTHS: Record<ReviewDepthSetting, number> = { fast: 10, balanced: 12, deep: 16 }
 
 // Dernière configuration de l'écran Jouer (mode, bot, couleur, cadence), retrouvée à la visite suivante.
-export type PlayMode = 'bot' | 'local' | 'coach'
-export type PlayColor = 'w' | 'b' | 'random'
+export const PLAY_MODES = ['bot', 'local', 'coach'] as const
+export type PlayMode = (typeof PLAY_MODES)[number]
+export const PLAY_COLORS = ['w', 'b', 'random'] as const
+export type PlayColor = (typeof PLAY_COLORS)[number]
 export interface PlayConfig {
   playMode: PlayMode
   playBotId: string

@@ -21,7 +21,7 @@ import os
 import re
 import tempfile
 
-from helpers import BASE, SHOTS, Checker, mobile_context
+from helpers import BASE, DEFAULT_SETTINGS, SHOTS, Checker, mobile_context
 
 ck = Checker("backup")
 check = ck.check
@@ -115,7 +115,20 @@ SEED = {
         {"id": 2, "date": 1758001000000, "domain": "endgame", "itemId": "kq-vs-k", "success": 0, "ratingAfter": None},
     ],
 }
-SEED_SETTINGS = {"themeId": "purple", "showLegalMoves": False, "playSounds": False, "chesscomUsername": "moi", "reviewDepth": "deep"}
+# Profil de départ : TOUS les réglages loin de leur défaut, Jouer compris (mode, couleur, bot,
+# cadence). Une restauration, un export, une annulation ou une réinitialisation annulée qui en
+# perdrait un seul fait échouer les égalités strictes ci-dessous.
+SEED_SETTINGS = {"themeId": "purple", "showLegalMoves": False, "playSounds": False, "chesscomUsername": "moi", "reviewDepth": "deep",
+                 "playMode": "coach", "playBotId": "viktor", "playColor": "b", "playTcLabel": "3 | 2"}
+# Défauts des réglages de Jouer : un fichier qui ne les contient pas (sauvegarde antérieure à
+# leur ajout, PR #12) ou qui porte une valeur hors liste blanche les ramène là.
+PLAY_DEFAULTS = {k: DEFAULT_SETTINGS[k] for k in ("playMode", "playBotId", "playColor", "playTcLabel")}
+
+
+def same_settings(st, expected):
+    """Réglages restaurés d'un fichier SANS les clés de Jouer : `expected` plus ces clés, présentes
+    et à leur défaut. Égalité stricte : aucune autre clé, aucune autre valeur."""
+    return st == {**PLAY_DEFAULTS, **expected}
 
 
 # ---------- IndexedDB natif ----------
@@ -301,6 +314,11 @@ def part_roundtrip(p, browser, tmp):
         exported = json.load(f)
     check("[export] format prod : _app, _version 2, 6 tables, settings en chaîne",
           exported.get("_app") == "chess-local" and exported.get("_version") == 2 and all(isinstance(exported.get(t), list) for t in TABLES) and isinstance(exported.get("settings"), str))
+    try:
+        exported_st = json.loads(exported.get("settings") or "null")["state"]
+    except (TypeError, KeyError, ValueError):
+        exported_st = None
+    check("[export] réglages exportés = profil, Jouer compris", exported_st == SEED_SETTINGS, f"({exported_st})")
     stores = sorted(k for k in exported if not k.startswith("_") and k != "settings")
     check("[export] garde-fou : les tables exportées = les object stores réels", stores == sorted(before.keys()), f"({stores} vs {sorted(before.keys())})")
     check("[export] contenu = base", {t: exported[t] for t in TABLES} == before)
@@ -352,7 +370,7 @@ def part_roundtrip(p, browser, tmp):
     page.reload()
     ck.appears("[glob-2] Stats rechargée", page, "main :text('Statistiques')", timeout=15000)
     st = settings_state(page)
-    check("[glob-2] réglages restaurés toujours là après rechargement", st and st["themeId"] == "purple" and st["reviewDepth"] == "deep" and st["playSounds"] is True, f"({st})")
+    check("[glob-2] réglages restaurés toujours là après rechargement", st == {**SEED_SETTINGS, "playSounds": True}, f"({st})")
     check("[glob-2] Profond sélectionné après rechargement", "border-accent" in (page.get_by_role("button", name="Profond", exact=True).get_attribute("class") or ""))
     ctx.close()
 
@@ -588,7 +606,7 @@ def part_reset(p, browser):
     # Après l'effacement, le script d'init du contexte ré-injecte SES défauts (vert/rapide) au
     # rechargement : purple/deep encore là prouverait que localStorage n'a pas été vidé.
     st = settings_state(page)
-    check("[reset] réglages purple/deep effacés", st is not None and st["themeId"] == "green" and st["reviewDepth"] == "fast", f"({st})")
+    check("[reset] réglages effacés (défauts du contexte, Jouer compris)", st == DEFAULT_SETTINGS, f"({st})")
     check("[reset] date du dernier export effacée", last_export(page) is None)
     if ok:
         page.goto(f"{BASE}/#/stats")
@@ -603,7 +621,9 @@ def part_prod_format(p, browser, tmp):
     prod = backup_dict(settings=json.dumps({"state": {"themeId": "blue", "showLegalMoves": True, "playSounds": True, "chesscomUsername": "hikaru", "reviewDepth": "fast"}, "version": 0}))
     prod["_date"] = "2026-07-20T15:15:54.000Z"
     path = write_file(tmp, "export_prod_v2.json", prod)
-    ctx = mobile_context(p, browser, ck, standalone=True)
+    # Réglages de Jouer non par défaut avant chaque restauration : un retour au défaut se distingue
+    # d'une valeur simplement gardée.
+    ctx = mobile_context(p, browser, ck, settings=SEED_SETTINGS, standalone=True)
     ctx.add_init_script(NO_SHARE)
     page = ctx.new_page()
     if open_stats(page):
@@ -615,11 +635,33 @@ def part_prod_format(p, browser, tmp):
         after = snapshot(page)
         check("[prod v2] 6 tables identiques au fichier", {t: after[t] for t in TABLES} == {t: prod[t] for t in TABLES}, f"({counts(after)})")
         st = settings_state(page)
-        check("[prod v2] réglages du fichier appliqués", st == {"themeId": "blue", "showLegalMoves": True, "playSounds": True, "chesscomUsername": "hikaru", "reviewDepth": "fast"}, f"({st})")
+        check("[prod v2] réglages du fichier appliqués", same_settings(st, {"themeId": "blue", "showLegalMoves": True, "playSounds": True, "chesscomUsername": "hikaru", "reviewDepth": "fast"}), f"({st})")
         check("[prod v2] thème Océan sélectionné sans rechargement", "border-accent" in (page.locator("button[title='Océan']").get_attribute("class") or ""))
 
+        # Fichier v2 qui CONTIENT des réglages de Jouer valides : ils sont appliqués tels quels.
+        play_st = {"themeId": "brown", "showLegalMoves": False, "playSounds": False, "chesscomUsername": "magnus", "reviewDepth": "deep",
+                   "playMode": "local", "playBotId": "maximus", "playColor": "random", "playTcLabel": "Illimité"}
+        with_play = backup_dict(games=[game(6, "0-1")], settings=json.dumps({"state": play_st, "version": 0}))
+        choose_file(page, write_file(tmp, "v2_avec_jouer.json", with_play))
+        if ck.appears("[v2 Jouer] feuille ouverte", page, "[data-testid=restore-sheet]"):
+            page.click("[data-testid=restore-confirm]")
+        text, kind = message(page, timeout=20000)
+        check("[v2 Jouer] restaurée", kind == "success" and snapshot(page)["games"] == with_play["games"], f"({text!r})")
+        st = settings_state(page)
+        check("[v2 Jouer] réglages du fichier appliqués, Jouer compris", st == play_st, f"({st})")
+        page.goto(f"{BASE}/#/jouer")
+        if ck.appears("[v2 Jouer] écran Jouer ouvert", page, "main button:has-text('2 joueurs (local)')", timeout=15000):
+            check("[v2 Jouer] mode 2 joueurs sélectionné", "border-accent" in (page.locator("main button:has-text('2 joueurs (local)')").first.get_attribute("class") or ""))
+            # En mode 2 joueurs, bot et couleur sont masqués : la cadence est le seul autre choix affiché.
+            check("[v2 Jouer] cadence Illimité sélectionnée", "border-accent" in (page.locator("main button:text-is('Illimité')").first.get_attribute("class") or ""))
+            page.screenshot(path=f"{SHOTS}/backup_play_after_restore.png")
+        page.goto(f"{BASE}/#/stats")
+        ck.appears("[v2 Jouer] retour sur Stats", page, "main :text('Statistiques')", timeout=15000)
+
         # Réglages hostiles : valeurs hors liste blanche ramenées au défaut, sans refuser les données.
-        hostile = backup_dict(games=[game(5, "1-0")], settings=json.dumps({"state": {"themeId": "evil", "reviewDepth": "evil", "playSounds": "oui", "setTheme": "x", "chesscomUsername": "attaquant"}, "version": 0}))
+        hostile = backup_dict(games=[game(5, "1-0")], settings=json.dumps({"state": {
+            "themeId": "evil", "reviewDepth": "evil", "playSounds": "oui", "setTheme": "x", "chesscomUsername": "attaquant",
+            "playMode": "evil", "playColor": "x", "playBotId": "inconnu", "playTcLabel": "7 min"}, "version": 0}))
         path = write_file(tmp, "reglages_hostiles.json", hostile)
         choose_file(page, path)
         if ck.appears("[réglages hostiles] feuille ouverte", page, "[data-testid=restore-sheet]"):
@@ -628,7 +670,7 @@ def part_prod_format(p, browser, tmp):
         st = settings_state(page)
         check("[réglages hostiles] données restaurées", kind == "success" and snapshot(page)["games"] == hostile["games"], f"({text!r})")
         check("[réglages hostiles] valeurs hors liste ramenées au défaut, chaîne légitime gardée",
-              st == {"themeId": "green", "showLegalMoves": True, "playSounds": True, "chesscomUsername": "attaquant", "reviewDepth": "balanced"}, f"({st})")
+              st == {"themeId": "green", "showLegalMoves": True, "playSounds": True, "chesscomUsername": "attaquant", "reviewDepth": "balanced", **PLAY_DEFAULTS}, f"({st})")
     ctx.close()
 
 
