@@ -62,6 +62,8 @@ Autres scripts :
   Les deux cours partagent le moteur `src/lib/lessonCourse.ts`, la page `src/pages/LessonCourse.tsx` et les règles `scripts/course-rules.mjs`.
 - `python3 scripts/prepare-mates.py` régénère `src/data/mateDrills.json` (positions « contre la montre » de /mats, vérifiées sur `tablebase.lichess.ovh`, réseau requis).
 - `node scripts/prepare-mates-index.mjs` régénère `src/data/mateIndex.json` (puzzles classés par géométrie de mat avec `src/lib/mateNet.ts`) : à relancer après `prepare-data.mjs` ; la suite `mats` vérifie qu'il est à jour (`--check`).
+- `python3 scripts/prepare-attacks.py` régénère `src/data/attacks.json` (banque de l'entraîneur d'attaque) : parties lichess des puzzles d'attaque (API publique, cache `data/lichess-puzzle-games.jsonl` non versionné), positions reculées avant la combinaison et triées par Stockfish natif (`STOCKFISH`, sinon celui du PATH).
+  Thème, consigne et plan sont calculés par `scripts/attack_facts.py`, que la suite `attaque` réutilise ; `--relabel` les recalcule sans moteur.
 - `scripts/deploy.sh` build puis force-push `dist/` sur la branche `gh-pages`.
   Action sortante : ne pas le lancer sans demande explicite.
   Le push final est en HTTPS et échoue avec le compte GitHub par défaut de la machine ; `set -e` arrête alors le script avant `rm -rf dist/.git`, le commit reste dans `dist/`.

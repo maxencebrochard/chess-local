@@ -453,6 +453,17 @@ export default function Learn() {
         </span>
         <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
       </Link>
+      <Link
+        to="/attaque"
+        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
+      >
+        <span className="text-2xl">⚔️</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Entraîneur d'attaque</span>
+          <span className="block text-xs text-neutral-400">Roques opposés, même aile, roi au centre : mène l'attaque au bout</span>
+        </span>
+        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
+      </Link>
 
       <p className="mt-5 mb-2 text-sm font-semibold text-neutral-400">Cours :</p>
       <div className="space-y-2">

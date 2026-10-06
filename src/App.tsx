@@ -19,13 +19,14 @@ import CourseIndex, { CourseLesson } from './pages/LessonCourse'
 import { FINALES } from './lib/endgameCourse'
 import { ROQUE } from './lib/attackCourse'
 import Revision from './pages/Revision'
+import Attack from './pages/Attack'
 
 // `match` : routes rattachées à l'onglet (allumé, sans être la page du lien), sous-chemins compris.
 const NAV = [
   { to: '/', icon: '♞', label: 'Accueil', match: [] as string[] },
   { to: '/jouer', icon: '♟', label: 'Jouer', match: [] as string[] },
   { to: '/puzzles', icon: '🧩', label: 'Puzzles', match: ['/rush'] },
-  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/finales', '/mats', '/revision', '/attaques-manquees'] },
+  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque'] },
   { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import', '/analyse/jouer'] },
   { to: '/archive', icon: '📚', label: 'Archive', match: [] as string[] },
   { to: '/stats', icon: '📊', label: 'Stats', match: [] as string[] },
@@ -138,6 +139,8 @@ function Shell() {
             <Route path="/analyse/jouer" element={<PositionPlay />} />
             <Route path="/finales" element={<Endgames />} />
             <Route path="/finales/:id" element={<Endgames />} />
+            <Route path="/attaque" element={<Attack />} />
+            <Route path="/attaque/:id" element={<Attack />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/import" element={<Import />} />

@@ -1,7 +1,10 @@
-// Partie contre Stockfish à pleine force depuis une position, sans plafond de coups : seules les
-// règles du jeu (mat, pat, répétition, 50 coups, matériel insuffisant), l'abandon ou une nulle
-// acceptée l'arrêtent. Le joueur a le trait au départ ; la partie est persistée à chaque coup.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+// Partie contre Stockfish depuis une position, sans plafond de coups : seules les règles du jeu
+// (mat, pat, répétition, 50 coups, matériel insuffisant), l'abandon ou une nulle acceptée
+// l'arrêtent. Sert aux finales jouées jusqu'au bout et au bouton « Jouer contre le moteur » de
+// l'analyse (pleine force), et à l'entraîneur d'attaque (défenseur à l'Elo choisi, avantage
+// décisif qui permet de conclure). Le joueur a le trait au départ ; la partie est persistée à
+// chaque coup.
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Chess, type Color, type Move } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
 import { AttackLegend } from './AttackLegend'
@@ -9,12 +12,13 @@ import { Board, type BoardArrow } from './Board'
 import { ConfirmSheet } from './ConfirmSheet'
 import { CourseSheet } from './CourseSheet'
 import { Cta } from './Cta'
+import { EngineContinuation } from './EngineContinuation'
 import { MoveStrip } from './MoveStrip'
 import { courseFor } from '../lib/courses'
 import { Engine } from '../lib/engine'
 import {
-  boardEnd, engineAcceptsDraw, halfmoveClock, judge, loadStoredGame, repetitions, replay, resignEnd, storeGame,
-  verdictText, type GameEnd, type Objective,
+  boardEnd, decisiveEnd, decisiveStreak, DECISIVE_TURNS, engineAcceptsDraw, halfmoveClock, judge, loadStoredGame,
+  repetitions, replay, resignEnd, storeGame, verdictText, type GameEnd, type Objective, type Opponent, type StoredGame,
 } from '../lib/positionGame'
 import { figurine, winPct } from '../lib/review'
 import { sounds } from '../lib/sounds'
@@ -22,6 +26,15 @@ import { useSettings } from '../store/settings'
 
 // Temps de réflexion de Stockfish par coup : pleine force, sans faire attendre.
 const ENGINE_MOVETIME_MS = 700
+// Suivi de l'avantage décisif : éval courte de chaque position au trait du joueur.
+const DECISIVE_EVAL_MS = 300
+
+// Fin d'une tentative, remontée une seule fois : `end.kind === 'decisive'` quand l'avantage
+// décisif est atteint, même si le joueur choisit ensuite de continuer.
+export interface FinishInfo {
+  end: GameEnd
+  assisted: boolean
+}
 
 // Coup attendu au premier coup du joueur (« Mes attaques manquées » : le coup du bilan). Un autre
 // coup est vérifié par Stockfish : il « tient aussi » s'il perd moins de 5 points de win%
@@ -58,12 +71,23 @@ export interface PositionGameProps {
   returnLabel: string
   onExit: () => void
   onOther?: () => void // « Autre finale »
-  onFinished?: (success: boolean) => void // première fin de chaque tentative
+  otherLabel?: string // libellé du bouton de onOther
+  onFinished?: (success: boolean, info: FinishInfo) => void // première fin de chaque tentative
+  onAbandon?: (info: { assisted: boolean }) => void // Recommencer en cours de tentative, après au moins un coup du joueur
+  // Première action dans cette partie alors qu'une autre partie persistée était en cours : elle va
+  // être écrasée (seul emplacement de persistance).
+  onReplace?: (replaced: StoredGame) => void
   back?: unknown // gardé avec la partie persistée (partie libre)
   showAttackers?: boolean // calque « Compte les attaquants » (cadres sur l'échiquier + légende)
   objectiveLabel?: string // titre du bandeau quand il n'y a pas d'objectif (défaut « Partie libre »)
-  otherLabel?: string // libellé du CTA `onOther` (défaut « Autre finale »)
   keyMove?: KeyMove
+  opponent?: Opponent // absent : Stockfish à pleine force, sans option
+  decisiveCp?: number // seuil d'avantage décisif (centipions) ; absent : pas de suivi
+  lessonLabel?: string // libellé du bouton qui déplie `lesson`
+  successTitle?: string // titre du verdict réussi
+  headerAction?: ReactNode // à droite du titre, à la place du bouton du cours
+  planButton?: boolean // fin de partie : « Plan », la suite de Stockfish depuis la position de départ
+  allowDraw?: boolean // bouton Nulle (vrai par défaut)
 }
 
 interface Init {
@@ -71,20 +95,27 @@ interface Init {
   end: GameEnd | null
   assisted: boolean
   recorded: boolean
+  decisive: StoredGame['decisive'] | null
 }
 
 function initialGame(p: PositionGameProps): Init {
   const stored = loadStoredGame()
   if (p.resume !== false && stored && stored.key === p.gameKey && stored.startFen === p.startFen && (!stored.end || p.restoreFinished)) {
     const chess = replay(p.startFen, stored.uci)
-    return { chess, end: stored.end ?? boardEnd(chess), assisted: stored.assisted, recorded: stored.recorded ?? !!stored.end }
+    return {
+      chess,
+      end: stored.end ?? boardEnd(chess),
+      assisted: stored.assisted,
+      recorded: stored.recorded ?? !!stored.end,
+      decisive: stored.decisive ?? null,
+    }
   }
   const chess = new Chess(p.startFen)
-  return { chess, end: boardEnd(chess), assisted: false, recorded: false }
+  return { chess, end: boardEnd(chess), assisted: false, recorded: false, decisive: null }
 }
 
 export function PositionGame(props: PositionGameProps) {
-  const { startFen, title, objective, goalHint, lesson, courseId, onExit, onOther } = props
+  const { startFen, title, objective, goalHint, lesson, courseId, onExit, onOther, opponent, decisiveCp } = props
   const navigate = useNavigate()
   const { playSounds } = useSettings()
   const [init] = useState(() => initialGame(props))
@@ -105,7 +136,15 @@ export function PositionGame(props: PositionGameProps) {
   const [showLesson, setShowLesson] = useState(false)
   const [showCourse, setShowCourse] = useState(false)
   const [confirmResign, setConfirmResign] = useState(false)
+  const [showPlan, setShowPlan] = useState(false)
+  // Avantage décisif atteint : choix proposé, ou poursuite choisie (plus de proposition).
+  const [decisive, setDecisive] = useState<StoredGame['decisive'] | null>(init.decisive)
+  // Série de tours au-dessus du seuil, et dernier demi-coup évalué (une éval n'est comptée qu'une fois).
+  const streakRef = useRef({ count: 0, ply: -1 })
   const engineRef = useRef<Engine | null>(null)
+  // Moteur à pleine force pour l'indice, la nulle et le suivi de l'avantage quand l'adversaire est
+  // bridé : un moteur limité ne sert jamais d'oracle.
+  const oracleRef = useRef<Engine | null>(null)
   // Génération de la partie : un coup moteur, un indice ou une nulle calculés pour une partie
   // remplacée (Recommencer, démontage) sont ignorés à leur retour.
   const genRef = useRef(0)
@@ -118,19 +157,36 @@ export function PositionGame(props: PositionGameProps) {
   const pendingJudgeRef = useRef<(() => void) | null>(null)
 
   const course = courseId ? courseFor(courseId) : null
+  // Miroirs pour les callbacks asynchrones (éval de l'oracle rendue après un rendu).
+  const assistedRef = useRef(assisted)
+  const decisiveRef = useRef(decisive)
+  useEffect(() => {
+    assistedRef.current = assisted
+    decisiveRef.current = decisive
+  }, [assisted, decisive])
 
   function getEngine(): Engine {
-    engineRef.current ??= new Engine()
+    if (!engineRef.current) {
+      engineRef.current = new Engine()
+      // Sous mutex : appliquées avant la première recherche.
+      if (opponent) void engineRef.current.setOptions(opponent.options)
+    }
     return engineRef.current
+  }
+
+  function getOracle(): Engine {
+    if (!opponent) return getEngine()
+    oracleRef.current ??= new Engine()
+    return oracleRef.current
   }
 
   // Persistance à chaque changement : coups rejoués depuis la FEN de départ à la reprise. Une
   // partie vierge n'écrase pas la partie en cours d'une autre position (simple coup d'œil).
   useEffect(() => {
-    if (history.length === 0 && !end) {
-      const stored = loadStoredGame()
-      if (stored && (stored.key !== props.gameKey || stored.startFen !== startFen)) return
-    }
+    const stored = loadStoredGame()
+    const other = stored && (stored.key !== props.gameKey || stored.startFen !== startFen)
+    if (history.length === 0 && !end && other) return
+    if (other && !stored.end && !stored.recorded && stored.uci.length > 0) props.onReplace?.(stored)
     storeGame({
       key: props.gameKey,
       startFen,
@@ -141,9 +197,11 @@ export function PositionGame(props: PositionGameProps) {
       assisted,
       recorded: recordedRef.current,
       back: props.back,
+      level: opponent?.level,
+      decisive: decisive ?? undefined,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history, end, assisted])
+  }, [history, end, assisted, decisive])
 
   const finish = useCallback((e: GameEnd) => {
     setEnd(e)
@@ -151,7 +209,7 @@ export function PositionGame(props: PositionGameProps) {
     if (playSounds) (verdict === 'fail' ? sounds.fail : verdict === 'success' ? sounds.success : sounds.gameEnd)()
     if (!recordedRef.current) {
       recordedRef.current = true
-      props.onFinished?.(verdict === 'success' && !assisted)
+      props.onFinished?.(verdict === 'success' && !assisted, { end: e, assisted })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player, objective, playSounds, assisted, props.onFinished])
@@ -174,6 +232,37 @@ export function PositionGame(props: PositionGameProps) {
     return e
   }, [playSounds, finish])
 
+  // Avantage décisif : à chaque tour du joueur, l'oracle évalue la position (de son point de vue,
+  // il a le trait). Tenu DECISIVE_TURNS tours de suite, la tentative est réussie (notée tout de
+  // suite) et le joueur choisit de conclure ou de continuer. Les évals passent dans l'ordre des
+  // tours (mutex du moteur) ; une éval d'une partie remplacée (Recommencer, Annuler) est ignorée.
+  const trackDecisive = useCallback(async () => {
+    if (!decisiveCp || decisiveRef.current) return
+    const gen = genRef.current
+    const ply = chessRef.current.history().length
+    let line
+    try {
+      line = (await getOracle().search({ fen: chessRef.current.fen(), movetimeMs: DECISIVE_EVAL_MS, multipv: 1 })).lines[0]
+    } catch {
+      return
+    }
+    if (gen !== genRef.current || decisiveRef.current || ply <= streakRef.current.ply) return
+    const count = decisiveStreak(streakRef.current.count, line?.scoreCp ?? null, line?.scoreMate ?? null, decisiveCp)
+    streakRef.current = { count, ply }
+    // Proposition seulement sur la position évaluée : si le joueur a déjà rejoué (ou fini la
+    // partie) pendant l'éval, la série est notée mais le choix attend le tour suivant.
+    const c = chessRef.current
+    if (count < DECISIVE_TURNS || c.history().length !== ply || boardEnd(c)) return
+    decisiveRef.current = 'offered'
+    setDecisive('offered')
+    if (playSounds) sounds.success()
+    if (!recordedRef.current) {
+      recordedRef.current = true
+      props.onFinished?.(!assistedRef.current, { end: decisiveEnd(player), assisted: assistedRef.current })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decisiveCp, playSounds, player, props.onFinished])
+
   const engineMove = useCallback(async () => {
     const gen = genRef.current
     const c = chessRef.current
@@ -182,7 +271,7 @@ export function PositionGame(props: PositionGameProps) {
       const res = await getEngine().search({ fen: c.fen(), movetimeMs: ENGINE_MOVETIME_MS, multipv: 1 })
       if (gen !== genRef.current) return
       const move = c.move({ from: res.bestMove.slice(0, 2), to: res.bestMove.slice(2, 4), promotion: res.bestMove[4] })
-      afterMove(move)
+      if (!afterMove(move)) void trackDecisive()
     } catch {
       // Pas de coup exploitable (ne devrait pas arriver) : dit-le, « Relancer » réessaie.
       if (gen === genRef.current) setNotice("Stockfish n'a pas répondu.")
@@ -205,6 +294,8 @@ export function PositionGame(props: PositionGameProps) {
       genRef.current++
       engineRef.current?.quit()
       engineRef.current = null
+      oracleRef.current?.quit()
+      oracleRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -222,6 +313,8 @@ export function PositionGame(props: PositionGameProps) {
       return false
     }
     if (first && props.keyMove) void judgeKeyMove(move, props.keyMove, assisted)
+    // Jouer après « Attaque réussie », c'est choisir de continuer.
+    if (decisive === 'offered') setDecisive('continued')
     if (!afterMove(move)) void engineMove()
     return true
   }
@@ -276,7 +369,10 @@ export function PositionGame(props: PositionGameProps) {
 
   function restart() {
     abandonJudge()
+    if (!end && !recordedRef.current && playerMoves > 0) props.onAbandon?.({ assisted })
     genRef.current++
+    streakRef.current = { count: 0, ply: -1 }
+    setDecisive(null)
     chessRef.current = new Chess(startFen)
     recordedRef.current = false
     judgedRef.current = false
@@ -304,6 +400,7 @@ export function PositionGame(props: PositionGameProps) {
     abandonJudge()
     genRef.current++
     if (mine === 1) setKeyResult(null) // premier coup repris : le verdict repart avec lui
+    streakRef.current = { count: 0, ply: -1 }
     setFen(c.fen())
     setHistory(c.history({ verbose: true }))
     setViewIndex(-1)
@@ -319,7 +416,7 @@ export function PositionGame(props: PositionGameProps) {
     setBusy('hint')
     setAssisted(true)
     try {
-      const res = await getEngine().search({ fen: chessRef.current.fen(), depth: 14, multipv: 1 })
+      const res = await getOracle().search({ fen: chessRef.current.fen(), depth: 14, multipv: 1 })
       if (gen !== genRef.current) return
       const uci = res.bestMove
       if (uci && uci.length >= 4) setHint({ startSquare: uci.slice(0, 2), endSquare: uci.slice(2, 4), color: '#81b64c' })
@@ -333,7 +430,7 @@ export function PositionGame(props: PositionGameProps) {
     const gen = genRef.current
     setBusy('draw')
     try {
-      const res = await getEngine().search({ fen: chessRef.current.fen(), depth: 12, multipv: 1 })
+      const res = await getOracle().search({ fen: chessRef.current.fen(), depth: 12, multipv: 1 })
       if (gen !== genRef.current) return
       const line = res.lines[0]
       if (engineAcceptsDraw(line?.scoreCp ?? null, line?.scoreMate ?? null)) finish({ result: '1/2-1/2', kind: 'agreed' })
@@ -341,6 +438,16 @@ export function PositionGame(props: PositionGameProps) {
     } finally {
       if (gen === genRef.current) setBusy(null)
     }
+  }
+
+  // « Conclure » après un avantage décisif : la partie s'arrête, gagnée.
+  function conclude() {
+    if (end) return
+    genRef.current++
+    setThinking(false)
+    setBusy(null)
+    setDecisive('continued')
+    finish(decisiveEnd(player))
   }
 
   function resign() {
@@ -369,9 +476,12 @@ export function PositionGame(props: PositionGameProps) {
   }
 
   // ---------- Rendu ----------
-  const verdict = end ? judge(end, player, objective) : null
   const playerMoves = history.filter((m) => m.color === player).length
-  const text = end ? verdictText(end, player, objective, playerMoves) : null
+  // Avantage décisif atteint : la tentative est réussie, quelle que soit la suite.
+  const verdict = end ? (decisive && objective ? 'success' : judge(end, player, objective)) : null
+  const baseText = end ? verdictText(end, player, objective, playerMoves) : null
+  const text = baseText && verdict === 'success' && props.successTitle ? { ...baseText, title: props.successTitle } : baseText
+  const offered = !end && decisive === 'offered'
   const clock = halfmoveClock(fen)
   const showClock = !end && (objective === 'draw' || clock >= 60)
   // `fen` signale le changement de la partie (mutable, dans une ref).
@@ -399,13 +509,13 @@ export function PositionGame(props: PositionGameProps) {
     goalHint ??
     (objective ? null : `Tu joues les ${player === 'w' ? 'Blancs' : 'Noirs'}, sans limite de coups.`)
   const sublineClass =
-    end ? ''
+    end || offered ? ''
     : notice || reps === 2 || keyResult === 'missed' || keyResult === 'unverified' ? 'text-amber-300'
     : keyResult === 'found' || keyResult === 'close' ? 'text-accent'
     : 'text-neutral-400'
   const viewFen = live ? fen : history[viewIndex].after
   const lastMove = live ? history[history.length - 1] : history[viewIndex]
-  const boardEndKind = end && end.kind !== 'resign' && end.kind !== 'agreed'
+  const boardEndKind = end && end.kind !== 'resign' && end.kind !== 'agreed' && end.kind !== 'decisive'
 
   return (
     <div
@@ -413,19 +523,24 @@ export function PositionGame(props: PositionGameProps) {
       data-fen={fen}
       data-status={end ? 'over' : 'playing'}
       data-verdict={verdict ?? 'none'}
+      data-decisive={decisive ?? 'none'}
       data-thinking={thinking || busy ? '1' : '0'}
       className="mx-auto flex h-full max-w-2xl flex-col"
     >
       <header className="flex items-center gap-1 px-2 pt-1">
-        <button
-          onClick={onExit}
-          aria-label="Retour"
-          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
-        >
-          ←
-        </button>
+        {/* Avec une action à droite plus large qu'un bouton rond, deux côtés de même largeur
+            gardent le titre centré. */}
+        <div className={`flex shrink-0 ${props.headerAction ? 'w-20' : ''}`}>
+          <button
+            onClick={onExit}
+            aria-label="Retour"
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
+          >
+            ←
+          </button>
+        </div>
         <h1 className="min-w-0 flex-1 truncate text-center text-lg font-black">{title}</h1>
-        {course ? (
+        {props.headerAction ? <div className="flex w-20 shrink-0 justify-end">{props.headerAction}</div> : (course ? (
           <button
             onClick={() => setShowCourse(true)}
             title="Voir le cours"
@@ -436,14 +551,14 @@ export function PositionGame(props: PositionGameProps) {
           </button>
         ) : (
           <span className="w-10" />
-        )}
+        ))}
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div
           data-testid="objective"
           className={`mx-3 mt-1 rounded px-3 py-1.5 ${
-            verdict === 'success' ? 'bg-accent/15 text-accent'
+            verdict === 'success' || offered ? 'bg-accent/15 text-accent'
             : verdict === 'fail' ? 'bg-red-900/40 text-red-200'
             : 'bg-surface-2'
           }`}
@@ -452,6 +567,7 @@ export function PositionGame(props: PositionGameProps) {
             <p className="min-w-0 flex-1 truncate text-sm font-bold">
               {text
                 ? <>{verdict === 'success' ? '✓ ' : verdict === 'fail' ? '✗ ' : ''}{text.title}</>
+                : offered ? <>✓ {props.successTitle ?? 'Objectif atteint'}</>
                 : objective === 'win' ? 'Objectif : gagner'
                 : objective === 'draw' ? 'Objectif : tenir la nulle'
                 : (props.objectiveLabel ?? 'Partie libre')}
@@ -462,12 +578,14 @@ export function PositionGame(props: PositionGameProps) {
                 aria-expanded={showLesson}
                 className="shrink-0 cursor-pointer rounded-full bg-surface-3/80 px-2.5 py-0.5 text-xs font-semibold text-neutral-200 hover:bg-surface-3"
               >
-                Leçon {showLesson ? '▴' : '▾'}
+                {props.lessonLabel ?? 'Leçon'} {showLesson ? '▴' : '▾'}
               </button>
             )}
           </div>
           <p data-testid="objective-subline" className={`truncate text-xs ${sublineClass}`}>
-            {text ? <>{text.reason}{assisted && ' (avec aide)'}</> : (subline ?? ' ')}
+            {text ? <>{text.reason}{assisted && ' (avec aide)'}</>
+              : offered ? <>Avantage décisif tenu : conclus, ou joue jusqu'au mat.{assisted && ' (avec aide)'}</>
+              : (subline ?? ' ')}
           </p>
         </div>
         {showLesson && lesson && (
@@ -476,7 +594,7 @@ export function PositionGame(props: PositionGameProps) {
 
         <div className="flex h-7 items-center gap-2 px-3 text-xs text-neutral-400">
           <span className="font-semibold text-neutral-300">🤖 Stockfish 18</span>
-          <span>{thinking ? 'réfléchit…' : busy === 'hint' ? 'cherche un indice…' : busy === 'draw' ? 'étudie ta proposition…' : 'pleine force'}</span>
+          <span>{thinking ? 'réfléchit…' : busy === 'hint' ? 'cherche un indice…' : busy === 'draw' ? 'étudie ta proposition…' : opponent ? opponent.label : 'pleine force'}</span>
           <span className="ml-auto flex items-center gap-2">
             {assisted && !end && <span className="rounded bg-surface-3 px-1.5 py-0.5">avec aide</span>}
             {showClock && (
@@ -514,10 +632,17 @@ export function PositionGame(props: PositionGameProps) {
       </div>
 
       <div className="flex items-center gap-1 border-t border-black/40 px-1 py-1.5">
-        {!end ? (
+        {offered ? (
+          <>
+            <Action label="Continuer" icon="▶" onClick={() => setDecisive('continued')} />
+            <Action label="Recommencer" icon="↺" onClick={restart} />
+            <div className="flex-1" />
+            <Cta className="mr-1 px-5 py-2 text-base" onClick={conclude}>Conclure</Cta>
+          </>
+        ) : !end ? (
           <>
             <Action label="Abandonner" icon="🏳" onClick={() => setConfirmResign(true)} />
-            {objective !== 'draw' && (
+            {objective !== 'draw' && props.allowDraw !== false && (
               <Action label="Nulle" icon="½" onClick={() => void offerDraw()} disabled={!myTurn || !!busy} />
             )}
             {!thinking && chessRef.current.turn() !== player ? (
@@ -532,6 +657,7 @@ export function PositionGame(props: PositionGameProps) {
           <>
             {boardEndKind && <Action label="Annuler" icon="↩" onClick={takeback} disabled={playerMoves === 0} />}
             <Action label="Analyser" icon="♞" onClick={analyse} disabled={history.length === 0} />
+            {props.planButton && <Action label="Plan" icon="💡" onClick={() => setShowPlan(true)} />}
             {onOther && <Action label="Rejouer" icon="↺" onClick={restart} />}
             <div className="flex-1" />
             {onOther ? (
@@ -556,6 +682,9 @@ export function PositionGame(props: PositionGameProps) {
         </ConfirmSheet>
       )}
       {showCourse && course && <CourseSheet course={course} onClose={() => setShowCourse(false)} />}
+      {showPlan && (
+        <EngineContinuation startFen={startFen} playerColor={player} mode="plan" label={title} onClose={() => setShowPlan(false)} />
+      )}
     </div>
   )
 }

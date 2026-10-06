@@ -4,6 +4,7 @@
 // validation du fichier ENTIER d'abord (inspectBackup, pur), puis UNE transaction Dexie.
 import { db } from './db'
 import { POSITION_GAME_KEY } from './positionGame'
+import { ATTACK_PREFS_KEY } from './attack'
 import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, useSettings } from '../store/settings'
 import { BOTS } from './bots'
 import { TIME_CONTROLS } from './timeControls'
@@ -16,9 +17,10 @@ const MAX_SETTING_STRING = 100 // un pseudo chess.com fait moins de 30 caractèr
 // Clé additive, hors sauvegarde et hors réglages : date du dernier export réussi.
 const LAST_EXPORT_KEY = 'chess-local-last-export'
 // Clés de l'app dans localStorage (le persist Zustand, la date du dernier export, la partie contre
-// le moteur en cours) et clés des séances d'Apprendre et de révision dans sessionStorage : les
-// seules que la réinitialisation a le droit de toucher.
-const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY]
+// le moteur en cours, le niveau du défenseur de l'entraîneur d'attaque) et clés des séances
+// d'Apprendre et de révision dans sessionStorage : les seules que la réinitialisation a le droit
+// de toucher.
+const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY]
 const SESSION_KEYS = ['learn-session-v1', 'revision-session-v1']
 
 export const TABLES = ['games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions'] as const

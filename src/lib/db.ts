@@ -57,7 +57,8 @@ export interface LearnSession {
   date: number
   // endgame | tactic | opening | strategy | mistakes | endgame-play | course (leçon terminée d'un
   // cours d'Apprendre), opening-drill (entraîneur d'ouvertures), missed-attack (tentative sur une
-  // attaque manquée) ou mats (une série de « Mats éclair »).
+  // attaque manquée), mats (une série de « Mats éclair »), revision (révision espacée) ou attack
+  // (entraîneur d'attaque : itemId = id de la position, une ligne par tentative).
   // course : itemId = `<slug>:<id>`, le slug désignant le cours (`finales:` pour le cours de finales,
   // `roque:` pour « Démolir le roque »), ex. `finales:mat-dame`, `roque:grec-schema`.
   // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
@@ -73,8 +74,13 @@ export interface LearnSession {
   itemId: string
   success: 0 | 1
   ratingAfter: number | null
-  fen?: string // finales jouées jusqu'au bout et attaques manquées : position de départ (champ non indexé)
+  fen?: string // finales jouées jusqu'au bout, attaques manquées et entraîneur d'attaque : position de départ (champ non indexé)
   score?: number // mats : mats réussis dans la série (champ non indexé)
+  // Entraîneur d'attaque (champs non indexés) : issue de la tentative, Elo du défenseur (null =
+  // pleine force), aide utilisée (indice ou coup repris).
+  outcome?: 'mate' | 'decisive' | 'draw' | 'loss' | 'resign' | 'abandon'
+  defenderElo?: number | null
+  assisted?: boolean
 }
 
 export const db = new Dexie('chess-local') as Dexie & {

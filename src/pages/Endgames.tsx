@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Cta } from '../components/Cta'
 import { PositionGame } from '../components/PositionGame'
+import { recordReplaced } from '../lib/attack'
 import { courseFor } from '../lib/courses'
 import { ENDGAMES, type EndgameItem } from '../lib/learn'
 import {
@@ -152,6 +153,7 @@ function EndgamePlay({ id }: { id: string }) {
       onExit={() => (((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0 ? navigate(-1) : navigate('/finales', { replace: true }))}
       onOther={() => navigate(`/finales/${pickEndgame(solved, eg.id).id}`, { replace: true })}
       onFinished={(success) => void recordEndgamePlay(eg.id, eg.fen, success)}
+      onReplace={recordReplaced}
     />
   )
 }
