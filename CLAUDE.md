@@ -59,6 +59,9 @@ Autres scripts :
 - `scripts/deploy.sh` build puis force-push `dist/` sur la branche `gh-pages`.
   Action sortante : ne pas le lancer sans demande explicite.
 - `?debug-uci` dans l'URL logge le trafic UCI en console.
+- `node scripts/bench-bots.mjs --preset chain --games 80 --out bench.jsonl` mesure l'Elo des bots (parties bot contre bot, Bradley-Terry ancré sur Iris = 1600, IC 95 % par bootstrap).
+  Il exécute la vraie `bots.ts` et la vraie classe `Engine` sur le même WASM, dans Node ; compter environ une heure.
+  À relancer après tout changement de style ou d'Elo d'un bot faible.
 
 ## Architecture
 
@@ -76,7 +79,8 @@ Les scores sont du point de vue du trait ; les convertir explicitement avant de 
 Chaque page crée son moteur paresseusement dans un `useRef` (`engineRef.current ??= new Engine()`) et appelle `quit()` au démontage.
 `Play.tsx` en tient deux : celui du bot est bridé par `UCI_LimitStrength`/`UCI_Elo` (`src/lib/bots.ts`), celui du coach live reste à pleine force pour évaluer les coups.
 Pour des recherches concurrentes ou des options différentes, créer un second `Engine` plutôt que partager le même.
-Sous 1320 Elo (plancher de `UCI_Elo`), la faiblesse des bots vient de coups aléatoires (`randomness`).
+Sous 1320 Elo (plancher de `UCI_Elo`), un bot a un `style` : Stockfish pleine force à profondeur fixe en MultiPV, puis tirage pondéré par la perte (`pickWeakMove`), sans jamais rater un coup qui s'impose.
+Toute la décision passe par `chooseBotMove` de `bots.ts` ; les styles sont calibrés par `scripts/bench-bots.mjs`.
 
 ### `/analyse` est le hub
 
