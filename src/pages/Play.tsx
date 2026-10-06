@@ -11,7 +11,7 @@ import { MoveStrip } from '../components/MoveStrip'
 import { greeting, liveComment, quickClass, type LiveComment } from '../lib/liveCoach'
 import { isBookPosition } from '../lib/openings'
 import { openingFr } from '../lib/openingNames'
-import { BOTS, botById, botEngineOptions, botThinkBudget, type Bot } from '../lib/bots'
+import { BOTS, botById, botEngineOptions, botThinkBudget, chooseBotMove, type Bot } from '../lib/bots'
 import { Engine } from '../lib/engine'
 import { applyRating, db, getRating, type SavedGame } from '../lib/db'
 import { openingForMoves } from '../lib/openings'
@@ -461,14 +461,7 @@ export default function Play() {
       const engine = engineRef.current
       const remaining = g.tc.baseMs === null ? null : clocksRef.current[c.turn()]
       const budget = botThinkBudget(g.bot, remaining, g.tc.incMs)
-      let uci: string
-      if (g.bot.randomness > 0 && Math.random() < g.bot.randomness) {
-        const moves = c.moves({ verbose: true })
-        uci = moves[Math.floor(Math.random() * moves.length)].lan
-      } else {
-        const res = await engine.search({ fen: c.fen(), movetimeMs: budget.movetimeMs, multipv: 1 })
-        uci = res.bestMove
-      }
+      const uci = await chooseBotMove(engine, g.bot, c.fen(), { movetimeMs: budget.movetimeMs })
       // Latence artificielle pour un rythme naturel, réduite quand la pendule presse.
       const latency = (300 + Math.random() * 500) * budget.latencyScale
       if (latency > 0) await new Promise((r) => setTimeout(r, latency))
