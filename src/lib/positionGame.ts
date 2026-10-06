@@ -59,7 +59,8 @@ export async function solvedEndgames(): Promise<Set<string>> {
 
 // ---------- Fin de partie ----------
 
-export type EndKind = 'mate' | 'stalemate' | 'repetition' | 'insufficient' | 'fifty' | 'resign' | 'agreed'
+// `decisive` : partie conclue par le joueur sur un avantage décisif tenu (entraîneur d'attaque).
+export type EndKind = 'mate' | 'stalemate' | 'repetition' | 'insufficient' | 'fifty' | 'resign' | 'agreed' | 'decisive'
 
 export interface GameEnd {
   result: GameResult
@@ -80,6 +81,19 @@ export function boardEnd(c: Chess): GameEnd | null {
 export function resignEnd(player: Color): GameEnd {
   return { result: player === 'w' ? '0-1' : '1-0', kind: 'resign' }
 }
+
+export function decisiveEnd(player: Color): GameEnd {
+  return { result: player === 'w' ? '1-0' : '0-1', kind: 'decisive' }
+}
+
+// Avantage décisif : éval du joueur (à son trait, donc de SON point de vue) au moins `thresholdCp`,
+// ou mat en sa faveur. Retourne la série de tours consécutifs au-dessus du seuil.
+export function decisiveStreak(prev: number, cp: number | null, mate: number | null, thresholdCp: number): number {
+  const decisive = mate !== null ? mate > 0 : cp !== null && cp >= thresholdCp
+  return decisive ? prev + 1 : 0
+}
+// Tours consécutifs au-dessus du seuil pour proposer de conclure : l'avantage doit tenir.
+export const DECISIVE_TURNS = 2
 
 function scoreFor(result: GameResult, player: Color): 1 | 0.5 | 0 {
   if (result === '1/2-1/2') return 0.5
@@ -108,6 +122,7 @@ export function verdictText(end: GameEnd, player: Color, objective: Objective, p
     : end.kind === 'insufficient' ? 'Nulle : plus assez de matériel pour mater.'
     : end.kind === 'fifty' ? 'Nulle par la règle des 50 coups.'
     : end.kind === 'resign' ? 'Tu as abandonné.'
+    : end.kind === 'decisive' ? 'Avantage décisif : l\'attaque a porté.'
     : 'Nulle acceptée par Stockfish.'
   return { title, reason }
 }
@@ -161,6 +176,14 @@ export function validFen(fen: string): boolean {
   }
 }
 
+// Adversaire bridé (entraîneur d'attaque) : options UCI posées sur le moteur qui joue, libellé de
+// la ligne moteur, Elo gardé avec la partie persistée (null = pleine force).
+export interface Opponent {
+  options: Record<string, string | number | boolean>
+  label: string
+  level: number | null
+}
+
 // ---------- Persistance ----------
 
 // Une seule partie gardée : la dernière jouée, finale ou position libre. localStorage et non
@@ -178,6 +201,10 @@ export interface StoredGame {
   assisted: boolean // indice ou coup repris
   recorded?: boolean // résultat de la tentative déjà noté
   back?: unknown // partie libre : state de navigation qui rouvre l'analyse d'origine
+  level?: number | null // entraîneur d'attaque : Elo du défenseur de cette partie, null = pleine force
+  // Entraîneur d'attaque : avantage décisif atteint (`offered` : choix Continuer/Conclure affiché,
+  // `continued` : le joueur poursuit, plus de proposition).
+  decisive?: 'offered' | 'continued'
 }
 
 // Partie en cours (non terminée, au moins un coup) de cette finale, telle que la liste l'annonce.

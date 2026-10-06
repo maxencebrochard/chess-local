@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { PositionGame } from '../components/PositionGame'
+import { recordReplaced } from '../lib/attack'
 import { loadStoredGame, validFen } from '../lib/positionGame'
 import { useSettings } from '../store/settings'
 
@@ -55,6 +56,7 @@ export default function PositionPlay() {
       returnLabel="Retour à la partie"
       back={source.back}
       showAttackers={showAttackers}
+      onReplace={recordReplaced}
       // Retour à l'analyse d'origine, rouverte depuis son state (elle ne persiste rien).
       onExit={() => navigate('/analyse', { replace: true, state: source.back ?? null })}
     />
