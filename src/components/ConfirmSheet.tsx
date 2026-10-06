@@ -57,7 +57,7 @@ export function ConfirmSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="border-b border-black/30 px-4 py-3 text-lg font-black">{title}</h2>
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 text-sm text-neutral-300">{children}</div>
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 text-sm text-neutral-300">{children}</div>
         <div className="flex gap-2 border-t border-black/30 p-4">
           <button
             ref={cancelRef}

@@ -39,7 +39,7 @@ export function MoveList({ sans, currentIndex, onSelect, classes }: MoveListProp
   }
 
   return (
-    <div ref={ref} className="h-full overflow-y-auto rounded bg-surface-2 p-2">
+    <div ref={ref} className="h-full overflow-y-auto overscroll-contain rounded bg-surface-2 p-2">
       {rows.length === 0 && <p className="p-2 text-sm text-neutral-500">Aucun coup joué.</p>}
       {rows.map((r) => (
         <div key={r.num} className="flex items-center gap-1 py-px">

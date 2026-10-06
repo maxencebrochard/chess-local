@@ -79,8 +79,9 @@ function Shell() {
     if (prev.pathname !== pathname || (prev.search !== search && navigationType !== 'REPLACE')) mainRef.current?.scrollTo(0, 0)
   }, [pathname, search, navigationType])
 
+  // `h-full` : la coquille prend exactement le body, fixé sur le viewport (index.css).
   return (
-    <div className="flex h-dvh flex-col md:flex-row">
+    <div className="flex h-full flex-col md:flex-row">
       <nav aria-label="Navigation principale" className="hidden w-44 shrink-0 flex-col gap-1 border-r border-black/30 bg-surface-2 p-3 md:flex">
         <div className="mb-3 px-2 text-lg font-black">
           Chess<span className="text-accent">Local</span>
@@ -111,7 +112,9 @@ function Shell() {
         })}
         <div className="mt-auto whitespace-nowrap px-2 text-[11px] text-neutral-600">100 % local · SF 18</div>
       </nav>
-      <main ref={mainRef} className="pt-safe min-w-0 flex-1 overflow-y-auto">
+      {/* `overscroll-contain` : en butée, le geste s'arrête là au lieu de se chaîner vers le
+          document (index.css). */}
+      <main ref={mainRef} className="pt-safe min-w-0 flex-1 overflow-y-auto overscroll-contain">
         {/* La frontière ne couvre que les pages : les nav restent utilisables pendant le
             secours. Réarmée par un vrai changement de chemin ou un re-tap de l'onglet courant,
             jamais par `location.key` : les `navigate('.', { replace, state: null })` que les
