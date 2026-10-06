@@ -97,6 +97,9 @@ export default function Mates() {
   return <Hub stats={stats} onOpen={open} />
 }
 
+// Taille des symboles de pièces des cartes : un symbole seul est trace fine, il lui faut plus grand.
+const GLYPH_SIZE: Record<number, string> = { 1: 'text-4xl', 2: 'text-3xl', 3: 'text-xl tracking-tighter' }
+
 // ---------- Accueil ----------
 function Hub({ stats, onOpen }: { stats: MatsStats | null; onOpen: (id: string) => void }) {
   return (
@@ -131,7 +134,7 @@ function Hub({ stats, onOpen }: { stats: MatsStats | null; onOpen: (id: string) 
                 >
                   <span
                     aria-hidden
-                    className={`w-12 shrink-0 text-center leading-none font-black whitespace-nowrap ${[...d.glyph].length > 2 ? 'text-base' : 'text-2xl'}`}
+                    className={`w-14 shrink-0 text-center leading-none font-black whitespace-nowrap ${GLYPH_SIZE[Math.min([...d.glyph].length, 3)]}`}
                   >
                     {d.glyph}
                   </span>
