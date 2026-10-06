@@ -171,9 +171,9 @@ def entry_suite(p, browser):
     ctx = mobile_context(p, browser, ck, standalone=True)
     page = ctx.new_page()
     page.goto(f"{BASE}/#/apprendre")
-    ok = ck.appears("[entrée] carte Mats éclair dans Apprendre", page, "main button:has-text('Mats éclair')", timeout=10000)
+    ok = ck.appears("[entrée] carte Mats éclair dans Apprendre", page, "main a:has-text('Mats éclair')", timeout=10000)
     if ok:
-        page.locator("main button", has_text="Mats éclair").click()
+        page.locator("main a", has_text="Mats éclair").click()
         ck.appears("[entrée] Apprendre → /mats", page, "h1:has-text('Mats éclair')", timeout=5000)
         check("[entrée] URL /mats", "#/mats" in page.url, f"({page.url})")
     page.goto(f"{BASE}/#/puzzles")
