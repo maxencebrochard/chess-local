@@ -21,6 +21,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 
 try:
@@ -33,6 +34,7 @@ from helpers import BASE, Checker, click_square, desktop_context, mobile_context
 ck = Checker("mats")
 check = ck.check
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROLLDOWN = os.path.join(ROOT, "node_modules", ".bin", "rolldown")
 
 PATTERN_MATERIAL = {
     "kq": "Q", "kr": "R", "krr": "RR", "kqr": "QR", "kbb": "BB", "kbn": "BN", "kqp": "PQ", "kp": "P",
@@ -52,6 +54,22 @@ def load_json(rel, default):
     except (OSError, ValueError) as e:
         ck.fail(f"[données] {rel} lisible", f"({type(e).__name__})")
         return default
+
+
+def lesson_fens():
+    """`lessonFen` des fiches, lus dans `DRILLS` tel que l'app l'exporte (src/lib/mates.ts bundlé par rolldown, exécuté sous Node)."""
+    with tempfile.TemporaryDirectory() as d:
+        bundle = os.path.join(d, "mates.mjs")
+        r = subprocess.run([ROLLDOWN, "src/lib/mates.ts", "--format", "esm", "--file", bundle], cwd=ROOT, capture_output=True, text=True)
+        if r.returncode != 0:
+            ck.fail("[données] bundle rolldown de mates.ts", (r.stderr or r.stdout)[-300:])
+            return {}
+        js = "const { DRILLS } = await import(process.argv[1]); console.log(JSON.stringify(Object.fromEntries(DRILLS.filter((d) => d.lessonFen).map((d) => [d.id, d.lessonFen]))))"
+        r = subprocess.run(["node", "--input-type=module", "-e", js, "file://" + bundle], cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        ck.fail("[données] DRILLS lisible sous Node", r.stderr[-300:])
+        return {}
+    return json.loads(r.stdout)
 
 
 def data_suite():
@@ -76,10 +94,9 @@ def data_suite():
         check(f"[données] {key} : {len(positions)} positions légales, matériel juste, camp fort au trait", len(positions) >= 30 and not bad, f"({bad[:2]})")
     check("[données] le camp fort a tantôt les blancs, tantôt les noirs", colors == {chess.WHITE, chess.BLACK})
 
-    src = read("src/lib/mates.ts") if os.path.exists(os.path.join(ROOT, "src/lib/mates.ts")) else ""
-    fens = re.findall(r"'([1-8pnbrqkPNBRQK/]{15,}) ([wb]) - - 0 1'", src)
-    not_mate = [f for f, t in fens if not chess.Board(f"{f} {t} - - 0 1").is_checkmate()]
-    check(f"[données] {len(fens)} positions types des fiches, toutes des mats", len(fens) >= 14 and not not_mate, f"({not_mate})")
+    lessons = lesson_fens()
+    not_mate = [i for i, f in lessons.items() if not chess.Board(f).is_checkmate()]
+    check(f"[données] {len(lessons)} positions types des fiches, toutes des mats", len(lessons) >= 14 and not not_mate, f"({not_mate})")
 
     res = subprocess.run(["node", "--no-warnings", "scripts/prepare-mates-index.mjs", "--check"], cwd=ROOT, capture_output=True, text=True)
     check("[données] index de géométrie à jour avec le classement de l'app", res.returncode == 0, f"({(res.stdout + res.stderr)[-300:]})")
