@@ -1,0 +1,746 @@
+{
+  "chapters": [
+    {
+      "id": "grec",
+      "title": "Le sacrifice grec",
+      "lessons": ["grec-schema", "grec-echec"]
+    },
+    {
+      "id": "double-fous",
+      "title": "Le double sacrifice de fous",
+      "lessons": ["lasker-bauer"]
+    },
+    {
+      "id": "g7-f7",
+      "title": "Sacrifices en g7, f7, g6 et h6",
+      "lessons": ["sacrifice-g7", "sacrifice-f7", "breche-g6", "breche-h6"]
+    },
+    {
+      "id": "roques-opposes",
+      "title": "Roques opposés",
+      "lessons": ["tempete-de-pions", "ouvrir-une-colonne"]
+    },
+    {
+      "id": "meme-cote",
+      "title": "Roques du même côté",
+      "lessons": ["levier-f5", "attaque-de-pieces"]
+    },
+    {
+      "id": "tours-batteries",
+      "title": "Levier de tour et batteries",
+      "lessons": ["levier-de-tour", "batterie-dame-fou"]
+    },
+    {
+      "id": "roi-au-centre",
+      "title": "Roi resté au centre",
+      "lessons": ["ouvrir-le-centre", "sacrifice-cd5"]
+    },
+    {
+      "id": "coordination",
+      "title": "Principes de coordination",
+      "lessons": [
+        "compter-les-pieces",
+        "eliminer-le-defenseur",
+        "faire-venir-les-reserves"
+      ]
+    }
+  ],
+  "lessons": {
+    "grec-schema": {
+      "title": "Le schéma Fxh7+, Cg5+, Dh5",
+      "summary": "Le sacrifice grec : le fou s'offre en h7, le cavalier saute en g5 avec échec, la dame arrive en h5.",
+      "keyPoints": [
+        "Il faut trois pièces : le fou sur la diagonale de h7, un cavalier prêt pour g5, une dame qui rejoint h5.",
+        "Le cavalier noir ne doit plus garder h7 depuis f6 : un pion blanc en e5 l'en chasse.",
+        "Après Cg5+, chaque retraite du roi a sa réponse : Dh5 contre Rg8, De4+ contre Rg6.",
+        "Le fou c1 qui garde g5 empêche la dame noire de prendre le cavalier."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r2q1rk1/pb3ppp/1p2p3/2bnP3/8/3B1N2/PP2QPPP/R1B2RK1 w - - 0 15",
+          "text": "Position d'une partie lichess, les Blancs jouent. Le fou d3 vise h7, le cavalier f3 peut sauter en g5 et la dame e2 rejoindra h5. Le pion e5 interdit f6 au cavalier noir, et le fou c1 garde g5. Stockfish donne ici un avantage décisif aux Blancs.",
+          "arrows": [["d3", "h7"], ["f3", "g5"], ["c1", "g5"]],
+          "marks": {
+            "h7": "red",
+            "f6": "yellow",
+            "h5": "green"
+          },
+          "claim": "w",
+          "eval": "+3.62"
+        },
+        {
+          "kind": "line",
+          "fen": "r2q1rk1/pb3ppp/1p2p3/2bnP3/8/3B1N2/PP2QPPP/R1B2RK1 w - - 0 15",
+          "text": "À toi : lance le sacrifice grec et suis le schéma jusqu'à l'arrivée de la dame.",
+          "result": "win",
+          "moves": [
+            {"san": "Bxh7+", "text": "Le fou se sacrifie avec échec : le roi doit le prendre ou perdre un pion et son abri.", "hint": "Le fou d3 vise h7, que seul le roi défend.", "keeps": ["d3h7"]},
+            {"san": "Kxh7"},
+            {"san": "Ng5+", "text": "Échec du cavalier. La dame noire ne peut pas le prendre sans perdre la dame : le fou c1 garde g5.", "keeps": ["f3g5"]},
+            {"san": "Kg8", "text": "Le repli le plus naturel."},
+            {"san": "Qh5", "text": "La dame rejoint le cavalier : elle menace Dh7 mat.", "keeps": ["e2h5"]}
+          ],
+          "end": "Selon Stockfish, les Noirs n'ont plus de bonne défense : pour éviter le mat, ils devront rendre beaucoup de matériel."
+        },
+        {
+          "kind": "line",
+          "fen": "r2q1r2/pb3pp1/1p2p1k1/2bnP1N1/8/8/PP2QPPP/R1B2RK1 w - - 2 17",
+          "text": "Et si le roi monte en g6 ? Il s'expose encore plus : trouve l'échec qui le chasse.",
+          "result": "win",
+          "moves": [
+            {"san": "Qe4+", "text": "La dame donne échec sur la diagonale e4-g6.", "hint": "Cherche un échec de la dame sur la diagonale qui mène à g6.", "keeps": ["e2e4", "h2h4"]},
+            {"san": "f5"},
+            {"san": "exf6+", "text": "Prise en passant avec échec à la découverte de la dame.", "keeps": ["e5f6"]},
+            {"san": "Kh5"},
+            {"san": "Qh7+", "keeps": ["a1b1", "a2a3", "a2a4", "b2b3", "b2b4", "e4c2", "e4e2", "e4f3", "e4h7", "f1d1", "f6f7", "f6g7", "g1h1", "g2g3", "g2g4", "g5e6", "g5f3", "g5f7", "g5h3", "g5h7", "h2h3"], "close": ["e4d3", "e4e5", "e4e6", "f1e1", "h2h4"]},
+            {"san": "Kg4"},
+            {"san": "Qh3#", "keeps": ["a1b1", "a2a3", "a2a4", "b2b3", "b2b4", "c1d2", "c1e3", "f1d1", "f1e1", "f6f7", "f6g7", "g1h1", "g2g3", "g5e4", "g5e6", "g5f3", "g5f7", "g5h3", "h2h3", "h2h4", "h7b1", "h7c2", "h7d3", "h7e4", "h7g6", "h7g7", "h7h3"]}
+          ],
+          "end": "Mat. Le roi sorti en g6 n'a trouvé aucun abri."
+        }
+      ]
+    },
+    "grec-echec": {
+      "title": "Quand le sacrifice grec échoue",
+      "summary": "Un seul défenseur bien placé suffit à ruiner le sacrifice : vérifie g5, f6 et la case de la dame.",
+      "keyPoints": [
+        "Un fou noir en e7 qui garde g5 enlève au cavalier sa case d'échec.",
+        "Un cavalier noir en f6 garde h7 : le sacrifice ne fait alors que perdre une pièce.",
+        "Sans dame capable de rejoindre h5 ou h3 très vite, le roi s'échappe.",
+        "Avant de sacrifier, joue la ligne jusqu'au bout dans ta tête, retraite par retraite."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r1bq1rk1/pppnbppp/2n1p3/3pP3/3P4/2NB1N2/PPP2PPP/R1BQ1RK1 w - - 0 1",
+          "text": "Même schéma en apparence, mais le fou e7 garde g5. Après Fxh7+ Rxh7 Cg5+, le fou noir prend le cavalier et l'attaque s'éteint. Stockfish confirme que le sacrifice échoue ici.",
+          "arrows": [["d3", "h7", "red"], ["e7", "g5"]],
+          "marks": {
+            "g5": "red"
+          },
+          "fails": "Bxh7+",
+          "eval": "+0.96"
+        },
+        {
+          "kind": "line",
+          "fen": "r1bq1rk1/pppnbppB/2n1p3/3pP3/3P4/2N2N2/PPP2PPP/R1BQ1RK1 b - - 0 1",
+          "text": "À toi de défendre avec les Noirs : accepte le sacrifice, puis élimine le cavalier qui vient en g5.",
+          "result": "win",
+          "moves": [
+            {"san": "Kxh7", "text": "Le roi prend : le sacrifice ne tient pas.", "hint": "Le fou h7 est offert : prends-le.", "keeps": ["g8h7"]},
+            {"san": "Ng5+"},
+            {"san": "Bxg5", "text": "Le fou e7 prend le cavalier : c'est le défenseur qui manquait au schéma.", "keeps": ["e7g5"], "close": ["h7g8"]},
+            {"san": "Bxg5"},
+            {"san": "Qxg5", "text": "La dame reprend : les Noirs ont deux pièces contre un pion.", "keeps": ["d8g5", "f7f6"], "close": ["c6e7"]}
+          ],
+          "end": "Selon Stockfish, les Noirs gardent un avantage décisif : le sacrifice a seulement coûté deux pièces aux Blancs."
+        }
+      ]
+    },
+    "lasker-bauer": {
+      "title": "Lasker-Bauer, 1889",
+      "summary": "Le double sacrifice de fous : Fxh7+ puis Fxg7 arrachent tout l'abri du roi, et la tour finit le travail.",
+      "keyPoints": [
+        "Deux fous qui visent h7 et g7 peuvent se sacrifier l'un après l'autre pour mettre le roi à nu.",
+        "Après les sacrifices, la dame donne échec et la tour monte par la 3e rangée (Tf3-h3).",
+        "Le but n'est pas toujours le mat : Lasker gagne la dame, puis un fou par la fourchette Dd7."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r4rk1/1b2bppp/ppq1p3/2ppB2n/5P2/1P1BP3/P1PPQ1PP/R4RK1 w - - 0 15",
+          "text": "Lasker contre Bauer, Amsterdam 1889. Le fou d3 vise h7, le fou e5 vise g7, et la dame e2 peut reprendre en h5 avec échec. Stockfish donne un avantage décisif aux Blancs, à condition de sacrifier les deux fous.",
+          "arrows": [["d3", "h7"], ["e5", "g7"], ["e2", "h5"]],
+          "marks": {
+            "h7": "red",
+            "g7": "red"
+          },
+          "claim": "w",
+          "eval": "+4.13"
+        },
+        {
+          "kind": "line",
+          "fen": "r4rk1/1b2bppp/ppq1p3/2ppB2n/5P2/1P1BP3/P1PPQ1PP/R4RK1 w - - 0 15",
+          "text": "Rejoue la combinaison de Lasker : deux fous sacrifiés, puis la tour arrive par la 3e rangée.",
+          "result": "win",
+          "moves": [
+            {"san": "Bxh7+", "text": "Premier sacrifice : le pion h7 disparaît.", "hint": "Le premier fou à sacrifier est celui qui vise h7.", "keeps": ["d3h7"]},
+            {"san": "Kxh7"},
+            {"san": "Qxh5+", "text": "La dame reprend le cavalier avec échec.", "keeps": ["e2h5"]},
+            {"san": "Kg8"},
+            {"san": "Bxg7", "text": "Second sacrifice : g7 tombe aussi, le roi n'a plus de pions devant lui.", "hint": "L'autre fou peut lui aussi se sacrifier.", "keeps": ["e5g7"]},
+            {"san": "Kxg7"},
+            {"san": "Qg4+", "keeps": ["h5g4"]},
+            {"san": "Kh7"},
+            {"san": "Rf3", "text": "La tour monte par la 3e rangée : elle menace Th3+ et le mat.", "hint": "Il manque une pièce à l'attaque : amène la tour f1 vers la colonne h.", "keeps": ["f1f3", "g4h3", "g4h5"]},
+            {"san": "e5", "text": "Les Noirs libèrent la 6e rangée pour leur dame."},
+            {"san": "Rh3+", "keeps": ["f3h3"]},
+            {"san": "Qh6"},
+            {"san": "Rxh6+", "keeps": ["a1f1", "g4d7", "g4f5", "h3h6"], "close": ["a1c1", "a1d1", "a1e1", "a2a3", "a2a4", "b3b4", "c2c3", "d2d3", "d2d4", "e3e4", "h3h5"]},
+            {"san": "Kxh6"},
+            {"san": "Qd7", "text": "La fourchette : les fous e7 et b7 sont attaqués en même temps.", "keeps": ["a1f1", "g4d7", "g4h3"], "close": ["a1b1", "a1c1", "a1d1", "a1e1", "a2a3", "a2a4", "b3b4", "d2d3", "d2d4", "g4f3", "g4f5"]}
+          ],
+          "end": "Lasker gagne un fou de plus et la partie quelques coups plus tard. Stockfish confirme l'avantage décisif."
+        }
+      ]
+    },
+    "sacrifice-g7": {
+      "title": "Le sacrifice en g7",
+      "summary": "Quand le pion g7 est le dernier gardien, le fou qui le prend ouvre un mat sur les cases blanches.",
+      "keyPoints": [
+        "Un fou en h6 contre un roi en h8 : Fxg7+ attire le roi sur g7.",
+        "La dame suit sur la colonne g ou la diagonale, et le fou d3 couvre h7.",
+        "Compte les cases de fuite après la prise : souvent il n'en reste aucune."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r2q1r1k/p1pn2p1/1p2Q2B/6bP/3p4/P2B4/1P3P2/R3K2R w KQ - 1 20",
+          "text": "Position d'une partie lichess. Le fou h6 attaque g7, la dame e6 surveille g6 et le fou d3 vise h7. Stockfish trouve un mat en quelques coups.",
+          "arrows": [["h6", "g7"], ["e6", "g6"], ["d3", "h7"]],
+          "marks": {
+            "g7": "red",
+            "h7": "green"
+          },
+          "claim": "w",
+          "eval": "#3"
+        },
+        {
+          "kind": "line",
+          "fen": "r2q1r1k/p1pn2p1/1p2Q2B/6bP/3p4/P2B4/1P3P2/R3K2R w KQ - 1 20",
+          "text": "À toi : sacrifie le fou en g7, puis mène la dame jusqu'au mat.",
+          "result": "win",
+          "moves": [
+            {"san": "Bxg7+", "text": "Le fou détruit le dernier pion devant le roi.", "hint": "Le pion g7 est le seul obstacle entre ta dame et le roi.", "keeps": ["h6g7"]},
+            {"san": "Kxg7"},
+            {"san": "Qg6+", "text": "La dame entre avec échec, protégée par le fou d3.", "keeps": ["e6g6"]},
+            {"san": "Kh8"},
+            {"san": "Qh7#", "keeps": ["g6h7"]}
+          ],
+          "end": "Mat : la dame en h7, gardée par le fou d3."
+        }
+      ]
+    },
+    "sacrifice-f7": {
+      "title": "Le sacrifice en f7",
+      "summary": "Le pion f7 n'est gardé que par la tour : le cavalier g5 le prend et la dame entre derrière lui.",
+      "keyPoints": [
+        "Compte les défenseurs de f7 : ici seulement la tour f8.",
+        "Cxf7+ prend un pion avec échec, et la dame h5 reprend sur f7 après Txf7.",
+        "Une fois f7 tombé, la dame blanche s'installe près du roi noir."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r4r1k/1b2bpp1/p1n1p2p/1ppq2NQ/4N3/2PP4/PPB2PPP/R3R1K1 w - - 0 17",
+          "text": "Position d'une partie lichess. Le cavalier g5 et la dame h5 visent f7, que seule la tour f8 défend. Le cavalier e4 attend en renfort. Stockfish donne l'avantage décisif aux Blancs.",
+          "arrows": [["g5", "f7"], ["h5", "f7"], ["f8", "f7"]],
+          "marks": {
+            "f7": "red"
+          },
+          "claim": "w",
+          "eval": "+2.90"
+        },
+        {
+          "kind": "line",
+          "fen": "r4r1k/1b2bpp1/p1n1p2p/1ppq2NQ/4N3/2PP4/PPB2PPP/R3R1K1 w - - 0 17",
+          "text": "À toi : prends en f7 avec échec, puis installe la dame.",
+          "result": "win",
+          "moves": [
+            {"san": "Nxf7+", "text": "Le cavalier prend avec échec, sous la protection de la dame.", "hint": "Le pion f7 est attaqué deux fois et défendu une seule fois.", "keeps": ["g5f7"]},
+            {"san": "Rxf7"},
+            {"san": "Qxf7", "text": "La dame reprend : les Blancs ont gagné la qualité et un pion, et leur dame est au cœur du roque.", "keeps": ["h5f7"]},
+            {"san": "Rf8"},
+            {"san": "Qg6", "text": "La dame reste au contact du roi noir.", "keeps": ["f7g6"], "close": ["c3c4"]}
+          ],
+          "end": "Selon Stockfish, l'avantage des Blancs est décisif : la dame g6 et le cavalier e4 dominent le roi noir."
+        }
+      ]
+    },
+    "breche-g6": {
+      "title": "La brèche sur g6",
+      "summary": "Contre un roque avec g6, le pion f5 et les sacrifices sur g6 font sauter les cases blanches.",
+      "keyPoints": [
+        "Un pion f5 contre g6 est un levier : fxg6 ouvre la colonne f et la diagonale du fou.",
+        "Le fou e4 peut se sacrifier en g6 pour arracher le pion h7.",
+        "La dame h5 reprend en g6 avec échec : le roi n'a plus d'abri."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r1bq1rk1/pp2bp1p/2n3p1/2p2P1Q/4B3/2NPB3/PP3P1P/R4RK1 w - - 0 17",
+          "text": "Position d'une partie lichess. Le pion f5 attaque g6 et la dame h5 aussi ; le fou e4 la visera dès que le pion f aura pris. La tour f1 attend l'ouverture de la colonne f. Stockfish donne un avantage décisif aux Blancs.",
+          "arrows": [["f5", "g6"], ["e4", "g6"], ["h5", "g6"], ["f1", "f7"]],
+          "marks": {
+            "g6": "red"
+          },
+          "claim": "w",
+          "eval": "+4.74"
+        },
+        {
+          "kind": "line",
+          "fen": "r1bq1rk1/pp2bp1p/2n3p1/2p2P1Q/4B3/2NPB3/PP3P1P/R4RK1 w - - 0 17",
+          "text": "À toi : ouvre le roque par le pion f, puis sacrifie le fou en g6.",
+          "result": "win",
+          "moves": [
+            {"san": "fxg6", "text": "Le levier : le pion f prend en g6.", "hint": "Le pion f5 touche g6 : commence par lui.", "keeps": ["f5g6"]},
+            {"san": "fxg6"},
+            {"san": "Bxg6", "text": "Le fou se sacrifie pour arracher le pion h7.", "hint": "La case g6 est attaquée par ton fou et ta dame.", "keeps": ["e4g6"]},
+            {"san": "hxg6"},
+            {"san": "Qxg6+", "text": "Échec : le roi noir est nu, la tour f1 va entrer par la colonne f.", "keeps": ["h5g6"]}
+          ],
+          "end": "Selon Stockfish, l'attaque est décisive : les trois pions du roque ont disparu et la colonne f est ouverte."
+        }
+      ]
+    },
+    "breche-h6": {
+      "title": "La brèche sur h6",
+      "summary": "Le pion h6 qui devait protéger le roi devient une cible : Fxh6 gxh6 Dxh6 ouvre la voie.",
+      "keyPoints": [
+        "Le coup h6 crée une cible : le fou c1 la vise par la diagonale c1-h6.",
+        "Après Fxh6 gxh6 Dxh6, la dame est collée au roi et le fou d3 menace h7.",
+        "Ensuite il suffit souvent d'amener une pièce de plus, ici le fou vers c4."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r1bq1rk1/pppn1pp1/7p/3Nb2Q/8/3B4/PP3PPP/R1B2RK1 w - - 0 14",
+          "text": "Position d'une partie lichess. Le fou c1 vise le pion h6, la dame h5 l'attaque aussi et le fou d3 regarde h7. Stockfish donne un avantage décisif aux Blancs.",
+          "arrows": [["c1", "h6"], ["h5", "h6"], ["d3", "h7"]],
+          "marks": {
+            "h6": "red",
+            "h7": "yellow"
+          },
+          "claim": "w",
+          "eval": "+4.48"
+        },
+        {
+          "kind": "line",
+          "fen": "r1bq1rk1/pppn1pp1/7p/3Nb2Q/8/3B4/PP3PPP/R1B2RK1 w - - 0 14",
+          "text": "À toi : sacrifie le fou en h6 et installe la dame devant le roi.",
+          "result": "win",
+          "moves": [
+            {"san": "Bxh6", "text": "Le fou prend le pion h6 : s'il est repris, la dame entre en h6.", "hint": "Le pion h6 est attaqué par deux pièces blanches.", "keeps": ["c1h6"]},
+            {"san": "gxh6"},
+            {"san": "Qxh6", "text": "La dame est au contact du roi, avec le fou d3 derrière.", "keeps": ["h5h6"]},
+            {"san": "f5"},
+            {"san": "Bc4", "text": "Le fou rejoint l'attaque : une pièce de plus près du roi.", "keeps": ["a1e1", "d3c4", "f1e1", "h6g6"]}
+          ],
+          "end": "Selon Stockfish, l'avantage des Blancs est décisif : dame, fou et cavalier visent tous le roi."
+        }
+      ]
+    },
+    "tempete-de-pions": {
+      "title": "La tempête de pions",
+      "summary": "Roques opposés : les pions g et h foncent sur le roi, sans crainte pour le sien.",
+      "keyPoints": [
+        "Quand les rois sont roqués de côtés opposés, avancer les pions devant le roi adverse ne découvre pas le sien.",
+        "La course compte en temps : chaque coup de pion doit menacer quelque chose.",
+        "Un sacrifice en h7 peut accélérer la tempête : g6+ et h6 arrivent avec gain de temps."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r2q1rk1/1ppnbppp/4p3/3p2PP/1n1P1B2/3BPQ2/PpPN1P2/1K4RR w - - 2 15",
+          "text": "Position d'une partie lichess. Le roi blanc est en b1, le noir en g8 : les pions g5 et h5 sont déjà lancés et les tours occupent les colonnes g et h.",
+          "arrows": [["g5", "g6"], ["h5", "h6"], ["d3", "h7"]],
+          "marks": {
+            "h7": "red",
+            "g7": "red"
+          },
+          "eval": "+2.47"
+        },
+        {
+          "kind": "line",
+          "fen": "r2q1rk1/1ppnbppp/4p3/3p2PP/1n1P1B2/3BPQ2/PpPN1P2/1K4RR w - - 2 15",
+          "text": "À toi : le fou ouvre la route, puis les pions g et h arrivent avec gain de temps.",
+          "result": "win",
+          "moves": [
+            {"san": "Bxh7+", "text": "Le fou se sacrifie pour attirer le roi devant les pions.", "hint": "Le fou d3 vise h7 : s'il est pris, le roi tombe sous les pions.", "keeps": ["d3h7"]},
+            {"san": "Kxh7"},
+            {"san": "g6+", "text": "Le pion g donne échec et ouvre les lignes.", "keeps": ["g5g6"]},
+            {"san": "Kg8"},
+            {"san": "h6", "text": "Le pion h arrive à son tour et attaque g7.", "keeps": ["h5h6"]}
+          ],
+          "end": "Selon Stockfish, les Blancs ont un avantage décisif : les pions ont ouvert les colonnes devant leurs tours."
+        }
+      ]
+    },
+    "ouvrir-une-colonne": {
+      "title": "Ouvrir une colonne",
+      "summary": "Roques opposés : le pion h lance le levier, la colonne h s'ouvre pour la dame et la tour.",
+      "keyPoints": [
+        "Le levier h4-h5 attaque la pièce ou le pion qui bouche la colonne.",
+        "Même si l'adversaire contre-attaque, le gain de temps sur la colonne ouverte compte plus.",
+        "Dame et tour doublées sur la colonne h valent souvent plus qu'une pièce."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r2q1rk1/1pp2p2/p2p2np/2b5/4P2P/P5R1/1PP2PPQ/2K2B1R w - - 0 21",
+          "text": "Position d'une partie lichess. Le roi blanc est en c1, le noir en g8. La dame h2 et la tour h1 attendent derrière le pion h4 : il faut ouvrir la colonne h.",
+          "arrows": [["h4", "h5"], ["h2", "h6"]],
+          "marks": {
+            "h6": "red",
+            "g6": "yellow"
+          },
+          "eval": "+4.78"
+        },
+        {
+          "kind": "line",
+          "fen": "r2q1rk1/1pp2p2/p2p2np/2b5/4P2P/P5R1/1PP2PPQ/2K2B1R w - - 0 21",
+          "text": "À toi : pousse le pion h, ouvre la colonne, puis frappe en h6.",
+          "result": "win",
+          "moves": [
+            {"san": "h5", "text": "Le pion attaque le cavalier g6.", "hint": "Le pion h4 peut chasser le cavalier qui bloque la colonne.", "keeps": ["h4h5"]},
+            {"san": "Bxf2", "text": "Les Noirs contre-attaquent la tour g3."},
+            {"san": "hxg6", "text": "La colonne h s'ouvre : la dame h2 voit h6.", "keeps": ["h5g6"]},
+            {"san": "Bxg3"},
+            {"san": "Qxh6", "text": "La dame entre en h6, soutenue par la tour h1.", "keeps": ["h2h6"]},
+            {"san": "Bf4+"},
+            {"san": "Qxf4", "keeps": ["h6f4"]}
+          ],
+          "end": "Selon Stockfish, les Blancs ont un avantage décisif : la colonne h est ouverte et le pion g6 étouffe le roi."
+        }
+      ]
+    },
+    "levier-f5": {
+      "title": "Le levier f4-f5",
+      "summary": "Roques du même côté : le pion f attaque l'abri du roi sans dégarnir le tien.",
+      "keyPoints": [
+        "Avec les rois du même côté, le pion f est le levier le plus sûr : il n'abrite pas ton roi.",
+        "f4-f5 chasse le cavalier et ouvre la colonne f pour la tour f1.",
+        "Avant de pousser g ou h devant ton roi, demande-toi qui ouvre quoi."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "1q3rk1/3bbpp1/3p2np/2pP4/1pP1NP2/1P6/2B3PP/2BQ1RK1 w - - 1 20",
+          "text": "Position d'une partie lichess, rois du même côté. Le pion f4 peut chasser le cavalier g6, et la tour f1 profitera de la colonne f.",
+          "arrows": [["f4", "f5"], ["f1", "f8"]],
+          "marks": {
+            "g6": "yellow",
+            "f7": "red"
+          },
+          "eval": "+3.28"
+        },
+        {
+          "kind": "line",
+          "fen": "1q3rk1/3bbpp1/3p2np/2pP4/1pP1NP2/1P6/2B3PP/2BQ1RK1 w - - 1 20",
+          "text": "À toi : lance le levier f4-f5 et ouvre la colonne f.",
+          "result": "win",
+          "moves": [
+            {"san": "f5", "text": "Le pion attaque le cavalier g6.", "hint": "Le pion f4 peut attaquer le cavalier noir.", "keeps": ["f4f5"]},
+            {"san": "Bxf5"},
+            {"san": "Rxf5", "text": "La tour reprend : la colonne f est semi-ouverte et la tour est active.", "keeps": ["f1f5"]}
+          ],
+          "end": "Selon Stockfish, l'avantage des Blancs est décisif : la tour f5 et le cavalier e4 visent le roque."
+        }
+      ]
+    },
+    "attaque-de-pieces": {
+      "title": "Attaquer avec les pièces",
+      "summary": "Roques du même côté : pas besoin de pousser les pions, les pièces suffisent si elles sont plus nombreuses.",
+      "keyPoints": [
+        "Ton roque reste intact : ce sont tes pièces qui attaquent, pas tes pions.",
+        "Dame h3 et fou d3 visent h7 : il suffit d'écarter le défenseur.",
+        "Cf6+ est un sacrifice de déviation : si g7xf6, la case h7 tombe."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r1b2rk1/1pq1bppp/p3p3/4n3/4N3/3B3Q/PPP3PP/R3R2K w - - 8 18",
+          "text": "Position d'une partie lichess. Aucun pion blanc n'a bougé devant le roi blanc. La dame h3 vise h7 ; le cavalier e4 masque le fou d3, mais en sautant en f6 il ouvre sa diagonale.",
+          "arrows": [["h3", "h7"], ["d3", "h7"], ["e4", "f6"]],
+          "marks": {
+            "h7": "red"
+          },
+          "eval": "#2"
+        },
+        {
+          "kind": "line",
+          "fen": "r1b2rk1/1pq1bppp/p3p3/4n3/4N3/3B3Q/PPP3PP/R3R2K w - - 8 18",
+          "text": "À toi : trouve le sacrifice qui ouvre h7.",
+          "result": "win",
+          "moves": [
+            {"san": "Nf6+", "text": "Échec du cavalier : le pion g7 doit le prendre ou le roi fuit.", "hint": "Un échec du cavalier peut dévier le pion g7.", "keeps": ["e4f6"]},
+            {"san": "gxf6"},
+            {"san": "Qxh7#", "keeps": ["h3h7"]}
+          ],
+          "end": "Mat : trois pièces contre un roi sans défenseur."
+        }
+      ]
+    },
+    "levier-de-tour": {
+      "title": "Le levier de tour",
+      "summary": "La tour monte en 3e rangée puis glisse vers la colonne h : Tf3-h3 apporte la pièce qui manquait.",
+      "keyPoints": [
+        "Une tour en f1 ou e1 rejoint l'attaque par la 3e rangée : Tf3-h3 ou Te3-g3.",
+        "Le coup calme Tf3 menace Dxh7+ suivi de Th3 mat.",
+        "Une dame peut se sacrifier quand la tour arrive avec échec derrière elle."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "1r4rk/p4p1p/1qp2PpQ/2bpp3/8/2P5/PP4PP/R1B2R1K w - - 4 21",
+          "text": "Position d'une partie lichess. La dame h6 attaque h7 mais seule elle ne suffit pas. La tour f1 peut monter en f3 puis glisser en h3.",
+          "arrows": [["f1", "f3"], ["f3", "h3"], ["h6", "h7"]],
+          "marks": {
+            "h7": "red"
+          },
+          "eval": "#4"
+        },
+        {
+          "kind": "line",
+          "fen": "1r4rk/p4p1p/1qp2PpQ/2bpp3/8/2P5/PP4PP/R1B2R1K w - - 4 21",
+          "text": "À toi : monte la tour, puis termine par un sacrifice de dame.",
+          "result": "win",
+          "moves": [
+            {"san": "Rf3", "text": "Le coup calme : la tour menace Th3.", "hint": "Il manque une pièce sur la colonne h : la tour f1 peut y aller par la 3e rangée.", "keeps": ["f1f3"]},
+            {"san": "Bf8"},
+            {"san": "Qxh7+", "text": "Sacrifice de dame : le roi doit prendre.", "keeps": ["h6h7"]},
+            {"san": "Kxh7"},
+            {"san": "Rh3+", "keeps": ["f3h3"]},
+            {"san": "Bh6"},
+            {"san": "Rxh6#", "keeps": ["h3h6"]}
+          ],
+          "end": "Mat : la tour arrivée par la 3e rangée a fini le travail, le pion f6 tient g7."
+        }
+      ]
+    },
+    "batterie-dame-fou": {
+      "title": "La batterie dame-fou",
+      "summary": "Dame devant, fou derrière sur la diagonale b1-h7 : la moindre ouverture donne Dh7 mat.",
+      "keyPoints": [
+        "Dame en d3 et fou en c2 forment une batterie sur la diagonale b1-h7.",
+        "La dame est en avant : protégée par le fou, elle peut entrer en h7.",
+        "Un sacrifice de cavalier en f6 dévie le pion g7 qui couvrait le roi."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "3r1rk1/ppp1qpp1/1nn1b2p/2b1p3/4N3/2PQ1N1P/PPB2PP1/R1B2RK1 w - - 8 15",
+          "text": "Position d'une partie lichess. La dame d3 et le fou c2 sont alignés vers h7, mais le cavalier e4 bouche la diagonale. Il peut sauter en f6 avec échec et la libérer.",
+          "arrows": [["c2", "d3"], ["e4", "f6"]],
+          "marks": {
+            "h7": "red"
+          },
+          "eval": "#2"
+        },
+        {
+          "kind": "line",
+          "fen": "3r1rk1/ppp1qpp1/1nn1b2p/2b1p3/4N3/2PQ1N1P/PPB2PP1/R1B2RK1 w - - 8 15",
+          "text": "À toi : utilise la batterie.",
+          "result": "win",
+          "moves": [
+            {"san": "Nf6+", "text": "Le cavalier sacrifié dévie le pion g7.", "hint": "Un échec du cavalier ouvre la diagonale de la dame.", "keeps": ["e4f6"]},
+            {"san": "gxf6"},
+            {"san": "Qh7#", "keeps": ["d3h7"]}
+          ],
+          "end": "Mat : la dame en h7, protégée par le fou c2 en batterie."
+        }
+      ]
+    },
+    "ouvrir-le-centre": {
+      "title": "Morphy à l'Opéra, 1858",
+      "summary": "Contre un roi resté au centre, ouvre les lignes à tout prix : Morphy sacrifie pièce sur pièce.",
+      "keyPoints": [
+        "Un roi au centre est vulnérable dès que les colonnes c, d ou e s'ouvrent.",
+        "Morphy rend du matériel pour gagner du temps : chaque coup amène une pièce de plus.",
+        "Le grand roque met la tour sur la colonne d ouverte en un seul coup."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "rn2kb1r/p3qppp/2p2n2/1p2p1B1/2B1P3/1QN5/PPP2PPP/R3K2R w KQkq - 0 10",
+          "text": "Morphy contre le duc de Brunswick et le comte Isouard, Paris 1858. Les Blancs sont en avance de développement et le roi noir est encore en e8.",
+          "arrows": [["c3", "b5"], ["c4", "b5"], ["g5", "f6"]],
+          "marks": {
+            "e8": "red"
+          },
+          "eval": "+3.06"
+        },
+        {
+          "kind": "line",
+          "fen": "rn2kb1r/p3qppp/2p2n2/1p2p1B1/2B1P3/1QN5/PPP2PPP/R3K2R w KQkq - 0 10",
+          "text": "Rejoue Morphy : ouvre les lignes vers e8, roque et amène tout.",
+          "result": "win",
+          "moves": [
+            {"san": "Nxb5", "text": "Sacrifice de cavalier : il ouvre la diagonale vers e8.", "hint": "Le pion b5 bloque la diagonale du fou c4 vers le roi.", "keeps": ["c3b5"]},
+            {"san": "cxb5", "text": "Les Noirs acceptent, alors que Db4+ résistait mieux.", "weak": true},
+            {"san": "Bxb5+", "keeps": ["c4b5"]},
+            {"san": "Nbd7"},
+            {"san": "O-O-O", "text": "Le grand roque amène la tour sur la colonne d.", "hint": "Une tour peut rejoindre la colonne d en un seul coup.", "keeps": ["a1d1", "e1c1", "g5f6"]},
+            {"san": "Rd8"},
+            {"san": "Rxd7", "text": "La tour prend le cavalier cloué.", "keeps": ["a2a3", "a2a4", "b3a4", "b3c3", "b3c4", "b3f3", "b3g3", "b3h3", "b5a4", "b5c6", "c1b1", "c2c3", "c2c4", "d1d2", "d1d3", "d1d5", "d1d7", "f2f3", "f2f4", "g2g3", "g2g4", "g5f6", "g5h4", "h1e1", "h1f1", "h1g1", "h2h3", "h2h4"], "close": ["g5d2"]},
+            {"san": "Rxd7", "text": "Reprendre du cavalier résistait mieux.", "weak": true},
+            {"san": "Rd1", "text": "L'autre tour arrive à son tour.", "keeps": ["b3c3", "g5f6", "h1d1"], "close": ["b3c4", "b5a4", "c1b1", "c2c3", "f2f3", "g5h4"]},
+            {"san": "Qe6", "text": "Le roi en d8 tenait plus longtemps.", "weak": true},
+            {"san": "Bxd7+", "keeps": ["a2a3", "a2a4", "b3c3", "b3d3", "b3e6", "b3h3", "b5a4", "b5d7", "c1b1", "c2c3", "c2c4", "d1d2", "d1d3", "d1d7", "f2f3", "f2f4", "g2g3", "g2g4", "g5f6", "g5h4", "h2h3", "h2h4"], "close": ["b3a4"]},
+            {"san": "Nxd7"},
+            {"san": "Qb8+", "text": "Sacrifice de dame : le cavalier doit la prendre.", "keeps": ["b3b7", "b3b8", "b3c3"]},
+            {"san": "Nxb8"},
+            {"san": "Rd8#", "keeps": ["d1d8"]}
+          ],
+          "end": "Mat. Morphy a donné dame, tour et cavalier, mais chacune de ses pièces travaillait contre le roi."
+        }
+      ]
+    },
+    "sacrifice-cd5": {
+      "title": "Le sacrifice Cd5",
+      "summary": "Le cavalier se sacrifie en d5 pour ouvrir la colonne e et les diagonales vers le roi resté en e8.",
+      "keyPoints": [
+        "Dans la Sicilienne, Cd5 contre un roi en e8 ouvre la colonne e si exd5 est joué.",
+        "Le pion e5 qui prend en f6 donne un échec à la découverte de la dame e2.",
+        "Plus le roi tarde à roquer, plus ces sacrifices au centre sont dangereux."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r3kb1r/1bqp2pp/p1n1pp2/1p2P3/5Bn1/PBN2N2/1P2QPPP/R4RK1 w kq - 0 13",
+          "text": "Position d'une partie lichess. Le roi noir est en e8, la dame e2 est sur la colonne e et le fou b3 vise e6. Le cavalier c3 peut se sacrifier en d5.",
+          "arrows": [["c3", "d5"], ["e2", "e6"], ["b3", "e6"]],
+          "marks": {
+            "e8": "red",
+            "e6": "yellow"
+          },
+          "eval": "+3.73"
+        },
+        {
+          "kind": "line",
+          "fen": "r3kb1r/1bqp2pp/p1n1pp2/1p2P3/5Bn1/PBN2N2/1P2QPPP/R4RK1 w kq - 0 13",
+          "text": "À toi : sacrifie le cavalier au centre.",
+          "result": "win",
+          "moves": [
+            {"san": "Nd5", "text": "Le cavalier attaque la dame c7 et le pion f6.", "hint": "Le cavalier c3 peut s'offrir en d5, attaquant la dame.", "keeps": ["c3d5"]},
+            {"san": "exd5"},
+            {"san": "exf6+", "text": "Le pion prend en f6 avec échec à la découverte de la dame e2.", "keeps": ["e5f6"]}
+          ],
+          "end": "Selon Stockfish, les Blancs ont un avantage décisif : le roi noir, toujours au centre, est sous le feu."
+        }
+      ]
+    },
+    "compter-les-pieces": {
+      "title": "Compter attaquants et défenseurs",
+      "summary": "Avant de sacrifier, compte : les pièces qui peuvent arriver près du roi, contre celles qui le défendent.",
+      "keyPoints": [
+        "Compte les pièces qui atteignent la zone du roi en un ou deux coups, pas toutes les pièces.",
+        "Un défenseur près du roi vaut souvent plus qu'un attaquant éloigné.",
+        "Si le compte est égal, amène d'abord une pièce de plus avant de sacrifier."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r2q1rk1/5ppp/p3p3/1pbbP3/5B2/3B1N2/PP3PPP/3QR1K1 w - - 0 16",
+          "text": "Position d'une partie lichess. Attaquants : le fou d3, le cavalier f3, la dame d1 qui rejoint h5, et le fou f4 qui garde g5. Défenseurs : aucun cavalier en f6, les fous noirs sont loin. Le compte est clair : Stockfish donne un avantage décisif aux Blancs.",
+          "arrows": [["d3", "h7"], ["f3", "g5"], ["f4", "g5"]],
+          "marks": {
+            "h7": "red",
+            "f6": "yellow",
+            "h5": "green"
+          },
+          "claim": "w",
+          "eval": "+2.54"
+        },
+        {
+          "kind": "diagram",
+          "fen": "r1bq1rk1/pppnbppp/2n1p3/3pP3/3P4/2NB1N2/PPP2PPP/R1BQ1RK1 w - - 0 1",
+          "text": "Comparaison : ici le fou e7 défend g5 et le compte change. Selon Stockfish, Fxh7+ échoue.",
+          "arrows": [["d3", "h7", "red"], ["e7", "g5"]],
+          "marks": {
+            "g5": "red"
+          },
+          "fails": "Bxh7+",
+          "eval": "+0.96"
+        },
+        {
+          "kind": "line",
+          "fen": "r2q1rk1/5ppp/p3p3/1pbbP3/5B2/3B1N2/PP3PPP/3QR1K1 w - - 0 16",
+          "text": "Le compte est bon : lance l'attaque.",
+          "result": "win",
+          "moves": [
+            {"san": "Bxh7+", "text": "Quatre attaquants contre le roi seul : le sacrifice est justifié.", "hint": "Le fou d3 vise h7, et le fou f4 garde g5.", "keeps": ["d3h7"]},
+            {"san": "Kxh7"},
+            {"san": "Ng5+", "keeps": ["f3g5"]},
+            {"san": "Kg8"},
+            {"san": "Qh5", "text": "La dame arrive : trois pièces blanches contre le roi.", "keeps": ["d1h5"]}
+          ],
+          "end": "Selon Stockfish, l'avantage est décisif : le compte des pièces annonçait l'issue."
+        }
+      ]
+    },
+    "eliminer-le-defenseur": {
+      "title": "Éliminer le défenseur",
+      "summary": "Quand une seule pièce empêche le mat, prends-la, même au prix d'une pièce.",
+      "keyPoints": [
+        "Repère le défenseur clé : la pièce qui couvre la case du mat.",
+        "Prends-le, échange-le ou dévie-le : le mat devient possible.",
+        "Ici le cavalier f6 garde h7 contre la batterie dame-fou."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r1b2rk1/1pq1bppp/p3pn2/8/1n1PN3/2NQBP2/PPB3PP/R4RK1 w - - 4 15",
+          "text": "Position d'une partie lichess. La dame d3 et le fou c2 visent h7. En dehors du roi, une seule pièce noire garde h7 : le cavalier f6.",
+          "arrows": [["d3", "h7"], ["e4", "f6"], ["f6", "h7"]],
+          "marks": {
+            "f6": "red",
+            "h7": "red"
+          },
+          "eval": "#2"
+        },
+        {
+          "kind": "line",
+          "fen": "r1b2rk1/1pq1bppp/p3pn2/8/1n1PN3/2NQBP2/PPB3PP/R4RK1 w - - 4 15",
+          "text": "À toi : élimine le défenseur de h7.",
+          "result": "win",
+          "moves": [
+            {"san": "Nxf6+", "text": "Le cavalier prend le défenseur avec échec.", "hint": "En dehors du roi, une seule pièce noire garde h7 : prends-la.", "keeps": ["e4f6"]},
+            {"san": "gxf6"},
+            {"san": "Qxh7#", "keeps": ["d3h7"]}
+          ],
+          "end": "Mat : sans le cavalier f6, la case h7 n'avait plus de gardien."
+        }
+      ]
+    },
+    "faire-venir-les-reserves": {
+      "title": "Faire venir les réserves",
+      "summary": "Une attaque qui s'essouffle repart quand une pièce de plus arrive : la tour e1 vient par e3.",
+      "keyPoints": [
+        "Après les premiers coups d'attaque, cherche la pièce qui ne joue pas encore.",
+        "Une tour sur la colonne e monte par e3 vers g3 ou h3.",
+        "Le défenseur gagne du temps à chaque coup : amène les renforts avec menace."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r1b2rk1/1pq2ppp/3Np3/2npP3/p7/P7/2B2PPP/1R1QR1K1 w - - 2 21",
+          "text": "Position d'une partie lichess. Le fou c2 vise h7 et la dame peut rejoindre h5. La tour e1 semble loin, mais e3 puis h3 l'amène en deux coups.",
+          "arrows": [["c2", "h7"], ["d1", "h5"], ["e1", "e3"]],
+          "marks": {
+            "h7": "red",
+            "h3": "green"
+          },
+          "eval": "+4.99"
+        },
+        {
+          "kind": "line",
+          "fen": "r1b2rk1/1pq2ppp/3Np3/2npP3/p7/P7/2B2PPP/1R1QR1K1 w - - 2 21",
+          "text": "À toi : sacrifie, puis amène la tour par la 3e rangée.",
+          "result": "win",
+          "moves": [
+            {"san": "Bxh7+", "text": "Le sacrifice ouvre le roi.", "hint": "Le fou c2 vise h7.", "keeps": ["c2h7"]},
+            {"san": "Kxh7"},
+            {"san": "Qh5+", "keeps": ["d1h5"]},
+            {"san": "Kg8"},
+            {"san": "Re3", "text": "La réserve arrive : la tour menace Th3.", "hint": "La dame seule ne mate pas : quelle pièce peut la rejoindre par la 3e rangée ?", "keeps": ["e1e3"]},
+            {"san": "f6"},
+            {"san": "Rh3", "text": "La tour rejoint la dame sur la colonne h.", "keeps": ["e3h3"]}
+          ],
+          "end": "Selon Stockfish, l'avantage est décisif : dame et tour sur la colonne h contre un roi sans abri."
+        }
+      ]
+    }
+  }
+}

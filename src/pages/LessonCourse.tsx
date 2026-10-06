@@ -1,16 +1,14 @@
-// « Cours de finales » d'Apprendre, façon chess.com Lessons : un sommaire par chapitres, puis des
-// leçons en étapes (diagramme commenté, ligne à jouer coup par coup, bilan). 100 % hors ligne :
-// aucune analyse moteur, chaque verdict vient du contenu vérifié par les tables de finales.
+// Cours d'Apprendre (finales, « Démolir le roque »), façon chess.com Lessons : un sommaire par
+// chapitres, puis des leçons en étapes (diagramme commenté, ligne à jouer coup par coup, bilan).
+// 100 % hors ligne : aucune analyse moteur dans l'app, chaque verdict vient du contenu vérifié hors
+// ligne (tables de finales ou Stockfish) et tamponné.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Chess } from 'chess.js'
 import { Board, type BoardArrow } from '../components/Board'
 import { CoachBubble } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
-import {
-  CHAPTERS, LESSON_IDS, completedLessons, lessonById, lineUci, markLessonDone, nextLessonId,
-  type DiagramStep, type Lesson, type LineStep, type MarkColor,
-} from '../lib/endgameCourse'
+import { lineUci, type Course, type DiagramStep, type Lesson, type LineStep, type MarkColor } from '../lib/lessonCourse'
 import { ENDGAMES } from '../lib/learn'
 import { figurine } from '../lib/review'
 import { sounds } from '../lib/sounds'
@@ -33,7 +31,7 @@ const WRONG_SHOW_MS = 700
 const LESSON_BOARD = 'w-[min(calc(100vw-1.5rem),calc(100dvh-21rem),34rem)]'
 
 // ---------- Sommaire ----------
-export default function EndgameCourse() {
+export default function CourseIndex({ course }: { course: Course }) {
   const navigate = useNavigate()
   const location = useLocation()
   // Venu d'une leçon ouverte depuis une séance d'Apprendre : la séance reste à restaurer.
@@ -41,11 +39,11 @@ export default function EndgameCourse() {
   const [done, setDone] = useState<Set<string> | null>(null)
 
   useEffect(() => {
-    void completedLessons().then(setDone)
-  }, [])
+    void course.completedLessons().then(setDone)
+  }, [course])
 
-  const total = LESSON_IDS.length
-  const count = done ? LESSON_IDS.filter((id) => done.has(id)).length : 0
+  const total = course.lessonIds.length
+  const count = done ? course.lessonIds.filter((id) => done.has(id)).length : 0
   let n = 0
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
@@ -55,10 +53,10 @@ export default function EndgameCourse() {
       >
         ← Apprendre
       </button>
-      <h1 className="mb-1 text-2xl font-black">📚 Cours de finales</h1>
-      <p className="mb-3 text-sm text-neutral-400">
-        Les finales à connaître, de la plus simple à la plus fine. Chaque leçon se lit et se joue sur l'échiquier.
-      </p>
+      <h1 className="mb-1 text-2xl font-black">
+        {course.emoji} {course.title}
+      </h1>
+      <p className="mb-3 text-sm text-neutral-400">{course.intro}</p>
       <div className="mb-5 flex items-center gap-3">
         <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-3">
           <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(count / total) * 100}%` }} />
@@ -67,21 +65,21 @@ export default function EndgameCourse() {
           {count}/{total}
         </span>
       </div>
-      {CHAPTERS.map((ch, ci) => (
+      {course.chapters.map((ch, ci) => (
         <section key={ch.id} className="mb-5">
           <h2 className="mb-2 text-sm font-bold tracking-wide text-neutral-400 uppercase">
             {ci + 1}. {ch.title}
           </h2>
           <div className="space-y-2">
             {ch.lessons.map((id) => {
-              const lesson = lessonById(id)!
+              const lesson = course.lessonById(id)!
               const finished = done?.has(id) ?? false
               n++
               return (
                 <button
                   key={id}
                   data-lesson={id}
-                  onClick={() => navigate(`/apprendre/finales/${id}`, { state: { fromSession } })}
+                  onClick={() => navigate(`${course.path}/${id}`, { state: { fromSession } })}
                   className="flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
                 >
                   <span
@@ -107,15 +105,15 @@ export default function EndgameCourse() {
 }
 
 // ---------- Leçon ----------
-export function EndgameLesson() {
+export function CourseLesson({ course }: { course: Course }) {
   const { id } = useParams()
-  const lesson = lessonById(id)
-  if (!lesson || !id) return <Navigate to="/apprendre/finales" replace />
-  // `key` : changer de leçon repart d'un état neuf.
-  return <LessonView key={id} id={id} lesson={lesson} />
+  const lesson = course.lessonById(id)
+  if (!lesson || !id) return <Navigate to={course.path} replace />
+  // `key` : changer de leçon (ou de cours) repart d'un état neuf.
+  return <LessonView key={`${course.slug}/${id}`} course={course} id={id} lesson={lesson} />
 }
 
-function LessonView({ id, lesson }: { id: string; lesson: Lesson }) {
+function LessonView({ course, id, lesson }: { course: Course; id: string; lesson: Lesson }) {
   const navigate = useNavigate()
   const location = useLocation()
   // Ouverte depuis une séance d'Apprendre (« Voir la leçon ») : ✕ y retourne et la séance est
@@ -132,8 +130,8 @@ function LessonView({ id, lesson }: { id: string; lesson: Lesson }) {
   const isSummary = stepIdx === lesson.steps.length
 
   useEffect(() => {
-    if (isSummary) void markLessonDone(id)
-  }, [isSummary, id])
+    if (isSummary) void course.markLessonDone(id)
+  }, [isSummary, id, course])
 
   function goTo(i: number) {
     setLineDone(false)
@@ -141,9 +139,9 @@ function LessonView({ id, lesson }: { id: string; lesson: Lesson }) {
   }
 
   const close = () =>
-    fromSession ? navigate('/apprendre', { replace: true, state: { restore: true } }) : navigate('/apprendre/finales', { replace: true })
+    fromSession ? navigate('/apprendre', { replace: true, state: { restore: true } }) : navigate(course.path, { replace: true })
   const goCourse = (path: string) => navigate(path, { replace: true, state: { fromSession } })
-  const next = nextLessonId(id)
+  const next = course.nextLessonId(id)
   const exercise = lesson.exercise ? ENDGAMES.find((e) => e.id === lesson.exercise) : undefined
   const canContinue = !step || step.kind === 'diagram' || lineDone
 
@@ -166,7 +164,7 @@ function LessonView({ id, lesson }: { id: string; lesson: Lesson }) {
         <div className="mx-auto flex max-w-xl flex-col gap-3 px-3 pb-3">
           {step?.kind === 'diagram' && <DiagramView step={step} />}
           {step?.kind === 'line' && (
-            <LineView key={`${stepIdx}-${replay}`} step={step} onDone={() => setLineDone(true)} />
+            <LineView key={`${stepIdx}-${replay}`} step={step} refusals={course.refusals} onDone={() => setLineDone(true)} />
           )}
           {isSummary && (
             <div className="flex flex-col gap-3 pt-2">
@@ -190,7 +188,7 @@ function LessonView({ id, lesson }: { id: string; lesson: Lesson }) {
                 exercise && (
                   <Cta
                     onClick={() =>
-                      navigate('/apprendre', { state: { endgame: exercise.id, returnTo: `/apprendre/finales/${id}?etape=${total}` } })
+                      navigate('/apprendre', { state: { endgame: exercise.id, returnTo: `${course.path}/${id}?etape=${total}` } })
                     }
                   >
                     S'entraîner : {exercise.title}
@@ -198,11 +196,11 @@ function LessonView({ id, lesson }: { id: string; lesson: Lesson }) {
                 )
               )}
               {next && (
-                <Cta variant={fromSession || exercise ? 'secondary' : 'primary'} onClick={() => goCourse(`/apprendre/finales/${next}`)}>
+                <Cta variant={fromSession || exercise ? 'secondary' : 'primary'} onClick={() => goCourse(`${course.path}/${next}`)}>
                   Leçon suivante
                 </Cta>
               )}
-              <Cta variant="secondary" onClick={() => goCourse('/apprendre/finales')}>
+              <Cta variant="secondary" onClick={() => goCourse(course.path)}>
                 Sommaire
               </Cta>
             </div>
@@ -271,7 +269,7 @@ function DiagramView({ step }: { step: DiagramStep }) {
 type Feedback = { tone: 'ok' | 'info' | 'bad'; headline?: string; text: string; reply?: string }
 
 // Ligne jouable : l'élève joue le camp au trait, l'app répond après une courte pause.
-function LineView({ step, onDone }: { step: LineStep; onDone: () => void }) {
+function LineView({ step, refusals, onDone }: { step: LineStep; refusals: Course['refusals']; onDone: () => void }) {
   const { playSounds } = useSettings()
   const player = step.fen.split(' ')[1] as 'w' | 'b'
   const opponent = player === 'w' ? 'b' : 'w'
@@ -330,7 +328,7 @@ function LineView({ step, onDone }: { step: LineStep; onDone: () => void }) {
       setBusy(false)
       setFeedback((f) => ({
         ...f,
-        reply: `${opponent === 'w' ? 'Les Blancs' : 'Les Noirs'} répondent ${figurine(reply.san, opponent)}.${reply.text ? ` ${reply.text}` : ''}`,
+        reply: `${opponent === 'w' ? 'Les Blancs' : 'Les Noirs'} répondent ${figurine(reply.san, opponent)}${reply.weak ? ' ?' : '.'}${reply.text ? ` ${reply.text}` : ''}`,
         text: done ? [f.text, step.end].join(' ') : f.text,
       }))
       if (done) onDone()
@@ -355,17 +353,16 @@ function LineView({ step, onDone }: { step: LineStep; onDone: () => void }) {
       return true
     }
     // Mauvais coup : montré un instant, case d'arrivée en rouge, puis repris.
-    const keeps = step.moves[ply].keeps ?? []
-    const stillGood = keeps.includes(uci)
+    const expected = step.moves[ply]
+    const stillGood = (expected.keeps ?? []).includes(uci)
+    const close = !stillGood && refusals.close !== undefined && (expected.close ?? []).includes(uci)
     setMisses(misses + 1)
     setFeedback({
-      tone: stillGood ? 'info' : 'bad',
+      tone: stillGood || close ? 'info' : 'bad',
       headline: figurine(mv.san, player),
       text: stillGood
-        ? `Ce coup ${step.result === 'win' ? 'gagne' : 'tient'} aussi, mais la leçon suit une autre méthode. Cherche encore.`
-        : step.result === 'win'
-          ? 'Ce coup laisse échapper le gain. Cherche encore.'
-          : 'Ce coup perd. Cherche encore.',
+        ? refusals.alsoGood(step.result)
+        : [close ? refusals.close : refusals.bad(step.result), expected.hint && `Indice : ${expected.hint}`].filter(Boolean).join(' '),
     })
     if (!stillGood) sound('fail')
     setBusy(true)

@@ -10,7 +10,9 @@ import { PuzzlePlayer } from '../components/PuzzlePlayer'
 import { puzzleContinuationStart, puzzlePlayerColor, useExerciseContinuation } from '../components/useExerciseContinuation'
 import { courseFor, type Course } from '../lib/courses'
 import { db } from '../lib/db'
-import { completedLessons, lessonForExercise, LESSON_IDS } from '../lib/endgameCourse'
+import { ROQUE } from '../lib/attackCourse'
+import { FINALES, lessonForExercise } from '../lib/endgameCourse'
+import type { Course as LessonCourse } from '../lib/lessonCourse'
 import { Engine } from '../lib/engine'
 import {
   buildEndgameSession, buildSession, DOMAIN_META, domainRating, pickNextDomain, scoreItem,
@@ -50,7 +52,7 @@ export default function Learn() {
   const [retryTick, setRetryTick] = useState(0)
   const [showCourse, setShowCourse] = useState(false)
   const [returnTo, setReturnTo] = useState<string | null>(null)
-  const [lessonsDone, setLessonsDone] = useState(0)
+  const [lessonsDone, setLessonsDone] = useState<Record<string, number>>({})
   const scoredItems = useRef(new Set<number>())
   const engineRef = useRef<Engine | null>(null)
 
@@ -60,8 +62,13 @@ export default function Learn() {
     )
     setRatings(Object.fromEntries(entries))
     setMistakeCount(await db.mistakes.where('solved').equals(0).count())
-    const done = await completedLessons()
-    setLessonsDone(LESSON_IDS.filter((id) => done.has(id)).length)
+    const done = await Promise.all(
+      [FINALES, ROQUE].map(async (c) => {
+        const ids = await c.completedLessons()
+        return [c.slug, c.lessonIds.filter((id) => ids.has(id)).length] as const
+      }),
+    )
+    setLessonsDone(Object.fromEntries(done))
   }, [])
 
   useEffect(() => {
@@ -398,28 +405,37 @@ export default function Learn() {
       </Link>
 
       <p className="mt-5 mb-2 text-sm font-semibold text-neutral-400">Cours :</p>
-      <button
-        onClick={() => navigate('/apprendre/finales')}
-        className="flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
-      >
-        <span className="text-2xl">📚</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Cours de finales</span>
-          <span className="mt-1 flex items-center gap-2">
-            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
-              <span
-                className="block h-full rounded-full bg-accent"
-                style={{ width: `${(lessonsDone / LESSON_IDS.length) * 100}%` }}
-              />
-            </span>
-            <span data-testid="course-card-progress" className="text-xs font-semibold text-neutral-400">
-              {lessonsDone}/{LESSON_IDS.length} leçons
-            </span>
+      <div className="space-y-2">
+        <CourseCard course={FINALES} done={lessonsDone[FINALES.slug] ?? 0} testId="course-card-progress" />
+        <CourseCard course={ROQUE} done={lessonsDone[ROQUE.slug] ?? 0} testId="attack-card-progress" />
+      </div>
+    </div>
+  )
+}
+
+// Carte d'un cours (sommaire, progression x/N), section « Cours : » de l'accueil d'Apprendre.
+function CourseCard({ course, done, testId }: { course: LessonCourse; done: number; testId: string }) {
+  const navigate = useNavigate()
+  const total = course.lessonIds.length
+  return (
+    <button
+      onClick={() => navigate(course.path)}
+      className="flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
+    >
+      <span className="text-2xl">{course.emoji}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-bold">{course.title}</span>
+        <span className="mt-1 flex items-center gap-2">
+          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
+            <span className="block h-full rounded-full bg-accent" style={{ width: `${(done / total) * 100}%` }} />
+          </span>
+          <span data-testid={testId} className="text-xs font-semibold text-neutral-400">
+            {done}/{total} leçons
           </span>
         </span>
-        <span className="text-xl text-neutral-500">›</span>
-      </button>
-    </div>
+      </span>
+      <span className="text-xl text-neutral-500">›</span>
+    </button>
   )
 }
 
