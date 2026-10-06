@@ -53,6 +53,9 @@ Autres scripts :
   Il lit `data/puzzles_full.csv` (dump lichess décompressé), absent du repo : seuls les `data/openings_*.tsv` sont versionnés.
 - `python3 scripts/verify-endgame-course.py` revérifie `src/data/endgameCourse.json` contre les tables de finales lichess (réseau) et réécrit son tampon `scripts/endgame-course.verified`.
   À lancer après toute modification du cours de finales : sans tampon à jour, `scripts/check-endgame-course.mjs` (suite `endgame_course`) échoue.
+- `python3 scripts/verify-attack-course.py` revérifie `src/data/attackCourse.json` (cours « Démolir le roque ») avec Stockfish 18 natif (`STOCKFISH` ou `stockfish` du PATH, mono-thread, profondeurs fixes, cache dans `~/.cache/chess-local/`) et réécrit `keeps`, `close`, `eval` et le tampon `scripts/attack-course.verified`.
+  À lancer après toute modification de ce cours : sans tampon à jour, `scripts/check-attack-course.mjs` (suite `cours_roque`) échoue.
+  Les deux cours partagent le moteur `src/lib/lessonCourse.ts`, la page `src/pages/LessonCourse.tsx` et les règles `scripts/course-rules.mjs`.
 - `python3 scripts/prepare-mates.py` régénère `src/data/mateDrills.json` (positions « contre la montre » de /mats, vérifiées sur `tablebase.lichess.ovh`, réseau requis).
 - `node scripts/prepare-mates-index.mjs` régénère `src/data/mateIndex.json` (puzzles classés par géométrie de mat avec `src/lib/mateNet.ts`) : à relancer après `prepare-data.mjs` ; la suite `mats` vérifie qu'il est à jour (`--check`).
 - `scripts/deploy.sh` build puis force-push `dist/` sur la branche `gh-pages`.
@@ -119,7 +122,7 @@ Un nouvel asset lourd ou une nouvelle extension doit être couvert par `globPatt
 ### Données
 
 `public/puzzles.json` : 120 000 puzzles lichess au format compact `[id, fen, moves, rating, themes]`, hors bundle, chargés une fois par `loadPuzzles()`.
-`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`).
+`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`), `attackCourse.json` (cours « Démolir le roque », `#/apprendre/roque`).
 Une leçon terminée est une ligne `learnSessions` `{ domain: 'course', itemId: 'finales:<id>' }` : les ids de leçons sont figés (`FROZEN_IDS` du contrôle).
 Les noms d'ouvertures sont en anglais dans les données et traduits à l'affichage par `openingNames.ts`.
 

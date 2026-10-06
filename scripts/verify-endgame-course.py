@@ -32,6 +32,9 @@ import urllib.request
 
 import chess
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from course_json import dump  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "src", "data", "endgameCourse.json")
 STAMP = os.path.join(ROOT, "scripts", "endgame-course.verified")
@@ -197,24 +200,6 @@ def check_line(step, label):
                 fail(label, f"position finale {v}, la ligne annonce la nulle ({b.fen()})")
     if re.search(r"\bpat\b", end, re.IGNORECASE) and not b.is_stalemate():
         fail(label, "le texte de fin parle de pat, la position finale n'est pas pat")
-
-
-# Écriture déterministe : un coup par ligne, le reste indenté de 2 espaces.
-def dump(obj, indent=0):
-    pad = "  " * indent
-    if isinstance(obj, dict):
-        if indent >= 4 and all(not isinstance(v, (dict,)) for v in obj.values()) and "san" in obj:
-            return json.dumps(obj, ensure_ascii=False)
-        items = [f'{pad}  {json.dumps(k, ensure_ascii=False)}: {dump(v, indent + 1)}' for k, v in obj.items()]
-        return "{\n" + ",\n".join(items) + f"\n{pad}}}"
-    if isinstance(obj, list):
-        if all(isinstance(x, str) for x in obj) and sum(len(x) for x in obj) < 60:
-            return json.dumps(obj, ensure_ascii=False)
-        if all(isinstance(x, list) for x in obj):
-            return json.dumps(obj, ensure_ascii=False)
-        items = [f"{pad}  {dump(x, indent + 1)}" for x in obj]
-        return "[\n" + ",\n".join(items) + f"\n{pad}]"
-    return json.dumps(obj, ensure_ascii=False)
 
 
 def main():

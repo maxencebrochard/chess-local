@@ -13,8 +13,10 @@ import Learn from './pages/Learn'
 import OpeningTrainer from './pages/OpeningTrainer'
 import Endgames from './pages/Endgames'
 import PositionPlay from './pages/PositionPlay'
-import EndgameCourse, { EndgameLesson } from './pages/EndgameCourse'
 import Mates from './pages/Mates'
+import CourseIndex, { CourseLesson } from './pages/LessonCourse'
+import { FINALES } from './lib/endgameCourse'
+import { ROQUE } from './lib/attackCourse'
 
 // `match` : routes rattachées à l'onglet (allumé, sans être la page du lien), sous-chemins compris.
 const NAV = [
@@ -114,8 +116,10 @@ function Shell() {
             <Route path="/rush" element={<PuzzleRush />} />
             <Route path="/apprendre" element={<Learn />} />
             <Route path="/ouvertures" element={<OpeningTrainer />} />
-            <Route path="/apprendre/finales" element={<EndgameCourse />} />
-            <Route path="/apprendre/finales/:id" element={<EndgameLesson />} />
+            <Route path="/apprendre/finales" element={<CourseIndex key={FINALES.slug} course={FINALES} />} />
+            <Route path="/apprendre/finales/:id" element={<CourseLesson course={FINALES} />} />
+            <Route path="/apprendre/roque" element={<CourseIndex key={ROQUE.slug} course={ROQUE} />} />
+            <Route path="/apprendre/roque/:id" element={<CourseLesson course={ROQUE} />} />
             <Route path="/mats" element={<Mates />} />
             <Route path="/analyse" element={<Analysis />} />
             <Route path="/analyse/jouer" element={<PositionPlay />} />
