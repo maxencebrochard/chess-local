@@ -46,7 +46,6 @@ Le gate n'utilise jamais `--live`.
 `test_upgrade.py` (prod uniquement) est le garde-fou de continuité des données : il sert l'ancien build déployé (`origin/gh-pages@388d3ed`, extrait de git), y crée de vraies données par l'interface dans un profil persistant, bascule sur le build courant sur le même port, vérifie IndexedDB, réglages et chiffres affichés à l'identique, puis restaure une sauvegarde de l'ancien build dans le nouveau ; `E2E_MUTATION=rename-db|clear-ratings|drop-table|clear-settings` sert une copie mutée du nouveau build pour prouver que la suite passe au rouge.
 Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` : deux lancements simultanés ne se gênent pas.
 Les captures vont dans `e2e/shots/` (gitignoré).
-`e2e/qa/` est l'archive de la campagne QA du 2026-09-18 (constats, scripts de repro), pas une suite : voir son README.
 
 Autres scripts :
 
