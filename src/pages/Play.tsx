@@ -454,11 +454,7 @@ export default function Play() {
     if (thinkingSeq.current === seq || statusRef.current !== 'playing' || c.isGameOver()) return
     thinkingSeq.current = seq
     try {
-      if (!engineRef.current) {
-        engineRef.current = new Engine()
-        void engineRef.current.setOptions(botEngineOptions(g.bot))
-      }
-      const engine = engineRef.current
+      const engine = (engineRef.current ??= new Engine())
       const remaining = g.tc.baseMs === null ? null : clocksRef.current[c.turn()]
       const budget = botThinkBudget(g.bot, remaining, g.tc.incMs)
       const uci = await chooseBotMove(engine, g.bot, c.fen(), { movetimeMs: budget.movetimeMs })

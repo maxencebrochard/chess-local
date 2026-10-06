@@ -15,8 +15,7 @@
 // iPhone, ou en blitz et bullet (botThinkBudget), elle s'affaiblit et l'écart Nina-Iris rétrécit.
 //
 // Joueurs :
-//   bot:<id>        le bot tel que codé dans bots.ts (chooseBotMove), ou, si bots.ts ne l'exporte pas
-//                   (code d'avant), la logique de Play.tsx d'avant appliquée aux champs du bot ;
+//   bot:<id>        le bot tel que codé dans bots.ts (chooseBotMove) ;
 //   legacy:<id>     la logique d'avant figée (UCI_Elo plancher 1320 + coup uniforme selon randomness),
 //                   pour remesurer « l'avant » après le changement ;
 //   sf:<elo>@<ms>   Stockfish UCI_LimitStrength à <elo>, go movetime <ms> ;
@@ -95,7 +94,6 @@ function parseStyle(rest) {
 // Comment le joueur choisit ses coups, et l'empreinte de ce réglage.
 function resolvePlayer(app, spec) {
   const [kind, rest = ''] = spec.split(':')
-  const hasNew = typeof app.chooseBotMove === 'function'
   if (kind === 'sf') {
     const [elo, ms] = rest.split('@').map(Number)
     if (!elo || !ms) usage(`référence invalide : ${spec}`)
@@ -111,16 +109,12 @@ function resolvePlayer(app, spec) {
   if (kind === 'bot') {
     const bot = app.botById(rest)
     if (!bot) usage(`bot inconnu : ${rest}`)
-    if (hasNew) {
-      const cfg = `bot ${JSON.stringify({ options: app.botEngineOptions(bot), movetimeMs: bot.movetimeMs, style: bot.style ?? null })}`
-      return { cfg, play: (engine, chess, rng) => app.chooseBotMove(engine, bot, chess.fen(), { rng }) }
-    }
-    const cfg = `legacy ${JSON.stringify({ elo: bot.elo, randomness: bot.randomness, movetimeMs: bot.movetimeMs })}`
-    return { cfg, play: (engine, chess, rng) => legacyMove(engine, chess, bot, app.botEngineOptions(bot), rng) }
+    const cfg = `bot ${JSON.stringify({ options: app.botEngineOptions(bot), movetimeMs: bot.movetimeMs, style: bot.style ?? null })}`
+    return { cfg, play: (engine, chess, rng) => app.chooseBotMove(engine, bot, chess.fen(), { rng }) }
   }
   if (kind === 'style') {
     const style = parseStyle(rest)
-    if (!style || !hasNew) usage(`style invalide : ${spec}`)
+    if (!style) usage(`style invalide : ${spec}`)
     const bot = { id: spec, name: spec, elo: 0, emoji: '', description: '', movetimeMs: 0, style }
     return { cfg: spec, play: (engine, chess, rng) => app.chooseBotMove(engine, bot, chess.fen(), { rng }) }
   }

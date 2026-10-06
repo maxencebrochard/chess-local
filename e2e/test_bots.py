@@ -40,7 +40,6 @@ def moves_part():
     if not check("[coups] harnais Node", r.returncode == 0, r.stderr[-400:]):
         return
     data = json.loads(r.stdout)
-    check("[coups] bots.ts expose chooseBotMove", data["hasNew"])
 
     for s in data["strong"]:
         options, movetime = STRONG[s["id"]]
