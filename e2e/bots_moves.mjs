@@ -7,14 +7,10 @@
 // Pour chaque bot faible et chaque position, on calcule la LOI EXACTE de son coup (lignes du
 // moteur à sa profondeur, puis `weakMoveDistribution`) : les checks ne dépendent pas d'un tirage.
 // On joue aussi quelques coups réels par `chooseBotMove` (le chemin de l'app).
-// Si bots.ts n'a pas ces exports (code d'avant), la loi est celle de la logique d'avant de
-// Play.tsx (coup uniforme avec la probabilité `randomness`, sinon coup du moteur bridé) : la
-// suite échoue alors sur ce qu'elle mesure, pas sur un import manquant.
 import { hashSeed, loadApp, seededRng } from '../scripts/bots-node.mjs'
 
 const app = await loadApp()
 const { Chess, Engine, BOTS } = app
-const hasNew = typeof app.chooseBotMove === 'function' && typeof app.weakMoveDistribution === 'function'
 const WEAK = ['noa', 'marty', 'lea', 'nina']
 
 function fenOf(spec) {
@@ -60,24 +56,8 @@ const SAMPLES = 8
 // Loi exacte du coup d'un bot dans `fen`.
 async function distribution(engine, bot, fen) {
   await engine.setOptions(app.botEngineOptions(bot))
-  if (hasNew) {
-    const res = await engine.search({ fen, depth: bot.style.depth, multipv: bot.style.multipv })
-    return app.weakMoveDistribution(res.lines, bot.style)
-  }
-  // Logique d'avant (Play.tsx eb0b22d).
-  const best = (await engine.search({ fen, movetimeMs: bot.movetimeMs, multipv: 1 })).bestMove
-  const legal = new Chess(fen).moves({ verbose: true }).map((m) => m.lan)
-  const p = new Map(legal.map((u) => [u, bot.randomness / legal.length]))
-  p.set(best, (p.get(best) ?? 0) + 1 - bot.randomness)
-  return [...p].map(([uci, pr]) => ({ uci, p: pr }))
-}
-
-async function sampleMove(engine, bot, fen, rng) {
-  if (hasNew) return app.chooseBotMove(engine, bot, fen, { rng })
-  const d = await distribution(engine, bot, fen)
-  let r = rng()
-  for (const { uci, p } of d) if ((r -= p) < 0) return uci
-  return d[0].uci
+  const res = await engine.search({ fen, depth: bot.style.depth, multipv: bot.style.multipv })
+  return app.weakMoveDistribution(res.lines, bot.style)
 }
 
 // 1. Bots bridés (>= 1320) : options et recherche identiques à l'avant, sur un moteur espion.
@@ -90,18 +70,11 @@ async function strongPath() {
       search: async (o) => { calls.push(['search', o]); return { bestMove: 'e2e4', lines: [] } },
     }
     const fen = new Chess().fen()
-    let budget = null
-    if (hasNew) {
-      await app.chooseBotMove(spy, bot, fen)
-      const budgetCalls = []
-      const spy2 = { setOptions: async () => {}, search: async (o) => { budgetCalls.push(o); return { bestMove: 'e2e4', lines: [] } } }
-      await app.chooseBotMove(spy2, bot, fen, { movetimeMs: 120 })
-      budget = budgetCalls[0] ?? null
-    } else {
-      await spy.setOptions(app.botEngineOptions(bot))
-      await spy.search({ fen, movetimeMs: bot.movetimeMs, multipv: 1 })
-    }
-    out.push({ id: bot.id, calls, budget })
+    await app.chooseBotMove(spy, bot, fen)
+    const budgetCalls = []
+    const spy2 = { setOptions: async () => {}, search: async (o) => { budgetCalls.push(o); return { bestMove: 'e2e4', lines: [] } } }
+    await app.chooseBotMove(spy2, bot, fen, { movetimeMs: 120 })
+    out.push({ id: bot.id, calls, budget: budgetCalls[0] ?? null })
   }
   return out
 }
@@ -134,7 +107,7 @@ async function weakBot(id, refs, forcedRefs) {
       const dist = await distribution(engine, bot, fen)
       const badMass = dist.filter(({ uci }) => isBad(uci))
       const sampled = []
-      for (let i = 0; i < SAMPLES; i++) sampled.push(await sampleMove(engine, bot, fen, rng))
+      for (let i = 0; i < SAMPLES; i++) sampled.push(await app.chooseBotMove(engine, bot, fen, { rng }))
       const badSampled = sampled.filter(isBad)
       forced[pos.id] = {
         pBad: badMass.reduce((s, x) => s + x.p, 0),
@@ -171,7 +144,6 @@ for (const pos of FORCED) forcedRefs.set(pos.id, await reference(refEngine, fenO
 refEngine.quit()
 
 const result = {
-  hasNew,
   strong: await strongPath(),
   weak: await Promise.all(WEAK.map((id) => weakBot(id, refs, forcedRefs))),
 }
