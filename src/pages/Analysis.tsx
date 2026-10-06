@@ -707,7 +707,7 @@ export default function Analysis() {
         </div>
 
         {/* Conteneur de taille : l'échiquier se borne à la hauteur de cette zone (cqh). */}
-        <div className="min-h-0 flex-1 overflow-y-auto [container-type:size]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [container-type:size]">
         <div className="px-3 py-2">
           {retry ? (
             <CoachBubble

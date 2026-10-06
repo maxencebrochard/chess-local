@@ -37,7 +37,7 @@ export function ReviewSummary({ review, whiteName, blackName, playerColor, onSta
         <span className="w-10" />
       </header>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 pb-4">
         <CoachBubble mood={mood}>{coachQuip(review, playerColor)}</CoachBubble>
 
         <EvalGraph review={review} currentIndex={-1} onSelect={(i) => { onSelectMove(i); onStart() }} />

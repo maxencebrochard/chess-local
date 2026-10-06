@@ -552,7 +552,7 @@ export function PositionGame(props: PositionGameProps) {
         ))}
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div
           data-testid="objective"
           className={`mx-3 mt-1 rounded px-3 py-1.5 ${

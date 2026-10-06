@@ -160,7 +160,7 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
         <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${((stepIdx + 1) / total) * 100}%` }} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto flex max-w-xl flex-col gap-3 px-3 pb-3">
           {step?.kind === 'diagram' && <DiagramView step={step} />}
           {step?.kind === 'line' && (

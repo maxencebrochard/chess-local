@@ -9,17 +9,34 @@
   --font-sans: 'Segoe UI', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
 }
 
-html, body, #root {
-  /* dvh : seul le viewport dynamique est fiable en PWA standalone iOS. */
-  height: 100dvh;
+/* Le document ne défile JAMAIS : seule la zone de contenu (`<main>`, les calques plein écran)
+   défile. Sinon, en PWA standalone iOS, un geste en butée de `<main>` (vers le haut comme vers
+   le bas) se chaînait vers le document et décalait toute l'app : en-tête sous l'heure, nav
+   basse remontée sur une bande vide.
+   - `overscroll-behavior` du viewport se lit sur html, pas sur body : c'est lui qui coupe le
+     rebond élastique de la page.
+   - body fixé sur le viewport : le document n'a plus aucun débordement, ni au doigt, ni quand
+     iOS fait défiler la page pour montrer un champ, ni quand sa zone visible ne colle pas à
+     une hauteur en dvh. `overflow: hidden` seul ne suffit pas sur iOS. */
+html {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
   background: var(--color-surface);
 }
 
 body {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
   background: var(--color-surface);
   color: #e4e2e0;
-  overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  height: 100%;
 }
 
 /* Échiquier : plein écran en portrait, borné par la hauteur en paysage/desktop.

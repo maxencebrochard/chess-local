@@ -400,7 +400,7 @@ export function OpeningDrill(props: Props) {
   const nextLabel = props.nextLabel ?? (mode === 'next' ? 'Position suivante' : mode === 'suite' ? 'Suite suivante' : 'Variante suivante')
 
   return (
-    <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto bg-surface">
+    <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
       <div
         data-drill
         data-mode={mode}

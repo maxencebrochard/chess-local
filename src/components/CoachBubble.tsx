@@ -104,7 +104,7 @@ export function CoachBubble({ cls, headline, evalBadge, children, mood = 'thinki
         )}
         <div
           data-coach-body
-          className={`text-[15px] leading-snug ${fixed ? 'min-h-0 flex-1 overflow-y-auto' : 'min-h-[42px]'}`}
+          className={`text-[15px] leading-snug ${fixed ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain' : 'min-h-[42px]'}`}
         >
           {typeof children === 'string' ? <FigText text={children} /> : children}
         </div>

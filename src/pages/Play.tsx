@@ -862,7 +862,7 @@ export default function Play() {
         <div className="px-3 pt-2">
           <HEvalBar cp={liveCp} mate={liveMate} />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="flex items-center justify-between px-3 pt-2 text-sm">
             <span className="font-semibold">{nameOf(topColor)}</span>
             {unrated && <span className="rounded bg-surface-3 px-2 py-0.5 text-xs text-neutral-400">non classée</span>}

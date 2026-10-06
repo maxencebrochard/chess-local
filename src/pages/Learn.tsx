@@ -283,7 +283,7 @@ export default function Learn() {
     const courseId = courseIdForItem(item)
     const course = courseId ? courseFor(courseId) : null
     return (
-      <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto bg-surface">
+      <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
         <div className="mx-auto flex min-h-full max-w-2xl flex-col">
           <header className="flex items-center px-3 py-1">
             <button
