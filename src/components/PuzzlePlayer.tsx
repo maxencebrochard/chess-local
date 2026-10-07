@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { Board } from './Board'
 import { sounds } from '../lib/sounds'
-import { useSettings } from '../store/settings'
 
 export interface PuzzleData {
   id: string
@@ -32,7 +31,6 @@ interface PuzzlePlayerProps {
 }
 
 export function PuzzlePlayer({ puzzle, onComplete, onStep, hintSquare }: PuzzlePlayerProps) {
-  const { playSounds } = useSettings()
   const chessRef = useRef(new Chess(puzzle.fen))
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [fen, setFen] = useState(puzzle.fen)
@@ -71,7 +69,6 @@ export function PuzzlePlayer({ puzzle, onComplete, onStep, hintSquare }: PuzzleP
   function applyUci(uci: string, currentStep: number) {
     const c = chessRef.current
     const move = c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] })
-    if (playSounds) (move.san.includes('x') ? sounds.capture : sounds.move)()
     setFen(c.fen())
     setLastMove({ from: move.from, to: move.to })
     setStepIndex(currentStep + 1)
@@ -91,7 +88,7 @@ export function PuzzlePlayer({ puzzle, onComplete, onStep, hintSquare }: PuzzleP
     const played = move.from + move.to + (move.promotion ?? '')
     // Tout mat immédiat compte comme correct (règle lichess).
     if (played !== expected && !c.isCheckmate()) {
-      if (playSounds) sounds.fail()
+      sounds.fail()
       // Verdict immédiat et échiquier verrouillé : un seul coup faux par puzzle.
       setDone(true)
       onComplete(false, stepIndex, c.fen())
@@ -111,12 +108,11 @@ export function PuzzlePlayer({ puzzle, onComplete, onStep, hintSquare }: PuzzleP
     setStepIndex(next)
     onStep?.(next)
     if (next >= puzzle.moves.length || c.isCheckmate()) {
-      if (playSounds) sounds.success()
+      sounds.success()
       setDone(true)
       onComplete(true, next, c.fen())
       return true
     }
-    if (playSounds) (move.san.includes('x') ? sounds.capture : sounds.move)()
     later(() => applyUci(puzzle.moves[next], next), 350)
     return true
   }

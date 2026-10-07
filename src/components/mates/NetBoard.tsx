@@ -18,7 +18,7 @@ export function NetBoard({ fen, orientation, legend = true, principle }: NetBoar
   const side = orientation ?? (net ? (net.mated === 'w' ? 'b' : 'w') : 'w')
   return (
     <div data-net={net ? net.tags.join(' ') || 'aucune' : 'aucun'} className="flex flex-col gap-2">
-      <Board fen={fen} orientation={side} interactive={false} arrows={view?.arrows} markSquares={view?.marks} />
+      <Board fen={fen} orientation={side} interactive={false} arrows={view?.arrows} markSquares={view?.marks} silent />
       {legend && net && view && <NetLegend principle={principle ?? principleOf(net)} view={view} />}
     </div>
   )

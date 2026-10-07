@@ -34,7 +34,8 @@ npm run preview
   Une fois l'avantage décisif atteint, tu peux conclure ou continuer : la réussite reste acquise, mais seules les réussites obtenues sans indice ni coup repris valident une position et son meilleur niveau battu.
 - **Révision espacée** : carte « À réviser aujourd'hui » sur l'accueil (et ligne dans Apprendre), séance mixte et enchaînée (`#/revision`) des puzzles ratés, des fautes de parties et des variantes d'ouverture à revoir ; calendrier de Leitner J+1, J+3, J+7, J+21 calculé depuis l'historique existant, une réussite espace le prochain passage, un échec ramène à J+1, quatre jours de réussite d'affilée classent l'item acquis ; sans incidence sur les Elo.
 - **Import chess.com** : page `/import` : pseudo chess.com (API publique, sans login) → liste des parties récentes → bilan en un tap ; ou coller un lien de partie ; ou Raccourci Apple pour partager depuis l'app chess.com (instructions dans la page).
-- **Sons** : set standard lichess (move, capture, fin de partie, low time, réussite/échec puzzle), préchargés via WebAudio.
+- **Pièces** : cinq jeux au choix (Stats → Réglages, avec aperçu), sur tous les échiquiers : Celtique par défaut (pièces pleines et ombrées), Chessnut, Fantasy, Spatial et Classique.
+- **Sons** : façon chess.com, coup joué, coup adverse, prise, roque, échec, promotion, début et fin de partie, temps bas, coup illégal, réussite et échec d'exercice ; en partie, puzzles, Rush, Apprendre, Mats, finales, ouvertures et en avançant dans l'analyse. Volume réglable. Audio déverrouillé au premier geste et recréé après un passage en arrière-plan (exigences d'iOS) ; sur iPhone, le mode silencieux coupe les sons.
 - **Archive** : toutes les parties sauvegardées (IndexedDB), relecture, bilan en un clic, export PGN global.
 - **Insights** : page `/insights` (depuis Stats et l'accueil) : choix de la cadence et des 10, 25, 50 ou 100 dernières parties, issues de chess.com et/ou des parties ChessLocal contre les bots.
   Bullet, blitz et rapide sont disponibles pour les deux sources ; « Sans limite » exige ChessLocal, car chess.com ne fournit pas cette cadence.
@@ -47,6 +48,12 @@ npm run preview
   Les mesures de pendule utilisent les annotations `%clk` des PGN chess.com ; ChessLocal n'enregistre pas les temps par coup.
 - **Stats** : classements par cadence, bilan V/N/D, thèmes d'échiquier, réglages, sauvegarde et restauration des données IndexedDB et des réglages (fichier JSON), état du stockage, réinitialisation de l'app.
   Les bilans Insights en cache sont inclus dans la sauvegarde, mais pas la configuration ni la sélection du dernier rapport ; une restauration conserve la configuration locale et invalide ce rapport, sans supprimer les bilans restaurés.
+
+## Licences des ressources
+
+Rien ne vient de chess.com.
+Pièces : jeux libres, Celtique, Fantasy et Spatial de Maurizio Monge (MIT, repris du dépôt de lichess, Celtique recoloré), Chessnut d'Alexis Luengas (Apache 2.0, repris du dépôt de l'auteur) ; détail et textes de licence dans `public/pieces/LICENSES.md`.
+Sons : dérivés des packs Kenney « Impact Sounds » et « Interface Sounds » (CC0 1.0), régénérés par `scripts/make-sounds.sh` ; détail dans `public/sounds/LICENSES.md`.
 
 ## Architecture
 

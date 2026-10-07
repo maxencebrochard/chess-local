@@ -15,7 +15,6 @@ import {
 } from '../lib/continuation'
 import { figurine } from '../lib/review'
 import { sounds } from '../lib/sounds'
-import { useSettings } from '../store/settings'
 
 const BOT_MOVETIME_MS = 500
 const BOT_DELAY_MS = 250 // latence naturelle avant la réponse du moteur
@@ -168,7 +167,6 @@ function PlayPane({ startFen, initialMoves, initialResigned, playerColor, getEng
   onReplay: () => void
   onClose: () => void
 }) {
-  const { playSounds } = useSettings()
   const chessRef = useRef<Chess | null>(null)
   chessRef.current ??= playUci(startFen, initialMoves).chess
   const [moves, setMoves] = useState<Move[]>(() => chessRef.current!.history({ verbose: true }))
@@ -189,12 +187,9 @@ function PlayPane({ startFen, initialMoves, initialResigned, playerColor, getEng
     setMoves(chessRef.current!.history({ verbose: true }))
   }
 
-  function moveSound(move: Move) {
-    if (!playSounds) return
+  // Le son du coup est joué par l'échiquier ; ici seulement la fin de partie.
+  function endSound() {
     if (chessRef.current!.isGameOver()) sounds.gameEnd()
-    else if (chessRef.current!.inCheck()) sounds.check()
-    else if (move.captured) sounds.capture()
-    else sounds.move()
   }
 
   async function evaluate(g: number) {
@@ -219,9 +214,8 @@ function PlayPane({ startFen, initialMoves, initialResigned, playerColor, getEng
     if (g !== gen.n) return
     setThinking(false)
     if (!res.bestMove || res.bestMove.length < 4) return
-    let move: Move
     try {
-      move = board.move({ from: res.bestMove.slice(0, 2), to: res.bestMove.slice(2, 4), promotion: res.bestMove[4] })
+      board.move({ from: res.bestMove.slice(0, 2), to: res.bestMove.slice(2, 4), promotion: res.bestMove[4] })
     } catch {
       return
     }
@@ -230,7 +224,7 @@ function PlayPane({ startFen, initialMoves, initialResigned, playerColor, getEng
     const line = res.lines[0]
     const after = line && line.scoreMate !== null && line.scoreMate > 0 ? { ...line, scoreMate: line.scoreMate - 1 } : line
     setEvalW(board.isGameOver() ? terminalEval(board) : whiteEval(after, turn))
-    moveSound(move)
+    endSound()
     sync()
   }
 
@@ -249,13 +243,12 @@ function PlayPane({ startFen, initialMoves, initialResigned, playerColor, getEng
   function handleMove(from: string, to: string, promotion?: string): boolean {
     const board = chessRef.current!
     if (over || thinking || board.turn() !== playerColor) return false
-    let move: Move
     try {
-      move = board.move({ from, to, promotion: promotion ?? 'q' })
+      board.move({ from, to, promotion: promotion ?? 'q' })
     } catch {
       return false
     }
-    moveSound(move)
+    endSound()
     sync()
     const g = ++gen.n
     if (board.isGameOver()) setEvalW(terminalEval(board))

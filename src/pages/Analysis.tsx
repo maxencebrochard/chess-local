@@ -55,7 +55,7 @@ export default function Analysis() {
   const [params, setParams] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
-  const { reviewDepth, playSounds, showAttackers, setShowAttackers } = useSettings()
+  const { reviewDepth, showAttackers, setShowAttackers } = useSettings()
   const [startFen, setStartFen] = useState(START_FEN)
   const [moves, setMoves] = useState<Move[]>([])
   const [viewIndexRaw, setViewIndex] = useState(-1) // -1 = position de départ
@@ -613,7 +613,7 @@ export default function Analysis() {
     const m = review.moves[retry.moveIndex]
     if (!m) return false
     if (move.lan === m.bestMoveUci || c.isCheckmate()) {
-      if (playSounds) sounds.success()
+      sounds.success()
       setRetry({ ...retry, status: 'found', lastTried: move.san })
       return true
     }
@@ -633,7 +633,7 @@ export default function Analysis() {
         : 0
       const drop = m.winPctBefore - winPct(cpAfterUser)
       const ok = drop < 5
-      if (playSounds) (ok ? sounds.success : sounds.fail)()
+      ;(ok ? sounds.success : sounds.fail)()
       setRetry((r) => (r && r.attemptId === id && r.status === 'checking' ? { ...r, status: ok ? 'found' : 'failed' } : r))
     })()
     return true
@@ -757,7 +757,9 @@ export default function Analysis() {
               interactive={!!retry && (retry.status === 'trying' || retry.status === 'failed')}
               movableColor={retry ? colorAtIndex(retry.moveIndex) : undefined}
               onMove={retry ? handleRetryMove : undefined}
-              lastMove={null}
+              // Pas de surlignage (les teintes de classe le remplacent) ; undefined hors réessai
+              // pour que l'échiquier sonne en avançant d'un coup, null pendant le réessai.
+              lastMove={retry ? null : undefined}
               arrows={guidedArrows}
               badge={retry ? null : { square: m.uci.slice(2, 4), cls: m.class }}
               markSquares={retry ? undefined : { [m.uci.slice(0, 2)]: tint, [m.uci.slice(2, 4)]: tint }}

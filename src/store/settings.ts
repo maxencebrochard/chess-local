@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { DEFAULT_PIECE_SET, isPieceSet } from '../lib/pieces'
 
 export interface BoardTheme {
   id: string
@@ -40,8 +41,13 @@ interface SettingsState {
   // « Mes attaques manquées » l'affiche toujours.
   showAttackers: boolean
   setShowAttackers: (v: boolean) => void
+  pieceSet: string
+  setPieceSet: (id: string) => void
   playSounds: boolean
   setPlaySounds: (v: boolean) => void
+  // Volume des sons, de 0 à 1.
+  soundVolume: number
+  setSoundVolume: (v: number) => void
   chesscomUsername: string
   setChesscomUsername: (v: string) => void
   reviewDepth: ReviewDepthSetting
@@ -62,8 +68,12 @@ export const useSettings = create<SettingsState>()(
       setShowLegalMoves: (showLegalMoves) => set({ showLegalMoves }),
       showAttackers: false,
       setShowAttackers: (showAttackers) => set({ showAttackers }),
+      pieceSet: DEFAULT_PIECE_SET,
+      setPieceSet: (pieceSet) => set({ pieceSet: isPieceSet(pieceSet) ? pieceSet : DEFAULT_PIECE_SET }),
       playSounds: true,
       setPlaySounds: (playSounds) => set({ playSounds }),
+      soundVolume: 1,
+      setSoundVolume: (soundVolume) => set({ soundVolume: Math.min(1, Math.max(0, soundVolume)) }),
       chesscomUsername: '',
       setChesscomUsername: (chesscomUsername) => set({ chesscomUsername }),
       reviewDepth: 'balanced',

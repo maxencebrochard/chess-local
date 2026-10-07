@@ -9,6 +9,7 @@ import { INSIGHTS_KEY, readInsights, writeInsights } from './insightsStore'
 import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, useSettings } from '../store/settings'
 import { BOTS } from './bots'
 import { TIME_CONTROLS } from './timeControls'
+import { isPieceSet } from './pieces'
 
 // Version du format de fichier = version du schéma Dexie : une table ajoutée = nouveau bloc
 // `db.version(n)` = nouvelle version de sauvegarde, avec son `since` dans SPECS.
@@ -251,8 +252,8 @@ function settingsDefaults(): SettingsValues {
 
 // Ne garde que les réglages connus du store, du bon type, de taille raisonnable et parmi les
 // valeurs que l'interface sait afficher : un blob abîmé ou trafiqué ne peut ni écraser une action
-// (`setTheme: "x"`), ni poser un thème, une profondeur, un mode, une couleur, un bot ou une cadence
-// inconnus, ni saturer le localStorage.
+// (`setTheme: "x"`), ni poser un thème, un jeu de pièces, un volume, une profondeur, un mode, une
+// couleur, un bot ou une cadence inconnus, ni saturer le localStorage.
 // Retourne null si le blob n'est pas lisible.
 function cleanSettings(raw: unknown): SettingsValues | null {
   if (!isStr(raw)) return null
@@ -272,6 +273,9 @@ function cleanSettings(raw: unknown): SettingsValues | null {
     state[k] = v
   }
   if (!BOARD_THEMES.some((t) => t.id === state.themeId)) state.themeId = defaults.themeId
+  if (!isPieceSet(state.pieceSet)) state.pieceSet = defaults.pieceSet
+  const vol = state.soundVolume
+  if (typeof vol !== 'number' || !Number.isFinite(vol) || vol < 0 || vol > 1) state.soundVolume = defaults.soundVolume
   if (!Object.hasOwn(REVIEW_DEPTHS, String(state.reviewDepth))) state.reviewDepth = defaults.reviewDepth
   // Réglages de l'écran Jouer : même principe, une valeur hors liste revient au défaut.
   if (!PLAY_MODES.some((m) => m === state.playMode)) state.playMode = defaults.playMode

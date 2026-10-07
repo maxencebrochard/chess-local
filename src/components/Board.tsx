@@ -1,10 +1,13 @@
-import { useId, useMemo, useState } from 'react'
-import { Chess, type Square } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Chess, type Move, type Square } from 'chess.js'
+import { Chessboard, defaultPieces, type PieceRenderObject } from 'react-chessboard'
 import { useSettings, currentTheme } from '../store/settings'
 import { ClassIcon } from './ClassIcon'
 import { ATTACK_RED } from './AttackLegend'
 import { attackCounts } from '../lib/kingAttack'
+import { PieceIcon } from './PieceIcon'
+import { DEFAULT_PIECE_SET, PIECE_CODES, isPieceSet, preloadPieceSet } from '../lib/pieces'
+import { playMoveSound, sounds } from '../lib/sounds'
 import type { MoveClass } from '../lib/review'
 
 export interface BoardArrow {
@@ -30,10 +33,14 @@ interface BoardProps {
   // Calque « Compte les attaquants » : cadre sur la zone de chaque roi, rouge quand les attaquants
   // dépassent les défenseurs. Les comptes s'affichent sous l'échiquier (AttackLegend).
   showAttackers?: boolean
+  // Diagramme : aucun son quand la position change.
+  silent?: boolean
 }
 
-export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares, showAttackers }: BoardProps) {
-  const { themeId, showLegalMoves } = useSettings()
+export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares, showAttackers, silent }: BoardProps) {
+  const { themeId, showLegalMoves, pieceSet: storedSet } = useSettings()
+  // Un jeu inconnu (localStorage abîmé) retombe sur le défaut plutôt que sur des images 404.
+  const pieceSet = isPieceSet(storedSet) ? storedSet : DEFAULT_PIECE_SET
   const theme = currentTheme(themeId)
   const [selected, setSelected] = useState<Square | null>(null)
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null)
@@ -44,6 +51,35 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
 
   const chess = useMemo(() => new Chess(fen), [fen])
   const zones = useMemo(() => (showAttackers ? attackCounts(fen) : null), [fen, showAttackers])
+
+  useEffect(() => preloadPieceSet(pieceSet), [pieceSet])
+
+  // Son du coup, joué par l'échiquier lui-même : toute page dont la position avance d'un coup
+  // sonne comme chess.com (puzzle, exercice, navigation dans l'analyse...). Restent muets : un saut
+  // (nouveau puzzle, chargement, plusieurs coups d'un coup), un retour en arrière (coup faux repris,
+  // entrée dans un « réessayer ») et un coup que la page ne surligne pas comme dernier coup (coup
+  // faux affiché en rouge, que suit le son d'échec). `silent` : la page joue ses sons elle-même.
+  // Un coup moins de 60 ms après le précédent reste muet : défiler vite dans l'analyse ne doit pas
+  // empiler les sons.
+  const prevFen = useRef<string | null>(null)
+  const me = movableColor ?? orientation
+  const lastFrom = lastMove?.from
+  const lastTo = lastMove?.to
+  const lastMoveGiven = lastMove !== undefined
+  useEffect(() => {
+    const prev = prevFen.current
+    prevFen.current = fen
+    if (silent || prev === null || prev === fen) return
+    const move = oneMoveBetween(prev, fen)
+    if (!move) return
+    if (lastMoveGiven && (move.from !== lastFrom || move.to !== lastTo)) return
+    const now = performance.now()
+    if (now - lastBoardSoundAt < 60) return
+    lastBoardSoundAt = now
+    playMoveSound(move, move.color !== me)
+    // Seule la fen déclenche : un changement de surlignage seul n'est pas un coup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fen])
 
   const legalTargets = useMemo(() => {
     if (!selected) return new Set<string>()
@@ -151,10 +187,17 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
           canDragPiece: ({ square }) => canMoveFrom(square ?? ''),
           onPieceDrop: ({ sourceSquare, targetSquare }) => {
             if (!targetSquare) return false
+            // Pièce jouable lâchée sur une case interdite : son « coup illégal » (pas pour un
+            // lâcher sur sa propre case, qui annule simplement le geste).
+            if (targetSquare !== sourceSquare && canMoveFrom(sourceSquare) && !legalMove(sourceSquare, targetSquare)) {
+              sounds.illegal()
+              return false
+            }
             return tryMove(sourceSquare, targetSquare)
           },
           onSquareClick: handleSquareClick,
           squareStyles,
+          pieces: piecesFor(pieceSet),
           arrows: arrows?.map((a) => ({ ...a })) ?? [],
           darkSquareStyle: { backgroundColor: theme.dark },
           lightSquareStyle: { backgroundColor: theme.light },
@@ -203,14 +246,15 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
             {(['q', 'r', 'b', 'n'] as const).map((p) => (
               <button
                 key={p}
-                className="h-16 w-16 cursor-pointer rounded bg-surface-3 text-4xl hover:bg-accent/30"
+                className="h-16 w-16 cursor-pointer rounded bg-surface-3 p-1 hover:bg-accent/30"
+                aria-label={PROMO_LABELS[p]}
                 onClick={() => {
                   const { from, to } = pendingPromotion
                   setPendingPromotion(null)
                   onMove?.(from, to, p)
                 }}
               >
-                {PROMO_GLYPHS[promoColor][p]}
+                <PieceIcon set={pieceSet} code={`${promoColor}${p.toUpperCase()}`} />
               </button>
             ))}
           </div>
@@ -220,9 +264,37 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   )
 }
 
-const PROMO_GLYPHS: Record<'w' | 'b', Record<string, string>> = {
-  w: { q: '♕', r: '♖', b: '♗', n: '♘' },
-  b: { q: '♛', r: '♜', b: '♝', n: '♞' },
+const PROMO_LABELS: Record<string, string> = { q: 'Dame', r: 'Tour', b: 'Fou', n: 'Cavalier' }
+
+// Horodatage du dernier son de coup joué par un échiquier (anti-empilement, voir l'effet ci-dessus).
+let lastBoardSoundAt = 0
+
+// Rendus de pièces par jeu, construits une fois : un objet stable évite de re-rendre les 32 pièces.
+const piecesCache = new Map<string, PieceRenderObject>()
+function piecesFor(set: string): PieceRenderObject {
+  if (set === 'classique') return defaultPieces
+  let pieces = piecesCache.get(set)
+  if (!pieces) {
+    pieces = {}
+    for (const code of PIECE_CODES) pieces[code] = () => <PieceIcon set={set} code={code} />
+    piecesCache.set(set, pieces)
+  }
+  return pieces
+}
+
+// Le coup légal qui mène de `from` à `to` (placement et trait), ou null.
+function oneMoveBetween(from: string, to: string): Move | null {
+  let c: Chess
+  try {
+    c = new Chess(from)
+  } catch {
+    return null
+  }
+  const target = to.split(' ').slice(0, 2).join(' ')
+  for (const m of c.moves({ verbose: true })) {
+    if (m.after.split(' ').slice(0, 2).join(' ') === target) return m
+  }
+  return null
 }
 
 // Rectangle couvrant les cases de la zone (toujours un bloc 3x3), en % de l'échiquier, selon

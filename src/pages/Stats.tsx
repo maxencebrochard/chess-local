@@ -25,7 +25,13 @@ import {
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { Toggle } from '../components/Toggle'
 import { attackSummary, loadAttackDiagnostic, type AttackDiagnostic } from '../lib/kingAttack'
-import { BOARD_THEMES, useSettings } from '../store/settings'
+import { BOARD_THEMES, currentTheme, useSettings } from '../store/settings'
+import { PieceIcon } from '../components/PieceIcon'
+import { PIECE_SETS } from '../lib/pieces'
+import { play } from '../lib/sounds'
+
+// Touches qui changent le volume du curseur : seules elles déclenchent l'aperçu sonore.
+const VOLUME_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'])
 
 // Chaque message a son id : le <p role="alert"> est remonté à chaque nouveau message, donc un
 // lecteur d'écran ré-annonce même une erreur identique à la précédente.
@@ -107,6 +113,7 @@ export default function Stats() {
   const [attacks, setAttacks] = useState<AttackDiagnostic | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const settings = useSettings()
+  const theme = currentTheme(settings.themeId)
 
   // Relu après une restauration : l'interface doit refléter la base sans rechargement
   // (impossible à la main en PWA standalone).
@@ -315,8 +322,56 @@ export default function Stats() {
             ))}
           </div>
         </div>
+        <div>
+          <p className="mb-2 text-sm font-semibold text-neutral-300">Pièces</p>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Pièces">
+            {PIECE_SETS.map((ps) => (
+              <button
+                key={ps.id}
+                role="radio"
+                aria-checked={settings.pieceSet === ps.id}
+                data-piece-set={ps.id}
+                onClick={() => settings.setPieceSet(ps.id)}
+                className={`cursor-pointer overflow-hidden rounded border-2 ${settings.pieceSet === ps.id ? 'border-accent' : 'border-transparent'}`}
+                title={ps.name}
+              >
+                <div className="flex">
+                  <div className="h-9 w-9" style={{ background: theme.light }}>
+                    <PieceIcon set={ps.id} code="wN" />
+                  </div>
+                  <div className="h-9 w-9" style={{ background: theme.dark }}>
+                    <PieceIcon set={ps.id} code="bQ" />
+                  </div>
+                </div>
+                <div className="bg-surface-3 px-1 py-0.5 text-[11px] font-semibold text-neutral-300">{ps.name}</div>
+              </button>
+            ))}
+          </div>
+        </div>
         <Toggle label="Afficher les coups légaux" value={settings.showLegalMoves} onChange={settings.setShowLegalMoves} />
-        <Toggle label="Sons" value={settings.playSounds} onChange={settings.setPlaySounds} />
+        <div>
+          <Toggle label="Sons" value={settings.playSounds} onChange={settings.setPlaySounds} />
+          {settings.playSounds && (
+            <label className="mt-2 flex items-center gap-3 text-sm text-neutral-300">
+              <span>Volume</span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                aria-label="Volume des sons"
+                value={Math.round(settings.soundVolume * 100)}
+                onChange={(e) => settings.setSoundVolume(Number(e.target.value) / 100)}
+                // Aperçu au relâcher : le son d'un coup, au nouveau volume (pas sur Tab ni Échap).
+                onPointerUp={() => play('move-self')}
+                onKeyUp={(e) => { if (VOLUME_KEYS.has(e.key)) play('move-self') }}
+                className="h-6 flex-1 cursor-pointer accent-accent"
+              />
+              <span className="w-12 whitespace-nowrap text-right tabular-nums">{Math.round(settings.soundVolume * 100)}{' '}%</span>
+            </label>
+          )}
+          <p className="mt-1 text-xs text-neutral-500">Sur iPhone, le mode silencieux coupe les sons de l'app.</p>
+        </div>
         <Toggle label="⚔ Compter les attaquants autour des rois" value={settings.showAttackers} onChange={settings.setShowAttackers} testId="toggle-attackers" />
         <div>
           <p className="mb-2 text-sm font-semibold text-neutral-300">Profondeur du bilan de partie</p>

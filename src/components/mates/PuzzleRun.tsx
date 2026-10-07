@@ -190,6 +190,7 @@ function PuzzleSeries({ drill, cadence, all, stats, showNet, onDone, onMenu, onR
                 fen={netFen}
                 orientation={net!.mated === 'w' ? 'b' : 'w'}
                 interactive={false}
+                silent
                 arrows={view.arrows}
                 markSquares={view.marks}
               />

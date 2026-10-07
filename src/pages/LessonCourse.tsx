@@ -11,8 +11,7 @@ import { Cta } from '../components/Cta'
 import { lineUci, type Course, type DiagramStep, type Lesson, type LineStep, type MarkColor } from '../lib/lessonCourse'
 import { ENDGAMES } from '../lib/learn'
 import { figurine } from '../lib/review'
-import { sounds } from '../lib/sounds'
-import { useSettings } from '../store/settings'
+import { playMoveSound, sounds } from '../lib/sounds'
 
 const MARK_COLORS: Record<MarkColor, string> = {
   green: 'rgba(129, 182, 76, 0.6)',
@@ -270,7 +269,6 @@ type Feedback = { tone: 'ok' | 'info' | 'bad'; headline?: string; text: string; 
 
 // Ligne jouable : l'élève joue le camp au trait, l'app répond après une courte pause.
 function LineView({ step, refusals, onDone }: { step: LineStep; refusals: Course['refusals']; onDone: () => void }) {
-  const { playSounds } = useSettings()
   const player = step.fen.split(' ')[1] as 'w' | 'b'
   const opponent = player === 'w' ? 'b' : 'w'
   const ucis = useMemo(() => lineUci(step), [step])
@@ -293,15 +291,10 @@ function LineView({ step, refusals, onDone }: { step: LineStep; refusals: Course
     timers.current.push(window.setTimeout(fn, ms))
   }
 
-  function sound(kind: 'move' | 'capture' | 'success' | 'fail') {
-    if (playSounds) sounds[kind]()
-  }
-
   function apply(uci: string) {
     const mv = chessRef.current.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] })
     setFen(chessRef.current.fen())
     setLastMove({ from: mv.from, to: mv.to })
-    sound(mv.captured ? 'capture' : 'move')
     return mv
   }
 
@@ -313,7 +306,7 @@ function LineView({ step, refusals, onDone }: { step: LineStep; refusals: Course
     if (after >= step.moves.length) {
       setPly(after)
       setFeedback({ tone: 'ok', headline, text: [move.text, step.end].filter(Boolean).join(' ') })
-      sound('success')
+      sounds.success()
       onDone()
       return
     }
@@ -364,7 +357,10 @@ function LineView({ step, refusals, onDone }: { step: LineStep; refusals: Course
         ? refusals.alsoGood(step.result)
         : [close ? refusals.close : refusals.bad(step.result), expected.hint && `Indice : ${expected.hint}`].filter(Boolean).join(' '),
     })
-    if (!stillGood && !close) sound('fail')
+    // Coup encore gagnant mais hors méthode : son du coup, sans verdict d'échec.
+    // Zone grise (coup proche de la méthode) : muette, ni succès ni échec.
+    if (stillGood) playMoveSound(mv, false)
+    else if (!close) sounds.fail()
     setBusy(true)
     setFen(wrongFen)
     setWrongSquare(mv.to)
