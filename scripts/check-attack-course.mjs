@@ -10,7 +10,7 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import {
-  SQUARE, checkArrows, checkCited, checkText, createChecker, load, oppositeCheck, stampMatches, word,
+  SQUARE, checkAnnouncedMate, checkArrows, checkCited, checkText, createChecker, load, oppositeCheck, stampMatches, word,
 } from './course-rules.mjs'
 
 const DATA = process.argv[2] ?? 'src/data/attackCourse.json'
@@ -169,8 +169,10 @@ for (const [id, lesson] of Object.entries(lessons)) {
           check(m.weak === undefined || m.weak === true, `${M} : weak invalide`)
         }
         if (word('seul coup').test(m.text ?? '')) check(m.only === true, `${M} : « seul coup » dans le texte sans only vérifié`)
+        checkAnnouncedMate(check, c, m.text, M)
         fens.push(c.fen())
       }
+      checkAnnouncedMate(check, c, step.end, `${S} fin`)
       check(!word('seul coup').test(step.text) && !word('seul coup').test(step.end ?? ''), `${S} : « seul coup » se dit sur le coup concerné, avec only`)
       for (const m of moves) {
         checkCited(check, m.text ?? '', fens, `${S} coup ${m.san}`)

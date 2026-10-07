@@ -364,7 +364,7 @@ function LineView({ step, refusals, onDone }: { step: LineStep; refusals: Course
         ? refusals.alsoGood(step.result)
         : [close ? refusals.close : refusals.bad(step.result), expected.hint && `Indice : ${expected.hint}`].filter(Boolean).join(' '),
     })
-    if (!stillGood) sound('fail')
+    if (!stillGood && !close) sound('fail')
     setBusy(true)
     setFen(wrongFen)
     setWrongSquare(mv.to)
