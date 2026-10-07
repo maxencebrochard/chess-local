@@ -6,7 +6,7 @@
 // Règles communes (positions, flèches, textes, tampon) : scripts/course-rules.mjs.
 // N'imprime que les manquements ([KO]) et un bilan ; code de sortie 1 au moindre [KO].
 import { readFileSync } from 'node:fs'
-import { SQUARE, checkArrows as arrowsRule, checkCited as citedRule, checkText as textRule, createChecker, load, oppositeCheck, stampMatches } from './course-rules.mjs'
+import { SQUARE, checkAnnouncedMate, checkArrows as arrowsRule, checkCited as citedRule, checkText as textRule, createChecker, load, oppositeCheck, stampMatches } from './course-rules.mjs'
 
 const RAW = readFileSync('src/data/endgameCourse.json', 'utf8')
 const course = JSON.parse(RAW)
@@ -122,8 +122,10 @@ for (const [id, lesson] of Object.entries(lessons)) {
           check(m.only === undefined && m.keeps === undefined, `${M} : only/keeps sur un coup adverse`)
         }
         if (/seul coup/i.test(m.text ?? '')) check(m.only === true, `${M} : « seul coup » dans le texte sans only vérifié`)
+        checkAnnouncedMate(check, c, m.text, M)
         fens.push(c.fen())
       }
+      checkAnnouncedMate(check, c, step.end, `${S} fin`)
       check(!/seul coup/i.test(step.text) && !/seul coup/i.test(step.end ?? ''), `${S} : « seul coup » se dit sur le coup concerné, avec only`)
       for (const m of moves) checkCited(m.text ?? '', fens, `${S} coup ${m.san}`)
       checkCited(step.text, fens, S)

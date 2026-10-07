@@ -150,6 +150,13 @@ export function word(pattern) {
   return new RegExp(`(?<!\\p{L})(?:${pattern})(?!\\p{L})`, 'iu')
 }
 
+// Un texte de coup ou une fin de ligne qui commence par « Mat » (« Mat. », « Mat : ») annonce un mat
+// sur l'échiquier : la position atteinte doit l'être. Une menace (« menace Dh7 mat ») reste permise.
+const ANNOUNCED_MATE = /^Mat(?!\p{L})/u
+export function checkAnnouncedMate(check, chess, text, label) {
+  check(!ANNOUNCED_MATE.test(text ?? '') || chess.isCheckmate(), `${label} : annonce « Mat » sans mat sur l'échiquier`)
+}
+
 const ENGLISH_SAN = /\b[KQNB][a-h]?[1-8]?x?[a-h][1-8]\b/
 const BANNED = [
   [/boxe/i, '« boxe » (faux ami : la boîte)'],

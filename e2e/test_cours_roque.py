@@ -153,6 +153,10 @@ def mutations():
         s["eval"] = "+3.10"
     def mut_english(d):
         d["lessons"]["grec-schema"]["steps"][line]["moves"][0]["text"] = "Bxh7+ ouvre le roi."
+    def mut_mate_end(d):
+        d["lessons"]["grec-schema"]["steps"][line]["end"] = "Mat : la dame en h7, gardée par le cavalier."
+    def mut_mate_move(d):
+        d["lessons"]["grec-schema"]["steps"][line]["moves"][0]["text"] = "Mat. Le fou a tout pris."
     cases = [
         ("position illégale (le camp sans le trait est en échec)", mut_fen, "est en échec"),
         ("coup injouable", mut_move, "injouable"),
@@ -165,6 +169,8 @@ def mutations():
         ("notation anglaise", mut_english, "notation anglaise"),
         ("« forcé » dans une ligne", mut_forced, "« forcé » sans mat"),
         ("mat annoncé sans mat moteur", mut_mate, "parle de mat sans mat"),
+        ("fin de ligne « Mat » sans mat sur l'échiquier", mut_mate_end, "fin : annonce « Mat » sans mat"),
+        ("texte de coup « Mat » sans mat sur l'échiquier", mut_mate_move, "coup 1 (Bxh7+) : annonce « Mat » sans mat"),
     ]
     tmp = tempfile.mkdtemp(prefix="cours-roque-")
     try:
@@ -314,6 +320,7 @@ def suite(p):
             for i, fen, m, uci in student_moves(s):
                 if m.get("close") and grey is None:
                     grey = (lid, si, i, m["close"][0])
+    check("[zone grise] au moins un coup du cours a une zone grise", grey is not None)
     if grey:
         lid, si, i, other = grey
         page.goto(f"{BASE}/#/apprendre/roque/{lid}?etape={si + 1}")
