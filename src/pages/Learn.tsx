@@ -24,7 +24,6 @@ import { openingDe, openingFamilyFr } from '../lib/openingNames'
 import { describeKinds, dueLabel, loadReviewQueue, type ReviewQueue } from '../lib/revision'
 import { figurine } from '../lib/review'
 import { sounds } from '../lib/sounds'
-import { useSettings } from '../store/settings'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 type ItemPhase = 'lesson' | 'play' | 'success' | 'fail'
@@ -44,7 +43,6 @@ interface StoredSession {
 export default function Learn() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { playSounds } = useSettings()
   const [ratings, setRatings] = useState<Record<string, number | null>>({})
   const [mistakeCount, setMistakeCount] = useState(0)
   const [attackCount, setAttackCount] = useState(0)
@@ -178,7 +176,8 @@ export default function Learn() {
   async function finishItem(success: boolean) {
     if (!session) return
     const item = session.items[itemIdx]
-    if (playSounds) (success ? sounds.success : sounds.fail)()
+    // Tactique et stratégie passent par PuzzlePlayer, qui a déjà joué le verdict.
+    if (item.kind !== 'tactic' && item.kind !== 'strategy') (success ? sounds.success : sounds.fail)()
     // Un réessai ne re-score pas : seule la première tentative compte pour l'Elo.
     if (!scoredItems.current.has(itemIdx)) {
       scoredItems.current.add(itemIdx)

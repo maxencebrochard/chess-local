@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Chess } from 'chess.js'
+import { Chess, type Move } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
 import { AttackLegend } from '../components/AttackLegend'
 import { Board, type BoardArrow } from '../components/Board'
@@ -17,7 +17,7 @@ import { BOTS, botById, botEngineOptions, botThinkBudget, chooseBotMove, type Bo
 import { Engine } from '../lib/engine'
 import { applyRating, db, getRating, type SavedGame } from '../lib/db'
 import { openingForMoves } from '../lib/openings'
-import { sounds } from '../lib/sounds'
+import { playMoveSound, sounds } from '../lib/sounds'
 import { TIME_CONTROLS, UNLIMITED, type TimeControl } from '../lib/timeControls'
 import { PLAY_COLORS, PLAY_MODES, useSettings, type PlayColor, type PlayMode } from '../store/settings'
 
@@ -127,7 +127,7 @@ async function evalWhite(engine: Engine, fen: string, turn: 'w' | 'b'): Promise<
 
 export default function Play() {
   const navigate = useNavigate()
-  const { playSounds, playMode, playBotId, playColor, playTcLabel, setPlayConfig, showAttackers, setShowAttackers } = useSettings()
+  const { playMode, playBotId, playColor, playTcLabel, setPlayConfig, showAttackers, setShowAttackers } = useSettings()
 
   // --- Configuration (mémorisée dans les réglages, assainie à la lecture : une valeur hors
   // liste, venue d'une autre version ou d'une sauvegarde retouchée, revient au défaut) ---
@@ -328,7 +328,7 @@ export default function Play() {
       setConfirmResign(null)
       writeStoredGame(null)
       releaseEngines()
-      if (playSounds) sounds.gameEnd()
+      sounds.gameEnd()
       const c = chessRef.current
       if (cancel || c.history().length < 2) {
         // Partie annulée (comme chess.com) : ni classement ni archive. `cancel` : l'utilisateur a
@@ -378,7 +378,7 @@ export default function Play() {
       setSavedGameId(id ?? null)
       setGameOver({ result, termination, ratingBefore, ratingAfter })
     },
-    [playSounds, releaseEngines],
+    [releaseEngines],
   )
 
   // Drapeau : le camp adverse ne gagne que s'il a de quoi mater, sinon nulle.
@@ -403,11 +403,11 @@ export default function Play() {
         onFlag(turn)
       } else if (!lowTimeWarned.current && next[turn] <= 15_000 && (mode !== 'bot' || turn === playerColor)) {
         lowTimeWarned.current = true
-        if (playSounds) sounds.lowTime()
+        sounds.lowTime()
       }
     }, 100)
     return () => clearInterval(interval)
-  }, [status, effectiveTc, mode, playerColor, playSounds, onFlag])
+  }, [status, effectiveTc, mode, playerColor, onFlag])
 
   const checkGameEnd = useCallback((): boolean => {
     const c = chessRef.current
@@ -421,15 +421,14 @@ export default function Play() {
   }, [endGame])
 
   const afterMove = useCallback(
-    (san: string, byPlayer = false) => {
+    (move: Move, byPlayer = false) => {
       const c = chessRef.current
       const g = gameRef.current
       if (!g) return false
-      if (playSounds) {
-        if (c.inCheck()) sounds.check()
-        else if (san.includes('x')) sounds.capture()
-        else sounds.move()
-      }
+      const san = move.san
+      // Son joué ici et non par l'échiquier : un coup du bot qui arrive pendant qu'on relit
+      // l'historique ramène la position en direct d'un saut, que l'échiquier laisserait muet.
+      playMoveSound(move, !byPlayer)
       if (g.tc.baseMs !== null) {
         const justMoved = c.turn() === 'w' ? 'b' : 'w'
         clocksRef.current = { ...clocksRef.current, [justMoved]: clocksRef.current[justMoved] + g.tc.incMs }
@@ -446,7 +445,7 @@ export default function Play() {
       if (!ended) saveGame() // jamais une position terminée dans l'instantané
       return !ended
     },
-    [playSounds, checkGameEnd, liveEval, saveGame],
+    [checkGameEnd, liveEval, saveGame],
   )
 
   const playBotMove = useCallback(async () => {
@@ -466,7 +465,7 @@ export default function Play() {
       if (latency > 0) await new Promise((r) => setTimeout(r, latency))
       if (seq !== gameSeq.current) return // partie finie ou remplacée pendant la réflexion
       const move = applyUci(c, uci)
-      if (move) afterMove(move.san)
+      if (move) afterMove(move)
     } finally {
       if (thinkingSeq.current === seq) thinkingSeq.current = null
     }
@@ -478,7 +477,7 @@ export default function Play() {
     if (viewIndex !== -1) return false
     try {
       const move = c.move({ from, to, promotion: promotion ?? 'q' })
-      const cont = afterMove(move.san, true)
+      const cont = afterMove(move, true)
       if (cont && mode !== 'local') void playBotMove()
       return true
     } catch {
@@ -527,6 +526,7 @@ export default function Play() {
     setCoachMsg(next.mode === 'coach' ? (restored ? { text: 'On reprend la partie.', cls: null, mood: 'thinking' } : greeting()) : null)
     statusRef.current = 'playing'
     setStatus('playing')
+    if (!restored) sounds.gameStart()
     if (next.mode !== 'local') {
       // Moteur créé et options posées dès maintenant : le WASM se charge pendant le premier coup du joueur.
       engineRef.current ??= new Engine()
@@ -881,6 +881,7 @@ export default function Play() {
                 movableColor={playerColor}
                 onMove={handlePlayerMove}
                 lastMove={lastMove}
+                silent
                 arrows={hintArrow ? [hintArrow] : []}
                 badge={bookBadge && viewIndex === -1 ? { square: bookBadge, cls: 'book' } : null}
                 showAttackers={showAttackers}
@@ -939,6 +940,7 @@ export default function Play() {
             onMove={handlePlayerMove}
             lastMove={lastMove}
             showAttackers={showAttackers}
+            silent
           />
         </div>
         <div className="flex w-full items-center justify-between">

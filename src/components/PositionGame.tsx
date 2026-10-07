@@ -19,8 +19,7 @@ import {
   repetitions, replay, resignEnd, resumedGame, storeGame, verdictText, type GameEnd, type Objective, type Opponent, type StoredGame,
 } from '../lib/positionGame'
 import { figurine, winPct } from '../lib/review'
-import { sounds } from '../lib/sounds'
-import { useSettings } from '../store/settings'
+import { playMoveSound, sounds } from '../lib/sounds'
 
 // Temps de réflexion de Stockfish par coup : borné pour ne pas faire attendre.
 const ENGINE_MOVETIME_MS = 700
@@ -115,7 +114,6 @@ function initialGame(p: PositionGameProps): Init {
 export function PositionGame(props: PositionGameProps) {
   const { startFen, title, objective, goalHint, lesson, courseId, onExit, onOther, opponent, decisiveCp } = props
   const navigate = useNavigate()
-  const { playSounds } = useSettings()
   const [init] = useState(() => initialGame(props))
   const player = new Chess(startFen).turn()
 
@@ -153,6 +151,15 @@ export function PositionGame(props: PositionGameProps) {
   // Vérification Stockfish en cours : note la tentative ratée si Annuler, Recommencer ou un abandon
   // l'interrompt (appelée par l'action elle-même, avant que la tentative suivante ne commence).
   const pendingJudgeRef = useRef<(() => void) | null>(null)
+
+  // Son de début de partie, une fois par partie neuve (pas à la reprise d'une partie entamée).
+  // Le ref survit au double montage de StrictMode : un seul son.
+  const startSounded = useRef(false)
+  useEffect(() => {
+    if (startSounded.current || init.end || init.chess.history().length > 0) return
+    startSounded.current = true
+    sounds.gameStart()
+  }, [init])
 
   const course = courseId ? courseFor(courseId) : null
   // Miroirs pour les callbacks asynchrones (éval de l'oracle rendue après un rendu).
@@ -204,22 +211,20 @@ export function PositionGame(props: PositionGameProps) {
   const finish = useCallback((e: GameEnd) => {
     setEnd(e)
     const verdict = judge(e, player, objective)
-    if (playSounds) (verdict === 'fail' ? sounds.fail : verdict === 'success' ? sounds.success : sounds.gameEnd)()
+    ;(verdict === 'fail' ? sounds.fail : verdict === 'success' ? sounds.success : sounds.gameEnd)()
     if (!recordedRef.current) {
       recordedRef.current = true
       props.onFinished?.(verdict === 'success' && !assisted, { end: e, assisted })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [player, objective, playSounds, assisted, props.onFinished])
+  }, [player, objective, assisted, props.onFinished])
 
   // Après chaque coup (joueur ou moteur) : affichage, son, fin de partie éventuelle.
   const afterMove = useCallback((move: Move): GameEnd | null => {
     const c = chessRef.current
-    if (playSounds) {
-      if (c.inCheck()) sounds.check()
-      else if (move.captured) sounds.capture()
-      else sounds.move()
-    }
+    // Son joué ici et non par l'échiquier : un coup qui arrive pendant qu'on relit l'historique
+    // ramène la position en direct d'un saut, que l'échiquier laisserait muet.
+    playMoveSound(move, move.color !== player)
     setFen(c.fen())
     setHistory(c.history({ verbose: true }))
     setViewIndex(-1)
@@ -228,7 +233,7 @@ export function PositionGame(props: PositionGameProps) {
     const e = boardEnd(c)
     if (e) finish(e)
     return e
-  }, [playSounds, finish])
+  }, [player, finish])
 
   // Avantage décisif : à chaque tour du joueur, l'oracle évalue la position (de son point de vue,
   // il a le trait). Tenu DECISIVE_TURNS tours de suite, la tentative est réussie (notée tout de
@@ -253,13 +258,13 @@ export function PositionGame(props: PositionGameProps) {
     if (count < DECISIVE_TURNS || c.history().length !== ply || boardEnd(c)) return
     decisiveRef.current = 'offered'
     setDecisive('offered')
-    if (playSounds) sounds.success()
+    sounds.success()
     if (!recordedRef.current) {
       recordedRef.current = true
       props.onFinished?.(!assistedRef.current, { end: decisiveEnd(player), assisted: assistedRef.current })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decisiveCp, playSounds, player, props.onFinished])
+  }, [decisiveCp, player, props.onFinished])
 
   const engineMove = useCallback(async () => {
     const gen = genRef.current
@@ -384,6 +389,7 @@ export function PositionGame(props: PositionGameProps) {
     setBusy(null)
     setHint(null)
     setNotice(null)
+    sounds.gameStart()
   }
 
   // Reprend le dernier coup du joueur (et la réponse de Stockfish). Possible après une fin sur
@@ -612,6 +618,7 @@ export function PositionGame(props: PositionGameProps) {
               movableColor={player}
               onMove={handleMove}
               lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
+              silent
               arrows={hint && live ? [hint] : []}
               showAttackers={props.showAttackers}
             />

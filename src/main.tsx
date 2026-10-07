@@ -2,12 +2,16 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { installAudioUnlock } from './lib/sounds'
 
 // Stockage persistant : sans cette demande, iOS/Safari peut purger IndexedDB
 // (classements, parties, progrès) après une période d'inactivité.
 if (navigator.storage?.persist) {
   void navigator.storage.persist()
 }
+
+// Sons : déverrouillage de l'audio au premier geste, et après chaque retour d'arrière-plan.
+installAudioUnlock()
 
 // Une erreur attrapée par la frontière d'erreur (App.tsx) reste journalisée, avec la pile des
 // composants (où le rendu a planté), ET ré-émise sur `window` : les suites E2E ne détectent un

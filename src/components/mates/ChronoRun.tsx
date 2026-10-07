@@ -14,8 +14,7 @@ import {
   CADENCE_LABEL, CADENCE_MS, chronoPool, chronoTitle, RunRecorder, runKey,
   type Cadence, type ChronoPosition, type Drill, type RunStats,
 } from '../../lib/mates'
-import { sounds } from '../../lib/sounds'
-import { useSettings } from '../../store/settings'
+import { playMoveSound, sounds } from '../../lib/sounds'
 
 const BOT_MOVETIME_MS = 150
 const ENGINE_TIMEOUT_MS = 6000
@@ -52,7 +51,6 @@ interface Props {
 }
 
 export function ChronoRun({ drill, cadence, stats, getEngine, onDone, onMenu }: Props) {
-  const { playSounds } = useSettings()
   const budget = CADENCE_MS[cadence] ?? 30_000
   const [series, setSeries] = useState(0) // « Rejouer » remonte tout
   return (
@@ -62,7 +60,6 @@ export function ChronoRun({ drill, cadence, stats, getEngine, onDone, onMenu }: 
       cadence={cadence}
       budget={budget}
       stats={stats}
-      playSounds={playSounds}
       getEngine={getEngine}
       onDone={onDone}
       onMenu={onMenu}
@@ -71,9 +68,8 @@ export function ChronoRun({ drill, cadence, stats, getEngine, onDone, onMenu }: 
   )
 }
 
-function ChronoSeries({ drill, cadence, budget, stats, playSounds, getEngine, onDone, onMenu, onReplay }: Props & {
+function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu, onReplay }: Props & {
   budget: number
-  playSounds: boolean
   onReplay: () => void
 }) {
   const [newRecord, setNewRecord] = useState(false)
@@ -151,7 +147,7 @@ function ChronoSeries({ drill, cadence, budget, stats, playSounds, getEngine, on
     setReason(why)
     setStopped(why === null)
     setPhase('over')
-    if (playSounds && why !== null) sounds.fail()
+    if (why !== null) sounds.fail()
     void recorder.finish(scoreRef.current, why !== null).then((record) => {
       setNewRecord(record)
       onDone()
@@ -165,7 +161,7 @@ function ChronoSeries({ drill, cadence, budget, stats, playSounds, getEngine, on
     setScore(scoreRef.current)
     setMateMs(budget - leftRef.current)
     setPhase('won')
-    if (playSounds) sounds.success()
+    sounds.success()
     void recorder.save(scoreRef.current)
     timer.current = setTimeout(() => {
       timer.current = null
@@ -199,22 +195,21 @@ function ChronoSeries({ drill, cadence, budget, stats, playSounds, getEngine, on
     return true
   }
 
-  function sound(move: Move) {
-    if (!playSounds) return
-    if (chessRef.current!.inCheck()) sounds.check()
-    else if (move.captured) sounds.capture()
-    else sounds.move()
-  }
-
   async function reply(g: number) {
     const c = chessRef.current!
     setThinking(true)
     let guard: ReturnType<typeof setTimeout> | undefined
-    const res = await Promise.race([
-      getEngine().search({ fen: c.fen(), movetimeMs: BOT_MOVETIME_MS, multipv: 1 }),
-      new Promise<null>((r) => {
-        guard = setTimeout(() => r(null), ENGINE_TIMEOUT_MS)
-      }),
+    // La réponse dure au moins BOT_MOVETIME_MS même si Stockfish rend la main tout de suite (roi à
+    // un seul coup légal) : la pièce adverse ne se téléporte pas, et la pendule du joueur, arrêtée
+    // pendant ce temps, l'est visiblement.
+    const [res] = await Promise.all([
+      Promise.race([
+        getEngine().search({ fen: c.fen(), movetimeMs: BOT_MOVETIME_MS, multipv: 1 }),
+        new Promise<null>((r) => {
+          guard = setTimeout(() => r(null), ENGINE_TIMEOUT_MS)
+        }),
+      ]),
+      new Promise((r) => setTimeout(r, BOT_MOVETIME_MS)),
     ])
     clearTimeout(guard)
     if (g !== gen.n || phaseRef.current !== 'play') return
@@ -237,7 +232,7 @@ function ChronoSeries({ drill, cadence, budget, stats, playSounds, getEngine, on
       return
     }
     timeouts.current = 0
-    sound(move)
+    playMoveSound(move, true)
     setFen(c.fen())
     setLastMove(move)
     if (!settle(move)) startClock()
@@ -258,7 +253,7 @@ function ChronoSeries({ drill, cadence, budget, stats, playSounds, getEngine, on
       return false
     }
     stopClock()
-    sound(move)
+    playMoveSound(move, false)
     setFen(c.fen())
     setLastMove(move)
     setPlayed((n) => n + 1)
@@ -299,6 +294,8 @@ function ChronoSeries({ drill, cadence, budget, stats, playSounds, getEngine, on
             movableColor={playerColor}
             onMove={onMove}
             lastMove={view ? null : lastMove ? { from: lastMove.from, to: lastMove.to } : null}
+            // Son joué au coup lui-même : le mat bascule l'affichage (réseau) dans le même rendu.
+            silent
             arrows={view?.arrows}
             markSquares={view?.marks}
           />

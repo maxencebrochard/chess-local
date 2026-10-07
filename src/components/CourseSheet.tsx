@@ -29,7 +29,7 @@ export function CourseSheet({ course, onClose }: CourseSheetProps) {
           {course.diagram && (
             <div>
               <div className="mx-auto w-full max-w-[320px]">
-                <Board fen={course.diagram.fen} orientation="w" interactive={false} arrows={arrows} />
+                <Board fen={course.diagram.fen} orientation="w" interactive={false} arrows={arrows} silent />
               </div>
               <p className="mt-1.5 text-center text-xs text-neutral-400">{course.diagram.caption}</p>
             </div>

@@ -159,8 +159,8 @@ def play_uci(page, uci, after=150):
     click_square(page, uci[2:4])
     page.wait_for_timeout(after)
     if len(uci) == 5:
-        glyph = {"q": "♕♛", "r": "♖♜", "b": "♗♝", "n": "♘♞"}[uci[4]]
-        page.locator("button", has_text=re.compile(f"^[{glyph}]$")).first.click()
+        name = {"q": "Dame", "r": "Tour", "b": "Fou", "n": "Cavalier"}[uci[4]]
+        page.get_by_role("button", name=name, exact=True).first.click()
         page.wait_for_timeout(150)
 
 
@@ -292,6 +292,7 @@ def chrono_suite(p, browser):
     stopped_ok = True
     frozen_seen = 0
     page.evaluate(CLOCK_LOG_JS)
+    replies = []
     for _ in range(40):
         phase = attr(page, "[data-run]", "data-phase")
         if phase != "play":
@@ -322,9 +323,12 @@ def chrono_suite(p, browser):
             frozen_seen += 1
             ms = [s["ms"] for s in engine_turn]
             stopped_ok = stopped_ok and all(s["running"] == "false" for s in engine_turn) and max(ms) - min(ms) < 50
+        frozen = [s for s in engine_turn if s["running"] == "false"]
+        replies.append(f"{len(engine_turn)} éch. dont {len(frozen)} arrêtés")
     solver.close()
     check("[chrono] mat contre Stockfish (deux tours)", won, f"(phase {attr(page, '[data-run]', 'data-phase')}, {attr(page, '[data-run]', 'data-fen')})")
-    check("[chrono] chrono arrêté et figé pendant chaque réponse de Stockfish", stopped_ok and frozen_seen >= 1, f"({frozen_seen} réponses observées)")
+    check("[chrono] chrono arrêté et figé pendant chaque réponse de Stockfish", stopped_ok and frozen_seen >= 1,
+          f"({frozen_seen} réponses observées, arrêté={stopped_ok}, par réponse : {replies})")
     if won:
         check("[chrono] score 1", attr(page, "[data-score]", "data-score") == "1")
         check("[chrono] réseau du mat affiché (légende)", page.locator("[data-net-piece]").count() >= 1)

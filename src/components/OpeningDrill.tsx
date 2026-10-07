@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { Board, type BoardArrow } from './Board'
 import { Cta } from './Cta'
+import { sounds } from '../lib/sounds'
 import type { Engine, EngineLine } from '../lib/engine'
 import { isBookPosition, openingForMoves } from '../lib/openings'
 import { openingFr } from '../lib/openingNames'
@@ -158,6 +159,7 @@ export function OpeningDrill(props: Props) {
   function finish(success: boolean) {
     record(success)
     setResult({ success })
+    ;(success ? sounds.success : sounds.fail)()
   }
 
   function commit(uci: string, src: Source) {

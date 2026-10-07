@@ -131,10 +131,17 @@ Les séances en cours d'Apprendre et de révision vivent dans `sessionStorage` (
 ### Chemins et PWA
 
 `base: './'` + `HashRouter` : l'app doit tourner aussi bien à la racine que sous `/chess-local/`.
-Tout asset de `public/` se charge via `import.meta.env.BASE_URL` (worker moteur, sons, `puzzles.json`) ; un chemin absolu `/...` casse la prod.
+Tout asset de `public/` se charge via `import.meta.env.BASE_URL` (worker moteur, sons, pièces, `puzzles.json`) ; un chemin absolu `/...` casse la prod.
 Le service worker précache tout (WASM 7 Mo, puzzles 16 Mo) avec un plafond de 25 Mo par fichier dans `vite.config.ts`.
 Un nouvel asset lourd ou une nouvelle extension doit être couvert par `globPatterns`.
 `__BUILD__` (horodatage de build) s'affiche en bas de `/import` pour vérifier qu'un iPhone a bien la dernière version.
+
+### Pièces et sons
+
+Les jeux de pièces sont des SVG libres dans `public/pieces/<jeu>/` (liste dans `src/lib/pieces.ts`, réglage `pieceSet`), rendus en `<img>` par `Board` via l'option `pieces` de react-chessboard ; `classique` = pièces intégrées à la lib.
+Les sons (`public/sounds/`, CC0, `scripts/make-sounds.sh`) passent tous par `src/lib/sounds.ts`, qui lit lui-même `playSounds` et `soundVolume` : pas de test du réglage aux appels.
+`Board` joue le son d'un coup quand la position avance d'un coup qu'il surligne comme dernier coup ; une page qui joue ses sons de coup elle-même (Jouer, finales jouées) lui passe `silent`, comme les diagrammes.
+Aucun asset de chess.com, et toute ressource ajoutée doit être sous licence libre documentée dans le `LICENSES.md` de son dossier : le dépôt est public.
 
 ### Données
 

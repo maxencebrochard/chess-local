@@ -230,7 +230,7 @@ def suite(p):
     page.wait_for_timeout(200)
     tap_square(page, "f1")
     page.wait_for_timeout(300)
-    page.locator("button:has-text('♜')").click()  # sous-promotion en tour : gagne aussi
+    page.get_by_role("button", name="Tour", exact=True).click()  # sous-promotion en tour : gagne aussi
     page.wait_for_timeout(150)
     check("[carré] sous-promotion en tour : « gagne aussi »", "gagne aussi" in feedback(page), f"({feedback(page)})")
     page.wait_for_timeout(900)
@@ -238,7 +238,7 @@ def suite(p):
     page.wait_for_timeout(200)
     tap_square(page, "f1")
     page.wait_for_timeout(300)
-    page.locator("button:has-text('♛')").click()
+    page.get_by_role("button", name="Dame", exact=True).click()
     page.wait_for_timeout(900)
     check("[carré] promotion en dame : ligne terminée", continue_btn(page).is_enabled() and piece_on(page, "f1") == "bQ")
     shot(page, "course_square")
