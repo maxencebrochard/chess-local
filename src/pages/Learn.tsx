@@ -62,19 +62,21 @@ export default function Learn() {
   const engineRef = useRef<Engine | null>(null)
 
   const refresh = useCallback(async () => {
-    const entries = await Promise.all(
-      (['endgame', 'tactic', 'opening', 'strategy'] as LearnDomain[]).map(async (d) => [d, await domainRating(d)] as const),
-    )
+    const attacks = loadAttackDiagnostic().then((d) => d.items.length).catch(() => 0)
+    const [entries, mistakes, done] = await Promise.all([
+      Promise.all((['endgame', 'tactic', 'opening', 'strategy'] as LearnDomain[]).map(async (d) => [d, await domainRating(d)] as const)),
+      db.mistakes.where('solved').equals(0).count(),
+      Promise.all(
+        [FINALES, ROQUE].map(async (c) => {
+          const ids = await c.completedLessons()
+          return [c.slug, c.lessonIds.filter((id) => ids.has(id)).length] as const
+        }),
+      ),
+    ])
     setRatings(Object.fromEntries(entries))
-    setMistakeCount(await db.mistakes.where('solved').equals(0).count())
-    setAttackCount(await loadAttackDiagnostic().then((d) => d.items.length).catch(() => 0))
-    const done = await Promise.all(
-      [FINALES, ROQUE].map(async (c) => {
-        const ids = await c.completedLessons()
-        return [c.slug, c.lessonIds.filter((id) => ids.has(id)).length] as const
-      }),
-    )
+    setMistakeCount(mistakes)
     setLessonsDone(Object.fromEntries(done))
+    setAttackCount(await attacks)
   }, [])
 
   useEffect(() => {
