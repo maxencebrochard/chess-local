@@ -8,7 +8,7 @@ import json
 import os
 import subprocess
 
-from helpers import BASE, Checker, desktop_context, mobile_context, piece_on, shot, tap_move, tap_square
+from helpers import BASE, Checker, desktop_context, mobile_context, overflow_x, piece_on, shot, tap_move, tap_square
 
 ck = Checker("endgame_course")
 check = ck.check
@@ -285,7 +285,7 @@ def suite(p):
         check(f"[660] {lid} : échiquier entier à l'écran", in_viewport(page, board), f"({board.bounding_box()})")
         check(f"[660] {lid} : Continuer à l'écran", in_viewport(page, continue_btn(page)))
         check(f"[660] {lid} : bulle visible", page.locator(".bg-white").first.is_visible())
-        check(f"[660] {lid} : pas de défilement horizontal", page.evaluate("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"))
+        check(f"[660] {lid} : pas de défilement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
         shot(page, f"course_660_{name}")
     ctx.close()
 

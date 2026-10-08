@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 
 import coach_oracle as oracle
-from helpers import BASE, FINALES, HOLD_BESTMOVE, SHOTS, Checker, click_square as sq, mobile_context
+from helpers import BASE, FINALES, HOLD_BESTMOVE, SHOTS, Checker, click_square as sq, mobile_context, overflow_x
 
 ck = Checker("coach")
 check = ck.check
@@ -606,7 +606,7 @@ def display_660(p, browser):
     m_r = metrics(page, ".fixed")
     check("[réessayer 660] échiquier immobile", bool(m_g and m_r and m_g["boardY"] == m_r["boardY"]), f"({m_g and m_g['boardY']} -> {m_r and m_r['boardY']})")
     visible("[réessayer 660] avatar réellement visible", m_r)
-    check("[660] aucun débordement horizontal", page.evaluate("() => document.documentElement.scrollWidth - document.documentElement.clientWidth") == 0)
+    check("[660] aucun débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
     page.screenshot(path=f"{SHOTS}/coach_retry_660.png")
     ctx.close()
 
