@@ -761,7 +761,7 @@ def seeded_report(p, browser, rows, ins):
     broken = dict(rows[0], key="chesscom:999", review={"moves": "illisible"})
     seed_db(page, {"reviews": rows + [broken]})
     page.evaluate(
-        "([key, keys]) => localStorage.setItem(key, JSON.stringify({ config: { timeClass: 'blitz', count: 25, sources: ['chesscom', 'local'] }, lastRun: { keys, at: Date.now(), requested: 25 } }))",
+        "([key, keys]) => localStorage.setItem(key, JSON.stringify({ config: { timeClass: 'blitz', count: 25, sources: ['chesscom', 'local'] }, lastRun: { keys, at: Date.now() } }))",
         [INSIGHTS_KEY, [r["key"] for r in rows] + [broken["key"]]],
     )
 
@@ -891,7 +891,7 @@ def seeded_report(p, browser, rows, ins):
         if wait_schema(page):
             seed_db(page, {"reviews": rows})
             page.evaluate(
-                "([key, keys]) => localStorage.setItem(key, JSON.stringify({ config: { timeClass: 'blitz', count: 10, sources: ['chesscom', 'local'] }, lastRun: { keys, at: Date.now(), requested: 10 } }))",
+                "([key, keys]) => localStorage.setItem(key, JSON.stringify({ config: { timeClass: 'blitz', count: 10, sources: ['chesscom', 'local'] }, lastRun: { keys, at: Date.now() } }))",
                 [INSIGHTS_KEY, [r["key"] for r in rows]],
             )
         page.goto(f"{BASE}/#/insights")

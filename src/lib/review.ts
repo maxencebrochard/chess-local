@@ -67,6 +67,12 @@ export function winPct(cp: number): number {
   return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1)
 }
 
+// Précision d'un coup depuis sa chute de win%, formule lichess.
+export function moveAccuracy(m: Pick<ReviewedMove, 'winPctBefore' | 'winPctAfter'>): number {
+  const drop = Math.max(0, m.winPctBefore - m.winPctAfter)
+  return Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669))
+}
+
 function lineCp(line: EngineLine): number {
   if (line.scoreMate !== null) return line.scoreMate > 0 ? 10000 : -10000
   return line.scoreCp ?? 0
@@ -242,9 +248,7 @@ export async function reviewGame(
   moves.forEach((m, i) => {
     const color = colorAt(i)
     counts[color][m.class]++
-    const drop = Math.max(0, m.winPctBefore - m.winPctAfter)
-    const acc = Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669))
-    accs[color].push(acc)
+    accs[color].push(moveAccuracy(m))
 
     const half = Math.floor(windowSize / 2)
     const lo = Math.max(0, i + 1 - half)

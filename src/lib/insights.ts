@@ -13,8 +13,9 @@
 //   « là où je pèche ».
 import { Chess, type PieceSymbol, type Square } from 'chess.js'
 import type { ReviewRow } from './db'
-import { figurine, type GameReview, type MoveClass, type ReviewedMove } from './review'
-import { afterUci, colorAt, detectPhases, lostToReply, mateAgainst, stillAfterBest } from './coach'
+import { figurine, moveAccuracy, type GameReview, type MoveClass, type ReviewedMove } from './review'
+import { afterUci, colorAt, detectPhases, lostToReply, mateAgainst, moveNumber, stillAfterBest } from './coach'
+import { timeClassLabel } from './chesscom'
 import { attacksFrom, backRankMate, captureInfo, fork, isInBadSpot, mateInOne, other, pinOrSkewer, sanOf } from './motifs'
 import { openingForMoves } from './openings'
 import { openingFamilyFr } from './openingNames'
@@ -24,8 +25,6 @@ export type Phase = 'opening' | 'middlegame' | 'endgame'
 export const PHASES: Phase[] = ['opening', 'middlegame', 'endgame']
 export const PHASE_FR: Record<Phase, string> = { opening: 'Ouverture', middlegame: 'Milieu de partie', endgame: 'Finale' }
 const PHASE_LOW: Record<Phase, string> = { opening: "l'ouverture", middlegame: 'le milieu de partie', endgame: 'la finale' }
-
-export const TIME_CLASS_FR: Record<ReviewRow['timeClass'], string> = { bullet: 'bullet', blitz: 'blitz', rapid: 'rapide', unlimited: 'sans limite' }
 
 const START_FEN = new Chess().fen()
 // Ouverture d'au moins 20 demi-coups (10 coups chacun), comme le découpage de chess.com Insights.
@@ -40,11 +39,6 @@ export const MIN_OWN_MOVES = 5
 const MISTAKE_CLASSES: MoveClass[] = ['mistake', 'miss', 'missedWin']
 const FAULT_CLASSES: MoveClass[] = ['mistake', 'miss', 'missedWin', 'blunder']
 
-// Précision d'un coup depuis sa chute de win% (formule lichess, celle de review.ts).
-export function moveAccuracy(m: Pick<ReviewedMove, 'winPctBefore' | 'winPctAfter'>): number {
-  const drop = Math.max(0, m.winPctBefore - m.winPctAfter)
-  return Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669))
-}
 const dropOf = (m: ReviewedMove) => Math.max(0, m.winPctBefore - m.winPctAfter)
 
 // ------------------------------------------------------------------ lecture des parties
@@ -226,7 +220,7 @@ const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
 const mean = (xs: number[]) => (xs.length ? sum(xs) / xs.length : null)
 const round1 = (n: number) => Math.round(n * 10) / 10
 export const fr1 = (n: number) => n.toFixed(1).replace('.', ',')
-const pct = (n: number) => `${Math.round(n)} %`
+export const pct = (n: number) => `${Math.round(n)} %`
 const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`
 const resultScore = (r: ReviewRow['result']) => (r === 'win' ? 1 : r === 'draw' ? 0.5 : 0)
 const scorePct = (rs: ReviewRow['result'][]) => (rs.length ? (sum(rs.map(resultScore)) / rs.length) * 100 : 0)
@@ -240,13 +234,6 @@ export function frDate(ms: number): string {
 export function gameLabel(row: Pick<ReviewRow, 'source' | 'opponent' | 'opponentRating' | 'date'>): string {
   const who = row.opponentRating ? `${row.opponent} (${row.opponentRating})` : row.opponent
   return `${row.source === 'chesscom' ? 'chess.com' : 'ChessLocal'} · contre ${who} · ${frDate(row.date)}`
-}
-
-function moveNo(review: GameReview, i: number): string {
-  const full = parseInt(review.startFen.split(' ')[5] ?? '1', 10) || 1
-  const offset = review.startTurn === 'b' ? 1 : 0
-  const no = full + Math.floor((i + offset) / 2)
-  return colorAt(review, i) === 'w' ? `${no}.` : `${no}...`
 }
 
 // Ligne exploitable : bilan cohérent avec son PGN (chaque SAN se rejoue depuis le départ).
@@ -503,7 +490,7 @@ export function computeInsights(input: ReviewRow[]): Insights {
     const { review, row, color } = g
     const label = gameLabel(row)
     const example = (i: number, fen: string, bestSan: string | null): Example => ({
-      key: row.key, index: i, ply: i + 1, moveNo: moveNo(review, i), fen, san: review.moves[i].san,
+      key: row.key, index: i, ply: i + 1, moveNo: moveNumber(review, i), fen, san: review.moves[i].san,
       sanFig: figurine(review.moves[i].san, color), bestSan: bestSan ? figurine(bestSan, color) : null,
       drop: dropOf(review.moves[i]), color, date: row.date, label,
     })
@@ -657,13 +644,15 @@ export function computeInsights(input: ReviewRow[]): Insights {
 
 // ------------------------------------------------------------------ forces et faiblesses
 
-const BACK = { returnTo: '/insights', returnLabel: 'Retour aux Insights' }
+export const BACK = { returnTo: '/insights', returnLabel: 'Retour aux Insights' }
 const tactic = (theme: string, label: string): PlanStep => ({ label, to: '/apprendre', state: { tactic: theme, ...BACK } })
-const COLOR_FR = { w: 'Blancs', b: 'Noirs' } as const
+export const COLOR_FR = { w: 'Blancs', b: 'Noirs' } as const
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
-// Dépassement relatif d'un seuil (rapporté au seuil), plancher 0,05 : une faiblesse retenue n'a
-// jamais une sévérité nulle.
-const over = (value: number, threshold: number) => clamp01(Math.max(0.05, Math.abs(value - threshold) / Math.max(1e-6, Math.abs(threshold))))
+// Dépassement relatif d'un seuil (rapporté au seuil) dans le sens du verdict : `over` au-dessus,
+// `under` en dessous. Plancher 0,05 : une faiblesse retenue n'a jamais une sévérité nulle, et une
+// valeur du bon côté du seuil ne pèse rien de plus.
+const over = (value: number, threshold: number) => clamp01(Math.max(0.05, (value - threshold) / Math.max(1e-6, Math.abs(threshold))))
+const under = (value: number, threshold: number) => over(-value, -threshold)
 
 type Base = Omit<Insights, 'findings' | 'narrative'>
 
@@ -740,7 +729,7 @@ function computeFindings(b: Base): Insights['findings'] {
     const blunders = sum(PHASES.map((p) => b.phases[p].blunders))
     const rate = (blunders / b.ownMoves) * 100
     if (rate >= 5) weak({ id: 'gaffes', title: 'Trop de gaffes', detail: `${fr1(rate)} gaffes pour 100 coups (${blunders} sur ${b.ownMoves} coups)`, severity: over(rate, 5), plan: [tactic('hangingPiece', 'Séance Tactiques : pièces en prise'), { label: 'Puzzle Rush (réflexes)', to: '/rush' }] })
-    else if (rate <= 2) strong({ id: 'gaffes', title: 'Peu de gaffes', detail: `${fr1(rate)} gaffes pour 100 coups (${blunders} sur ${b.ownMoves} coups)`, severity: over(rate, 2) })
+    else if (rate <= 2) strong({ id: 'gaffes', title: 'Peu de gaffes', detail: `${fr1(rate)} gaffes pour 100 coups (${blunders} sur ${b.ownMoves} coups)`, severity: under(rate, 2) })
   }
 
   if (n >= 5) {
@@ -748,7 +737,7 @@ function computeFindings(b: Base): Insights['findings'] {
     const hang = errCount(b, 'hanging', 'ignoredThreat')
     const perGame = hang / n
     if (perGame >= 0.5) weak({ id: 'pieces-en-prise', title: 'Pièces laissées en prise', detail: `${plural(hang, 'pièce perdue', 'pièces perdues')} sans compensation en ${n} parties (${fr1(perGame)} par partie)`, severity: share(b, errDrop(b, 'hanging', 'ignoredThreat')), plan: [tactic('hangingPiece', 'Séance Tactiques : pièces en prise'), { label: 'Avant chaque coup : quelles pièces sont attaquées ?' }], examples: errExamples(b, 'hanging', 'ignoredThreat') })
-    else if (perGame <= 0.1) strong({ id: 'pieces-en-prise', title: 'Pièces bien protégées', detail: `${plural(hang, 'pièce laissée', 'pièces laissées')} en prise en ${n} parties`, severity: over(perGame, 0.1) })
+    else if (perGame <= 0.1) strong({ id: 'pieces-en-prise', title: 'Pièces bien protégées', detail: `${plural(hang, 'pièce laissée', 'pièces laissées')} en prise en ${n} parties`, severity: under(perGame, 0.1) })
 
     // Menaces ignorées.
     const threats = errCount(b, 'ignoredThreat', 'allowedMate')
@@ -797,26 +786,26 @@ function computeFindings(b: Base): Insights['findings'] {
   const { winning, converted } = b.conversion
   if (winning >= 5) {
     const r = converted / winning
-    if (r < 0.6) weak({ id: 'conversion', title: 'Positions gagnantes non converties', detail: `${converted} victoires sur ${winning} positions gagnantes (+3 ou mieux), soit ${pct(r * 100)}`, severity: over(r, 0.6), plan: [{ label: 'Finales à jouer contre Stockfish', to: '/finales' }, { label: 'Cours de finales', to: '/apprendre/finales' }, { label: 'Avec de l\'avance : échange les pièces, pas les pions, et ne laisse aucun contre-jeu.' }] })
+    if (r < 0.6) weak({ id: 'conversion', title: 'Positions gagnantes non converties', detail: `${converted} victoires sur ${winning} positions gagnantes (+3 ou mieux), soit ${pct(r * 100)}`, severity: under(r, 0.6), plan: [{ label: 'Finales à jouer contre Stockfish', to: '/finales' }, { label: 'Cours de finales', to: '/apprendre/finales' }, { label: 'Avec de l\'avance : échange les pièces, pas les pions, et ne laisse aucun contre-jeu.' }] })
     else if (r >= 0.85) strong({ id: 'conversion', title: 'Tu conclus tes parties gagnantes', detail: `${converted} victoires sur ${winning} positions gagnantes, soit ${pct(r * 100)}`, severity: over(r, 0.85) })
   }
   const { losing, saved } = b.defense
   if (losing >= 5) {
     const r = saved / losing
-    if (r < 0.1) weak({ id: 'defense', title: 'Défense des positions perdues', detail: `${saved} sauvée${saved > 1 ? 's' : ''} sur ${losing} positions perdantes (−3 ou pire), soit ${pct(r * 100)}`, severity: over(r, 0.1), plan: [tactic('defensiveMove', 'Séance Tactiques : coups défensifs'), { label: 'Position perdue : cherche les échecs, les pièges et la nulle plutôt que d\'abandonner en jouant vite.' }] })
+    if (r < 0.1) weak({ id: 'defense', title: 'Défense des positions perdues', detail: `${saved} sauvée${saved > 1 ? 's' : ''} sur ${losing} positions perdantes (−3 ou pire), soit ${pct(r * 100)}`, severity: under(r, 0.1), plan: [tactic('defensiveMove', 'Séance Tactiques : coups défensifs'), { label: 'Position perdue : cherche les échecs, les pièges et la nulle plutôt que d\'abandonner en jouant vite.' }] })
     else if (r >= 0.3) strong({ id: 'defense', title: 'Défenseur coriace', detail: `${saved} positions perdantes sauvées sur ${losing}, soit ${pct(r * 100)}`, severity: over(r, 0.3) })
   }
   const { chances, punished } = b.opportunism
   if (chances >= 5) {
     const r = punished / chances
-    if (r < 0.5) weak({ id: 'opportunisme', title: 'Gaffes adverses non punies', detail: `${punished} gaffes adverses punies sur ${chances}, soit ${pct(r * 100)}`, severity: over(r, 0.5), plan: [tactic('hangingPiece', 'Séance Tactiques : pièces en prise'), { label: "Après chaque coup adverse : qu'est-ce qui vient de changer, qu'est-ce qui est attaqué ?" }] })
+    if (r < 0.5) weak({ id: 'opportunisme', title: 'Gaffes adverses non punies', detail: `${punished} gaffes adverses punies sur ${chances}, soit ${pct(r * 100)}`, severity: under(r, 0.5), plan: [tactic('hangingPiece', 'Séance Tactiques : pièces en prise'), { label: "Après chaque coup adverse : qu'est-ce qui vient de changer, qu'est-ce qui est attaqué ?" }] })
     else if (r >= 0.8) strong({ id: 'opportunisme', title: 'Opportuniste', detail: `${punished} gaffes adverses punies sur ${chances}, soit ${pct(r * 100)}`, severity: over(r, 0.8) })
   }
 
   // Ouvertures.
   for (const o of b.costlyOpenings) {
     const exit = o.exitEval !== null ? `, ${o.exitEval > 0 ? '+' : o.exitEval < 0 ? '−' : ''}${fr1(Math.abs(o.exitEval) / 100)} en moyenne à la sortie de l'ouverture` : ''
-    weak({ id: `ouverture-${o.key}-${o.color}`, title: `${o.name} avec les ${COLOR_FR[o.color]}`, detail: `Score ${pct(o.score)} sur ${o.n} parties (${o.wins} V, ${o.draws} N, ${o.losses} D)${exit}`, severity: clamp01(Math.max(over(o.score, 33), o.exitEval !== null ? -o.exitEval / 300 : 0)), plan: [{ label: `Entraîneur : ${o.name}`, to: `/ouvertures?famille=${encodeURIComponent(o.key)}&camp=${o.color}` }] })
+    weak({ id: `ouverture-${o.key}-${o.color}`, title: `${o.name} avec les ${COLOR_FR[o.color]}`, detail: `Score ${pct(o.score)} sur ${o.n} parties (${o.wins} V, ${o.draws} N, ${o.losses} D)${exit}`, severity: clamp01(Math.max(under(o.score, 33), o.exitEval !== null ? -o.exitEval / 300 : 0)), plan: [{ label: `Entraîneur : ${o.name}`, to: `/ouvertures?famille=${encodeURIComponent(o.key)}&camp=${o.color}` }] })
   }
   for (const o of b.openings) {
     if (o.n >= 5 && o.score >= 67 && !o.costly) strong({ id: `ouverture-${o.key}-${o.color}`, title: `${o.name} avec les ${COLOR_FR[o.color]}`, detail: `Score ${pct(o.score)} sur ${o.n} parties (${o.wins} V, ${o.draws} N, ${o.losses} D)`, severity: over(o.score, 67) })
@@ -858,7 +847,7 @@ function narrate(b: Base, findings: Insights['findings']): string[] {
   const out: string[] = []
   const g = b.games
   if (g.n === 0) return ['Aucune partie analysée pour le moment.']
-  const tcs = g.timeClasses.length === 1 ? ` de ${TIME_CLASS_FR[g.timeClasses[0]]}` : ''
+  const tcs = g.timeClasses.length === 1 ? ` de ${timeClassLabel(g.timeClasses[0])}` : ''
   const res = [plural(g.wins, 'victoire', 'victoires'), plural(g.draws, 'nulle', 'nulles'), plural(g.losses, 'défaite', 'défaites')]
   out.push(
     `Sur ces ${plural(g.n, 'partie', 'parties')}${tcs} : ${res[0]}, ${res[1]} et ${res[2]} (score ${pct(g.score)})` +
