@@ -176,6 +176,24 @@ def run_clock(page, ms):
 def suite(p):
     browser = p.chromium.launch(headless=True)
 
+    # ---------- Réglages Jouer invalides dans le stockage : valeurs par défaut ----------
+    # Le bot et la cadence sont assainis à la lecture ; le mode et la couleur doivent l'être aussi
+    # (valeur d'une autre version, sauvegarde retouchée), sinon l'écran n'a aucun mode ni camp
+    # sélectionné et la partie démarre sans camp jouable défini.
+    ctx = mobile_context(p, browser, ck, standalone=True, settings={"playMode": "zzz", "playBotId": "zzz", "playColor": "zzz", "playTcLabel": "zzz"})
+    page = ctx.new_page()
+    goto_play(page)
+    shot(page, "play_config_invalide")
+    for label in ("Contre un bot", "Nina", "Blancs", "10 min"):
+        btn = page.locator("main button", has_text=label).first
+        check(f"[config invalide] « {label} » sélectionné par défaut", btn.count() == 1 and selected(btn))
+    page.get_by_role("button", name="Jouer", exact=True).click()
+    if ck.appears("[config invalide] la partie démarre", page, "[data-square='e2']", timeout=15000):
+        check("[config invalide] mes pièces sont les blanches (orientation et camp par défaut)",
+              page.evaluate("() => document.querySelector('[data-square=\"e2\"] [data-piece]')?.getAttribute('data-piece')") == "wP"
+              and page.evaluate("() => document.querySelector('[data-square=\"a1\"]').getBoundingClientRect().bottom > document.querySelector('[data-square=\"a8\"]').getBoundingClientRect().bottom"))
+    ctx.close()
+
     # ---------- CP-1, Blancs : flèches avant tout coup ----------
     ctx = mobile_context(p, browser, ck, standalone=True)
     page = ctx.new_page()

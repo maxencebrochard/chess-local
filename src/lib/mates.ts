@@ -68,7 +68,7 @@ export const DRILLS: Drill[] = [
     'Le mat n\'est forcé que dans un coin de la couleur du fou.',
     'Le cavalier et le roi ferment les cases que le fou ne voit pas. Pousse le roi adverse vers un coin de la couleur de ton fou ; s\'il file vers l\'autre coin, ramène-le le long du bord, le cavalier en W. Les positions de départ sont déjà avancées : le roi est près du bord.',
     'k7/3N4/1K6/3B4/8/8/8/8 b - - 0 1', '120s'),
-  chrono('kqp', 'Dame + pion', '♕♙',
+  chrono('kqp', 'Dame + pion contre roi', '♕♙',
     'Avec une dame, mate d\'abord ; le pion peut tenir une case ou protéger la dame.',
     'Le pion change peu de chose : mate avec la dame et le roi, ou promeus si c\'est plus rapide. Un pion qui protège la dame au contact suffit à mater. Avant chaque coup, compte les cases du roi adverse : zéro case sans échec, c\'est pat.',
     'k7/1Q6/2P5/8/8/8/8/4K3 b - - 0 1', '30s'),

@@ -17,7 +17,7 @@ import { applyRating, db, getRating, type SavedGame } from '../lib/db'
 import { openingForMoves } from '../lib/openings'
 import { sounds } from '../lib/sounds'
 import { TIME_CONTROLS, UNLIMITED, type TimeControl } from '../lib/timeControls'
-import { useSettings, type PlayColor, type PlayMode } from '../store/settings'
+import { PLAY_COLORS, PLAY_MODES, useSettings, type PlayColor, type PlayMode } from '../store/settings'
 
 type GameStatus = 'setup' | 'playing' | 'over'
 
@@ -127,10 +127,11 @@ export default function Play() {
   const navigate = useNavigate()
   const { playSounds, playMode, playBotId, playColor, playTcLabel, setPlayConfig } = useSettings()
 
-  // --- Configuration (mémorisée dans les réglages) ---
-  const [mode, setMode] = useState<PlayMode>(playMode)
+  // --- Configuration (mémorisée dans les réglages, assainie à la lecture : une valeur hors
+  // liste, venue d'une autre version ou d'une sauvegarde retouchée, revient au défaut) ---
+  const [mode, setMode] = useState<PlayMode>(() => (PLAY_MODES.some((m) => m === playMode) ? playMode : 'bot'))
   const [bot, setBot] = useState<Bot>(() => botById(playBotId) ?? BOTS[3])
-  const [colorChoice, setColorChoice] = useState<PlayColor>(playColor)
+  const [colorChoice, setColorChoice] = useState<PlayColor>(() => (PLAY_COLORS.some((c) => c === playColor) ? playColor : 'w'))
   const [tc, setTc] = useState<TimeControl>(() => TIME_CONTROLS.find((t) => t.label === playTcLabel) ?? TIME_CONTROLS[4])
   const [myRating, setMyRating] = useState<number | null>(null)
   const myRatingClass = useRef<SavedGame['timeClass'] | null>(null) // cadence dont myRating affiche le classement
@@ -573,7 +574,7 @@ export default function Play() {
       writeStoredGame(null) // coups illisibles : on repart de la configuration
       return
     }
-    if (c.isGameOver() || !['bot', 'local', 'coach'].includes(stored.mode)) {
+    if (c.isGameOver() || !PLAY_MODES.some((m) => m === stored.mode)) {
       writeStoredGame(null)
       return
     }

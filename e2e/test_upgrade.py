@@ -5,13 +5,16 @@ Les parties, Elo, scores de puzzles, erreurs et réglages n'existent que dans l'
 `chess-local` et le `localStorage['chess-local-settings']` de la PWA installée sur l'iPhone.
 Cette suite est le garde-fou : elle rejoue ce que vit l'iPhone au déploiement.
 
+Les deux volets sont joués pour CHAQUE ancien build épinglé (OLD_BUILDS : les déploiements
+portés par un tag `deployed-AAAA-MM-JJ`, extraits de git), chacun dans son propre profil et sur
+son propre port ; chaque check est préfixé du tag du build joué.
 Volet 1, montée de version sur place :
-  l'ANCIEN build (SHA épinglé de la branche gh-pages, extrait de git) est servi sous
-  /chess-local/ ; dans un profil navigateur PERSISTANT, de vraies données sont créées PAR
-  L'INTERFACE (puzzles, Rush, partie vs Noa, bilan, Apprendre, thème) ; instantané brut de
-  l'IndexedDB et des réglages ; puis le NOUVEAU build (E2E_DIST) remplace l'ancien sur le MÊME
-  port, le même profil rouvre l'app, le service worker se met à jour, et tout doit être là :
-  lignes identiques table par table, réglages identiques, chiffres AFFICHÉS identiques.
+  l'ANCIEN build est servi sous /chess-local/ ; dans un profil navigateur PERSISTANT, de vraies
+  données sont créées PAR L'INTERFACE (puzzles, Rush, partie vs Noa, bilan, Apprendre, thème) ;
+  instantané brut de l'IndexedDB et des réglages ; puis le NOUVEAU build (E2E_DIST) remplace
+  l'ancien sur le MÊME port, le même profil rouvre l'app, le service worker se met à jour, et
+  tout doit être là : lignes identiques table par table, réglages identiques, chiffres AFFICHÉS
+  identiques.
 Volet 2, sauvegarde :
   « Exporter tout » de l'ancien build, restauré par « Restaurer » du nouveau build dans un
   profil vierge : instantané identique.
@@ -40,11 +43,19 @@ import time
 from helpers import Checker, mobile_context, mock_chesscom, settings_json
 from run import HOST, ROOT, SUBPATH, free_port, port_is_listening
 
-# Version installée sur l'iPhone : origin/gh-pages@388d3ed (deploy 2026-07-20 17:15), schéma Dexie
-# version(2). SHA complet : `scripts/deploy.sh` réécrit la branche à chaque déploiement, ce
-# commit ne restera joignable que par son SHA (ou un tag posé dessus).
-OLD_SHA = "388d3edae6fd6ec152ccca70b0573d242d612090"
-OLD_BUILD_LABEL = "2026-07-20 15:15"  # __BUILD__ de ce déploiement, affiché en bas de /#/import
+# Anciens builds déployés, du plus ancien au plus récent, chacun joué en entier (environ 20 s par
+# build sur un Mac au repos). `scripts/deploy.sh` réécrit gh-pages à chaque déploiement : un
+# commit n'y reste joignable que par le tag `deployed-AAAA-MM-JJ` posé dessus, et la suite
+# l'épingle par son SHA complet. `labels` : libellés d'interface propres à ce build, que la suite
+# doit retrouver à l'écran (les chiffres et les données attendus, eux, sont communs à tous).
+# Le `__BUILD__` de chaque ancien build est lu dans son bundle extrait, comme pour le nouveau.
+#   deployed-2026-07-20 : schéma Dexie version(2), archive en « vs Noa », abandon sans confirmation.
+#   deployed-2026-10-06 : version installée sur l'iPhone ; même schéma, archive en « contre Noa »,
+#                         feuille de confirmation d'abandon.
+OLD_BUILDS = (
+    {"tag": "deployed-2026-07-20", "sha": "388d3edae6fd6ec152ccca70b0573d242d612090", "labels": {"archive_bot": "vs Noa"}},
+    {"tag": "deployed-2026-10-06", "sha": "54bf85a3656123490bec3aa87108a2e18a50f8bd", "labels": {"archive_bot": "contre Noa"}},
+)
 DB_NAME = "chess-local"
 SETTINGS_KEY = "chess-local-settings"
 TABLES = ("games", "ratings", "puzzleAttempts", "rushScores", "mistakes", "learnSessions")
@@ -56,9 +67,7 @@ BUILD_RE = re.compile(r"[`\"'](20\d\d-\d\d-\d\d \d\d:\d\d)[`\"']")
 RECORD_RE = re.compile(r"Record : (\d+)")
 LEADING_INT_RE = re.compile(r"^\s*(\d+)")
 MUTATION = os.environ.get("E2E_MUTATION", "")
-# Libellés d'interface propres à chaque build : l'ancien garde les siens, le nouveau a les siens.
-# Seuls des libellés vivent ici ; les chiffres et les données attendus sont communs aux deux builds.
-OLD_LABELS = {"archive_bot": "vs Noa"}
+# Libellés du nouveau build (ceux des anciens sont dans OLD_BUILDS).
 NEW_LABELS = {"archive_bot": "contre Noa"}
 # Copie mutée du nouveau build : (motif dans le bundle, remplacement). Chaque motif doit
 # s'appliquer exactement une fois, sinon la « preuve » ne prouverait rien.
@@ -74,7 +83,16 @@ MUTATIONS = {
 }
 
 ck = Checker("upgrade")
-check = ck.check
+TAG = ""  # tag de l'ancien build en cours de passe
+
+
+def check(name, cond, detail=""):
+    """Chaque check porte le tag du build joué. Branché sur l'instance : `fail`, `appears`, les
+    `pageerror` et les appels chess.com hors fixture passent tous par `check`, donc sont tagués."""
+    return Checker.check(ck, f"[{TAG}] {name}" if TAG else name, cond, detail)
+
+
+ck.check = check
 
 
 def verify(name, cond, detail=""):
@@ -154,14 +172,15 @@ class StaticServer:
 # ---------------------------------------------------------------------------
 # Builds : l'ancien sort de git, le nouveau vient de e2e/run.py (E2E_DIST), muté sur demande.
 # ---------------------------------------------------------------------------
-def extract_old_build(dest):
+def extract_old_build(build, dest):
     """Extrait le déploiement épinglé. Objet absent = échec explicite, jamais un passage silencieux."""
-    probe = subprocess.run(["git", "-C", ROOT, "cat-file", "-e", f"{OLD_SHA}^{{commit}}"], capture_output=True, text=True)
+    sha, tag = build["sha"], build["tag"]
+    probe = subprocess.run(["git", "-C", ROOT, "cat-file", "-e", f"{sha}^{{commit}}"], capture_output=True, text=True)
     if probe.returncode != 0:
-        ck.fail("[ancien build] commit introuvable dans ce dépôt",
-                f"({OLD_SHA[:7]} : fais `git fetch origin gh-pages` ; si deploy.sh a réécrit la branche depuis, récupère ce commit par un tag posé dessus ou un clone qui l'a encore)")
+        ck.fail(f"[ancien build] commit {sha[:7]} introuvable dans ce dépôt",
+                f"(fais `git fetch origin tag {tag}` ; si le tag a disparu du dépôt distant, récupère ce commit depuis un clone qui l'a encore)")
         return False
-    archive = subprocess.run(["git", "-C", ROOT, "archive", "--format=tar", OLD_SHA], capture_output=True)
+    archive = subprocess.run(["git", "-C", ROOT, "archive", "--format=tar", sha], capture_output=True)
     if archive.returncode != 0:
         ck.fail("[ancien build] git archive a échoué", f"({archive.stderr.decode(errors='replace')[:200]})")
         return False
@@ -171,7 +190,7 @@ def extract_old_build(dest):
         except TypeError:  # Python sans le paramètre filter
             tar.extractall(dest)
     ok = os.path.exists(os.path.join(dest, "index.html")) and os.path.exists(os.path.join(dest, "sw.js"))
-    return check("[ancien build] extrait de git (index.html + sw.js)", ok, f"({OLD_SHA[:7]})")
+    return check("[ancien build] extrait de git (index.html + sw.js)", ok, f"({sha[:7]})")
 
 
 def bundles_of(dist):
@@ -602,6 +621,14 @@ def game_phase(page, base):
     click_sq(page, "e4")
     expect("[ancien] partie vs Noa : e4 puis réponse du bot", wait_until(page, lambda: (page.locator("main [data-current]").count() >= 2, "(pas de réponse du bot)"), 20000))
     page.click("button:has-text('Abandonner')")
+    # Depuis le build d'octobre, une feuille demande confirmation ; deux demi-coups sont joués,
+    # c'est donc bien « Oui, abandonner » (partie classée et archivée), pas « Oui, annuler ».
+    # Le build de juillet n'a pas de feuille et ouvre directement la modale de fin : on attend
+    # l'un ou l'autre, et on ne clique que si c'est la feuille.
+    confirm = page.get_by_role("button", name="Oui, abandonner", exact=True)
+    wait_until(page, lambda: (confirm.count() > 0 or page.locator("text=gagnent").count() > 0, ""), 5000)
+    if confirm.count() > 0:
+        confirm.first.click()
     ck.appears("[ancien] partie vs Noa : abandon → modale de fin", page, "text=gagnent", timeout=10000)
     check("[ancien] partie classée (delta de classement affiché)", "Classement" in page.locator("div.fixed").inner_text())
     page.locator("div.fixed button", has_text="Nouvelle partie").click()
@@ -702,8 +729,12 @@ def phase(name, fn, *args):
     except Exception as e:
         ck.fail(f"[phase] {name} interrompue", f"({type(e).__name__}: {str(e)[:200]})")
         result = None
-    print(f"[upgrade] {name} : {time.time() - t0:.0f} s", flush=True)
+    log(f"{name} : {time.time() - t0:.0f} s")
     return result
+
+
+def log(message):
+    print(f"[upgrade] [{TAG}] {message}", flush=True)
 
 
 def wait_for_new_build(page, base, expected):
@@ -725,25 +756,54 @@ def cached_paths(page):
 
 
 def suite(p):
+    global TAG
     dist = os.environ.get("E2E_DIST")
     if not dist:
         ck.fail("[upgrade] E2E_DIST absent : lance cette suite par `npm run test:e2e -- --suite upgrade`")
         return
     work = tempfile.mkdtemp(prefix="chesslocal-upgrade-")
-    old_dir = os.path.join(work, "old")
-    profile = os.path.join(work, "profile")
-    backup_path = os.path.join(work, "sauvegarde-ancien-build.json")
-    server = ctx = browser = None
     try:
-        if not extract_old_build(old_dir):
-            return
         new_dir = dist
         if MUTATION:
             print("!" * 60 + f"\n[upgrade] MUTATION {MUTATION} : le nouveau build perd des données, la suite DOIT être rouge\n" + "!" * 60, flush=True)
             new_dir = os.path.join(work, "mutated")
             mutate_build(dist, new_dir, MUTATION)
         new_label = build_label_of(dist)
-        check("[nouveau build] horodatage __BUILD__ lisible dans le bundle", bool(new_label) and new_label != OLD_BUILD_LABEL, f"({new_label})")
+        if not check("[nouveau build] horodatage __BUILD__ lisible dans le bundle", bool(new_label), f"({new_label})"):
+            return
+        for build in OLD_BUILDS:
+            TAG = build["tag"]
+            try:
+                upgrade_from(p, build, dist, new_dir, new_label, os.path.join(work, build["tag"]))
+            except Exception as e:
+                # Une passe qui casse donne un échec à son tag et ne prive pas la suivante : le
+                # build de l'iPhone est le dernier de la liste.
+                ck.fail("[passe] interrompue par une exception", f"({type(e).__name__}: {str(e)[:200]})")
+            finally:
+                TAG = ""
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def upgrade_from(p, build, dist, new_dir, new_label, work):
+    """Les deux volets depuis UN ancien build : profil, port et dossier de travail propres à la passe."""
+    os.makedirs(work)
+    old_dir = os.path.join(work, "old")
+    profile = os.path.join(work, "profile")
+    backup_path = os.path.join(work, "sauvegarde-ancien-build.json")
+    server = ctx = browser = None
+    try:
+        if not extract_old_build(build, old_dir):
+            return
+        # Lu dans le bundle extrait : un `None` des deux côtés passerait sans rien prouver, d'où
+        # ce check qui arrête la passe. Le `__BUILD__` est en UTC, le tag porte le jour du
+        # déploiement : un déploiement entre minuit et 2 h (heure de Paris) nommerait son tag
+        # d'après le jour UTC.
+        old_label = build_label_of(old_dir)
+        if not check("[ancien build] horodatage __BUILD__ lisible dans le bundle, daté du jour du tag et différent du nouveau",
+                     bool(old_label) and old_label.startswith(build["tag"].removeprefix("deployed-")) and old_label != new_label,
+                     f"(ancien {old_label}, nouveau {new_label})"):
+            return
         old_assets = sorted(os.listdir(os.path.join(old_dir, "assets")))
         new_assets = sorted(os.listdir(os.path.join(dist, "assets")))
 
@@ -756,9 +816,14 @@ def suite(p):
         # ---------- Volet 1a : l'ancien build, de vraies données par l'interface ----------
         ctx, page = open_profile(p, profile, seed=True)
         seen = displayed_build(page, base)
-        check("[ancien] /#/import affiche le build de l'ancien déploiement", seen == OLD_BUILD_LABEL, f"({seen})")
-        sw = page.evaluate("async () => { const r = await navigator.serviceWorker.ready; return { scope: r.scope, active: !!r.active } }")
-        check("[ancien] service worker installé sous le sous-chemin", bool(sw) and sw["active"] and sw["scope"].endswith(SUBPATH), f"({sw})")
+        check("[ancien] /#/import affiche le build de l'ancien déploiement", seen == old_label, f"({seen})")
+        # `serviceWorker.ready` ne se résout jamais si l'enregistrement a raté (vu une fois : la suite
+        # a pendu jusqu'au délai de 900 s du lanceur) : attente bornée, échec nommé.
+        sw = page.evaluate("""async () => {
+          const r = await Promise.race([navigator.serviceWorker.ready, new Promise((res) => setTimeout(() => res(null), 20000))])
+          return r ? { scope: r.scope, active: !!r.active } : null
+        }""")
+        check("[ancien] service worker installé sous le sous-chemin (20 s au plus)", bool(sw) and sw["active"] and sw["scope"].endswith(SUBPATH), f"({sw})")
         phase("puzzles", puzzles_phase, page, base)
         phase("rush", rush_phase, page, base)
         phase("partie vs Noa", game_phase, page, base)
@@ -771,7 +836,7 @@ def suite(p):
         before = snapshot(page)
         stores = before["db"]["stores"] if before["db"] else {}
         counts = {t: len(s["rows"]) for t, s in stores.items()}
-        print(f"[upgrade] instantané avant : {counts}, réglages {before['settings'] and before['settings'].get('state')}", flush=True)
+        log(f"instantané avant : {counts}, réglages {before['settings'] and before['settings'].get('state')}")
         for t in TABLES:
             check(f"[ancien] table {t} alimentée avant la montée de version", counts.get(t, 0) > 0, f"({counts.get(t, 0)} ligne(s))")
         at_default = [r["key"] for r in stores.get("ratings", {}).get("rows", []) if r["value"] == DEFAULT_RATING]
@@ -779,9 +844,9 @@ def suite(p):
         if backup:
             compare_backup("[ancien]", before, backup)
         exp = expectations(before)
-        phase("affichage avant", displayed_ok, "[ancien]", page, base, exp, OLD_LABELS)
+        phase("affichage avant", displayed_ok, "[ancien]", page, base, exp, build["labels"])
         ctx.close()  # la PWA est quittée
-        print(f"[upgrade] ancien build : {time.time() - t_start:.0f} s", flush=True)
+        log(f"ancien build : {time.time() - t_start:.0f} s")
 
         # ---------- Volet 1b : le nouveau build remplace l'ancien, même origine ----------
         server.stop()
@@ -795,13 +860,16 @@ def suite(p):
         # reload : ce goto déclenche la vérification de mise à jour, et un second document
         # pourrait déjà tomber sur le nouveau service worker (skipWaiting + clientsClaim).
         seen = displayed_build(page, base, reload=False)
-        check("[nouveau] premier lancement servi par l'ancien service worker (ancien build affiché)", seen == OLD_BUILD_LABEL, f"({seen})")
+        check("[nouveau] premier lancement servi par l'ancien service worker (ancien build affiché)", seen == old_label, f"({seen})")
         seen = wait_for_new_build(page, base, new_label)
         check("[nouveau] service worker mis à jour : /#/import affiche le nouveau build", seen == new_label, f"(affiché {seen}, attendu {new_label}, après {time.time() - t_up:.0f} s)")
         check("[nouveau] page contrôlée par le service worker", page.evaluate("() => !!navigator.serviceWorker.controller"))
         cached = cached_paths(page)
         check("[nouveau] précache : assets du nouveau build présents", all(f"{SUBPATH}assets/{n}" in cached for n in new_assets), f"({[c for c in cached if '/assets/' in c]})")
-        check("[nouveau] précache : assets de l'ancien build purgés (nouveau service worker activé)", not any(f"{SUBPATH}assets/{n}" in cached for n in old_assets), f"({[c for c in cached if '/assets/' in c]})")
+        # Un asset au même hash dans les deux builds (CSS inchangé) reste légitimement en cache.
+        gone = sorted(set(old_assets) - set(new_assets))
+        check(f"[nouveau] précache : {len(gone)} asset(s) propres à l'ancien build purgés (nouveau service worker activé)",
+              gone and not any(f"{SUBPATH}assets/{n}" in cached for n in gone), f"({[c for c in cached if '/assets/' in c]})")
         # Instantané tout de suite : la mise à jour du service worker seule ne doit rien toucher.
         after = snapshot(page)
         compare_snapshots("[montée de version, avant usage]", before, after)
@@ -814,7 +882,7 @@ def suite(p):
         if exported:
             compare_backup("[nouveau]", before, exported)
         ctx.close()
-        print(f"[upgrade] montée de version : {time.time() - t_up:.0f} s", flush=True)
+        log(f"montée de version : {time.time() - t_up:.0f} s")
 
         # ---------- Volet 2 : sauvegarde de l'ancien build restaurée dans le nouveau, profil vierge ----------
         t_restore = time.time()
@@ -844,7 +912,7 @@ def suite(p):
             browser.close()
         else:
             ck.fail("[restauration] pas de sauvegarde exportée par l'ancien build : volet 2 impossible")
-        print(f"[upgrade] restauration : {time.time() - t_restore:.0f} s, total {time.time() - t_start:.0f} s", flush=True)
+        log(f"restauration : {time.time() - t_restore:.0f} s, total {time.time() - t_start:.0f} s")
     finally:
         # Contexte et navigateur d'abord : sinon Chromium tient encore le profil pendant le rmtree.
         for closable in (ctx, browser):
