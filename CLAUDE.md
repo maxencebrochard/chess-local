@@ -30,7 +30,9 @@ BASE=https://maxencebrochard.github.io/chess-local npm run test:e2e   # contre l
 npm run test:e2e -- --suite all_buttons --live                        # API chess.com réelle au lieu de la fixture, hors gate
 ```
 
-Prérequis hors `npm ci` : `pip install -r e2e/requirements.txt` puis `python3 -m playwright install chromium`.
+Prérequis hors `npm ci` : `pip install -r e2e/requirements.txt`.
+Chromium vit dans `~/.local/share/chess-local/ms-playwright`, hors de `~/Library/Caches` que les nettoyages de disque vident : `e2e/run.py` y fixe `PLAYWRIGHT_BROWSERS_PATH` pour les suites et l'installe tout seul s'il manque (`PLAYWRIGHT_SKIP_BROWSER_GC=1`, environ 150 Mo, une fois).
+Un `PLAYWRIGHT_BROWSERS_PATH` déjà exporté est respecté.
 `e2e/run.py` démarre son propre serveur sur un port libre, vérifie que c'est bien cette app qui répond, surveille le serveur pendant les suites et l'arrête toujours.
 Ne jamais lancer une suite contre un serveur démarré à la main sur un port fixe : un serveur mort ou fantôme a déjà fait chercher un bug qui n'existait pas.
 Le code de sortie est la vérité : non nul dès qu'un check échoue, qu'une page lève une exception (`pageerror`) ou qu'un appel chess.com sort de la fixture.

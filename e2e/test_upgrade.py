@@ -737,13 +737,96 @@ def log(message):
     print(f"[upgrade] [{TAG}] {message}", flush=True)
 
 
+# Le précache fait environ 25 Mo (WASM, puzzles) : quelques secondes sur une machine calme, bien
+# plus sous charge. Le délai de 900 s du lanceur reste le filet si une attente se bloquait malgré tout.
+SW_TIMEOUT_S = 180
+
+# État de l'enregistrement sans jamais attendre `serviceWorker.ready`, qui ne se résout pas si
+# l'installation échoue : « none » = aucun enregistrement (jamais créé, ou supprimé après un
+# échec d'installation), sinon l'état du worker le plus avancé.
+SW_STATE_JS = """async () => {
+  const r = await navigator.serviceWorker.getRegistration()
+  if (!r) return { state: 'none', scope: null }
+  const w = r.active || r.waiting || r.installing
+  return { state: r.active ? 'active' : (w ? w.state : 'none'), scope: r.scope }
+}"""
+
+
+def sw_state(page):
+    try:
+        return page.evaluate(SW_STATE_JS)
+    except Exception as e:  # document en cours de rechargement
+        return {"state": f"illisible ({type(e).__name__})", "scope": None}
+
+
+def wait_sw_active(page, label):
+    """Attend un service worker actif, `SW_TIMEOUT_S` au plus. Une installation ratée (worker
+    « redundant », enregistrement supprimé) est relancée par un rechargement, comme le ferait le
+    lancement suivant de la PWA : vu sous forte charge, un `Cache.put() encountered a network
+    error` sur puzzles.json fait échouer le précache par intermittence, côté Chromium. L'erreur
+    remontée par le worker (CDP) est journalisée à chaque échec. Renvoie (ok, détail, scope)."""
+    cdp = page.context.new_cdp_session(page)
+    errors = []
+    cdp.on("ServiceWorker.workerErrorReported", lambda e: errors.append(e["errorMessage"]["errorMessage"]))
+    cdp.send("ServiceWorker.enable")
+    t0 = time.time()
+    attempt_t0 = last_log = t0
+    attempts = []
+    seen_registration = False
+    try:
+        while True:
+            st = sw_state(page)
+            now = time.time()
+            elapsed = now - t0
+            if st["state"] == "active":
+                tail = f", après {len(attempts)} installation(s) ratée(s) : {attempts}" if attempts else ""
+                return True, f"actif après {elapsed:.0f} s{tail}", st["scope"]
+            if st["state"] in ("installing", "installed", "activating"):
+                seen_registration = True
+            failed = None
+            if st["state"] == "redundant":
+                failed = "worker redundant"
+            elif st["state"] == "none" and any("failed to install" in m for m in errors):
+                failed = "installation rejetée"
+            elif st["state"] == "none" and seen_registration:
+                failed = "enregistrement supprimé"
+            elif st["state"] == "none" and now - attempt_t0 > 60:
+                failed = "aucun enregistrement en 60 s"
+            if failed:
+                # La dernière erreur est la cause (« Uncaught (in promise) ... »), la première son effet.
+                attempts.append(f"{failed} à {elapsed:.0f} s : {errors[-1][:160] if errors else 'aucune erreur remontée'}")
+                log(f"{label} : installation du service worker ratée, essai {len(attempts)} : {attempts[-1]}")
+                errors.clear()
+                seen_registration = False
+                if len(attempts) >= 5 or elapsed > SW_TIMEOUT_S - 20:
+                    return False, f"{len(attempts)} installation(s) ratée(s) en {elapsed:.0f} s : {attempts}", None
+                page.wait_for_timeout(min(2000 * len(attempts), 10000))
+                page.reload()  # nouveau lancement : registerSW.js réenregistre le worker
+                attempt_t0 = time.time()
+                continue
+            if elapsed > SW_TIMEOUT_S:
+                return False, f"toujours « {st['state']} » après {elapsed:.0f} s (précache trop lent ?), échecs : {attempts}", st["scope"]
+            if now - last_log >= 15:
+                log(f"{label} : service worker « {st['state']} » depuis {elapsed:.0f} s")
+                last_log = now
+            page.wait_for_timeout(500)
+    finally:
+        try:
+            cdp.detach()
+        except Exception:
+            pass
+
+
 def wait_for_new_build(page, base, expected):
     """Le SW de l'ancien build sert encore l'ancienne coquille ; on force la vérification de
-    mise à jour et on recharge jusqu'à voir le __BUILD__ du nouveau bundle."""
-    deadline = time.time() + 90
+    mise à jour et on recharge jusqu'à voir le __BUILD__ du nouveau bundle.
+    `update()` seulement sur un enregistrement ACTIF : sur un enregistrement dont la première
+    installation n'est pas finie (pas encore stocké), Chromium rejette par « Not found »."""
+    deadline = time.time() + SW_TIMEOUT_S
     seen = None
     while time.time() < deadline:
-        page.evaluate("async () => { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.update() }")
+        page.evaluate("async () => { const r = await navigator.serviceWorker.getRegistration(); "
+                      "if (r && r.active) try { await r.update() } catch {} }")
         page.wait_for_timeout(1000)
         seen = displayed_build(page, base)
         if seen == expected:
@@ -817,13 +900,15 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
         ctx, page = open_profile(p, profile, seed=True)
         seen = displayed_build(page, base)
         check("[ancien] /#/import affiche le build de l'ancien déploiement", seen == old_label, f"({seen})")
-        # `serviceWorker.ready` ne se résout jamais si l'enregistrement a raté (vu une fois : la suite
-        # a pendu jusqu'au délai de 900 s du lanceur) : attente bornée, échec nommé.
-        sw = page.evaluate("""async () => {
-          const r = await Promise.race([navigator.serviceWorker.ready, new Promise((res) => setTimeout(() => res(null), 20000))])
-          return r ? { scope: r.scope, active: !!r.active } : null
-        }""")
-        check("[ancien] service worker installé sous le sous-chemin (20 s au plus)", bool(sw) and sw["active"] and sw["scope"].endswith(SUBPATH), f"({sw})")
+        # Le service worker doit être ACTIF avant de quitter ce profil : Chromium ne stocke un
+        # enregistrement qu'une fois sa première installation finie, sinon la réouverture n'a plus
+        # d'ancien SW et la montée de version testée n'est pas celle d'une PWA installée.
+        ok, detail, scope = wait_sw_active(page, "[ancien]")
+        ok = ok and bool(scope) and scope.endswith(SUBPATH)
+        if not check(f"[ancien] service worker actif sous le sous-chemin ({SW_TIMEOUT_S} s au plus)", ok, f"({detail}, scope {scope})"):
+            ck.fail("[ancien] montée de version non testable sans ancien service worker installé : passe arrêtée")
+            return
+        log(f"service worker de l'ancien build {detail}")
         phase("puzzles", puzzles_phase, page, base)
         phase("rush", rush_phase, page, base)
         phase("partie vs Noa", game_phase, page, base)
@@ -845,6 +930,8 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
             compare_backup("[ancien]", before, backup)
         exp = expectations(before)
         phase("affichage avant", displayed_ok, "[ancien]", page, base, exp, build["labels"])
+        st = sw_state(page)
+        check("[ancien] service worker toujours actif à la fermeture du profil", st["state"] == "active", f"({st})")
         ctx.close()  # la PWA est quittée
         log(f"ancien build : {time.time() - t_start:.0f} s")
 

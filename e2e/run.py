@@ -10,6 +10,10 @@ une par une, surveille le serveur pendant qu'elles tournent, et l'arrête toujou
     python3 e2e/run.py --suite all_buttons --live  # API chess.com réelle, hors gate
     BASE=https://… python3 e2e/run.py   # cible externe : aucun serveur lancé
 
+Navigateurs Playwright : dans un dossier propre au projet (BROWSERS_DIR), hors de ~/Library/Caches
+que les nettoyages de disque vident, et installés automatiquement s'ils manquent.
+`PLAYWRIGHT_BROWSERS_PATH` déjà défini par l'utilisateur est respecté tel quel.
+
 Codes de sortie : 0 tout passe, 1 au moins un échec, 2 mauvais usage ou prérequis manquant.
 """
 import argparse
@@ -34,6 +38,10 @@ HOST = "127.0.0.1"  # contexte sécurisé (service worker, presse-papiers) sans 
 SUBPATH = "/chess-local/"  # le build est servi sous le même sous-chemin que GitHub Pages
 APP_MARKER = "<title>ChessLocal"
 PROD_ONLY = {"pwa", "upgrade"}  # suites qui n'ont de sens que sur le build local (service worker, manifest, hors ligne, montée de version)
+
+# Hors de ~/Library/Caches : le cache Playwright par défaut y a été vidé quatre fois par des
+# nettoyages de disque, et toutes les suites tombaient d'un coup.
+BROWSERS_DIR = os.path.expanduser("~/.local/share/chess-local/ms-playwright")
 
 READY_TIMEOUT_S = 60
 STOP_GRACE_S = 5
@@ -125,6 +133,43 @@ def serves_app(url):
             return res.status == 200 and APP_MARKER in res.read(4096).decode("utf-8", "replace")
     except (urllib.error.URLError, OSError, ValueError):
         return False
+
+
+def chromium_launches():
+    """Vrai si Chromium démarre. Un lancement réel plutôt qu'un test de chemin : en headless,
+    Playwright lance `chromium_headless_shell`, que `executable_path` ne désigne pas."""
+    from playwright.sync_api import sync_playwright
+
+    try:
+        with sync_playwright() as p:
+            p.chromium.launch(headless=True).close()
+        return True, ""
+    except Exception as e:
+        return False, str(e).strip().splitlines()[0] if str(e).strip() else type(e).__name__
+
+
+def ensure_browser():
+    """Fixe le dossier des navigateurs (sauf choix de l'utilisateur), hérité par les suites via
+    l'environnement, et installe Chromium une seule fois s'il manque."""
+    if os.environ.get("PLAYWRIGHT_BROWSERS_PATH"):
+        say(f"[run] navigateurs Playwright : PLAYWRIGHT_BROWSERS_PATH={os.environ['PLAYWRIGHT_BROWSERS_PATH']} (défini par l'utilisateur)")
+    else:
+        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = BROWSERS_DIR
+    ok, why = chromium_launches()
+    if ok:
+        return True
+    where = os.environ["PLAYWRIGHT_BROWSERS_PATH"]
+    say(f"[run] Chromium introuvable dans {where} ({why[:200]})\n[run] installation automatique : python3 -m playwright install chromium (une fois, environ 150 Mo)…")
+    # Sans le GC, l'installation ne supprime pas les autres versions du dossier : un autre
+    # checkout sur une autre version de Playwright garde la sienne.
+    env = {**os.environ, "PLAYWRIGHT_SKIP_BROWSER_GC": "1"}
+    code = subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], cwd=ROOT, env=env).returncode
+    ok, why = chromium_launches() if code == 0 else (False, f"code de sortie {code}")
+    if not ok:
+        say(f"[run] installation de Chromium ratée ({why[:200]}) : aucune suite lancée.")
+        return False
+    say(f"[run] Chromium installé dans {where}")
+    return True
 
 
 def build(out_dir):
@@ -262,7 +307,9 @@ def main():
         import chess  # noqa: F401
         import playwright  # noqa: F401
     except ImportError as e:
-        say(f"[run] prérequis Python absent ({e.name}) : `pip install -r e2e/requirements.txt` puis `python3 -m playwright install chromium`.")
+        say(f"[run] prérequis Python absent ({e.name}) : `pip install -r e2e/requirements.txt` (Chromium s'installe ensuite tout seul).")
+        return 2
+    if not ensure_browser():
         return 2
     if external:
         # Un BASE resté exporté dans le shell ferait tester autre chose que ce checkout, sans build :
