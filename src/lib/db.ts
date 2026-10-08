@@ -47,6 +47,9 @@ export interface Mistake {
   cls: string // mistake | miss | missedWin | blunder
   attempts: number
   solved: 0 | 1
+  // Champs non indexés, présents depuis « Mes attaques manquées » (absents des anciennes lignes).
+  color?: 'w' | 'b' // camp du joueur, seulement quand le bilan le connaissait : la faute est la sienne
+  gameKey?: string // partie d'origine : `game:<id>` (Archive) ou `pgn:<empreinte des coups>`
 }
 
 export interface LearnSession {

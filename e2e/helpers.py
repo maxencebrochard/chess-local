@@ -36,6 +36,7 @@ FINALES = re.compile(r"^\W*Finales$")
 DEFAULT_SETTINGS = {
     "themeId": "green",
     "showLegalMoves": True,
+    "showAttackers": False,
     "playSounds": False,
     "chesscomUsername": "",
     "reviewDepth": "fast",

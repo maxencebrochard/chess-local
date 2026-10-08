@@ -18,7 +18,8 @@ export const PIECE_FR: Record<PieceSymbol, { defini: string; indefini: string; t
 
 export const other = (c: Color): Color => (c === 'w' ? 'b' : 'w')
 
-function uciMove(c: Chess, uci: string): Move | null {
+// Joue un coup UCI sur `c`, ou null s'il est illégal (chess.js lève).
+export function uciMove(c: Chess, uci: string): Move | null {
   try {
     return c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] })
   } catch {
@@ -257,7 +258,8 @@ export function backRankMate(fen: string, uci: string): boolean {
   return c.attackers(king.square, mover).some((s) => rankOf(s) === back)
 }
 
-function isPassed(c: Chess, sq: Square, color: Color): boolean {
+// Pion passé : aucun pion adverse devant lui sur sa colonne ni les colonnes voisines.
+export function isPassed(c: Chess, sq: Square, color: Color): boolean {
   const f = fileOf(sq)
   const r = rankOf(sq)
   const dir = color === 'w' ? 1 : -1

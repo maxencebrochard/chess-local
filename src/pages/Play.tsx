@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
+import { AttackLegend } from '../components/AttackLegend'
 import { Board, type BoardArrow } from '../components/Board'
+import { Toggle } from '../components/Toggle'
 import { Clock } from '../components/Clock'
 import { CoachBubble } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
@@ -125,7 +127,7 @@ async function evalWhite(engine: Engine, fen: string, turn: 'w' | 'b'): Promise<
 
 export default function Play() {
   const navigate = useNavigate()
-  const { playSounds, playMode, playBotId, playColor, playTcLabel, setPlayConfig } = useSettings()
+  const { playSounds, playMode, playBotId, playColor, playTcLabel, setPlayConfig, showAttackers, setShowAttackers } = useSettings()
 
   // --- Configuration (mémorisée dans les réglages, assainie à la lecture : une valeur hors
   // liste, venue d'une autre version ou d'une sauvegarde retouchée, revient au défaut) ---
@@ -765,6 +767,10 @@ export default function Play() {
           </p>
         )}
 
+        <div className="mb-5 rounded bg-surface-2 px-3 py-2">
+          <Toggle label="⚔ Compter les attaquants autour des rois" value={showAttackers} onChange={setShowAttackers} testId="toggle-attackers" />
+        </div>
+
         <Cta className="w-full" onClick={startGame}>
           Jouer
         </Cta>
@@ -877,9 +883,11 @@ export default function Play() {
                 lastMove={lastMove}
                 arrows={hintArrow ? [hintArrow] : []}
                 badge={bookBadge && viewIndex === -1 ? { square: bookBadge, cls: 'book' } : null}
+                showAttackers={showAttackers}
               />
             </div>
           </div>
+          {showAttackers && <AttackLegend fen={viewFen} className="px-3 pt-1" />}
           <MoveStrip
             sans={sans}
             classes={sans.map(() => null)}
@@ -930,12 +938,14 @@ export default function Play() {
             movableColor={mode === 'bot' ? playerColor : undefined}
             onMove={handlePlayerMove}
             lastMove={lastMove}
+            showAttackers={showAttackers}
           />
         </div>
         <div className="flex w-full items-center justify-between">
           <span className="font-semibold">{nameOf(orientation)}</span>
           {effectiveTc.baseMs !== null && <Clock ms={clocks[orientation]} active={status === 'playing' && chess.turn() === orientation} label="" />}
         </div>
+        {showAttackers && <AttackLegend fen={viewFen} />}
       </div>
 
       <div className="flex w-full flex-col gap-2 px-1 pb-2 md:h-[min(76vh,640px)] md:w-72 md:gap-3 md:px-0 md:pb-0">

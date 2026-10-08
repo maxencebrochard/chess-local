@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Chess, type Move } from 'chess.js'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { AttackLegend } from '../components/AttackLegend'
 import { Board, type BoardArrow } from '../components/Board'
 import { CoachAvatar, CoachBubble } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
@@ -15,6 +16,7 @@ import { Engine, type EngineLine } from '../lib/engine'
 import { db } from '../lib/db'
 import { bookContinuations, openingForMoves } from '../lib/openings'
 import { openingFr } from '../lib/openingNames'
+import { pgnKey } from '../lib/kingAttack'
 import { CLASS_META, figurine, reviewGame, winPct, type GameReview, type MoveClass } from '../lib/review'
 import { coachComments, coachSummary } from '../lib/coach'
 import { sounds } from '../lib/sounds'
@@ -52,7 +54,7 @@ export default function Analysis() {
   const [params, setParams] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
-  const { reviewDepth, playSounds } = useSettings()
+  const { reviewDepth, playSounds, showAttackers, setShowAttackers } = useSettings()
   const [startFen, setStartFen] = useState(START_FEN)
   const [moves, setMoves] = useState<Move[]>([])
   const [viewIndexRaw, setViewIndex] = useState(-1) // -1 = position de départ
@@ -75,6 +77,8 @@ export default function Analysis() {
   const [importText, setImportText] = useState('')
   const [importError, setImportError] = useState('')
   const [gameMeta, setGameMeta] = useState<string | null>(null)
+  // Partie de l'Archive affichée (`game:<id>`) : clé des fautes du bilan, quel que soit le bouton qui le lance.
+  const gameKeyRef = useRef<string | null>(null)
   const [orientation, setOrientation] = useState<'w' | 'b'>('w')
   const [retry, setRetry] = useState<RetryState | null>(null)
   const [reviewStage, setReviewStage] = useState<'summary' | 'guided' | null>(null)
@@ -194,11 +198,12 @@ export default function Analysis() {
       }
       const label = `${saved.timeControl} · ${saved.result} ${saved.termination}`
       const color = saved.mode === 'bot' ? saved.playerColor : null
+      gameKeyRef.current = `game:${gameId}`
       setGameMeta(label)
       if (saved.playerColor === 'b') setOrientation('b')
       setReviewColor(color)
       if (params.get('review') === '1') {
-        reviewTimer.current = window.setTimeout(() => void runReview(saved.pgn, { color, label }), 300)
+        reviewTimer.current = window.setTimeout(() => void runReview(saved.pgn, { color, label, gameKey: `game:${gameId}` }), 300)
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -317,6 +322,7 @@ export default function Analysis() {
       setReviewStage(null)
       clearRetry()
       setGameMeta(null)
+      gameKeyRef.current = null
       const h = c.header()
       const clean = (v: string | null | undefined, fallback: string) => (v && v !== '?' ? v : fallback)
       setNames({ w: clean(h.White, 'Blancs'), b: clean(h.Black, 'Noirs') })
@@ -339,6 +345,7 @@ export default function Analysis() {
       setReviewStage(null)
       clearRetry()
       setGameMeta(null)
+      gameKeyRef.current = null
       return true
     } catch {
       return false
@@ -369,9 +376,9 @@ export default function Analysis() {
     }
   }
 
-  // `ctx` : couleur du joueur et libellé de la partie, passés explicitement (les appels différés
-  // depuis le premier rendu ne voient pas `reviewColor` ni `gameMeta`).
-  const runReview = useCallback(async (pgnOverride?: string, ctx?: { color: 'w' | 'b' | null; label: string | null }) => {
+  // `ctx` : couleur du joueur, libellé et clé de la partie (`game:<id>` pour l'Archive), passés
+  // explicitement (les appels différés depuis le premier rendu ne voient pas `reviewColor` ni `gameMeta`).
+  const runReview = useCallback(async (pgnOverride?: string, ctx?: { color: 'w' | 'b' | null; label: string | null; gameKey?: string }) => {
     const pgn = pgnOverride ?? currentPgn()
     if (!pgn || !aliveRef.current) return
     cancelReview()
@@ -404,7 +411,7 @@ export default function Analysis() {
       setReview(result)
       setViewIndex(-1)
       setReviewStage('summary') // ouvre sur l'écran de résumé
-      void recordMistakes(result, color, label)
+      void recordMistakes(result, color, label, ctx?.gameKey)
     } catch (e) {
       if (!ctrl.signal.aborted) throw e
     } finally {
@@ -516,9 +523,13 @@ export default function Analysis() {
     if (next) setViewIndex(next.moveIndex)
   }
 
-  // Alimente « Apprendre → Mes erreurs » avec les fautes du joueur.
-  async function recordMistakes(result: GameReview, color: 'w' | 'b' | null, label: string | null) {
+  // Alimente « Apprendre → Mes erreurs » avec les fautes du joueur (les deux camps si sa couleur
+  // est inconnue). `color` et `gameKey` servent à « Mes attaques manquées » : la couleur n'est écrite
+  // que si le bilan la connaît, la clé identifie la partie (Archive, sinon empreinte des coups).
+  // Une faute déjà en base (même position) reçoit ces champs si elle ne les avait pas encore.
+  async function recordMistakes(result: GameReview, color: 'w' | 'b' | null, label: string | null, gameKey?: string) {
     const BAD_FOR_LEARN = ['mistake', 'miss', 'missedWin', 'blunder']
+    const key = gameKey ?? pgnKey(result.startFen, result.moves.map((m) => m.san))
     const replay = new Chess(result.startFen)
     for (let i = 0; i < result.moves.length; i++) {
       const m = result.moves[i]
@@ -527,8 +538,14 @@ export default function Analysis() {
       replay.move(m.san)
       if (color && moverColor !== color) continue
       if (!BAD_FOR_LEARN.includes(m.class)) continue
-      const existing = await db.mistakes.where('fenBefore').equals(fenBefore).count()
-      if (existing > 0) continue
+      const origin = color ? { color, gameKey: key } : { gameKey: key }
+      const existing = await db.mistakes.where('fenBefore').equals(fenBefore).first()
+      if (existing) {
+        // Même faute (même coup joué) relevée à nouveau : on la complète sans rien réécrire d'autre.
+        const incomplete = (color && !existing.color) || !existing.gameKey
+        if (existing.id !== undefined && existing.playedSan === m.san && incomplete) await db.mistakes.update(existing.id, origin)
+        continue
+      }
       await db.mistakes.add({
         date: Date.now(),
         gameLabel: label ?? 'Partie analysée',
@@ -538,6 +555,7 @@ export default function Analysis() {
         cls: m.class,
         attempts: 0,
         solved: 0,
+        ...origin,
       })
     }
   }
@@ -832,8 +850,10 @@ export default function Analysis() {
               onMove={retry ? handleRetryMove : handleMove}
               lastMove={retry ? null : lastMove}
               arrows={arrows}
+              showAttackers={showAttackers}
             />
           </div>
+          {showAttackers && <AttackLegend fen={retry ? retry.baseFen : viewFen} className="px-1" />}
           {/* Bandeau ouverture, façon chess.com (mobile), 1 ligne fixe */}
           <div className="truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold text-neutral-200 md:hidden">
             {opening ? openingFr(opening.name) : moves.length === 0 ? 'Position de départ' : 'Hors théorie'}
@@ -992,7 +1012,7 @@ export default function Analysis() {
 
         <div className="hidden gap-2 md:flex">
           <button
-            onClick={() => (review ? setReviewStage('summary') : void runReview(undefined, { color: reviewColor, label: gameMeta }))}
+            onClick={() => (review ? setReviewStage('summary') : void runReview(undefined, { color: reviewColor, label: gameMeta, gameKey: gameKeyRef.current ?? undefined }))}
             disabled={reviewProgress !== null || moves.length === 0}
             className="flex-1 cursor-pointer rounded bg-accent py-2 text-sm font-bold text-white hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
           >
@@ -1061,7 +1081,7 @@ export default function Analysis() {
           label="Bilan"
           icon="★"
           disabled={reviewProgress !== null || moves.length === 0}
-          onClick={() => (review ? setReviewStage('summary') : void runReview(undefined, { color: reviewColor, label: gameMeta }))}
+          onClick={() => (review ? setReviewStage('summary') : void runReview(undefined, { color: reviewColor, label: gameMeta, gameKey: gameKeyRef.current ?? undefined }))}
         />
         <BarAction label="Explorer" icon="🧭" active={showExplorer} onClick={() => setShowExplorer(!showExplorer)} />
         <BarAction label="Précédent" icon="‹" onClick={() => setViewIndex((v) => Math.max(-1, v - 1))} />
@@ -1077,6 +1097,10 @@ export default function Analysis() {
               <SheetBtn
                 label={`Moteur : ${engineOn ? 'activé' : 'désactivé'}`}
                 onClick={() => setEngineOn(!engineOn)}
+              />
+              <SheetBtn
+                label={`⚔ Compter les attaquants autour des rois : ${showAttackers ? 'activé' : 'désactivé'}`}
+                onClick={() => setShowAttackers(!showAttackers)}
               />
               <SheetBtn
                 label="Copier le PGN"

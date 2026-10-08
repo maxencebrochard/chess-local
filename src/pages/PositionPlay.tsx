@@ -5,12 +5,14 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { PositionGame } from '../components/PositionGame'
 import { loadStoredGame, validFen } from '../lib/positionGame'
+import { useSettings } from '../store/settings'
 
 const KEY = 'position'
 
 export default function PositionPlay() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { showAttackers } = useSettings()
   // Position reçue de l'analyse (nouvelle partie), sinon la dernière partie libre persistée
   // (rechargement, retour de l'analyse après « Analyser »).
   const [source] = useState(() => {
@@ -52,6 +54,7 @@ export default function PositionPlay() {
       returnTo="/analyse/jouer"
       returnLabel="Retour à la partie"
       back={source.back}
+      showAttackers={showAttackers}
       // Retour à l'analyse d'origine, rouverte depuis son state (elle ne persiste rien).
       onExit={() => navigate('/analyse', { replace: true, state: source.back ?? null })}
     />

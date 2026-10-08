@@ -15,6 +15,7 @@ import { ROQUE } from '../lib/attackCourse'
 import { FINALES, lessonForExercise } from '../lib/endgameCourse'
 import type { Course as LessonCourse } from '../lib/lessonCourse'
 import { Engine } from '../lib/engine'
+import { loadAttackDiagnostic } from '../lib/kingAttack'
 import {
   buildEndgameSession, buildSession, DOMAIN_META, domainRating, pickNextDomain, scoreItem,
   type EndgameGoal, type LearnDomain, type Session, type SessionItem,
@@ -45,6 +46,7 @@ export default function Learn() {
   const { playSounds } = useSettings()
   const [ratings, setRatings] = useState<Record<string, number | null>>({})
   const [mistakeCount, setMistakeCount] = useState(0)
+  const [attackCount, setAttackCount] = useState(0)
   const [session, setSession] = useState<Session | null>(null)
   const [itemIdx, setItemIdx] = useState(0)
   const [phase, setPhase] = useState<ItemPhase>('lesson')
@@ -65,6 +67,7 @@ export default function Learn() {
     )
     setRatings(Object.fromEntries(entries))
     setMistakeCount(await db.mistakes.where('solved').equals(0).count())
+    setAttackCount(await loadAttackDiagnostic().then((d) => d.items.length).catch(() => 0))
     const done = await Promise.all(
       [FINALES, ROQUE].map(async (c) => {
         const ids = await c.completedLessons()
@@ -411,9 +414,24 @@ export default function Learn() {
           <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
         )}
       </Link>
+      <button
+        onClick={() => navigate('/attaques-manquees')}
+        data-testid="missed-attacks-card"
+        data-count={attackCount}
+        className="mt-2 flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
+      >
+        <span className="text-2xl">🎯</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Mes attaques manquées</span>
+          <span className="block text-xs text-neutral-400">Les moments de tes bilans où Stockfish attaquait le roi : à rejouer contre lui</span>
+        </span>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold ${attackCount > 0 ? 'bg-accent/20 text-accent' : 'bg-surface-3 text-neutral-400'}`}>
+          {attackCount}
+        </span>
+      </button>
       <Link
         to="/ouvertures"
-        className="mt-4 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
+        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
       >
         <span className="text-2xl">🧭</span>
         <span className="min-w-0 flex-1">
