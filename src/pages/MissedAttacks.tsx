@@ -2,17 +2,16 @@
 // adverse (mat, sacrifice près du roi, pion contre le roque, pièce vers le roi), calculées sur
 // l'échiquier depuis la table `mistakes`, puis rejouées contre Stockfish à pleine force :
 // retrouver le coup du bilan, puis mener l'attaque.
-import { useEffect, useMemo, useState } from 'react'
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ATTACK_RED } from '../components/AttackLegend'
 import { PositionGame } from '../components/PositionGame'
 import { db, type Mistake } from '../lib/db'
 import {
-  ATTACK_KIND_META, ATTACK_KINDS, ATTACK_PRINCIPLE, attackSummary, countsText, diagnoseMissedAttacks, missedAttack,
+  ATTACK_KIND_META, ATTACK_KINDS, ATTACK_PRINCIPLE, attackSummary, countsText, diagnoseMissedAttacks,
   recordMissedAttack, solvedMissedAttacks, type AttackDiagnostic, type MissedAttackItem,
 } from '../lib/kingAttack'
-import { inProgressKey, validFen } from '../lib/positionGame'
-import { figurine } from '../lib/review'
+import { inProgressKey } from '../lib/positionGame'
 
 const solvedKey = (m: Mistake) => `${m.id}|${m.fenBefore}`
 
@@ -132,29 +131,40 @@ function AttackRow({ item, done, going, onOpen }: { item: MissedAttackItem; done
 function MissedAttackPlay({ id }: { id: number }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [row, setRow] = useState<Mistake | null | undefined>(undefined)
+  const [item, setItem] = useState<MissedAttackItem | null | undefined>(undefined)
   const [next, setNext] = useState<number | null>(null)
 
-  // La faute et, pour « Attaque suivante », la plus récente des autres attaques pas encore retrouvées.
+  // L'attaque, prise dans la même liste que la page précédente (même filtre), et pour « Attaque
+  // suivante » la plus récente des autres attaques pas encore retrouvées.
   useEffect(() => {
     void (async () => {
       const [rows, solved] = await Promise.all([db.mistakes.toArray(), solvedMissedAttacks()])
-      const found = rows.find((r) => r.id === id) ?? null
-      setRow(found)
-      const others = diagnoseMissedAttacks(rows).items.filter((it) => it.mistake.id !== id)
+      const items = diagnoseMissedAttacks(rows).items
+      setItem(items.find((it) => it.mistake.id === id) ?? null)
+      const others = items.filter((it) => it.mistake.id !== id)
       const fresh = others.filter((it) => !solved.has(solvedKey(it.mistake)))
       setNext((fresh[0] ?? others[0])?.mistake.id ?? null)
     })()
   }, [id])
 
-  const attack = useMemo(() => (row ? missedAttack(row.fenBefore, row.bestUci) : null), [row])
-
-  if (row === undefined) return null
-  if (!row || !attack || !validFen(row.fenBefore)) return <Navigate to="/attaques-manquees" replace />
+  if (item === undefined) return null
+  if (!item) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center gap-3 p-6 text-center">
+        <p data-testid="attack-missing" className="text-neutral-300">Cette attaque n'est pas dans ta liste.</p>
+        <p className="text-sm text-neutral-400">
+          La faute a été supprimée, est incomplète, ou son bilan ne connaissait pas ta couleur.
+        </p>
+        <Link to="/attaques-manquees" replace className="rounded-lg bg-surface-3 px-4 py-2 font-semibold hover:bg-surface-3/70">
+          Retour à la liste
+        </Link>
+      </div>
+    )
+  }
+  const row = item.mistake
   const restore = !!(location.state as { restore?: boolean } | null)?.restore
-  const meta = ATTACK_KIND_META[attack.kind]
-  const player = row.fenBefore.split(' ')[1] === 'w' ? 'w' : 'b'
-  const lesson = `${meta.lesson} ${ATTACK_PRINCIPLE} Ici, après le bon coup, ${countsText(attack.attackers, attack.defenders)} autour du roi adverse. Tu avais joué ${figurine(row.playedSan, player)}.`
+  const meta = ATTACK_KIND_META[item.kind]
+  const lesson = `${meta.lesson} ${ATTACK_PRINCIPLE} Ici, après le bon coup, ${countsText(item.attackers, item.defenders)} autour du roi adverse. Tu avais joué ${item.playedFig}.`
 
   return (
     <PositionGame
@@ -169,7 +179,7 @@ function MissedAttackPlay({ id }: { id: number }) {
       returnTo={`/attaques-manquees/${row.id}`}
       returnLabel="Retour à l'attaque"
       showAttackers
-      keyMove={{ uci: row.bestUci, san: attack.bestSan, onJudged: (found) => void recordMissedAttack(id, row.fenBefore, found) }}
+      keyMove={{ uci: row.bestUci, san: item.bestSan, onJudged: (found) => void recordMissedAttack(id, row.fenBefore, found) }}
       otherLabel="Attaque suivante"
       onExit={() => navigate('/attaques-manquees', { replace: true })}
       onOther={next !== null ? () => navigate(`/attaques-manquees/${next}`, { replace: true }) : undefined}

@@ -6,6 +6,7 @@ import { Chess, type Color, type Square } from 'chess.js'
 import { db, type Mistake } from './db'
 import { figurine } from './review'
 import { PIECE_VALUE, fork, isPassed, other, see, uciMove } from './motifs'
+import { validFen } from './positionGame'
 
 const fileOf = (s: string) => s.charCodeAt(0) - 97
 const rankOf = (s: string) => Number(s[1]) - 1
@@ -184,17 +185,13 @@ export interface AttackDiagnostic {
 function playerMistakes(rows: Mistake[]): Mistake[] {
   return rows.filter((r) => {
     if (!r.color || typeof r.playedSan !== 'string' || typeof r.bestUci !== 'string') return false
-    try {
-      return new Chess(r.fenBefore).turn() === r.color
-    } catch {
-      return false
-    }
+    return validFen(r.fenBefore) && new Chess(r.fenBefore).turn() === r.color
   })
 }
 
 export function diagnoseMissedAttacks(rows: Mistake[]): AttackDiagnostic {
   const mine = playerMistakes(rows).sort((a, b) => b.date - a.date)
-  const games = new Set(mine.map((r) => r.gameKey ?? `label:${r.gameLabel}`)).size
+  const games = new Set(mine.map((r) => r.gameKey)).size
   const items: MissedAttackItem[] = []
   for (const mistake of mine) {
     try {

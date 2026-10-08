@@ -285,10 +285,15 @@ def part_diagnostic(p, browser):
         rows = [r for r in learn_sessions(page) if r.get("domain") == "missed-attack" and r.get("itemId") == "2"]
         check("[recommencer] tentative interrompue ratée, la suivante réussie", [r.get("success") for r in rows] == [0, 1], f"({rows})")
 
-    # --- Id inconnu : retour à la liste ---
+    # --- Id inconnu ou ligne hors liste : message propre, jamais d'exercice ni d'exception ---
+    page.goto(f"{BASE}/#/attaques-manquees/12")
+    if ck.appears("[liste] ligne incomplète (id 12, sans playedSan) : message propre", page, "[data-testid=attack-missing]", timeout=10000):
+        check("[liste] ligne incomplète : pas d'exercice ouvert", page.locator("[data-testid=position-game]").count() == 0)
     page.goto(f"{BASE}/#/attaques-manquees/999")
-    page.wait_for_timeout(800)
-    check("[liste] id inconnu ramène à la liste", page.url.endswith("#/attaques-manquees"), f"({page.url})")
+    if ck.appears("[liste] id inconnu : message propre", page, "[data-testid=attack-missing]", timeout=10000):
+        page.get_by_role("link", name="Retour à la liste").click()
+        page.wait_for_timeout(800)
+        check("[liste] id inconnu : le lien ramène à la liste", page.url.endswith("#/attaques-manquees"), f"({page.url})")
     ctx.close()
 
     # --- 393x660 : liste et exercice sans débordement ---
@@ -387,11 +392,22 @@ def part_overlay(p, browser):
     check("[calque] désactivé : légende retirée", page.locator("[data-testid=attack-legend]:visible").count() == 0)
     ctx.close()
 
-    # Desktop : même calque, capture.
+    # Desktop : même calque, interrupteur dans la colonne de droite (la feuille Options est mobile), capture.
     ctx = desktop_context(browser, ck, settings={"showAttackers": True})
     page = open_analysis(ctx)
     check("[desktop] pastilles présentes avec le réglage activé", len(pills(page)) == 2, f"({pills(page)})")
     page.screenshot(path=f"{SHOTS}/attaque_calque_1440.png")
+    toggle = page.locator("[data-testid=toggle-attackers]:visible")
+    if check("[desktop] interrupteur du calque visible et allumé", toggle.count() == 1 and toggle.get_attribute("aria-checked") == "true"):
+        toggle.click()
+        page.wait_for_timeout(300)
+        check("[desktop] interrupteur éteint : pastilles, cadres et légende retirés", len(pills(page)) == 0
+              and page.locator("[data-testid=king-zone]").count() == 0 and page.locator("[data-testid=attack-legend]:visible").count() == 0)
+        st = settings_state(page)
+        check("[desktop] interrupteur éteint : réglage persisté (showAttackers: false)", bool(st) and st.get("showAttackers") is False, f"({st})")
+        toggle.click()
+        page.wait_for_timeout(300)
+        check("[desktop] interrupteur rallumé : calque de retour", len(pills(page)) == 2 and page.locator("[data-testid=king-zone]").count() == 2)
     ctx.close()
 
     # Jouer : interrupteur sur l'écran de configuration, calque pendant la partie contre un bot.
