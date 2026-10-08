@@ -91,6 +91,9 @@ export async function reviewGame(
   depth: number,
   onProgress: (done: number, total: number) => void,
   signal?: AbortSignal,
+  // Attendue avant chaque recherche, hors du mutex du moteur : Insights y suspend une longue série
+  // quand la page est masquée (la recherche en cours se termine, la suivante attend le retour).
+  pause?: () => Promise<void>,
 ): Promise<GameReview> {
   const game = new Chess()
   game.loadPgn(pgn)
@@ -110,6 +113,10 @@ export async function reviewGame(
     if (chess.isGameOver()) {
       evals.push({ lines: [] })
     } else {
+      if (pause) {
+        await pause()
+        if (signal?.aborted) throw new DOMException('Bilan annulé', 'AbortError')
+      }
       const res = await engine.search({ fen: chess.fen(), depth, multipv: 2 })
       if (signal?.aborted) throw new DOMException('Bilan annulé', 'AbortError')
       evals.push({ lines: res.lines })

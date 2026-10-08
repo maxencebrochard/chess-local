@@ -32,7 +32,7 @@ const BAD_CLASSES: MoveClass[] = ['blunder', 'missedWin', 'miss', 'mistake']
 const START_FEN = new Chess().fen()
 
 // Mat annoncé par le moteur contre le camp `side` (nombre de coups), sinon 0.
-function mateAgainst(mateAfter: number | null, side: 'w' | 'b'): number {
+export function mateAgainst(mateAfter: number | null, side: 'w' | 'b'): number {
   if (mateAfter === null || mateAfter === 0) return 0
   return (side === 'w' ? mateAfter < 0 : mateAfter > 0) ? Math.abs(mateAfter) : 0
 }
@@ -50,7 +50,7 @@ const pairGender = (a: PieceSymbol, b: PieceSymbol): Gender => (PIECE_FR[a].genr
 
 // Le coup de réponse `reply` fait-il encore ce motif après le meilleur coup ? Un coup devenu
 // illégal compte comme empêché. Sert à n'accuser un coup que d'un motif qu'il a permis.
-function stillAfterBest<T>(fenBefore: string, best: string | undefined, reply: string, detect: (fen: string, uci: string) => T | null): boolean {
+export function stillAfterBest<T>(fenBefore: string, best: string | undefined, reply: string, detect: (fen: string, uci: string) => T | null): boolean {
   if (!best) return true
   const fen = afterUci(fenBefore, best)
   return fen !== fenBefore && detect(fen, reply) !== null
@@ -58,7 +58,7 @@ function stillAfterBest<T>(fenBefore: string, best: string | undefined, reply: s
 
 // Pièce du joueur que la meilleure réponse adverse gagne vraiment (prise nette ≥ 2 une fois
 // les reprises comptées ; pour la pièce qui vient de capturer, ce qu'elle a pris est déduit).
-function lostToReply(fenAfter: string, reply: string | undefined, moved: { to: string; captured?: PieceSymbol }) {
+export function lostToReply(fenAfter: string, reply: string | undefined, moved: { to: string; captured?: PieceSymbol }) {
   if (!reply) return null
   const cap = captureInfo(fenAfter, reply, null)
   if (!cap) return null
@@ -318,7 +318,7 @@ function familyFr(ucis: string[]): string | null {
 }
 
 // Position après un coup UCI (le coup est supposé légal : il vient du moteur).
-function afterUci(fen: string, uci: string): string {
+export function afterUci(fen: string, uci: string): string {
   const c = new Chess(fen)
   try {
     c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] })
@@ -329,7 +329,7 @@ function afterUci(fen: string, uci: string): string {
 }
 
 // Couleur du joueur au demi-coup i, en tenant compte du trait initial.
-function colorAt(review: GameReview, i: number): 'w' | 'b' {
+export function colorAt(review: GameReview, i: number): 'w' | 'b' {
   return (i % 2 === 0) === (review.startTurn === 'w') ? 'w' : 'b'
 }
 

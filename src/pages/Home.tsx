@@ -105,6 +105,14 @@ export default function Home() {
         ))}
       </div>
 
+      {/* Insights : descente (empilée), hors des cartes Elo qui mènent à Stats. */}
+      <Link to="/insights" className="mb-4 flex min-h-11 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 transition hover:bg-surface-3">
+        <span className="text-xl" aria-hidden="true">🧠</span>
+        <span className="font-bold">Insights</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-neutral-400">où tu pèches, quoi travailler</span>
+        <span className="text-lg text-neutral-500" aria-hidden="true">›</span>
+      </Link>
+
       {/* CTA Jouer géant, collé en bas */}
       <div className="mt-auto md:mt-4">
         <Cta className="w-full py-4 text-2xl" onClick={() => navigate('/jouer', { replace: true })}>

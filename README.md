@@ -35,6 +35,7 @@ npm run preview
 - **Import chess.com** : page `/import` : pseudo chess.com (API publique, sans login) → liste des parties récentes → bilan en un tap ; ou coller un lien de partie ; ou Raccourci Apple pour partager depuis l'app chess.com (instructions dans la page).
 - **Sons** : set standard lichess (move, capture, fin de partie, low time, réussite/échec puzzle), préchargés via WebAudio.
 - **Archive** : toutes les parties sauvegardées (IndexedDB), relecture, bilan en un clic, export PGN global.
+- **Insights** : page `/insights` (depuis Stats et l'accueil), façon chess.com Insights : choix de la cadence (bullet, blitz, rapide, sans limite) et des 10, 25, 50 ou 100 dernières parties (chess.com et ChessLocal), bilan Stockfish de chacune avec progression, pause et reprise, mis en cache sur l'appareil ; résumé du coach, 3 forces et 3 faiblesses chiffrées avec un plan d'entraînement vers les modules de l'app, précision par phase (hors théorie), ouvertures par couleur, gestion de la pendule (gaffes sous pression, défaites au temps), erreurs typiques (pièces en prise, menaces ignorées, motifs manqués), conversion et défense, exemples tirés de tes parties ouverts dans l'Analyse.
 - **Stats** : classements par cadence, bilan V/N/D, thèmes d'échiquier, réglages, sauvegarde et restauration de toutes les données (fichier JSON), état du stockage, réinitialisation de l'app.
 
 ## Architecture

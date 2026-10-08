@@ -20,6 +20,7 @@ import { FINALES } from './lib/endgameCourse'
 import { ROQUE } from './lib/attackCourse'
 import Revision from './pages/Revision'
 import Attack from './pages/Attack'
+import Insights from './pages/Insights'
 
 // `match` : routes rattachées à l'onglet (allumé, sans être la page du lien), sous-chemins compris.
 const NAV = [
@@ -29,7 +30,7 @@ const NAV = [
   { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque'] },
   { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import', '/analyse/jouer'] },
   { to: '/archive', icon: '📚', label: 'Archive', match: [] as string[] },
-  { to: '/stats', icon: '📊', label: 'Stats', match: [] as string[] },
+  { to: '/stats', icon: '📊', label: 'Stats', match: ['/insights'] },
 ]
 
 // `aria-current` : "page" sur la racine de l'onglet, "true" sur une route rattachée, absent sinon.
@@ -146,6 +147,7 @@ function Shell() {
             <Route path="/attaque/:id" element={<Attack />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/stats" element={<Stats />} />
+            <Route path="/insights" element={<Insights />} />
             <Route path="/import" element={<Import />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

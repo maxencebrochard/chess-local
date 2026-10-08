@@ -197,7 +197,7 @@ export default function Puzzles() {
   const playerColor: 'w' | 'b' = puzzle.fen.split(' ')[1] === 'w' ? 'b' : 'w'
 
   // Ouvre l'analyse sur le puzzle : solution complète navigable, positionnée
-  // sur la position clé (après le coup d'amorce) — le moteur y montre le
+  // sur la position clé (après le coup d'amorce) : le moteur y montre le
   // meilleur coup, c'est-à-dire la solution.
   function openInAnalysis() {
     if (!puzzle) return

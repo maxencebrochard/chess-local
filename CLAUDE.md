@@ -112,6 +112,7 @@ En dépendent : `coach.ts` (commentaires post-partie générés par règles), `l
 Un bilan écrit les fautes dans la table `mistakes`, rejouées ensuite dans Apprendre → Mes erreurs.
 `kingAttack.ts` (chess.js seul) relit ces fautes pour « Mes attaques manquées » (`/attaques-manquees`) : le type d'attaque (mat, sacrifice près du roi, pion contre le roque, pièce vers le roi) est recalculé sur l'échiquier depuis `fenBefore` et `bestUci`, jamais stocké ; seules les lignes avec `color` (camp du joueur connu du bilan) comptent, `gameKey` identifie la partie.
 Le même module porte le calque « Compte les attaquants » (réglage `showAttackers`) : zone = anneau du roi de Stockfish (3x3 ramené dans b-g / 2-7), compte des seules pièces ; la suite `diagnostic_attaque` le vérifie contre un oracle python-chess.
+Insights (`/insights`) réutilise `reviewGame` (paramètre `pause` pour suspendre la série quand la page est masquée), met les bilans en cache dans `reviews` (clé `chesscom:<id>` ou `local:<id>`, une profondeur par rapport) et calcule tout dans `insights.ts`, pur et testé sous Node par `test_insights.py` ; il n'écrit jamais dans `mistakes`.
 L'entraîneur d'ouvertures (`/ouvertures`, `src/lib/openingTrainer.ts`) enregistre ses tentatives dans `learnSessions` avec le domaine `opening-drill` (format d'`itemId` documenté dans `db.ts`) ; `pickNextDomain` les ignore.
 La révision espacée (`/revision`, `src/lib/revision.ts`) n'a pas de table : l'échéance de chaque item raté (puzzle, faute, variante `full`) se calcule depuis son historique daté (`puzzleAttempts`, `learnSessions`, `mistakes`), agrégé par jour civil local, avec une échelle de Leitner `[1, 3, 7, 21]` jours ; un item en retard de plus de 30 jours sort de la file.
 Un résultat de révision s'écrit là où l'écran d'origine écrit (`scoreItem('mistakes')` + `mistakes.update`, `recordDrill`, ou le domaine `revision` pour les puzzles), jamais dans un Elo.
@@ -119,7 +120,7 @@ Le compteur de l'accueil ne charge jamais `puzzles.json` ; seule la séance le f
 
 ### Persistance
 
-Base Dexie `chess-local` (`src/lib/db.ts`), actuellement en `version(2)`.
+Base Dexie `chess-local` (`src/lib/db.ts`), actuellement en `version(3)` (table `reviews` : cache des bilans d'Insights).
 Ajouter une table ou un index = nouveau bloc `db.version(n)` qui redéclare tous les stores, plus l'ajout dans `TABLES` de `backup.ts`.
 La table `ratings` est unique et indexée par clé texte : cadences (`bullet`, `blitz`, `rapid`, `unlimited`), `puzzle`, et domaines d'Apprendre (`learn-endgame`, `learn-tactic`, ...).
 Tous les Elo passent par `applyRating`/`eloUpdate`.

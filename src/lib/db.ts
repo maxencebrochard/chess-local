@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import type { GameReview } from './review'
 
 export interface SavedGame {
   id?: number
@@ -83,6 +84,27 @@ export interface LearnSession {
   assisted?: boolean
 }
 
+// Bilan Stockfish d'une partie, mis en cache par Insights (/insights). Ligne autosuffisante : le
+// rapport se recalcule hors ligne depuis cette table seule, sans réseau ni moteur.
+export interface ReviewRow {
+  key: string // 'chesscom:<id de partie>' ou 'local:<id Dexie de games>'
+  source: 'chesscom' | 'local'
+  username: string | null // pseudo chess.com normalisé (null pour l'app) : deux comptes ne se mélangent pas
+  date: number // fin de partie, ms
+  timeClass: 'bullet' | 'blitz' | 'rapid' | 'unlimited'
+  timeControl: string // '180+2', '600', '5+0', 'illimité'
+  playerColor: 'w' | 'b'
+  playerRating: number | null
+  opponent: string
+  opponentRating: number | null
+  result: 'win' | 'draw' | 'loss' // pour le joueur
+  termination: string // libellé français
+  lostOnTime: boolean
+  pgn: string
+  depth: number // profondeur du bilan : un rapport ne mélange pas deux profondeurs
+  review: GameReview
+}
+
 export const db = new Dexie('chess-local') as Dexie & {
   games: EntityTable<SavedGame, 'id'>
   ratings: EntityTable<Rating, 'key'>
@@ -90,6 +112,7 @@ export const db = new Dexie('chess-local') as Dexie & {
   rushScores: EntityTable<RushScore, 'id'>
   mistakes: EntityTable<Mistake, 'id'>
   learnSessions: EntityTable<LearnSession, 'id'>
+  reviews: EntityTable<ReviewRow, 'key'>
 }
 
 db.version(1).stores({
@@ -106,6 +129,17 @@ db.version(2).stores({
   rushScores: '++id, mode, score, date',
   mistakes: '++id, date, solved, fenBefore',
   learnSessions: '++id, date, domain',
+})
+
+// Version 3 : cache des bilans d'Insights. Tous les stores sont redéclarés, aucune donnée ne bouge.
+db.version(3).stores({
+  games: '++id, date, mode, timeClass',
+  ratings: 'key',
+  puzzleAttempts: '++id, date, puzzleId',
+  rushScores: '++id, mode, score, date',
+  mistakes: '++id, date, solved, fenBefore',
+  learnSessions: '++id, date, domain',
+  reviews: 'key, date',
 })
 
 export const DEFAULT_RATING = 800

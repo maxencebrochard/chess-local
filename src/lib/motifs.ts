@@ -119,7 +119,7 @@ const sqAt = (f: number, r: number) => (String.fromCharCode(97 + f) + (r + 1)) a
 
 // Cases attaquées par la pièce posée sur `from` (attaques brutes, clouages ignorés, comme
 // `board.attacks` de python-chess). Calcul géométrique : 64 appels à `attackers` coûtaient cher.
-function attacksFrom(c: Chess, from: Square): Square[] {
+export function attacksFrom(c: Chess, from: Square): Square[] {
   const p = c.get(from)
   if (!p) return []
   const f0 = fileOf(from)

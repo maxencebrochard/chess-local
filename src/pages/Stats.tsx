@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { db, DEFAULT_RATING, type PuzzleAttempt, type Rating, type SavedGame } from '../lib/db'
@@ -69,8 +70,10 @@ function settingsFate(plan: BackupPlan): string {
   return 'Réglages du fichier illisibles : les tiens sont conservés.'
 }
 
+// « A », « A et B », « A, B et C ».
 function missingNote(plan: BackupPlan): string {
-  return plan.missingTables.map(tableLabel).join(' et ')
+  const labels = plan.missingTables.map(tableLabel)
+  return labels.length > 1 ? `${labels.slice(0, -1).join(', ')} et ${labels[labels.length - 1]}` : (labels[0] ?? '')
 }
 
 // Message de succès : dit ce qui a été restauré (recompté en base), jamais un succès si rien ne l'a été.
@@ -249,6 +252,15 @@ export default function Stats() {
           )
         })}
       </div>
+
+      <Link to="/insights" className="mb-6 flex items-center gap-3 rounded-lg bg-surface-2 p-4 transition hover:bg-surface-3">
+        <span className="text-3xl" aria-hidden="true">🧠</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Insights</span>
+          <span className="block text-sm text-neutral-400">Tes N dernières parties passées au crible : où tu pèches, tes forces, quoi travailler.</span>
+        </span>
+        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
+      </Link>
 
       <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-lg bg-surface-2 p-4">
