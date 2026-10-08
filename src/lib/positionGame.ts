@@ -186,13 +186,13 @@ export interface Opponent {
 
 // ---------- Persistance ----------
 
-// Une seule partie gardée : la dernière jouée, finale ou position libre. localStorage et non
+// Une seule partie gardée : la dernière jouée, finale, position d'attaque ou position libre. localStorage et non
 // sessionStorage : une PWA iOS tuée puis relancée ouvre une nouvelle session. Clé purgée par la
 // réinitialisation (APP_LOCAL_KEYS de backup.ts).
 export const POSITION_GAME_KEY = 'chess-local-position-game-v1'
 
 export interface StoredGame {
-  key: string // `finale:<id>` ou `position`
+  key: string // `finale:<id>`, `attaque:<id>` ou `position`
   startFen: string
   player: Color
   label: string | null
@@ -207,7 +207,7 @@ export interface StoredGame {
   decisive?: 'offered' | 'continued'
 }
 
-// Partie en cours (non terminée, au moins un coup) de cette finale, telle que la liste l'annonce.
+// Partie en cours (non terminée, au moins un coup) de cette finale ou position d'attaque, telle que la liste l'annonce.
 export function inProgressKey(): string | null {
   const g = loadStoredGame()
   return g && !g.end && g.uci.length > 0 ? `${g.key}|${g.startFen}` : null

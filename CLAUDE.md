@@ -138,7 +138,7 @@ Un nouvel asset lourd ou une nouvelle extension doit être couvert par `globPatt
 ### Données
 
 `public/puzzles.json` : 120 000 puzzles lichess au format compact `[id, fen, moves, rating, themes]`, hors bundle, chargés une fois par `loadPuzzles()`.
-`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`), `attackCourse.json` (cours « Démolir le roque », `#/apprendre/roque`).
+`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`), `attackCourse.json` (cours « Démolir le roque », `#/apprendre/roque`), `attacks.json` (généré, banque de l'entraîneur d'attaque, `#/attaque`).
 Une leçon terminée est une ligne `learnSessions` `{ domain: 'course', itemId: '<slug>:<id>' }` (`finales:`, `roque:`) : les ids de leçons sont figés (`FROZEN_IDS` du contrôle).
 Les noms d'ouvertures sont en anglais dans les données et traduits à l'affichage par `openingNames.ts`.
 
