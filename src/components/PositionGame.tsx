@@ -58,7 +58,7 @@ function restoredKeyResult(chess: Chess, player: Color, key: KeyMove | undefined
 }
 
 export interface PositionGameProps {
-  gameKey: string // clé de persistance fournie par l'écran appelant, distincte selon l'exercice
+  gameKey: string // clé de persistance fournie par l’écran appelant, notamment `finale:<id>`, `attaque:<id>` ou `position`
   startFen: string
   title: string
   objective: Objective

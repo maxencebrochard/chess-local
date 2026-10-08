@@ -151,7 +151,7 @@ def static_ok(board, last_move_capture, cat_expected):
     return f
 
 
-def engine_ok(board, key, depth):
+def engine_ok(board, depth):
     """Retourne l'éval (cp, attaquant) si la position passe les critères moteur, sinon None."""
     engine = get_engine()
     att = board.turn
@@ -213,7 +213,7 @@ def evaluate_once(pid, row, cat, depth):
         f = static_ok(board, last_capture, cat)
         if not f:
             continue
-        cp = engine_ok(board, f"{pid}-{back}", depth)
+        cp = engine_ok(board, depth)
         if cp is None:
             continue
         return {
@@ -327,12 +327,9 @@ def main():
         for proc in procs:
             proc.kill()
 
-    def accepted_prefix(c):
-        return accepted[c]
-
     bank, seen_games, seen_boards = {c: [] for c in CATEGORIES}, set(), set()
     for c in CATEGORIES:
-        for e in accepted_prefix(c):
+        for e in accepted[c]:
             board_key = " ".join(e["fen"].split()[:2])
             if e["source"]["game"] in seen_games or board_key in seen_boards or len(bank[c]) >= args.per_category:
                 continue

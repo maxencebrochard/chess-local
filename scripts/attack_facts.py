@@ -180,6 +180,9 @@ def goal(cat, f):
     return f"{CATEGORY_SHORT[cat]} : {action}."
 
 
+NUMBER_FR = {2: "Deux", 3: "Trois", 4: "Quatre", 5: "Cinq", 6: "Six", 7: "Sept"}
+
+
 def plan(board, cat, f):
     """Trois ou quatre phrases, chacune tirée d'un fait mesuré, le levier d'abord."""
     att = board.turn
@@ -222,5 +225,5 @@ def plan(board, cat, f):
     order = {"storm": [storm, file_, shield], "file": [file_, shield, storm], "shield": [shield, file_, storm], "centre": [file_, shield, storm]}[lv]
     out += [s for s in order if s]
     n = len(f["attackers"])
-    out.append(f"{'Deux' if n == 2 else 'Trois' if n == 3 else n} de tes pièces visent déjà les abords de son roi ({_list(f['attackers'])}) : amène les autres.")
+    out.append(f"{NUMBER_FR.get(n, str(n))} de tes pièces visent déjà les abords de son roi ({_list(f['attackers'])}) : amène les autres.")
     return " ".join(out)
