@@ -52,8 +52,10 @@ export interface Mistake {
 export interface LearnSession {
   id?: number
   date: number
-  // endgame | tactic | opening | strategy | mistakes | endgame-play | course (leçon du cours de
-  // finales terminée), opening-drill (entraîneur d'ouvertures) ou mats (une série de « Mats éclair »).
+  // endgame | tactic | opening | strategy | mistakes | endgame-play | course (leçon terminée d'un
+  // cours d'Apprendre), opening-drill (entraîneur d'ouvertures) ou mats (une série de « Mats éclair »).
+  // course : itemId = `<slug>:<id>`, le slug désignant le cours (`finales:` pour le cours de finales,
+  // `roque:` pour « Démolir le roque »), ex. `finales:mat-dame`, `roque:grec-schema`.
   // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
   // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
   // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).
