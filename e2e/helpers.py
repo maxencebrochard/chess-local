@@ -345,5 +345,13 @@ def scroll_state(page):
 
 
 def overflow_x(page):
-    """Débordement horizontal de la page : doit valoir 0 sur mobile."""
-    return page.evaluate("() => document.documentElement.scrollWidth - document.documentElement.clientWidth")
+    """Débordement horizontal en px : doit valoir 0 sur mobile. html n'a plus de contenu dans le
+    flux (body fixé sur le viewport, index.css) : c'est body qui reçoit ce qui s'échappe de la
+    coquille, éléments positionnés contre lui compris, et `<main>`, conteneur de défilement, qui
+    piège celui de ses pages. Le plus grand des deux."""
+    return page.evaluate(
+        """() => {
+          const over = (e) => (e ? e.scrollWidth - e.clientWidth : 0)
+          return Math.max(over(document.body), over(document.querySelector('main')))
+        }"""
+    )

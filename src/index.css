@@ -15,9 +15,11 @@
    basse remontée sur une bande vide.
    - `overscroll-behavior` du viewport se lit sur html, pas sur body : c'est lui qui coupe le
      rebond élastique de la page.
-   - body fixé sur le viewport : le document n'a plus aucun débordement, ni au doigt, ni quand
-     iOS fait défiler la page pour montrer un champ, ni quand sa zone visible ne colle pas à
-     une hauteur en dvh. `overflow: hidden` seul ne suffit pas sur iOS. */
+   - body fixé sur le viewport : le document n'a plus aucun débordement, même quand la zone
+     visible d'iOS ne colle pas à une hauteur en dvh. `overflow: hidden` seul ne suffit pas sur
+     iOS. Non vérifié sur appareil : le clavier (iOS fait défiler la page pour montrer un champ
+     focalisé). À confirmer sur iPhone, en standalone et dans Safari, avec les champs de
+     /import, /mats, /ouvertures et le textarea d'import de /analyse. */
 html {
   height: 100%;
   overflow: hidden;

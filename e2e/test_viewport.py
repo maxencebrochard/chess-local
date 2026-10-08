@@ -9,8 +9,10 @@ son rebond n'était pas coupé (`overscroll-behavior` posé sur body, que le vie
 Chromium n'a ni rebond élastique ni décalage « coincé » d'iOS : la suite prouve la cause
 structurelle, pas le rendu exact du téléphone.
 - structure : html/body non défilables, rebond du viewport coupé, `<main>` en
-  `overscroll-behavior: contain`, coquille exactement à la taille du viewport, safe areas
-  appliquées (émulées à 59/34 px en standalone via CDP) ;
+  `overscroll-behavior: contain`, coquille exactement à la taille du viewport, sans débordement
+  horizontal, safe areas appliquées (émulées à 59/34 px en standalone via CDP) ;
+- le helper `overflow_x` des autres suites reste capable d'échouer avec body fixé : preuve par
+  deux débordements horizontaux provoqués (dans `<main>`, puis hors de la coquille) ;
 - gestes TACTILES réels (CDP) dans les deux sens, sur la nav, sur `<main>` en butée haute et
   basse avec poursuite au-delà, et sur une page dont le contenu tient : avec un débordement du
   document provoqué exprès (ce qu'iOS produit quand sa zone visible ne colle pas à la mise en
@@ -18,7 +20,7 @@ structurelle, pas le rendu exact du téléphone.
 
 Usage : npm run test:e2e -- --suite viewport
 """
-from helpers import BASE, FINALES, Checker, desktop_context, mobile_context, shot, touch_drag
+from helpers import BASE, FINALES, Checker, desktop_context, mobile_context, overflow_x, shot, touch_drag
 
 ck = Checker("viewport")
 check = ck.check
@@ -27,15 +29,30 @@ SAFE_TOP, SAFE_BOTTOM = 59, 34
 # Pages qui défilent dans `<main>` ou non : la liste couvre les deux (mesuré sur main :
 # `/`, `/analyse`, `/puzzles` en 393x852 tiennent sans défiler).
 PAGES = ["/", "/mats", "/mats?d=geo-diagonale-ligne", "/apprendre", "/analyse", "/jouer", "/puzzles", "/stats"]
-# Débordement provoqué du document : sans lui, Chromium n'a nulle part où chaîner le geste et
-# tous les gestes passeraient aussi sur l'ancien code.
-INJECT = """() => {
-  const d = document.createElement('div')
-  d.id = '__e2e_overflow'
-  d.style.cssText = 'height: 400px; width: 1px'
-  document.body.appendChild(d)
-  window.scrollTo(0, 150)
-}"""
+# Débordement provoqué : un élément ajouté en fin de `host`, retiré par `remove_injected`. En
+# hauteur sur body, c'est le débordement du document (ce qu'iOS produit quand sa zone visible ne
+# colle pas à la mise en page) : sans lui, Chromium n'a nulle part où chaîner le geste et tous
+# les gestes passeraient aussi sur l'ancien code.
+TALL = "height: 400px; width: 1px"
+WIDE = "width: 600px; height: 1px"
+
+
+def inject(page, host, css):
+    page.evaluate(
+        """([host, css]) => {
+          const d = document.createElement('div')
+          d.dataset.e2e = 'overflow'
+          d.style.cssText = css
+          document.querySelector(host).appendChild(d)
+        }""",
+        [host, css],
+    )
+
+
+def remove_injected(page):
+    page.evaluate("() => { for (const d of document.querySelectorAll('[data-e2e=overflow]')) d.remove(); window.scrollTo(0, 0) }")
+
+
 STATE = """() => {
   const m = document.querySelector('main')
   const nav = [...document.querySelectorAll('nav')].find((n) => n.offsetParent && getComputedStyle(n).display !== 'none' && n.getBoundingClientRect().top > 0)
@@ -140,6 +157,7 @@ def page_suite(page, label, path, standalone, slug):
     check(f"{label} : document sans débordement", s["docOverflow"] == 0, f"({s['docOverflow']} px)")
     check(f"{label} : en-tête collé en haut", s["mainTop"] == 0, f"(top {s['mainTop']})")
     check(f"{label} : nav collée en bas", s["navBottom"] == h, f"(bottom {s['navBottom']}, viewport {h})")
+    check(f"{label} : pas de débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
     if standalone:
         check(f"{label} : safe area haute appliquée", s["mainPadTop"] == f"{SAFE_TOP + 12}px", f"({s['mainPadTop']})")
         check(f"{label} : safe area basse appliquée", s["navPadBottom"] == f"{SAFE_BOTTOM}px", f"({s['navPadBottom']})")
@@ -148,7 +166,8 @@ def page_suite(page, label, path, standalone, slug):
 
     # Débordement provoqué : sur l'ancien code, le document devient défilable et les gestes
     # en butée de `<main>` s'y chaînent.
-    page.evaluate(INJECT)
+    inject(page, "body", TALL)
+    page.evaluate("() => window.scrollTo(0, 150)")
     try:
         page.wait_for_timeout(100)
         base = state(page)
@@ -198,15 +217,37 @@ def page_suite(page, label, path, standalone, slug):
                 check(f"{label} : <main> défile toujours au doigt", after["mainScrollTop"] > 0,
                       f"(scrollTop {after['mainScrollTop']})")
     finally:
-        page.evaluate("() => { document.getElementById('__e2e_overflow')?.remove(); window.scrollTo(0, 0) }")
+        remove_injected(page)
+
+
+def overflow_x_suite(page, label):
+    """Le helper `overflow_x` des autres suites doit pouvoir échouer avec body fixé : html n'a
+    plus de contenu dans le flux, il mesure body (ce qui s'échappe de la coquille) et `<main>`
+    (ses pages). Preuve par deux débordements provoqués, puis retour à 0."""
+    page.goto(f"{BASE}/#/")
+    ck.appears(f"{label} : page affichée", page, "main >> *")
+    try:
+        inject(page, "main", WIDE)
+        check(f"{label} : un élément trop large dans <main> est détecté", overflow_x(page) > 0, f"({overflow_x(page)} px)")
+        remove_injected(page)
+        inject(page, "#root", f"{WIDE}; position: absolute; left: 0; top: 0")
+        check(f"{label} : un élément qui s'échappe de la coquille est détecté", overflow_x(page) > 0, f"({overflow_x(page)} px)")
+    finally:
+        remove_injected(page)
+    check(f"{label} : plus rien une fois retiré", overflow_x(page) == 0, f"({overflow_x(page)} px)")
 
 
 SHEET = "div.fixed .overflow-y-auto"
 
 
 def sheet_suite(page, label):
-    """Feuille modale (cours d'Apprendre) : elle défile, et en butée le geste ne se chaîne ni
-    vers `<main>` derrière elle, ni vers le document."""
+    """Feuille modale (cours d'Apprendre) : elle défile, et en butée le geste ne se chaîne pas
+    vers le document. C'est la seule chose à lire derrière elle : le calque de la feuille est
+    `fixed`, son bloc conteneur est le viewport, et Chromium chaîne le défilement le long des
+    blocs conteneurs, donc vers le document et jamais vers `<main>` ni vers la racine de séance
+    qui l'entourent dans le DOM. Sonde : sans `contain`, la racine de séance pré-défilée reste à
+    40 px avec l'ancien CSS comme avec le nouveau, alors que le document bouge avec l'ancien
+    (de 150 à 0 px, puis à 285 px)."""
     page.goto(f"{BASE}/#/apprendre")
     ck.appears(f"{label} : accueil Apprendre", page, "main button:has-text('Finales')")
     page.locator("main button", has_text=FINALES).click()
@@ -218,18 +259,18 @@ def sheet_suite(page, label):
     page.wait_for_timeout(400)
     ob = page.evaluate(f"() => getComputedStyle(document.querySelector('{SHEET}')).overscrollBehaviorY")
     check(f"{label} : la feuille ne chaîne pas son défilement", ob == "contain", f"({ob})")
-    page.evaluate(INJECT)
+    inject(page, "body", TALL)
     try:
-        page.evaluate("() => { const m = document.querySelector('main'); m.scrollTo(0, 40) }")
+        page.evaluate("() => window.scrollTo(0, 150)")
         box = page.locator(SHEET).bounding_box()
         x = box["x"] + 12
-        read = f"() => [scrollY, document.querySelector('main').scrollTop, Math.round(document.querySelector('{SHEET}').scrollTop)]"
+        read = f"() => [Math.round(scrollY), Math.round(document.querySelector('{SHEET}').scrollTop)]"
         b = page.evaluate(read)
         # Feuille en haut, geste vers le bas au-delà.
         touch_drag(page, x, box["y"] + 20, x, box["y"] + 20 + 300, steps=20)
         settle(page)
         a = page.evaluate(read)
-        check(f"{label} : feuille en haut, geste vers le bas : rien derrière ne bouge", a[:2] == b[:2], f"({b} -> {a})")
+        check(f"{label} : feuille en haut, geste vers le bas : le document ne bouge pas", a[0] == b[0], f"({b} -> {a})")
         # Feuille en bas, geste vers le haut au-delà.
         page.evaluate(f"() => document.querySelector('{SHEET}').scrollTo(0, 1e6)")
         b = page.evaluate(read)
@@ -237,7 +278,7 @@ def sheet_suite(page, label):
         touch_drag(page, x, y0, x, y0 - 300, steps=20)
         settle(page)
         a = page.evaluate(read)
-        check(f"{label} : feuille en bas, geste vers le haut : rien derrière ne bouge", a[:2] == b[:2], f"({b} -> {a})")
+        check(f"{label} : feuille en bas, geste vers le haut : le document ne bouge pas", a[0] == b[0], f"({b} -> {a})")
         # Témoin positif : la feuille défile au doigt.
         page.evaluate(f"() => document.querySelector('{SHEET}').scrollTo(0, 0)")
         touch_drag(page, x, y0, x, y0 - 200, steps=14)
@@ -245,7 +286,7 @@ def sheet_suite(page, label):
         top = page.evaluate(f"() => document.querySelector('{SHEET}').scrollTop")
         check(f"{label} : la feuille défile toujours au doigt", top > 0, f"(scrollTop {top})")
     finally:
-        page.evaluate("() => { document.getElementById('__e2e_overflow')?.remove(); window.scrollTo(0, 0) }")
+        remove_injected(page)
 
 
 def desktop_suite(p, browser):
@@ -264,6 +305,7 @@ def desktop_suite(p, browser):
                    inner: innerHeight, side: side ? Math.round(side.getBoundingClientRect().height) : null }
         }""")
         check(f"{label} : document sans débordement", d["over"] == 0, f"({d['over']} px)")
+        check(f"{label} : pas de débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
         check(f"{label} : <main> à la hauteur du viewport", d["top"] == 0 and d["bottom"] == d["inner"], f"({d})")
         check(f"{label} : nav latérale sur toute la hauteur", d["side"] == d["inner"], f"({d['side']})")
     shot(page, "viewport_1440x900_analyse")
@@ -285,6 +327,7 @@ def suite(p):
                 label = f"[{size}] {path}"
                 slug = path.strip("/").replace("?", "_").replace("=", "-").replace("/", "_") or "accueil"
                 page_suite(page, label, path, standalone, f"{size}_{slug}")
+            overflow_x_suite(page, f"[{size}] helper overflow_x")
             sheet_suite(page, f"[{size}] feuille de cours")
             ctx.close()
         desktop_suite(p, browser)
