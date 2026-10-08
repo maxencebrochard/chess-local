@@ -3,8 +3,9 @@
 // acceptée l'arrêtent. Sert aux finales jouées jusqu'au bout et au bouton « Jouer contre le
 // moteur » de l'analyse. Le joueur a le trait au départ ; la partie est persistée à chaque coup.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Chess, type Move } from 'chess.js'
+import { Chess, type Color, type Move } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
+import { AttackLegend } from './AttackLegend'
 import { Board, type BoardArrow } from './Board'
 import { ConfirmSheet } from './ConfirmSheet'
 import { CourseSheet } from './CourseSheet'
@@ -16,11 +17,31 @@ import {
   boardEnd, engineAcceptsDraw, halfmoveClock, judge, loadStoredGame, repetitions, replay, resignEnd, storeGame,
   verdictText, type GameEnd, type Objective,
 } from '../lib/positionGame'
+import { figurine, winPct } from '../lib/review'
 import { sounds } from '../lib/sounds'
 import { useSettings } from '../store/settings'
 
 // Temps de réflexion de Stockfish par coup : pleine force, sans faire attendre.
 const ENGINE_MOVETIME_MS = 700
+
+// Coup attendu au premier coup du joueur (« Mes attaques manquées » : le coup du bilan). Un autre
+// coup est vérifié par Stockfish : il « tient aussi » s'il perd moins de 5 points de win%
+// (même règle que « Mes erreurs »). `onJudged` est appelé une fois par tentative : réussite si le
+// coup est trouvé sans aide ; Annuler ou Recommencer avant le verdict compte comme un échec.
+export interface KeyMove {
+  uci: string
+  san: string
+  onJudged: (found: boolean) => void
+}
+// `other` : partie reprise après rechargement, premier coup différent du coup attendu et verdict
+// perdu : on rappelle le coup du bilan sans juger.
+type KeyResult = 'checking' | 'found' | 'close' | 'missed' | 'other'
+
+// Verdict dérivé d'une partie reprise : seul le coup exact se reconnaît sans moteur.
+function restoredKeyResult(chess: Chess, player: Color, key: KeyMove | undefined): KeyResult | null {
+  const first = key ? chess.history({ verbose: true }).find((m) => m.color === player) : undefined
+  return first ? (first.lan === key!.uci ? 'found' : 'other') : null
+}
 
 export interface PositionGameProps {
   gameKey: string // clé de persistance : `finale:<id>` ou `position`
@@ -38,6 +59,10 @@ export interface PositionGameProps {
   onOther?: () => void // « Autre finale »
   onFinished?: (success: boolean) => void // première fin de chaque tentative
   back?: unknown // gardé avec la partie persistée (partie libre)
+  showAttackers?: boolean // calque « Compte les attaquants » (cadres sur l'échiquier + légende)
+  objectiveLabel?: string // titre du bandeau quand il n'y a pas d'objectif (défaut « Partie libre »)
+  otherLabel?: string // libellé du CTA `onOther` (défaut « Autre finale »)
+  keyMove?: KeyMove
 }
 
 interface Init {
@@ -83,6 +108,13 @@ export function PositionGame(props: PositionGameProps) {
   // Génération de la partie : un coup moteur, un indice ou une nulle calculés pour une partie
   // remplacée (Recommencer, démontage) sont ignorés à leur retour.
   const genRef = useRef(0)
+  // Verdict sur le premier coup du joueur (keyMove) ; `judgedRef` : déjà noté pour cette tentative
+  // (une partie reprise avec un coup joué ne se note pas une seconde fois).
+  const [keyResult, setKeyResult] = useState<KeyResult | null>(() => restoredKeyResult(init.chess, player, props.keyMove))
+  const judgedRef = useRef(keyResult !== null)
+  // Vérification Stockfish en cours : note la tentative ratée si Annuler, Recommencer ou un abandon
+  // l'interrompt (appelée par l'action elle-même, avant que la tentative suivante ne commence).
+  const pendingJudgeRef = useRef<(() => void) | null>(null)
 
   const course = courseId ? courseFor(courseId) : null
 
@@ -165,6 +197,8 @@ export function PositionGame(props: PositionGameProps) {
     const c = chessRef.current
     if (!boardEnd(c) && !init.end && c.turn() !== player) void engineMove()
     return () => {
+      // Page quittée pendant la vérification : rien n'est noté.
+      pendingJudgeRef.current = null
       // Compteur, pas un nœud du DOM : c'est bien la valeur courante qu'il faut incrémenter.
       // eslint-disable-next-line react-hooks/exhaustive-deps
       genRef.current++
@@ -179,20 +213,71 @@ export function PositionGame(props: PositionGameProps) {
 
   function handleMove(from: string, to: string, promotion?: string): boolean {
     if (!myTurn || !live || busy) return false
+    const first = chessRef.current.history({ verbose: true }).every((m) => m.color !== player)
     let move: Move
     try {
       move = chessRef.current.move({ from, to, promotion: promotion ?? 'q' })
     } catch {
       return false
     }
+    if (first && props.keyMove) void judgeKeyMove(move, props.keyMove, assisted)
     if (!afterMove(move)) void engineMove()
     return true
   }
 
+  // Premier coup du joueur contre le coup attendu : égal, ou vérifié par Stockfish (profondeur 12,
+  // avant / après, point de vue du joueur). Le mutex du moteur enchaîne cette vérification et la
+  // réponse de Stockfish sans se gêner. `assistedNow` : un indice avant le coup l'a révélé.
+  async function judgeKeyMove(move: Move, key: KeyMove, assistedNow: boolean) {
+    const gen = genRef.current
+    const fenBefore = move.before
+    const note = (found: boolean) => {
+      if (judgedRef.current) return
+      judgedRef.current = true
+      key.onJudged(found)
+    }
+    const conclude = (r: KeyResult) => {
+      // Tentative reprise ou relancée avant le verdict : déjà notée par `abandonJudge`.
+      if (gen !== genRef.current) return
+      pendingJudgeRef.current = null
+      setKeyResult(r)
+      note((r === 'found' || r === 'close') && !assistedNow)
+    }
+    if (move.lan === key.uci) {
+      conclude('found')
+      return
+    }
+    setKeyResult('checking')
+    pendingJudgeRef.current = () => note(false)
+    try {
+      const engine = getEngine()
+      const cp = (l?: { scoreMate: number | null; scoreCp: number | null }) =>
+        l ? (l.scoreMate !== null ? (l.scoreMate > 0 ? 10000 : -10000) : (l.scoreCp ?? 0)) : 0
+      const before = await engine.search({ fen: fenBefore, depth: 12, multipv: 1 })
+      if (gen !== genRef.current) return
+      const after = await engine.search({ fen: move.after, depth: 12, multipv: 1 })
+      const wBefore = winPct(cp(before.lines[0]))
+      const wAfter = new Chess(move.after).isCheckmate() ? 100 : winPct(-cp(after.lines[0]))
+      conclude(wBefore - wAfter < 5 ? 'close' : 'missed')
+    } catch {
+      conclude('missed')
+    }
+  }
+
+  // Annuler, Recommencer ou abandon avant le verdict : la tentative en cours est ratée.
+  function abandonJudge() {
+    const pending = pendingJudgeRef.current
+    pendingJudgeRef.current = null
+    pending?.()
+  }
+
   function restart() {
+    abandonJudge()
     genRef.current++
     chessRef.current = new Chess(startFen)
     recordedRef.current = false
+    judgedRef.current = false
+    setKeyResult(null)
     setFen(startFen)
     setHistory([])
     setViewIndex(-1)
@@ -213,7 +298,9 @@ export function PositionGame(props: PositionGameProps) {
     if (mine === 0) return
     if (c.turn() === player) c.undo() // la réponse de Stockfish
     c.undo() // mon coup
+    abandonJudge()
     genRef.current++
+    if (mine === 1) setKeyResult(null) // premier coup repris : le verdict repart avec lui
     setFen(c.fen())
     setHistory(c.history({ verbose: true }))
     setViewIndex(-1)
@@ -256,6 +343,7 @@ export function PositionGame(props: PositionGameProps) {
   function resign() {
     setConfirmResign(false)
     if (end) return
+    abandonJudge()
     genRef.current++
     setThinking(false)
     setBusy(null)
@@ -286,11 +374,30 @@ export function PositionGame(props: PositionGameProps) {
   // `fen` signale le changement de la partie (mutable, dans une ref).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const reps = useMemo(() => (end ? 0 : repetitions(chessRef.current)), [fen, end])
+  // Retour sur le premier coup : le verdict au premier coup, puis un rappel plus sobre tant que la
+  // partie continue (plus d'« Annuler pour réessayer » une fois l'attaque engagée).
+  const keyFig = props.keyMove ? figurine(props.keyMove.san, player) : ''
+  const playerMovesSoFar = history.filter((m) => m.color === player).length
+  const keyLine =
+    keyResult === 'checking' ? 'Je vérifie ton coup…'
+    : keyResult === 'found' || keyResult === 'close'
+      ? playerMovesSoFar <= 1
+        ? (keyResult === 'found' ? "C'est le coup du bilan : mène l'attaque !" : `Ça tient aussi (au bilan : ${keyFig}). Mène l'attaque !`)
+        : "Mène l'attaque jusqu'au bout."
+    : keyResult === 'missed' || keyResult === 'other'
+      ? playerMovesSoFar <= 1 && keyResult === 'missed' ? `Au bilan : ${keyFig}. Annuler pour réessayer.` : `Au bilan : ${keyFig}. La partie continue.`
+    : null
   const subline =
     notice ??
     (reps === 2 ? 'Position déjà vue 2 fois : une fois de plus et c\'est nulle.' : null) ??
-    (objective ? goalHint : `Tu joues les ${player === 'w' ? 'Blancs' : 'Noirs'}, sans limite de coups.`) ??
-    null
+    keyLine ??
+    goalHint ??
+    (objective ? null : `Tu joues les ${player === 'w' ? 'Blancs' : 'Noirs'}, sans limite de coups.`)
+  const sublineClass =
+    end ? ''
+    : notice || reps === 2 || keyResult === 'missed' ? 'text-amber-300'
+    : keyResult === 'found' || keyResult === 'close' ? 'text-accent'
+    : 'text-neutral-400'
   const viewFen = live ? fen : history[viewIndex].after
   const lastMove = live ? history[history.length - 1] : history[viewIndex]
   const boardEndKind = end && end.kind !== 'resign' && end.kind !== 'agreed'
@@ -342,7 +449,7 @@ export function PositionGame(props: PositionGameProps) {
                 ? <>{verdict === 'success' ? '✓ ' : verdict === 'fail' ? '✗ ' : ''}{text.title}</>
                 : objective === 'win' ? 'Objectif : gagner'
                 : objective === 'draw' ? 'Objectif : tenir la nulle'
-                : 'Partie libre'}
+                : (props.objectiveLabel ?? 'Partie libre')}
             </p>
             {lesson && (
               <button
@@ -354,7 +461,7 @@ export function PositionGame(props: PositionGameProps) {
               </button>
             )}
           </div>
-          <p className={`truncate text-xs ${end ? '' : notice || reps === 2 ? 'text-amber-300' : 'text-neutral-400'}`}>
+          <p data-testid="objective-subline" className={`truncate text-xs ${sublineClass}`}>
             {text ? <>{text.reason}{assisted && ' (avec aide)'}</> : (subline ?? ' ')}
           </p>
         </div>
@@ -385,9 +492,11 @@ export function PositionGame(props: PositionGameProps) {
               onMove={handleMove}
               lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
               arrows={hint && live ? [hint] : []}
+              showAttackers={props.showAttackers}
             />
           </div>
         </div>
+        {props.showAttackers && <AttackLegend fen={viewFen} className="px-3 pt-1" compact />}
         <div className="min-h-10">
           <MoveStrip
             sans={history.map((m) => m.san)}
@@ -421,7 +530,7 @@ export function PositionGame(props: PositionGameProps) {
             {onOther && <Action label="Rejouer" icon="↺" onClick={restart} />}
             <div className="flex-1" />
             {onOther ? (
-              <Cta className="mr-1 px-5 py-2 text-base" onClick={onOther}>Autre finale</Cta>
+              <Cta className="mr-1 px-5 py-2 text-base" onClick={onOther}>{props.otherLabel ?? 'Autre finale'}</Cta>
             ) : (
               <Cta className="mr-1 px-5 py-2 text-base" onClick={restart}>Rejouer</Cta>
             )}

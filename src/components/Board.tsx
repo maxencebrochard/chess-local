@@ -3,6 +3,8 @@ import { Chess, type Square } from 'chess.js'
 import { Chessboard } from 'react-chessboard'
 import { useSettings, currentTheme } from '../store/settings'
 import { ClassIcon } from './ClassIcon'
+import { ATTACK_RED } from './AttackLegend'
+import { attackCounts } from '../lib/kingAttack'
 import type { MoveClass } from '../lib/review'
 
 export interface BoardArrow {
@@ -25,9 +27,12 @@ interface BoardProps {
   badge?: { square: string; cls: MoveClass } | null
   // Teintes de cases supplémentaires (ex : case du coup fautif en rouge).
   markSquares?: Record<string, string>
+  // Calque « Compte les attaquants » : cadre sur la zone de chaque roi, rouge quand les attaquants
+  // dépassent les défenseurs. Les comptes s'affichent sous l'échiquier (AttackLegend).
+  showAttackers?: boolean
 }
 
-export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares }: BoardProps) {
+export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares, showAttackers }: BoardProps) {
   const { themeId, showLegalMoves } = useSettings()
   const theme = currentTheme(themeId)
   const [selected, setSelected] = useState<Square | null>(null)
@@ -38,6 +43,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   const boardId = `chessboard-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
 
   const chess = useMemo(() => new Chess(fen), [fen])
+  const zones = useMemo(() => (showAttackers ? attackCounts(fen) : null), [fen, showAttackers])
 
   const legalTargets = useMemo(() => {
     if (!selected) return new Set<string>()
@@ -163,6 +169,26 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
           boardStyle: { borderRadius: 4, overflow: 'hidden' },
         }}
       />
+      {zones &&
+        (['w', 'b'] as const).map((side) => {
+          const z = zones[side]
+          const over = z.attackers.length > z.defenders.length
+          return (
+            <div
+              key={side}
+              data-testid="king-zone"
+              data-side={side}
+              data-over={over ? '1' : '0'}
+              aria-hidden="true"
+              className="pointer-events-none absolute z-[5] rounded-md border-2"
+              style={{
+                ...zoneRect(z.zone, orientation),
+                borderColor: over ? ATTACK_RED : 'rgba(255,255,255,0.55)',
+                backgroundColor: over ? 'rgba(255,119,105,0.14)' : 'transparent',
+              }}
+            />
+          )
+        })}
       {badge && badge.square.length === 2 && (
         <div
           className="pointer-events-none absolute z-10"
@@ -197,6 +223,25 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
 const PROMO_GLYPHS: Record<'w' | 'b', Record<string, string>> = {
   w: { q: '♕', r: '♖', b: '♗', n: '♘' },
   b: { q: '♛', r: '♜', b: '♝', n: '♞' },
+}
+
+// Rectangle couvrant les cases de la zone (toujours un bloc 3x3), en % de l'échiquier, selon
+// l'orientation. Le cadre suit le bord des cases ; la teinte légère du surnombre laisse les pièces lisibles.
+function zoneRect(zone: string[], orientation: 'w' | 'b'): React.CSSProperties {
+  const files = zone.map((s) => s.charCodeAt(0) - 97)
+  const ranks = zone.map((s) => +s[1] - 1)
+  const fMin = Math.min(...files)
+  const fMax = Math.max(...files)
+  const rMin = Math.min(...ranks)
+  const rMax = Math.max(...ranks)
+  const left = orientation === 'w' ? fMin : 7 - fMax
+  const top = orientation === 'w' ? 7 - rMax : rMin
+  return {
+    left: `${left * 12.5}%`,
+    top: `${top * 12.5}%`,
+    width: `${(fMax - fMin + 1) * 12.5}%`,
+    height: `${(rMax - rMin + 1) * 12.5}%`,
+  }
 }
 
 // Coin haut-droit de la case, en % de l'échiquier, selon l'orientation.

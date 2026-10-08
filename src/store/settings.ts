@@ -35,6 +35,10 @@ interface SettingsState {
   setTheme: (id: string) => void
   showLegalMoves: boolean
   setShowLegalMoves: (v: boolean) => void
+  // Calque « Compte les attaquants » : zone de chaque roi et compte attaquants / défenseurs,
+  // dans l'Analyse et les parties contre le moteur.
+  showAttackers: boolean
+  setShowAttackers: (v: boolean) => void
   playSounds: boolean
   setPlaySounds: (v: boolean) => void
   chesscomUsername: string
@@ -55,6 +59,8 @@ export const useSettings = create<SettingsState>()(
       setTheme: (themeId) => set({ themeId }),
       showLegalMoves: true,
       setShowLegalMoves: (showLegalMoves) => set({ showLegalMoves }),
+      showAttackers: false,
+      setShowAttackers: (showAttackers) => set({ showAttackers }),
       playSounds: true,
       setPlaySounds: (playSounds) => set({ playSounds }),
       chesscomUsername: '',

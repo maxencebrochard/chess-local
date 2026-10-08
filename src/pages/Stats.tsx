@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { db, DEFAULT_RATING, type PuzzleAttempt, type Rating, type SavedGame } from '../lib/db'
 import {
   MAX_BACKUP_BYTES,
@@ -22,6 +23,8 @@ import {
   type SaveOutcome,
 } from '../lib/backup'
 import { ConfirmSheet } from '../components/ConfirmSheet'
+import { Toggle } from '../components/Toggle'
+import { attackSummary, loadAttackDiagnostic, type AttackDiagnostic } from '../lib/kingAttack'
 import { BOARD_THEMES, useSettings } from '../store/settings'
 
 // Chaque message a son id : le <p role="alert"> est remonté à chaque nouveau message, donc un
@@ -99,6 +102,7 @@ export default function Stats() {
   const [retry, setRetry] = useState<Retry | null>(null)
   const [protectedState, setProtectedState] = useState<boolean | null>(null)
   const [lastExport, setLastExport] = useState<LastExport | null>(null)
+  const [attacks, setAttacks] = useState<AttackDiagnostic | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const settings = useSettings()
 
@@ -108,6 +112,7 @@ export default function Stats() {
     void db.ratings.toArray().then(setRatings)
     void db.games.toArray().then(setGames)
     void db.puzzleAttempts.toArray().then(setAttempts)
+    void loadAttackDiagnostic().then(setAttacks)
   }, [])
 
   useEffect(() => {
@@ -270,6 +275,15 @@ export default function Stats() {
         </div>
       </div>
 
+      {/* Attaques sur le roi manquées, lues dans les fautes des bilans (calcul sur l'échiquier). */}
+      <div data-testid="attack-stats" className="mb-6 rounded-lg bg-surface-2 p-4">
+        <h2 className="mb-2 font-semibold">🎯 Attaques manquées</h2>
+        <p className="text-sm text-neutral-300">{attacks ? attackSummary(attacks) : '…'}</p>
+        <Link to="/attaques-manquees" className="mt-2 inline-block text-sm font-semibold text-accent hover:underline">
+          Voir et rejouer ›
+        </Link>
+      </div>
+
       <h2 className="mb-3 text-lg font-bold">Réglages</h2>
       <div className="mb-6 space-y-3 rounded-lg bg-surface-2 p-4">
         <div>
@@ -292,6 +306,7 @@ export default function Stats() {
         </div>
         <Toggle label="Afficher les coups légaux" value={settings.showLegalMoves} onChange={settings.setShowLegalMoves} />
         <Toggle label="Sons" value={settings.playSounds} onChange={settings.setPlaySounds} />
+        <Toggle label="⚔ Compter les attaquants autour des rois" value={settings.showAttackers} onChange={settings.setShowAttackers} testId="toggle-attackers" />
         <div>
           <p className="mb-2 text-sm font-semibold text-neutral-300">Profondeur du bilan de partie</p>
           <div className="flex gap-2">
@@ -463,20 +478,6 @@ export default function Stats() {
           </p>
         </ConfirmSheet>
       )}
-    </div>
-  )
-}
-
-function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-neutral-300">{label}</span>
-      <button
-        onClick={() => onChange(!value)}
-        className={`h-6 w-11 cursor-pointer rounded-full p-0.5 transition ${value ? 'bg-accent' : 'bg-surface-3'}`}
-      >
-        <div className={`h-5 w-5 rounded-full bg-white transition ${value ? 'translate-x-5' : ''}`} />
-      </button>
     </div>
   )
 }

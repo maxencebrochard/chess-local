@@ -118,11 +118,12 @@ SEED = {
 # Profil de départ : TOUS les réglages loin de leur défaut, Jouer compris (mode, couleur, bot,
 # cadence). Une restauration, un export, une annulation ou une réinitialisation annulée qui en
 # perdrait un seul fait échouer les égalités strictes ci-dessous.
-SEED_SETTINGS = {"themeId": "purple", "showLegalMoves": False, "playSounds": False, "chesscomUsername": "moi", "reviewDepth": "deep",
+SEED_SETTINGS = {"themeId": "purple", "showLegalMoves": False, "showAttackers": True, "playSounds": False, "chesscomUsername": "moi", "reviewDepth": "deep",
                  "playMode": "coach", "playBotId": "viktor", "playColor": "b", "playTcLabel": "3 | 2"}
-# Défauts des réglages de Jouer : un fichier qui ne les contient pas (sauvegarde antérieure à
-# leur ajout, PR #12) ou qui porte une valeur hors liste blanche les ramène là.
-PLAY_DEFAULTS = {k: DEFAULT_SETTINGS[k] for k in ("playMode", "playBotId", "playColor", "playTcLabel")}
+# Défauts des réglages de Jouer et du calque « Compte les attaquants » : un fichier qui ne les
+# contient pas (sauvegarde antérieure à leur ajout, PR #12 puis F12) ou qui porte une valeur hors
+# liste blanche les ramène là.
+PLAY_DEFAULTS = {k: DEFAULT_SETTINGS[k] for k in ("playMode", "playBotId", "playColor", "playTcLabel", "showAttackers")}
 
 
 def same_settings(st, expected):
@@ -639,7 +640,7 @@ def part_prod_format(p, browser, tmp):
         check("[prod v2] thème Océan sélectionné sans rechargement", "border-accent" in (page.locator("button[title='Océan']").get_attribute("class") or ""))
 
         # Fichier v2 qui CONTIENT des réglages de Jouer valides : ils sont appliqués tels quels.
-        play_st = {"themeId": "brown", "showLegalMoves": False, "playSounds": False, "chesscomUsername": "magnus", "reviewDepth": "deep",
+        play_st = {"themeId": "brown", "showLegalMoves": False, "showAttackers": True, "playSounds": False, "chesscomUsername": "magnus", "reviewDepth": "deep",
                    "playMode": "local", "playBotId": "maximus", "playColor": "random", "playTcLabel": "Illimité"}
         with_play = backup_dict(games=[game(6, "0-1")], settings=json.dumps({"state": play_st, "version": 0}))
         choose_file(page, write_file(tmp, "v2_avec_jouer.json", with_play))
