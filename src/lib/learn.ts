@@ -4,6 +4,7 @@ import { db, eloUpdate, getRating, type Mistake } from './db'
 import { loadPuzzles } from './puzzles'
 import { buildDrillLines, type DrillLine } from './repertoire'
 import { TACTIC_THEMES } from './themes'
+import { puzzleThemeLabel } from './puzzleThemes'
 import type { PuzzleData } from '../components/PuzzlePlayer'
 import endgamesData from '../data/endgames.json'
 import strategyData from '../data/strategy.json'
@@ -54,6 +55,9 @@ export type SessionItem =
 export interface Session {
   domain: LearnDomain
   items: SessionItem[]
+  // Séance Tactiques ciblée sur un thème lichess (plan d'entraînement d'Insights) : « Encore une
+  // séance » rejoue le même thème.
+  theme?: string
 }
 
 // Items à portée d'Elo. À défaut, les plus proches (50, ou 3 pour un petit vivier comme les
@@ -101,8 +105,10 @@ export async function domainRating(domain: LearnDomain): Promise<number | null> 
   return (await getRating(key)).value
 }
 
-// Construit une séance de 1 à 3 items pour un domaine.
-export async function buildSession(domain: LearnDomain): Promise<Session> {
+// Construit une séance de 1 à 3 items pour un domaine. `theme` (domaine tactic seulement) cible
+// un thème lichess précis, même hors de TACTIC_THEMES (kingsideAttack, middlegame...) ; sans
+// puzzle portant ce thème, la séance pioche dans tous les puzzles.
+export async function buildSession(domain: LearnDomain, opts: { theme?: string } = {}): Promise<Session> {
   const elo = (await domainRating(domain)) ?? 800
 
   if (domain === 'endgame') {
@@ -111,10 +117,10 @@ export async function buildSession(domain: LearnDomain): Promise<Session> {
   }
 
   if (domain === 'tactic') {
-    const theme = pick(TACTIC_THEMES)
+    const theme = opts.theme ? { tag: opts.theme, label: puzzleThemeLabel(opts.theme) } : pick(TACTIC_THEMES)
     const all = await loadPuzzles()
     const themed = all.filter((p) => p.themes.includes(theme.tag))
-    const pool = near(themed, (p) => p.rating, elo, 150)
+    const pool = near(themed.length ? themed : all, (p) => p.rating, elo, 150)
     const items: SessionItem[] = []
     const used = new Set<string>()
     for (let i = 0; i < 3 && pool.length > used.size; i++) {
@@ -124,7 +130,7 @@ export async function buildSession(domain: LearnDomain): Promise<Session> {
       used.add(puzzle.id)
       items.push({ kind: 'tactic', theme: theme.tag, themeLabel: theme.label, puzzle, difficulty: puzzle.rating })
     }
-    return { domain, items }
+    return opts.theme ? { domain, items, theme: opts.theme } : { domain, items }
   }
 
   if (domain === 'strategy') {

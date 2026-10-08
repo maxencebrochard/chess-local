@@ -6,6 +6,7 @@ import openingsData from '../data/openings.json'
 import { db } from './db'
 import type { EngineLine } from './engine'
 import { openingFamilyFr, openingFr } from './openingNames'
+import { BY_NAME, familyKey } from './openingFamilies'
 
 export interface OpeningLine {
   eco: string
@@ -41,12 +42,6 @@ export interface Family {
 
 const ALL = openingsData as OpeningLine[]
 
-// Les lignes « London System » sont rangées par lichess sous plusieurs familles
-// (Queen's Pawn Game, Indian Defense...) : la famille Londres les regroupe par le nom.
-const BY_NAME: Record<string, (name: string) => boolean> = {
-  'London System': (n) => n.includes('London System'),
-}
-
 // Ordre d'affichage des « plus courantes ».
 export const POPULAR_KEYS = [
   'Sicilian Defense', 'French Defense', 'Caro-Kann Defense', 'Scandinavian Defense', 'Ruy Lopez',
@@ -54,12 +49,6 @@ export const POPULAR_KEYS = [
   'Nimzo-Indian Defense', 'London System', 'English Opening', "Petrov's Defense", 'Pirc Defense',
   'Alekhine Defense', 'Vienna Game', "King's Gambit", 'Grünfeld Defense', 'Dutch Defense', 'Catalan Opening',
 ]
-
-// Famille d'un nom lichess : avant « : » et « , », suffixes Accepted/Declined retirés
-// (« Queen's Gambit Declined » rejoint « Queen's Gambit »).
-export function familyKey(name: string): string {
-  return name.split(':')[0].split(',')[0].trim().replace(/ (Accepted|Declined)$/, '')
-}
 
 export function normalize(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()

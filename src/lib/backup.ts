@@ -5,6 +5,7 @@
 import { db } from './db'
 import { POSITION_GAME_KEY } from './positionGame'
 import { ATTACK_PREFS_KEY } from './attack'
+import { INSIGHTS_KEY } from './insightsStore'
 import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, useSettings } from '../store/settings'
 import { BOTS } from './bots'
 import { TIME_CONTROLS } from './timeControls'
@@ -17,13 +18,13 @@ const MAX_SETTING_STRING = 100 // un pseudo chess.com fait moins de 30 caractèr
 // Clé additive, hors sauvegarde et hors réglages : date du dernier export réussi.
 const LAST_EXPORT_KEY = 'chess-local-last-export'
 // Clés de l'app dans localStorage (le persist Zustand, la date du dernier export, la partie contre
-// le moteur en cours, le niveau du défenseur de l'entraîneur d'attaque) et clés des séances
-// d'Apprendre et de révision dans sessionStorage : les seules que la réinitialisation a le droit
-// de toucher.
-const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY]
+// le moteur en cours, le niveau du défenseur de l'entraîneur d'attaque, la configuration et le
+// dernier rapport d'Insights) et clés des séances d'Apprendre et de révision dans sessionStorage :
+// les seules que la réinitialisation a le droit de toucher.
+const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, INSIGHTS_KEY]
 const SESSION_KEYS = ['learn-session-v1', 'revision-session-v1']
 
-export const TABLES = ['games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions'] as const
+export const TABLES = ['games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions', 'reviews'] as const
 export type TableName = (typeof TABLES)[number]
 export type Counts = Record<TableName, number>
 type Row = Record<string, unknown>
@@ -71,6 +72,13 @@ const SPECS: Record<TableName, TableSpec> = {
     fem: true,
     valid: (r) => isStr(r.domain) && isStr(r.itemId),
   },
+  reviews: {
+    since: 3,
+    pk: 'key',
+    labels: ['analyse Insights', 'analyses Insights'],
+    fem: true,
+    valid: (r) => isStr(r.key) && r.key !== '' && isStr(r.pgn) && isPlain(r.review),
+  },
 }
 
 export function countLabel(t: TableName, n: number): string {
@@ -106,7 +114,7 @@ export async function currentCounts(): Promise<Counts> {
 
 // ---------- Export ----------
 
-// Lecture des six tables dans UNE transaction : l'instantané est cohérent même si une écriture
+// Lecture de toutes les tables dans UNE transaction : l'instantané est cohérent même si une écriture
 // (fin de partie, puzzle, restauration) arrive pendant l'export. Les comptes viennent des
 // tableaux lus : aucune requête de plus avant la feuille de partage.
 export async function exportBackup(): Promise<{ json: string; counts: Counts }> {

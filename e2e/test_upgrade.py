@@ -23,7 +23,7 @@ Preuve que la suite attrape une perte (elle DOIT alors être rouge), avec une co
 nouveau build à la place de E2E_DIST :
   E2E_MUTATION=rename-db       npm run test:e2e -- --suite upgrade   # la base Dexie est renommée
   E2E_MUTATION=clear-ratings   npm run test:e2e -- --suite upgrade   # `ratings` vidée à chaque ouverture
-  E2E_MUTATION=drop-table      npm run test:e2e -- --suite upgrade   # version(3) qui supprime `learnSessions`
+  E2E_MUTATION=drop-table      npm run test:e2e -- --suite upgrade   # version(4) qui supprime `learnSessions`
   E2E_MUTATION=clear-settings  npm run test:e2e -- --suite upgrade   # réglages effacés au démarrage
 
 Usage : npm run test:e2e -- --suite upgrade   (prod uniquement : il faut E2E_DIST)
@@ -59,6 +59,9 @@ OLD_BUILDS = (
 DB_NAME = "chess-local"
 SETTINGS_KEY = "chess-local-settings"
 TABLES = ("games", "ratings", "puzzleAttempts", "rushScores", "mistakes", "learnSessions")
+# Table ajoutée par le build courant (version(3), cache d'Insights) : absente de l'ancien build,
+# elle doit exister, vide, après la montée de version, et figurer dans l'export du nouveau build.
+NEW_TABLES = ("reviews",)
 DEFAULT_RATING = 800
 # Partie courte avec une gaffe nette (3... Cf6?? laisse le mat du berger) : le bilan en fait une
 # ligne de `mistakes` sans attendre le bilan d'une partie de 40 coups.
@@ -76,8 +79,10 @@ MUTATIONS = {
     "rename-db": (r"new (\w+)\(`chess-local`\)", r"new \1(`chess-local-v3`)"),
     # Une version qui vide `ratings` à chaque ouverture, dans le hook ready de Dexie (avant toute lecture).
     "clear-ratings": (r"(\w+)=new (\w+)\(`chess-local`\);", r"\1=new \2(`chess-local`);\1.on(`ready`,()=>\1.table(`ratings`).clear());"),
-    # Un bloc version(3) qui supprime une table (`null` dans Dexie) : la régression contre laquelle CLAUDE.md met en garde.
-    "drop-table": (r"(\w+)=new (\w+)\(`chess-local`\);", r"\1=new \2(`chess-local`);\1.version(3).stores({learnSessions:null});"),
+    # Un bloc version(n) qui supprime une table (`null` dans Dexie) : la régression contre laquelle CLAUDE.md met en garde.
+    # Version 4 : le build courant déclare déjà version(3) (table `reviews`), et Dexie fusionnerait
+    # deux blocs de même numéro au lieu d'appliquer la suppression.
+    "drop-table": (r"(\w+)=new (\w+)\(`chess-local`\);", r"\1=new \2(`chess-local`);\1.version(4).stores({learnSessions:null});"),
     # Une version qui efface les réglages au démarrage.
     "clear-settings": (r"\A", "localStorage.removeItem(`chess-local-settings`);"),
 }
@@ -968,6 +973,9 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
         exported = phase("export après", export_backup, "[nouveau]", page, base, os.path.join(work, "sauvegarde-nouveau-build.json"))
         if exported:
             compare_backup("[nouveau]", before, exported)
+            for t in NEW_TABLES:
+                check(f"[nouveau] export : nouvelle table {t} présente et vide", exported.get(t) == [], f"({type(exported.get(t)).__name__})")
+            check("[nouveau] export au format v3", exported.get("_version") == 3, f"({exported.get('_version')})")
         ctx.close()
         log(f"montée de version : {time.time() - t_up:.0f} s")
 

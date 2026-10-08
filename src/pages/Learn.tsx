@@ -37,7 +37,8 @@ interface StoredSession {
   phase: ItemPhase
   results: boolean[]
   scoredItems: number[]
-  returnTo?: string // leçon du cours de finales à rouvrir en fin de séance
+  returnTo?: string // page à rouvrir en fin de séance : leçon du cours de finales, Insights
+  returnLabel?: string
 }
 
 export default function Learn() {
@@ -56,6 +57,7 @@ export default function Learn() {
   const [retryTick, setRetryTick] = useState(0)
   const [showCourse, setShowCourse] = useState(false)
   const [returnTo, setReturnTo] = useState<string | null>(null)
+  const [returnLabel, setReturnLabel] = useState('Retour au cours')
   const [lessonsDone, setLessonsDone] = useState<Record<string, number>>({})
   const [review, setReview] = useState<ReviewQueue | null>(null)
   const scoredItems = useRef(new Set<number>())
@@ -95,9 +97,14 @@ export default function Learn() {
 
   // Retour depuis l'analyseur (bouton « Analyser ») : restaure la séance en cours.
   // Venue d'une leçon (« S'entraîner ») : séance sur l'exercice demandé, avec retour au cours.
+  // Venue d'Insights (plan d'entraînement) : séance Tactiques sur le thème demandé, avec retour.
   useEffect(() => {
-    const state = location.state as { restore?: boolean; endgame?: string; returnTo?: string } | null
-    if (state?.endgame) {
+    const state = location.state as { restore?: boolean; endgame?: string; tactic?: string; returnTo?: string; returnLabel?: string } | null
+    if (state?.tactic) {
+      const { tactic, returnTo: back, returnLabel: label } = state
+      navigate('.', { replace: true, state: null })
+      void start('tactic', tactic, back ?? null, label)
+    } else if (state?.endgame) {
       const s = buildEndgameSession(state.endgame)
       if (s) {
         setSession(s)
@@ -107,6 +114,7 @@ export default function Learn() {
         scoredItems.current.clear()
         setPhase('lesson')
         setReturnTo(state.returnTo ?? null)
+        setReturnLabel(state.returnLabel ?? 'Retour au cours')
       }
       navigate('.', { replace: true, state: null })
     } else if (state?.restore) {
@@ -120,6 +128,7 @@ export default function Learn() {
           setResults(saved.results)
           scoredItems.current = new Set(saved.scoredItems)
           setReturnTo(saved.returnTo ?? null)
+          setReturnLabel(saved.returnLabel ?? 'Retour au cours')
         } catch {}
       }
       navigate('.', { replace: true, state: null })
@@ -130,23 +139,25 @@ export default function Learn() {
   // Persiste la séance active pour pouvoir la restaurer après un aller-retour vers l'analyseur.
   useEffect(() => {
     if (session && session.items.length > 0) {
-      const stored: StoredSession = { session, itemIdx, phase, results, scoredItems: [...scoredItems.current], returnTo: returnTo ?? undefined }
+      const stored: StoredSession = { session, itemIdx, phase, results, scoredItems: [...scoredItems.current], returnTo: returnTo ?? undefined, returnLabel }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
     } else {
       sessionStorage.removeItem(SESSION_KEY)
     }
-  }, [session, itemIdx, phase, results, returnTo])
+  }, [session, itemIdx, phase, results, returnTo, returnLabel])
 
   function getEngine(): Engine {
     engineRef.current ??= new Engine()
     return engineRef.current
   }
 
-  async function start(domain?: LearnDomain) {
+  // `theme` : séance Tactiques ciblée ; `back`/`label` : page de retour de fin de séance (Insights),
+  // gardée par « Encore une séance » sur le même thème.
+  async function start(domain?: LearnDomain, theme?: string, back: string | null = null, label = 'Retour au cours') {
     setLoading(true)
     try {
       const d = domain ?? (await pickNextDomain())
-      const s = await buildSession(d)
+      const s = await buildSession(d, { theme })
       if (s.items.length === 0) return
       setSession(s)
       setItemIdx(0)
@@ -154,7 +165,11 @@ export default function Learn() {
       setRatingDelta(null)
       scoredItems.current.clear()
       setPhase('lesson')
-      setReturnTo(null)
+      setReturnTo(back)
+      setReturnLabel(label)
+    } catch (e) {
+      // Puzzles injoignables (hors ligne avant le précache) : le bouton redevient actif.
+      console.error('[apprendre] séance non construite', e)
     } finally {
       setLoading(false)
     }
@@ -261,10 +276,14 @@ export default function Learn() {
           </p>
           {returnTo && (
             <Cta className="w-full" onClick={closeSession}>
-              Retour au cours
+              {returnLabel}
             </Cta>
           )}
-          <Cta variant={returnTo ? 'secondary' : 'primary'} className="w-full" onClick={() => void start()}>
+          <Cta
+            variant={returnTo ? 'secondary' : 'primary'}
+            className="w-full"
+            onClick={() => void (session.theme ? start('tactic', session.theme, returnTo, returnLabel) : start())}
+          >
             Encore une séance
           </Cta>
           {!returnTo && (

@@ -26,7 +26,11 @@ from helpers import BASE, DEFAULT_SETTINGS, SHOTS, Checker, mobile_context
 ck = Checker("backup")
 check = ck.check
 
-TABLES = ["games", "ratings", "puzzleAttempts", "rushScores", "mistakes", "learnSessions"]
+TABLES = ["games", "ratings", "puzzleAttempts", "rushScores", "mistakes", "learnSessions", "reviews"]
+# Tables d'un fichier v2 (export du build de prod avant Insights) : `reviews` arrive en v3.
+TABLES_V2 = TABLES[:6]
+STORES = len(TABLES)
+INSIGHTS_KEY = "chess-local-insights-v1"
 SETTINGS_KEY = "chess-local-settings"
 LAST_EXPORT_KEY = "chess-local-last-export"
 FILE_INPUT = "input[type=file]"
@@ -114,6 +118,15 @@ SEED = {
         {"id": 1, "date": 1758000900000, "domain": "tactic", "itemId": "00sHx", "success": 1, "ratingAfter": 845},
         {"id": 2, "date": 1758001000000, "domain": "endgame", "itemId": "kq-vs-k", "success": 0, "ratingAfter": None},
     ],
+    # Bilan mis en cache par Insights (v3), à l'image de ce que l'app écrit.
+    "reviews": [
+        {"key": "local:1", "source": "local", "username": None, "date": 1758003600000, "timeClass": "rapid", "timeControl": "10+0",
+         "playerColor": "w", "playerRating": 801, "opponent": "Noa", "opponentRating": 600, "result": "win", "termination": "mat",
+         "lostOnTime": False, "pgn": PGN, "depth": 12,
+         "review": {"moves": [{"san": "e4", "uci": "e2e4", "class": "book", "evalAfterCp": 30, "mateAfter": None, "bestMoveUci": "e2e4", "winPctBefore": 52.0, "winPctAfter": 52.7}],
+                    "startFen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "startTurn": "w", "accuracyWhite": 100, "accuracyBlack": 100,
+                    "counts": {"w": {"book": 1}, "b": {}}, "gameRatingWhite": 2800, "gameRatingBlack": 2800, "winPctSeries": [52.0, 52.7]}},
+    ],
 }
 # Profil de départ : TOUS les réglages loin de leur défaut, Jouer compris (mode, couleur, bot,
 # cadence). Une restauration, un export, une annulation ou une réinitialisation annulée qui en
@@ -139,7 +152,7 @@ OPEN_DB = """
   const r = indexedDB.open('chess-local')
   r.onsuccess = () => {
     const db = r.result
-    if (db.objectStoreNames.length !== 6) { db.close(); rej(new Error('schéma absent : ' + db.objectStoreNames.length + ' stores')); return }
+    if (db.objectStoreNames.length !== 7) { db.close(); rej(new Error('schéma absent : ' + db.objectStoreNames.length + ' stores')); return }
     res(db)
   }
   r.onerror = () => rej(r.error)
@@ -148,7 +161,7 @@ OPEN_DB = """
 
 
 def wait_schema(page, tries=40):
-    """L'app (Dexie) crée la base au premier accès : on attend qu'elle ait ses 6 stores avant de
+    """L'app (Dexie) crée la base au premier accès : on attend qu'elle ait ses 7 stores avant de
     la toucher nativement (un open() natif sur une base absente en créerait une vide)."""
     for _ in range(tries):
         n = page.evaluate(
@@ -161,7 +174,7 @@ def wait_schema(page, tries=40):
               })
             })"""
         )
-        if n == 6:
+        if n == STORES:
             return True
         page.wait_for_timeout(250)
     return False
@@ -215,7 +228,7 @@ def counts(snap):
 def open_stats(page):
     page.goto(f"{BASE}/#/stats")
     ok = ck.appears("[stats] page chargée", page, "main :text('Statistiques')", timeout=15000)
-    return ok and check("[stats] base prête (6 stores)", wait_schema(page))
+    return ok and check(f"[stats] base prête ({STORES} stores)", wait_schema(page))
 
 
 FRESH_MSG = f"{MSG}:not([data-stale])"
@@ -255,9 +268,13 @@ def write_file(tmp, name, content):
     return path
 
 
-def backup_dict(version=2, settings=None, **tables):
+def backup_dict(version=3, settings=None, **tables):
+    """Fichier de sauvegarde au format `version`. Sans mention explicite, `reviews` (v3) est absente
+    d'un fichier plus ancien, comme dans un vrai export de ces versions."""
     d = {"_app": "chess-local", "_version": version, "_date": "2026-09-18T10:00:00.000Z"}
     for t in TABLES:
+        if t == "reviews" and version < 3 and t not in tables:
+            continue
         if t in tables:
             if tables[t] is not None:
                 d[t] = tables[t]
@@ -313,8 +330,8 @@ def part_roundtrip(p, browser, tmp):
     check("[export] Stats affiche la date du dernier export", "jamais" not in page.locator("[data-testid=last-export]").inner_text().lower())
     with open(path, encoding="utf-8") as f:
         exported = json.load(f)
-    check("[export] format prod : _app, _version 2, 6 tables, settings en chaîne",
-          exported.get("_app") == "chess-local" and exported.get("_version") == 2 and all(isinstance(exported.get(t), list) for t in TABLES) and isinstance(exported.get("settings"), str))
+    check("[export] format prod : _app, _version 3, 7 tables, settings en chaîne",
+          exported.get("_app") == "chess-local" and exported.get("_version") == 3 and all(isinstance(exported.get(t), list) for t in TABLES) and isinstance(exported.get("settings"), str))
     try:
         exported_st = json.loads(exported.get("settings") or "null")["state"]
     except (TypeError, KeyError, ValueError):
@@ -463,14 +480,14 @@ def part_old_v1(p, browser, tmp):
     choose_file(page, path)
     if ck.appears("[v1] feuille ouverte", page, "[data-testid=restore-sheet]"):
         body = page.locator("[data-testid=restore-sheet]").inner_text().lower()
-        check("[v1] la feuille annonce les tables vidées", "vidées" in body and "erreurs" in body and "séances" in body, f"({body[:300]!r})")
+        check("[v1] la feuille annonce les tables vidées", "vidées" in body and "erreurs" in body and "séances" in body and "analyses insights" in body, f"({body[:300]!r})")
         check("[v1] la feuille dit que les réglages sont conservés", "réglages" in body and "conservés" in body, f"({body[:300]!r})")
         page.screenshot(path=f"{SHOTS}/backup_restore_v1_sheet.png")
         page.click("[data-testid=restore-confirm]")
     text, kind = message(page, timeout=20000)
     check("[v1] succès annoncé avec les tables vidées", kind == "success" and text.startswith("Sauvegarde restaurée") and "vidées" in text.lower(), f"({text!r})")
     after = snapshot(page)
-    check("[v1] mistakes et learnSessions vidées", after["mistakes"] == [] and after["learnSessions"] == [])
+    check("[v1] mistakes, learnSessions et reviews vidées", after["mistakes"] == [] and after["learnSessions"] == [] and after["reviews"] == [] and len(before["reviews"]) == 1)
     check("[v1] les autres tables = le fichier", after["games"] == v1["games"] and after["ratings"] == v1["ratings"] and after["puzzleAttempts"] == [] and after["rushScores"] == [])
     check("[v1] réglages conservés (fichier sans réglages)", settings_state(page) == SEED_SETTINGS)
     check("[v1] la base a bien changé (le test peut échouer)", after != before)
@@ -584,6 +601,7 @@ def part_reset(p, browser):
     ctx, page = seeded_context(p, browser, settings_by_app=True)
     before = snapshot(page)
     check("[reset] réglages purple/deep en place avant", settings_state(page) == SEED_SETTINGS, f"({settings_state(page)})")
+    page.evaluate(f"() => localStorage.setItem('{INSIGHTS_KEY}', JSON.stringify({{ config: {{ timeClass: 'blitz', count: 10, sources: ['local'] }}, lastRun: null }}))")
     page.click("[data-testid=reset-btn]")
     if ck.appears("[reset] première confirmation", page, "[data-testid=reset-sheet]"):
         body = page.locator("[data-testid=reset-sheet]").inner_text()
@@ -609,6 +627,7 @@ def part_reset(p, browser):
     st = settings_state(page)
     check("[reset] réglages effacés (défauts du contexte, Jouer compris)", st == DEFAULT_SETTINGS, f"({st})")
     check("[reset] date du dernier export effacée", last_export(page) is None)
+    check("[reset] configuration d'Insights effacée", page.evaluate(f"() => localStorage.getItem('{INSIGHTS_KEY}')") is None)
     if ok:
         page.goto(f"{BASE}/#/stats")
         ck.appears("[reset] Stats utilisable après réinitialisation", page, "main :text('Statistiques')", timeout=15000)
@@ -619,7 +638,7 @@ def part_reset(p, browser):
 def part_prod_format(p, browser, tmp):
     """Un fichier construit à l'image exacte de l'export du build de prod (_version 2, lignes telles
     que l'app les écrit, réglages en chaîne au format persist) se restaure à 100 %."""
-    prod = backup_dict(settings=json.dumps({"state": {"themeId": "blue", "showLegalMoves": True, "playSounds": True, "chesscomUsername": "hikaru", "reviewDepth": "fast"}, "version": 0}))
+    prod = backup_dict(version=2, settings=json.dumps({"state": {"themeId": "blue", "showLegalMoves": True, "playSounds": True, "chesscomUsername": "hikaru", "reviewDepth": "fast"}, "version": 0}))
     prod["_date"] = "2026-07-20T15:15:54.000Z"
     path = write_file(tmp, "export_prod_v2.json", prod)
     # Réglages de Jouer non par défaut avant chaque restauration : un retour au défaut se distingue
@@ -633,8 +652,9 @@ def part_prod_format(p, browser, tmp):
             page.click("[data-testid=restore-confirm]")
         text, kind = message(page, timeout=20000)
         check("[prod v2] restaurée", kind == "success" and text.startswith("Sauvegarde restaurée"), f"({text!r})")
+        check("[prod v2] le message annonce les analyses Insights vidées (absentes d'un fichier v2)", "Analyses Insights vidées" in text, f"({text!r})")
         after = snapshot(page)
-        check("[prod v2] 6 tables identiques au fichier", {t: after[t] for t in TABLES} == {t: prod[t] for t in TABLES}, f"({counts(after)})")
+        check("[prod v2] 6 tables identiques au fichier, reviews vide", {t: after[t] for t in TABLES_V2} == {t: prod[t] for t in TABLES_V2} and after["reviews"] == [], f"({counts(after)})")
         st = settings_state(page)
         check("[prod v2] réglages du fichier appliqués", same_settings(st, {"themeId": "blue", "showLegalMoves": True, "playSounds": True, "chesscomUsername": "hikaru", "reviewDepth": "fast"}), f"({st})")
         check("[prod v2] thème Océan sélectionné sans rechargement", "border-accent" in (page.locator("button[title='Océan']").get_attribute("class") or ""))

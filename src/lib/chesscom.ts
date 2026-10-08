@@ -121,6 +121,24 @@ export async function fetchRecentGames(username: string, months = 3, limit = 30)
   return games.sort((a, b) => b.endTime - a.endTime).slice(0, limit)
 }
 
+// Les `limit` parties les plus récentes d'une cadence (`time_class` de l'API : bullet, blitz,
+// rapid), pour Insights. Archives lues du mois le plus récent au plus ancien, `maxMonths` au plus,
+// et arrêt dès que la cadence a assez de parties : un joueur actif n'en lit qu'une ou deux. Le
+// différé et les variantes sont écartés par le filtre de cadence et par `toGame`.
+export async function fetchGamesByClass(username: string, timeClass: string, limit: number, maxMonths = 12): Promise<ChesscomGame[]> {
+  const user = normalizeUsername(username)
+  const games: ChesscomGame[] = []
+  for (const archiveUrl of await recentArchives(user, maxMonths)) {
+    for (const raw of await fetchArchive(archiveUrl)) {
+      if (raw.time_class !== timeClass) continue
+      const game = toGame(raw, user)
+      if (game) games.push(game)
+    }
+    if (games.length >= limit) break
+  }
+  return games.sort((a, b) => b.endTime - a.endTime).slice(0, limit)
+}
+
 // Lien de partie tel que l'app ou le site chess.com le partagent : /game/live/123, /game/daily/123,
 // /live/game/123, /daily/game/123, /game/123, précédé ou non de /analysis/ et d'une langue (/fr/),
 // quelle que soit la casse, suivi ou non de ?tab=review, d'une ancre ou d'une ponctuation collée.
