@@ -53,6 +53,7 @@ npm run preview
 
 Rien ne vient de chess.com.
 Pièces : jeux libres, Celtique, Fantasy et Spatial de Maurizio Monge (MIT, repris du dépôt de lichess, Celtique recoloré), Chessnut d'Alexis Luengas (Apache 2.0, repris du dépôt de l'auteur) ; détail et textes de licence dans `public/pieces/LICENSES.md`.
+Classique : pièces SVG standard de Wikimedia Commons dessinées par Cburnett (publiées sous GFDL, CC BY-SA 3.0, BSD 3 clauses et GPL au choix, reprises sous BSD 3 clauses), embarquées par `react-chessboard` (MIT), qui les cite sous CC BY-SA 3.0.
 Sons : dérivés des packs Kenney « Impact Sounds » et « Interface Sounds » (CC0 1.0), régénérés par `scripts/make-sounds.sh` ; détail dans `public/sounds/LICENSES.md`.
 
 ## Architecture

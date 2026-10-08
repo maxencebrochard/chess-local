@@ -257,6 +257,7 @@ function DiagramView({ step }: { step: DiagramStep }) {
             interactive={false}
             arrows={toBoardArrows(step.arrows)}
             markSquares={toMarks(step.marks)}
+            silent
           />
         </div>
       </div>

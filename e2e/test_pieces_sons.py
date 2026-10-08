@@ -286,6 +286,20 @@ def sound_off_suite(p, browser):
 NAV_FEN = "8/1P6/p7/8/2k5/8/8/R3K2R w KQ - 0 1"
 NAV_PGN = f'[FEN "{NAV_FEN}"]\n[SetUp "1"]\n\n1. Rxa6 Kc5 2. O-O Kc4 3. b8=Q Kc3 4. Qb3+ *'
 NAV_EXPECTED = ["capture", "move-opponent", "castle", "move-opponent", "promote", "move-opponent", "move-check"]
+# Position hors théorie (un départ théorique classerait tout 📖) : 1. Td7?? laisse Te1#. Le bilan
+# guidé s'ouvre sur ce premier coup, une gaffe, donc « Réessayer » est proposé d'emblée.
+RETRY_PGN = '[FEN "4r1k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1"]\n[SetUp "1"]\n\n1. Rd7 Re1# *'
+
+
+def load_pgn(page, pgn, label):
+    page.locator("main button:visible", has_text="Options").click()
+    page.locator("button:visible", has_text="Importer PGN ou FEN").click()
+    if not ck.appears(f"{label} : zone d'import ouverte", page, "textarea", timeout=5000):
+        return False
+    page.fill("textarea", pgn)
+    page.locator("button:visible", has_text="Charger").click()
+    page.wait_for_timeout(800)
+    return True
 
 
 def analysis_suite(p, browser):
@@ -295,14 +309,9 @@ def analysis_suite(p, browser):
     if not ck.appears("[analyse] page chargée", page, "[data-square='e4']", timeout=30000):
         ctx.close()
         return
-    page.locator("main button:visible", has_text="Options").click()
-    page.locator("button:visible", has_text="Importer PGN ou FEN").click()
-    if not ck.appears("[analyse] zone d'import ouverte", page, "textarea", timeout=5000):
+    if not load_pgn(page, NAV_PGN, "[analyse] navigation"):
         ctx.close()
         return
-    page.fill("textarea", NAV_PGN)
-    page.locator("button:visible", has_text="Charger").click()
-    page.wait_for_timeout(800)
     prev = page.locator("main button:visible", has_text="Précédent").first
     nxt = page.locator("main button:visible", has_text="Suivant").first
     n = len(log(page))
@@ -319,6 +328,32 @@ def analysis_suite(p, browser):
         got.append(entries[0]["name"] if len(entries) == 1 and entries[0]["audible"] else fmt(entries))
     check("[analyse] avancer coup par coup : bon son à chaque coup (prise, roque, promotion, échec)", got == NAV_EXPECTED,
           f"(attendu {NAV_EXPECTED}, obtenu {got})")
+
+    # Réessayer du bilan guidé : l'entrée (position avant la gaffe) et la sortie (position après)
+    # sont des sauts de position, donc muets ; le coup suivant sonne de nouveau.
+    if not load_pgn(page, RETRY_PGN, "[analyse] réessai"):
+        ctx.close()
+        return
+    page.locator("main button:visible", has_text="Bilan").first.click()
+    if ck.appears("[analyse] réessai : résumé du bilan", page, "button:has-text('Démarrer le bilan')", timeout=120000):
+        page.locator("button:visible", has_text="Démarrer le bilan").click()
+        if ck.appears("[analyse] réessai : bilan guidé ouvert", page, "button:has-text('Réessayer')", timeout=10000):
+            page.wait_for_timeout(300)
+            retry = page.locator("button:visible", has_text="Réessayer")
+            enabled = retry.is_enabled()
+            check("[analyse] réessai : Réessayer proposé sur la gaffe 1. Td7", enabled)
+            if enabled:
+                n = len(log(page))
+                retry.tap()
+                entries = heard(page, n)
+                check("[analyse] réessai : entrée dans Réessayer (position avant la gaffe), muette", entries == [], f"({fmt(entries)})")
+                n = len(log(page))
+                page.get_by_role("button", name="Quitter", exact=True).tap()
+                entries = heard(page, n)
+                check("[analyse] réessai : Quitter est muet (pas de son du coup fautif)", entries == [], f"({fmt(entries)})")
+                n = len(log(page))
+                page.locator("button:visible", has_text="Suivant").tap()
+                expect_exact("[analyse] réessai : Suivant après Quitter, le mat sonne", heard(page, n), ["move-check"])
     ctx.close()
 
 
