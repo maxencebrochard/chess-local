@@ -78,6 +78,117 @@ HOLD_BESTMOVE = """(() => {
 })()"""
 
 
+# Espion Web Audio, à poser en init script dans un contexte dont les sons sont allumés. Chromium
+# headless joue l'audio sans geste ; iOS non. Le script émule donc la politique de WebKit sur
+# `AudioContext` :
+# - un contexte créé hors geste naît `suspended`, `resume()` n'aboutit que pendant un geste (fin
+#   de toucher : touchend ou pointerup, click, keydown ; pas pointerdown ni touchstart, comme iOS) ;
+# - `__background(mode)` simule un passage en arrière-plan (visibilitychange hidden puis visible) :
+#   `interrupted` met les contextes dans cet état sans retour possible, `zombie` les laisse
+#   `running` mais muets (les deux cas observés sur iPhone).
+# Chaque `AudioBufferSourceNode.start()` est journalisé dans `window.__sounds` avec le fichier joué
+# (suivi fetch -> ArrayBuffer -> AudioBuffer) et s'il est AUDIBLE : contexte `running` et pas
+# zombie. Un `start()` sur un contexte suspendu ou interrompu est exactement le « pas de son » de
+# la PWA : il ne compte pas. `window.__gain` garde le dernier volume posé.
+WEBKIT_AUDIO = r"""(() => {
+  const Native = window.AudioContext
+  if (!Native || window.__sounds) return
+  window.__sounds = []
+  let inGesture = false
+  for (const t of ['touchend', 'pointerup', 'click', 'keydown']) {
+    window.addEventListener(t, (e) => {
+      if (!e.isTrusted) return
+      inGesture = true
+      setTimeout(() => { inGesture = false }, 0)
+    }, true)
+  }
+  const emu = new WeakMap()
+  const zombies = new WeakSet()
+  const all = []
+  class WebKitLike extends Native {
+    constructor(...a) {
+      super(...a)
+      emu.set(this, inGesture ? 'running' : 'suspended')
+      all.push(this)
+    }
+    get state() { return emu.get(this) ?? super.state }
+    resume() {
+      if (emu.get(this) === 'suspended' && inGesture) emu.set(this, 'running')
+      return super.resume().catch(() => {})
+    }
+    suspend() {
+      if (emu.get(this) === 'running') emu.set(this, 'suspended')
+      return super.suspend()
+    }
+    close() {
+      emu.set(this, 'closed')
+      return super.close()
+    }
+  }
+  window.AudioContext = WebKitLike
+  let vis = 'visible'
+  Object.defineProperty(document, 'visibilityState', { get: () => vis, configurable: true })
+  Object.defineProperty(document, 'hidden', { get: () => vis === 'hidden', configurable: true })
+  window.__background = (mode) => {
+    vis = 'hidden'
+    document.dispatchEvent(new Event('visibilitychange'))
+    for (const c of all) {
+      if (emu.get(c) === 'closed') continue
+      if (mode === 'zombie') zombies.add(c)
+      else emu.set(c, 'interrupted')
+    }
+    vis = 'visible'
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+  // Fichier d'origine de chaque AudioBuffer.
+  const abUrl = new WeakMap()
+  const bufUrl = new WeakMap()
+  const origAb = Response.prototype.arrayBuffer
+  Response.prototype.arrayBuffer = async function () {
+    const ab = await origAb.call(this)
+    abUrl.set(ab, this.url)
+    return ab
+  }
+  const origDecode = BaseAudioContext.prototype.decodeAudioData
+  BaseAudioContext.prototype.decodeAudioData = function (ab, ...rest) {
+    const url = abUrl.get(ab)
+    const p = origDecode.call(this, ab, ...rest)
+    if (p && p.then) p.then((buf) => { if (url) bufUrl.set(buf, url) }, () => {})
+    return p
+  }
+  // Volume : dernière valeur posée sur un gain.
+  window.__gain = null
+  const origSet = AudioParam.prototype.setValueAtTime
+  AudioParam.prototype.setValueAtTime = function (v, ...rest) {
+    window.__gain = v
+    return origSet.call(this, v, ...rest)
+  }
+  const origStart = AudioBufferSourceNode.prototype.start
+  AudioBufferSourceNode.prototype.start = function (...a) {
+    const url = this.buffer ? bufUrl.get(this.buffer) : undefined
+    const name = url ? url.split('/').pop().replace(/\.mp3.*$/, '') : '(muet)'
+    const st = this.context.state
+    window.__sounds.push({ name, state: st, audible: st === 'running' && !zombies.has(this.context) })
+    return origStart.apply(this, a)
+  }
+})()"""
+
+
+def sound_log(page):
+    """Entrées de l'espion `WEBKIT_AUDIO` ({name, state, audible}), dans l'ordre des `start()`."""
+    return page.evaluate("() => window.__sounds ?? []")
+
+
+def sounds_heard(page, start, settle=400):
+    """Sons joués depuis l'index `start`, sans le tampon muet de déverrouillage."""
+    page.wait_for_timeout(settle)
+    return [e for e in sound_log(page)[start:] if e["name"] != "(muet)"]
+
+
+def fmt_sounds(entries):
+    return "[" + ", ".join(f"{e['name']}{'' if e['audible'] else ' (MUET:' + e['state'] + ')'}" for e in entries) + "]"
+
+
 def base_url():
     """URL de l'app testée. Pas de valeur par défaut : un port codé en dur a déjà fait tester
     un serveur mort, puis un serveur fantôme. C'est e2e/run.py qui démarre le serveur."""

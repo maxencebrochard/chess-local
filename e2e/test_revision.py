@@ -7,7 +7,9 @@ Les données sont semées directement dans IndexedDB (schéma créé par l'app d
 test_backup), avec des dates relatives aux jours civils locaux : chaque règle de l'échelle de
 Leitner [1, 3, 7, 21] jours a son item, dû ou non. `puzzles.json` est remplacé par une petite
 liste qui contient les ids semés (mat en 1 : Ra8#). Le service worker est bloqué : en prod, le
-précache servirait le vrai fichier.
+précache servirait le vrai fichier. Dans la séance, les sons sont allumés et espionnés
+(`WEBKIT_AUDIO`) : chaque verdict sonne une fois, joué par le lecteur embarqué (puzzle, variante)
+ou par la page (faute), jamais par les deux.
 
 Usage : npm run test:e2e -- --suite revision
         npm run test:e2e:dev -- --suite revision      (StrictMode : effets et updaters doublés)
@@ -17,7 +19,7 @@ import os
 import re
 from datetime import datetime
 
-from helpers import BASE, Checker, desktop_context, mobile_context, overflow_x, shot, tap_move
+from helpers import BASE, WEBKIT_AUDIO, Checker, desktop_context, fmt_sounds, mobile_context, overflow_x, shot, sound_log, sounds_heard, tap_move
 
 ck = Checker("revision")
 check = ck.check
@@ -199,12 +201,16 @@ def mistake_row(page, i):
 
 # ---------- contexte semé ----------
 
-def seeded(p, browser, seed=SEED, standalone=True, desktop=False):
-    """Contexte surveillé, base semée (après création du schéma par l'app), puzzles.json réduit."""
+def seeded(p, browser, seed=SEED, standalone=True, desktop=False, sounds=False):
+    """Contexte surveillé, base semée (après création du schéma par l'app), puzzles.json réduit.
+    `sounds` : sons allumés et espionnés, pour compter les verdicts joués."""
+    settings = {"playSounds": True} if sounds else None
     if desktop:
-        ctx = desktop_context(browser, ck, service_workers="block")
+        ctx = desktop_context(browser, ck, settings=settings, service_workers="block")
     else:
-        ctx = mobile_context(p, browser, ck, standalone=standalone, service_workers="block")
+        ctx = mobile_context(p, browser, ck, settings=settings, standalone=standalone, service_workers="block")
+    if sounds:
+        ctx.add_init_script(WEBKIT_AUDIO)
     body = json.dumps(PUZZLES)
     ctx.route("**/puzzles.json", lambda route: route.fulfill(status=200, content_type="application/json", body=body))
     page = ctx.new_page()
@@ -269,6 +275,14 @@ def header_text(page):
     return page.locator("header h1").first.inner_text() if page.locator("header h1").count() else ""
 
 
+def check_one_verdict(name, page, start, expected):
+    """Depuis l'index `start` de l'espion : exactement un son de verdict, celui attendu, audible.
+    Les sons de coup joués dans le même intervalle ne comptent pas."""
+    entries = [e for e in sounds_heard(page, start) if e["name"] in ("success", "fail")]
+    got = [(e["name"], e["audible"]) for e in entries]
+    return check(f"{name} : un seul son de verdict ({expected})", got == [(expected, True)], f"(obtenu {fmt_sounds(entries)})")
+
+
 def click_next(page):
     if ck.appears("[séance] bouton Suivant", page, "button:text-is('Suivant')", timeout=5000):
         page.get_by_role("button", name="Suivant", exact=True).click()
@@ -285,20 +299,26 @@ def play_item(page, kind, n, log):
         if label == "Partie 1":
             if n == 0:
                 shot(page, "revision_mistake_852")
+            n_snd = len(sound_log(page))
             tap_move(page, "h2", "h3")
             ck.appears("[faute 1] vérification Stockfish puis verdict « Raté »", page, "text=✗ Raté", timeout=60000)
+            check_one_verdict("[faute 1] raté", page, n_snd, "fail")
             shot(page, "revision_verdict_852")
             log[label] = next_label(page)
             # Réessayer : le bon coup réussit à l'écran, sans réécrire le résultat enregistré.
             if ck.appears("[faute 1] bouton Réessayer", page, "button:has-text('Réessayer')", timeout=3000):
                 page.get_by_role("button", name="Réessayer").click()
                 page.wait_for_timeout(400)
+                n_snd = len(sound_log(page))
                 tap_move(page, "d1", "d8")
                 ck.appears("[faute 1] réessai : « Réussi » à l'écran", page, "text=✓ Réussi", timeout=10000)
+                check_one_verdict("[faute 1] réessai", page, n_snd, "success")
                 check("[faute 1] l'échéance affichée reste celle de la première tentative", next_label(page) == "Revient demain", f"({next_label(page)!r})")
         else:
+            n_snd = len(sound_log(page))
             tap_move(page, "d1", "d8")
             ck.appears(f"[{label}] meilleur coup : verdict « Réussi » sans moteur", page, "text=✓ Réussi", timeout=5000)
+            check_one_verdict(f"[{label}] réussi", page, n_snd, "success")
             log[label] = next_label(page)
     elif kind == "puzzle":
         banners = page.locator("[data-review-item] p", has_text="Puzzle")
@@ -312,8 +332,10 @@ def play_item(page, kind, n, log):
             shot(page, "revision_puzzle_852")
             log["_puzzle_shot"] = True
         page.wait_for_timeout(1200)  # amorce ...Nc3
+        n_snd = len(sound_log(page))
         tap_move(page, "a1", "a8")
         ck.appears(f"[{pid}] verdict « Réussi »", page, "text=✓ Réussi", timeout=8000)
+        check_one_verdict(f"[{pid}] réussi", page, n_snd, "success")
         log[pid] = next_label(page)
         after = banners.first.inner_text() if banners.count() else ""
         check(f"[{pid}] thèmes affichés après le verdict", "Mat en 1" in after, f"({after!r})")
@@ -332,8 +354,10 @@ def play_item(page, kind, n, log):
     else:
         check("[variante] en-tête de séance sur le drill (« Révision n/8 »)", "Révision" in header_text(page) and "/8" in header_text(page), f"({header_text(page)!r})")
         check("[variante] ligne d'état « Raté il y a 3 jours »", page.locator("[data-drill] >> text=Raté il y a 3 jours").count() > 0)
+        n_snd = len(sound_log(page))
         ok = play_line(page, GORING.split(" "), "w")
         if ck.appears("[variante] « Variante maîtrisée »", page, "[data-result] >> text=Variante maîtrisée", timeout=5000):
+            check_one_verdict("[variante] maîtrisée", page, n_snd, "success")
             btn = page.locator("[data-result] button", has_text="Suivant")
             check("[variante] bouton « Suivant » (pas « Variante suivante »)", btn.count() > 0 and btn.first.inner_text().strip() == "Suivant")
         log["Göring"] = next_label(page) if ok else ""
@@ -359,7 +383,7 @@ def play_session(page, expected_n, log):
 # ---------- volets ----------
 
 def part_home_and_session(p, browser):
-    ctx, page = seeded(p, browser)
+    ctx, page = seeded(p, browser, sounds=True)
 
     # --- Apprendre : ligne Révision avec le compte ---
     page.goto(f"{BASE}/#/apprendre")
