@@ -1,17 +1,9 @@
 """Pièces et sons (F10).
 
-Sons. Chromium headless joue l'audio sans geste ; iOS non. Un script d'init émule donc la
-politique de WebKit sur `AudioContext` :
-- un contexte créé hors geste naît `suspended`, `resume()` n'aboutit que pendant un geste
-  (fin de toucher : touchend ou pointerup, click, keydown ; pas pointerdown ni touchstart, comme
-  iOS) ;
-- `__background(mode)` simule un passage en arrière-plan (visibilitychange hidden puis visible) :
-  `interrupted` met les contextes dans cet état sans retour possible, `zombie` les laisse
-  `running` mais muets (les deux cas observés sur iPhone).
-Un espion journalise chaque `AudioBufferSourceNode.start()` avec le fichier joué (suivi
-fetch -> ArrayBuffer -> AudioBuffer) et s'il est AUDIBLE : contexte `running` et pas zombie.
-Un `start()` sur un contexte suspendu ou interrompu est exactement le « pas de son » de la PWA :
-il ne compte pas. Les seeds E2E coupent les sons : ils sont rallumés ici.
+Sons. Chromium headless joue l'audio sans geste ; iOS non : l'init script `WEBKIT_AUDIO` de
+helpers émule la politique de WebKit (contexte `suspended` hors geste, `__background(mode)` pour
+l'arrière-plan) et journalise chaque son joué avec son audibilité. Les seeds E2E coupent les
+sons : ils sont rallumés ici.
 
 Pièces : jeu par défaut « celtique » sur Jouer, Analyse, Puzzles et le sélecteur de promotion,
 images réellement servies sous le sous-chemin, choix « Chessnut » dans Réglages appliqué partout
@@ -25,95 +17,12 @@ try:
 except ImportError:
     sys.exit("python-chess manquant : pip install -r e2e/requirements.txt")
 
-from helpers import BASE, Checker, desktop_context, drag_piece, mobile_context, shot, tap_move
+from helpers import BASE, WEBKIT_AUDIO, Checker, desktop_context, drag_piece, fmt_sounds, mobile_context, shot, sound_log, sounds_heard, tap_move
 
 ck = Checker("pieces_sons")
 check = ck.check
 
 SOUND_ON = {"playSounds": True}
-
-WEBKIT_AUDIO = r"""(() => {
-  const Native = window.AudioContext
-  if (!Native || window.__sounds) return
-  window.__sounds = []
-  let inGesture = false
-  for (const t of ['touchend', 'pointerup', 'click', 'keydown']) {
-    window.addEventListener(t, (e) => {
-      if (!e.isTrusted) return
-      inGesture = true
-      setTimeout(() => { inGesture = false }, 0)
-    }, true)
-  }
-  const emu = new WeakMap()
-  const zombies = new WeakSet()
-  const all = []
-  class WebKitLike extends Native {
-    constructor(...a) {
-      super(...a)
-      emu.set(this, inGesture ? 'running' : 'suspended')
-      all.push(this)
-    }
-    get state() { return emu.get(this) ?? super.state }
-    resume() {
-      if (emu.get(this) === 'suspended' && inGesture) emu.set(this, 'running')
-      return super.resume().catch(() => {})
-    }
-    suspend() {
-      if (emu.get(this) === 'running') emu.set(this, 'suspended')
-      return super.suspend()
-    }
-    close() {
-      emu.set(this, 'closed')
-      return super.close()
-    }
-  }
-  window.AudioContext = WebKitLike
-  let vis = 'visible'
-  Object.defineProperty(document, 'visibilityState', { get: () => vis, configurable: true })
-  Object.defineProperty(document, 'hidden', { get: () => vis === 'hidden', configurable: true })
-  window.__background = (mode) => {
-    vis = 'hidden'
-    document.dispatchEvent(new Event('visibilitychange'))
-    for (const c of all) {
-      if (emu.get(c) === 'closed') continue
-      if (mode === 'zombie') zombies.add(c)
-      else emu.set(c, 'interrupted')
-    }
-    vis = 'visible'
-    document.dispatchEvent(new Event('visibilitychange'))
-  }
-  // Fichier d'origine de chaque AudioBuffer.
-  const abUrl = new WeakMap()
-  const bufUrl = new WeakMap()
-  const origAb = Response.prototype.arrayBuffer
-  Response.prototype.arrayBuffer = async function () {
-    const ab = await origAb.call(this)
-    abUrl.set(ab, this.url)
-    return ab
-  }
-  const origDecode = BaseAudioContext.prototype.decodeAudioData
-  BaseAudioContext.prototype.decodeAudioData = function (ab, ...rest) {
-    const url = abUrl.get(ab)
-    const p = origDecode.call(this, ab, ...rest)
-    if (p && p.then) p.then((buf) => { if (url) bufUrl.set(buf, url) }, () => {})
-    return p
-  }
-  // Volume : dernière valeur posée sur un gain.
-  window.__gain = null
-  const origSet = AudioParam.prototype.setValueAtTime
-  AudioParam.prototype.setValueAtTime = function (v, ...rest) {
-    window.__gain = v
-    return origSet.call(this, v, ...rest)
-  }
-  const origStart = AudioBufferSourceNode.prototype.start
-  AudioBufferSourceNode.prototype.start = function (...a) {
-    const url = this.buffer ? bufUrl.get(this.buffer) : undefined
-    const name = url ? url.split('/').pop().replace(/\.mp3.*$/, '') : '(muet)'
-    const st = this.context.state
-    window.__sounds.push({ name, state: st, audible: st === 'running' && !zombies.has(this.context) })
-    return origStart.apply(this, a)
-  }
-})()"""
 
 
 def ctx_with_audio(p, browser, settings, **kw):
@@ -123,34 +32,20 @@ def ctx_with_audio(p, browser, settings, **kw):
     return ctx
 
 
-def log(page):
-    return page.evaluate("() => window.__sounds ?? []")
-
-
-def heard(page, start, settle=400):
-    """Sons joués depuis l'index `start`, sans le tampon muet de déverrouillage."""
-    page.wait_for_timeout(settle)
-    return [e for e in log(page)[start:] if e["name"] != "(muet)"]
-
-
 def wait_sounds(page, start, n, timeout=15000):
     waited = 0
     while waited < timeout:
-        if len([e for e in log(page)[start:] if e["name"] != "(muet)"]) >= n:
+        if len([e for e in sound_log(page)[start:] if e["name"] != "(muet)"]) >= n:
             break
         page.wait_for_timeout(100)
         waited += 100
-    return heard(page, start)
-
-
-def fmt(entries):
-    return "[" + ", ".join(f"{e['name']}{'' if e['audible'] else ' (MUET:' + e['state'] + ')'}" for e in entries) + "]"
+    return sounds_heard(page, start)
 
 
 def expect_exact(name, entries, expected):
     got = [(e["name"], e["audible"]) for e in entries]
     want = [(n, True) for n in expected]
-    return check(name, got == want, f"(attendu {expected}, obtenu {fmt(entries)})")
+    return check(name, got == want, f"(attendu {expected}, obtenu {fmt_sounds(entries)})")
 
 
 # ---------- Jouer ----------
@@ -198,7 +93,7 @@ def bot_reply(name, page, start):
     """Le son qui suit mon coup (entrée `start`, sons entendus seulement) est celui du bot."""
     entries = wait_sounds(page, start, 2)[1:]
     ok = len(entries) == 1 and entries[0]["name"] in BOT_SOUNDS and entries[0]["audible"]
-    return check(name, ok, f"(obtenu {fmt(entries)})")
+    return check(name, ok, f"(obtenu {fmt_sounds(entries)})")
 
 
 def play_white_suite(p, browser):
@@ -207,49 +102,49 @@ def play_white_suite(p, browser):
     if not goto_play(page):
         ctx.close()
         return
-    n = len(log(page))
+    n = len(sound_log(page))
     if not start_game(page, "Blancs"):
         ctx.close()
         return
-    expect_exact("[jouer] début de partie : son game-start entendu", heard(page, n), ["game-start"])
+    expect_exact("[jouer] début de partie : son game-start entendu", sounds_heard(page, n), ["game-start"])
 
-    n = len(log(page))
+    n = len(sound_log(page))
     drag_piece(page, "e2", "e4")
     # Premier son après le drag : le mien ; le bot peut répondre très vite, son coup est jugé ensuite.
     expect_exact("[jouer] mon coup (drag tactile) : move-self entendu", wait_sounds(page, n, 1, timeout=3000)[:1], ["move-self"])
     wait_plies(page, 2)
     bot_reply("[jouer] coup du bot : son adverse entendu", page, n)
 
-    n = len(log(page))
+    n = len(sound_log(page))
     drag_piece(page, "d2", "d5")  # pion : deux cases interdites
-    expect_exact("[jouer] coup illégal lâché : son illegal", heard(page, n), ["illegal"])
+    expect_exact("[jouer] coup illégal lâché : son illegal", sounds_heard(page, n), ["illegal"])
     check("[jouer] coup illégal refusé (toujours 2 demi-coups)", plies(page) == 2, f"({plies(page)})")
 
     # Arrière-plan, contexte muet mais `running` : le coup suivant doit s'entendre.
     # d2-d4 est toujours légal et calme après 1.e4 et n'importe quelle réponse noire.
     page.evaluate("() => window.__background('zombie')")
-    n = len(log(page))
+    n = len(sound_log(page))
     drag_piece(page, "d2", "d4")
     entries = wait_sounds(page, n, 1)
     check("[jouer] après arrière-plan (contexte muet) : mon coup s'entend",
-          len(entries) >= 1 and entries[0]["audible"] and entries[0]["name"] == "move-self", f"({fmt(entries)})")
+          len(entries) >= 1 and entries[0]["audible"] and entries[0]["name"] == "move-self", f"({fmt_sounds(entries)})")
     wait_plies(page, 4)
     page.wait_for_timeout(400)  # fin de l'animation du coup du bot : l'échiquier affiché est à jour
 
     # Arrière-plan, contexte `interrupted` : idem, avec un coup calme choisi sur la position réelle.
     page.evaluate("() => window.__background('interrupted')")
-    n = len(log(page))
+    n = len(sound_log(page))
     uci = quiet_white_move(page)
     drag_piece(page, uci[:2], uci[2:4])
     entries = wait_sounds(page, n, 1)
     check("[jouer] après arrière-plan (contexte interrompu) : mon coup s'entend",
-          len(entries) >= 1 and entries[0]["audible"] and entries[0]["name"] == "move-self", f"({uci} : {fmt(entries)})")
+          len(entries) >= 1 and entries[0]["audible"] and entries[0]["name"] == "move-self", f"({uci} : {fmt_sounds(entries)})")
     wait_plies(page, 6)
     page.wait_for_timeout(300)
 
-    n = len(log(page))
+    n = len(sound_log(page))
     resign(page)
-    entries = heard(page, n)
+    entries = sounds_heard(page, n)
     expect_exact("[jouer] abandon : son game-end entendu", entries, ["game-end"])
     shot(page, "f10_jouer_fin_852")
     ctx.close()
@@ -260,11 +155,11 @@ def play_black_suite(p, browser):
     ctx = ctx_with_audio(p, browser, SOUND_ON)
     page = ctx.new_page()
     if goto_play(page):
-        n = len(log(page))
+        n = len(sound_log(page))
         if start_game(page, "Noirs"):
             entries = wait_sounds(page, n, 2)
             ok = len(entries) == 2 and entries[0]["name"] == "game-start" and entries[1]["name"] in BOT_SOUNDS and all(e["audible"] for e in entries)
-            check("[jouer noirs] game-start puis 1er coup du bot entendus", ok, f"({fmt(entries)})")
+            check("[jouer noirs] game-start puis 1er coup du bot entendus", ok, f"({fmt_sounds(entries)})")
     ctx.close()
 
 
@@ -276,8 +171,8 @@ def sound_off_suite(p, browser):
         wait_plies(page, 2)
         drag_piece(page, "d2", "d5")
         page.wait_for_timeout(500)
-        entries = log(page)
-        check("[sons coupés] aucun son démarré, pas même le déverrouillage", entries == [], f"({fmt(entries)})")
+        entries = sound_log(page)
+        check("[sons coupés] aucun son démarré, pas même le déverrouillage", entries == [], f"({fmt_sounds(entries)})")
     ctx.close()
 
 
@@ -314,18 +209,18 @@ def analysis_suite(p, browser):
         return
     prev = page.locator("main button:visible", has_text="Précédent").first
     nxt = page.locator("main button:visible", has_text="Suivant").first
-    n = len(log(page))
+    n = len(sound_log(page))
     for _ in range(7):
         prev.tap()
         page.wait_for_timeout(120)
-    entries = heard(page, n)
-    check("[analyse] reculer coup par coup reste muet", entries == [], f"({fmt(entries)})")
+    entries = sounds_heard(page, n)
+    check("[analyse] reculer coup par coup reste muet", entries == [], f"({fmt_sounds(entries)})")
     got = []
     for _ in NAV_EXPECTED:
-        n = len(log(page))
+        n = len(sound_log(page))
         nxt.tap()
-        entries = heard(page, n, settle=250)
-        got.append(entries[0]["name"] if len(entries) == 1 and entries[0]["audible"] else fmt(entries))
+        entries = sounds_heard(page, n, settle=250)
+        got.append(entries[0]["name"] if len(entries) == 1 and entries[0]["audible"] else fmt_sounds(entries))
     check("[analyse] avancer coup par coup : bon son à chaque coup (prise, roque, promotion, échec)", got == NAV_EXPECTED,
           f"(attendu {NAV_EXPECTED}, obtenu {got})")
 
@@ -343,17 +238,17 @@ def analysis_suite(p, browser):
             enabled = retry.is_enabled()
             check("[analyse] réessai : Réessayer proposé sur la gaffe 1. Td7", enabled)
             if enabled:
-                n = len(log(page))
+                n = len(sound_log(page))
                 retry.tap()
-                entries = heard(page, n)
-                check("[analyse] réessai : entrée dans Réessayer (position avant la gaffe), muette", entries == [], f"({fmt(entries)})")
-                n = len(log(page))
+                entries = sounds_heard(page, n)
+                check("[analyse] réessai : entrée dans Réessayer (position avant la gaffe), muette", entries == [], f"({fmt_sounds(entries)})")
+                n = len(sound_log(page))
                 page.get_by_role("button", name="Quitter", exact=True).tap()
-                entries = heard(page, n)
-                check("[analyse] réessai : Quitter est muet (pas de son du coup fautif)", entries == [], f"({fmt(entries)})")
-                n = len(log(page))
+                entries = sounds_heard(page, n)
+                check("[analyse] réessai : Quitter est muet (pas de son du coup fautif)", entries == [], f"({fmt_sounds(entries)})")
+                n = len(sound_log(page))
                 page.locator("button:visible", has_text="Suivant").tap()
-                expect_exact("[analyse] réessai : Suivant après Quitter, le mat sonne", heard(page, n), ["move-check"])
+                expect_exact("[analyse] réessai : Suivant après Quitter, le mat sonne", sounds_heard(page, n), ["move-check"])
     ctx.close()
 
 
@@ -449,15 +344,15 @@ def puzzles_suite(p, browser):
     # Raté : l'amorce adverse sonne, puis le coup faux donne fail.
     ctx, page, ok = puzzle_page(p, browser, [MATE1])
     if ok:
-        n = len(log(page))
+        n = len(sound_log(page))
         played = wait_ply_played(page, MATE1, 1)
-        entries = heard(page, n)
+        entries = sounds_heard(page, n)
         check("[puzzles] amorce adverse jouée", played)
         expect_exact("[puzzles] amorce : son du coup adverse", entries, ["move-opponent"])
         w = wrong_move(MATE1)
-        n = len(log(page))
+        n = len(sound_log(page))
         tap_move(page, w[:2], w[2:4], pause=150)
-        entries = heard(page, n, settle=600)
+        entries = sounds_heard(page, n, settle=600)
         expect_exact("[puzzles] coup faux : le seul son est fail (coup faux muet, puis repris muet)", entries, ["fail"])
     ctx.close()
 
@@ -466,9 +361,9 @@ def puzzles_suite(p, browser):
     if ok and wait_ply_played(page, MATE1, 1):
         page.wait_for_timeout(300)
         sol = MATE1[2].split()[1]
-        n = len(log(page))
+        n = len(sound_log(page))
         tap_move(page, sol[:2], sol[2:4], pause=150)
-        entries = heard(page, n, settle=600)
+        entries = sounds_heard(page, n, settle=600)
         expect_exact("[puzzles] solution : verdict success puis son du coup mat (échec), une fois chacun", entries, ["success", "move-check"])
     ctx.close()
 
@@ -491,14 +386,14 @@ def learn_suite(p, browser):
     page.wait_for_timeout(1200)
     page.locator("main button", has_text="Tactiques").click()
     if ck.appears("[apprendre] leçon tactique", page, "button:has-text(\"C'est parti\")", timeout=20000):
-        n = len(log(page))
+        n = len(sound_log(page))
         page.get_by_role("button", name="C'est parti").click()
         page.wait_for_timeout(1500)  # amorce ...Nc3 jouée
-        entries = heard(page, n)
+        entries = sounds_heard(page, n)
         expect_exact("[apprendre] amorce adverse : son du coup adverse", entries, ["move-opponent"])
-        n = len(log(page))
+        n = len(sound_log(page))
         tap_move(page, "a1", "a8", pause=200)
-        entries = heard(page, n, settle=800)
+        entries = sounds_heard(page, n, settle=800)
         expect_exact("[apprendre] mat trouvé : un seul success, et le son du coup", entries, ["success", "move-check"])
     ctx.close()
 
@@ -513,10 +408,10 @@ def volume_suite(p, browser):
     if ck.appears("[volume] curseur présent sous Sons", page, "input[aria-label='Volume des sons']", timeout=15000):
         slider.scroll_into_view_if_needed()
         slider.fill("40")
-        n = len(log(page))
+        n = len(sound_log(page))
         slider.focus()
         page.keyboard.press("ArrowLeft")  # 35 %, aperçu au relâcher de la touche
-        entries = heard(page, n, settle=600)
+        entries = sounds_heard(page, n, settle=600)
         expect_exact("[volume] aperçu au relâcher : son d'un coup", entries, ["move-self"])
         gain = page.evaluate("() => window.__gain")
         check("[volume] son joué au volume réglé (0,35)", gain is not None and abs(gain - 0.35) < 1e-6, f"({gain})")

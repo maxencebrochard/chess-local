@@ -15,7 +15,6 @@ import {
   returnLabel, statusLabel, variantKey, type ReviewPayload, type ReviewQueue,
 } from '../lib/revision'
 import { sounds } from '../lib/sounds'
-import { useSettings } from '../store/settings'
 
 type Phase = 'play' | 'success' | 'fail'
 
@@ -41,7 +40,6 @@ interface StoredSession {
 export default function Revision() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { playSounds } = useSettings()
   const [queue, setQueue] = useState<ReviewQueue | null>(null)
   const [items, setItems] = useState<ReviewPayload[] | null>(null)
   const [idx, setIdx] = useState(0)
@@ -144,7 +142,8 @@ export default function Revision() {
   function finish(success: boolean) {
     if (!items) return
     const item = items[idx]
-    if (playSounds) (success ? sounds.success : sounds.fail)()
+    // Puzzles et variantes passent par PuzzlePlayer et OpeningDrill, qui ont déjà joué le verdict.
+    if (item.kind === 'mistake') (success ? sounds.success : sounds.fail)()
     setPhase(success ? 'success' : 'fail')
     if (recorded.current.has(idx)) return
     recorded.current.add(idx)
