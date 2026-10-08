@@ -43,15 +43,23 @@ CATS = ("opposes", "meme", "centre")
 SHORT = {"opposes": "Roques opposés", "meme": "Même aile", "centre": "Roi au centre"}  # onglets et têtes de consigne
 PREFS = "chess-local-attack"
 
-# Espion UCI : chaque worker numéroté, chaque commande envoyée journalisée. Le second moteur de la
-# suite passe par le constructeur natif : il n'apparaît pas dans le journal.
+# Espion UCI : chaque worker numéroté, chaque commande envoyée journalisée, et chaque `bestmove`
+# reçu (fin d'une recherche) compté par worker. Le second moteur de la suite passe par le
+# constructeur natif : il n'apparaît pas dans le journal.
 UCI_SPY = """(() => {
   const Native = window.Worker
   window.__NativeWorker = Native
   window.__uci = []
+  window.__bestmoves = []
   let n = 0
   window.Worker = class extends Native {
-    constructor(...args) { super(...args); this.__idx = n++ }
+    constructor(...args) {
+      super(...args)
+      this.__idx = n++
+      this.addEventListener('message', (e) => {
+        if (typeof e.data === 'string' && e.data.startsWith('bestmove')) window.__bestmoves.push(this.__idx)
+      })
+    }
     postMessage(msg, ...rest) {
       if (typeof msg === 'string') window.__uci.push([this.__idx, msg])
       return super.postMessage(msg, ...rest)
@@ -284,6 +292,35 @@ def options_before_first_go(msgs):
     return [m for m in msgs[:first_go] if m.startswith("setoption")]
 
 
+def oracle_evals(page):
+    """Par worker oracle (celui qui reçoit `go movetime 300`, suivi de l'avantage) : [go envoyés, bestmove reçus]."""
+    return page.evaluate("""() => {
+      const out = {}
+      for (const [i, m] of window.__uci) if (m.startsWith('go movetime 300')) (out[i] ??= [0, 0])[0]++
+      for (const i of window.__bestmoves) if (i in out) out[i][1]++
+      return out
+    }""")
+
+
+def wait_offer(page, before, timeout_s=5):
+    """Après la réponse du défenseur : attend la proposition « Attaque réussie », ou la fin de l'éval
+    de l'avantage (bestmove reçu pour un `go movetime 300` postérieur à `before`) puis le rendu qui
+    peut la suivre. Retourne data-decisive."""
+    deadline = time.time() + timeout_s
+    grace = None
+    while time.time() < deadline:
+        d = attr(page, "decisive")
+        if d != "none":
+            return d
+        if grace is None:
+            if any(sent > before.get(i, [0, 0])[0] and got >= sent for i, (sent, got) in oracle_evals(page).items()):
+                grace = time.time() + 0.3
+        elif time.time() > grace:
+            return d
+        page.wait_for_timeout(30)
+    return attr(page, "decisive")
+
+
 def rows(page):
     return page.evaluate(READ_ROWS)
 
@@ -459,14 +496,15 @@ def suite(p):
         check("[attaque] défenseur Elo 1320", "1320" in (page.locator("[data-testid='level-chip']").text_content() or ""))
         h_start = board_height(page)
         plies = 0
+        evals = None  # compteurs de l'oracle avant le dernier coup joué (None : aucun coup encore)
         while plies < 80:
             if attr(page, "status") == "over" or attr(page, "decisive") != "none":
                 break
             if wait_turn(page, tcolor) != "turn":
                 break
-            page.wait_for_timeout(500)  # l'éval de l'avantage suit la réponse du défenseur
-            if attr(page, "decisive") != "none":
+            if evals is not None and wait_offer(page, evals) != "none":
                 break
+            evals = oracle_evals(page)
             if not play_best(page, tcolor, 12, "attaque"):
                 break
             plies += 2
