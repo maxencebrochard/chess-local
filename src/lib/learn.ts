@@ -74,7 +74,7 @@ function pick<T>(arr: T[]): T {
 export async function pickNextDomain(): Promise<LearnDomain> {
   const pending = await db.mistakes.where('solved').equals(0).count()
   // Filtre avant la limite : les tentatives de l'entraîneur d'ouvertures (domaine 'opening-drill'),
-  // les finales jouées jusqu'au bout (domaine 'endgame-play'), les leçons du cours de finales
+  // les finales jouées jusqu'au bout (domaine 'endgame-play'), les leçons de cours terminées
   // (domaine 'course') et les séries de Mats éclair (domaine 'mats') ne doivent pas chasser les
   // domaines d'Apprendre de la fenêtre.
   const learnDomains = new Set<string>(Object.keys(DOMAIN_META))
