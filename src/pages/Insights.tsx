@@ -9,9 +9,9 @@ import { Cta } from '../components/Cta'
 import { AccuracySpark, MeterBar, WdlBar, WdlLegend } from '../components/InsightsCharts'
 import { db, type ReviewRow } from '../lib/db'
 import { Engine } from '../lib/engine'
-import { ChesscomNetworkError, normalizeUsername } from '../lib/chesscom'
+import { ChesscomNetworkError, normalizeUsername, timeClassLabel } from '../lib/chesscom'
 import {
-  ERROR_KINDS, ERROR_META, PHASES, PHASE_FR, TIME_CLASS_FR, computeInsights, fr1, frDate,
+  BACK, COLOR_FR, ERROR_KINDS, ERROR_META, PHASES, PHASE_FR, computeInsights, fr1, frDate, pct,
   type Example, type Finding, type Insights as Report, type PlanStep,
 } from '../lib/insights'
 import { cachedFor, collectGames, depthFor, estimateForConfig, formatDuration, runSeries, type Candidate, type RunProgress } from '../lib/insightsRun'
@@ -27,7 +27,6 @@ const TC_OPTIONS: { id: InsightsTimeClass; label: string; icon: string }[] = [
   { id: 'rapid', label: 'Rapide', icon: '⏱' },
   { id: 'unlimited', label: 'Sans limite', icon: '∞' },
 ]
-const BACK = { returnTo: '/insights', returnLabel: 'Retour aux Insights' }
 // Typographie française : espace insécable avant « % », « : », « ; », « ? », « ! » (jamais de
 // « % » seul en début de ligne sur un écran étroit).
 const nb = (t: string) => t.replace(/ ([%:;?!])/g, '\u00a0$1')
@@ -41,8 +40,6 @@ function periodFr(from: number, to: number): string {
   if (a.getMonth() === b.getMonth()) return `Du ${a.getDate()} au ${frDate(to)}`
   return `Du ${shortDate(from)} au ${frDate(to)}`
 }
-const COLOR_FR = { w: 'Blancs', b: 'Noirs' } as const
-
 // Ligne de cache conforme au rapport mémorisé : même profondeur et, pour chess.com, même compte.
 function rowFitsRun(r: ReviewRow, run: InsightsLastRun): boolean {
   if (run.depth !== undefined && r.depth !== run.depth) return false
@@ -54,6 +51,25 @@ interface Shown {
   rows: Map<string, ReviewRow>
   run: InsightsLastRun
   config: InsightsConfig
+}
+
+// Série lancée : la liste lisible de `collectGames` (la seule que comptent la progression, le
+// bandeau d'interruption et le rapport), sa profondeur, sa configuration et son pseudo.
+interface Series {
+  cands: Pick<Candidate, 'key' | 'username'>[]
+  depth: number
+  cfg: InsightsConfig
+  user: string | null
+  failed: number
+}
+
+// Rapport mémorisé pour le retour sur la page : complet, ou partiel après une interruption.
+function saveRun(series: Series, rows: ReviewRow[], partial: boolean): InsightsLastRun {
+  const lastRun: InsightsLastRun = {
+    keys: rows.map((r) => r.key), at: Date.now(), depth: series.depth, username: series.user, partial, total: series.cands.length, failed: series.failed,
+  }
+  writeInsights({ config: series.cfg, lastRun })
+  return lastRun
 }
 
 type Stage = { kind: 'idle' } | { kind: 'loading' } | { kind: 'running'; progress: RunProgress | null }
@@ -75,8 +91,8 @@ export default function Insights() {
   const engineRef = useRef<Engine | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const tokenRef = useRef(0)
-  // Série en cours : clés des parties, profondeur et configuration (pour l'annulation).
-  const seriesRef = useRef<{ cands: Pick<Candidate, 'key' | 'username'>[]; depth: number; cfg: InsightsConfig; user: string | null } | null>(null)
+  // Série en cours : liste des parties, profondeur et configuration (annulation, sauvegarde).
+  const seriesRef = useRef<Series | null>(null)
 
   // Moteur créé seulement s'il reste une partie à analyser, arrêté au démontage : la série est
   // annulée et le jeton périmé (une liste qui arrive après le départ ne relance rien).
@@ -177,20 +193,20 @@ export default function Insights() {
     if (token !== tokenRef.current) return
     const user = needsUserFor(cfg) ? normalizeUsername(username) : null
     if (user) setChesscomUsername(user)
-    const { candidates, offline } = collected
+    const { candidates, failed, offline } = collected
     if (offline) setNotice('Hors ligne : seules tes parties chess.com déjà analysées sont utilisées.')
     if (candidates.length === 0) {
       setStage({ kind: 'idle' })
-      setError({ message: `Aucune partie de ${TIME_CLASS_FR[cfg.timeClass]} trouvée${cfg.sources.length === 1 ? (cfg.sources[0] === 'local' ? ' dans ChessLocal' : ' sur chess.com') : ''}.`, retry: false })
+      setError({
+        message: failed
+          ? 'Aucune de ces parties ne se laisse analyser (PGN illisibles).'
+          : `Aucune partie de ${timeClassLabel(cfg.timeClass)} trouvée${cfg.sources.length === 1 ? (cfg.sources[0] === 'local' ? ' dans ChessLocal' : ' sur chess.com') : ''}.`,
+        retry: false,
+      })
       return
     }
-    const depth = depthFor(cfg.count)
-    const save = (rows: ReviewRow[], partial: boolean, failed: number) => {
-      const lastRun: InsightsLastRun = { keys: rows.map((r) => r.key), at: Date.now(), requested: cfg.count, depth, username: user, partial, total: candidates.length, failed }
-      writeInsights({ config: cfg, lastRun })
-      return lastRun
-    }
-    seriesRef.current = { cands: candidates, depth, cfg, user }
+    const series: Series = { cands: candidates, depth: depthFor(cfg.count), cfg, user, failed }
+    seriesRef.current = series
     setStage({ kind: 'running', progress: null })
     const engine = () => {
       if (ctrl.signal.aborted || token !== tokenRef.current) throw new DOMException('Série annulée', 'AbortError')
@@ -198,16 +214,12 @@ export default function Insights() {
       return engineRef.current
     }
     try {
-      const { rows, failed } = await runSeries(candidates, depth, engine, ctrl.signal, (p) => {
+      const rows = await runSeries(candidates, series.depth, engine, ctrl.signal, (p) => {
         if (token === tokenRef.current) setStage({ kind: 'running', progress: p })
       })
       if (token !== tokenRef.current) return
       setStage({ kind: 'idle' })
-      if (rows.length === 0) {
-        setError({ message: 'Aucune de ces parties ne se laisse analyser (PGN illisibles).', retry: false })
-        return
-      }
-      show(rows, save(rows, false, failed), cfg)
+      show(rows, saveRun(series, rows, false), cfg)
     } catch (e) {
       if (token !== tokenRef.current) return
       if ((e as DOMException)?.name !== 'AbortError') {
@@ -218,27 +230,26 @@ export default function Insights() {
         setError({ message: 'Analyse interrompue par une erreur. Relance : les parties déjà analysées sont gardées.', retry: true })
       }
       setStage({ kind: 'idle' })
-      await afterInterruption(candidates, depth, cfg, user, token)
+      await afterInterruption(series, token)
     }
   }
 
   // Série arrêtée : rapport sur les parties déjà prêtes (cache), et bandeau de reprise. Ignoré si
   // une autre série a démarré (ou la page est quittée) pendant la lecture.
-  async function afterInterruption(cands: Pick<Candidate, 'key' | 'username'>[], depth: number, cfg: InsightsConfig, user: string | null, token: number) {
+  async function afterInterruption(series: Series, token: number) {
     let rows: ReviewRow[]
     try {
-      rows = (await cachedFor(cands, depth)).filter((r): r is ReviewRow => !!r)
+      rows = (await cachedFor(series.cands, series.depth)).filter((r): r is ReviewRow => !!r)
     } catch (e) {
       console.error('[insights] cache illisible', e)
       rows = []
     }
     if (token !== tokenRef.current) return
-    setInterrupted({ done: rows.length, total: cands.length })
+    setInterrupted({ done: rows.length, total: series.cands.length })
     if (rows.length > 0) {
-      const lastRun: InsightsLastRun = { keys: rows.map((r) => r.key), at: Date.now(), requested: cfg.count, depth, username: user, partial: true, total: cands.length }
-      writeInsights({ config: cfg, lastRun })
+      const lastRun = saveRun(series, rows, true)
       try {
-        show(rows, lastRun, cfg)
+        show(rows, lastRun, series.cfg)
       } catch (e) {
         console.error('[insights] rapport partiel non calculé', e)
       }
@@ -255,7 +266,7 @@ export default function Insights() {
     const token = ++tokenRef.current
     setStage({ kind: 'idle' })
     const series = seriesRef.current
-    if (series) void afterInterruption(series.cands, series.depth, series.cfg, series.user, token)
+    if (series) void afterInterruption(series, token)
   }
 
   function openExample(e: Example) {
@@ -288,7 +299,7 @@ export default function Insights() {
         <div className="mb-4 flex items-center gap-3 rounded-lg bg-surface-2 px-4 py-3">
           <div className="min-w-0 flex-1 text-sm">
             <div className="font-semibold">
-              {shown.report.games.n} partie{shown.report.games.n > 1 ? 's' : ''} de {TIME_CLASS_FR[shown.config.timeClass]}
+              {shown.report.games.n} partie{shown.report.games.n > 1 ? 's' : ''} de {timeClassLabel(shown.config.timeClass)}
             </div>
             <div className="text-xs text-neutral-400">
               {shown.report.games.from && shown.report.games.to && periodFr(shown.report.games.from, shown.report.games.to)}
@@ -630,13 +641,12 @@ function Stat({ value, label }: { value: string; label: string }) {
   )
 }
 
-const pct = (n: number) => `${Math.round(n)}\u00a0%`
 // Évaluation en pions, signe explicite et vrai signe moins : « +0,6 », « −1,2 ».
 const signedPawns = (cp: number) => `${cp > 0 ? '+' : cp < 0 ? '−' : ''}${fr1(Math.abs(cp) / 100)}`
 
 function ReportView({ report: r, onExample }: { report: Report; onExample: (e: Example) => void }) {
   const g = r.games
-  const errorsShown = ERROR_KINDS.map((k) => r.errors.find((e) => e.kind === k)!).filter((e) => e.count > 0)
+  const errorsShown = ERROR_KINDS.map((k) => r.errors.find((e) => e.kind === k)!).filter((e) => e.count > 0 && e.kind !== 'missedKingAttack')
   const maxErr = Math.max(1, ...errorsShown.map((e) => e.count))
   const t = r.time
   const bandFr = { weaker: 'Plus faibles', equal: 'Même niveau', stronger: 'Plus forts' } as const
@@ -678,7 +688,7 @@ function ReportView({ report: r, onExample }: { report: Report; onExample: (e: E
       <Card title="Précision et résultats" testid="insights-accuracy">
         <div className="mb-3 grid grid-cols-3 gap-3">
           <Stat value={r.accuracy.mean !== null ? fr1(r.accuracy.mean) : '-'} label="précision moyenne" />
-          <Stat value={pct(g.score)} label="score" />
+          <Stat value={nb(pct(g.score))} label="score" />
           <Stat value={String(g.n)} label={`partie${g.n > 1 ? 's' : ''}`} />
         </div>
         <WdlBar wins={g.wins} draws={g.draws} losses={g.losses} />
@@ -704,7 +714,7 @@ function ReportView({ report: r, onExample }: { report: Report; onExample: (e: E
                     <span className={`inline-block h-3 w-3 rounded-sm ${c === 'w' ? 'bg-neutral-100' : 'border border-neutral-500 bg-neutral-900'}`} />
                     Avec les {COLOR_FR[c]}
                   </span>
-                  <span className="text-neutral-300">{s.n ? `${pct(s.score)} · ${s.accuracy !== null ? fr1(s.accuracy) : '-'}` : 'aucune partie'}</span>
+                  <span className="text-neutral-300">{s.n ? nb(`${pct(s.score)} · ${s.accuracy !== null ? fr1(s.accuracy) : '-'}`) : 'aucune partie'}</span>
                 </div>
                 <WdlBar wins={s.wins} draws={s.draws} losses={s.losses} className="h-2" />
               </div>
@@ -720,7 +730,7 @@ function ReportView({ report: r, onExample }: { report: Report; onExample: (e: E
                 <div key={k} className="grid grid-cols-[1fr_5rem_4.5rem] items-center gap-2 text-sm">
                   <span className="min-w-0 truncate text-neutral-300">{bandFr[k]}</span>
                   <MeterBar value={b.score ?? 0} tone={b.n ? 'accent' : 'muted'} />
-                  <span className="text-right text-xs text-neutral-300">{b.n ? `${pct(b.score!)} (${b.n})` : '-'}</span>
+                  <span className="text-right text-xs text-neutral-300">{b.n ? nb(`${pct(b.score!)} (${b.n})`) : '-'}</span>
                 </div>
               )
             })}
@@ -728,7 +738,7 @@ function ReportView({ report: r, onExample }: { report: Report; onExample: (e: E
         )}
         {r.tilt && (
           <p className="mt-3 text-sm text-neutral-300">
-            Juste après une défaite : score {pct(r.tilt.score)} sur {r.tilt.n} parties (contre {pct(r.tilt.overall)} en tout).
+            {nb(`Juste après une défaite : score ${pct(r.tilt.score)} sur ${r.tilt.n} parties (contre ${pct(r.tilt.overall)} en tout).`)}
           </p>
         )}
       </Card>
@@ -789,7 +799,7 @@ function ReportView({ report: r, onExample }: { report: Report; onExample: (e: E
                       <span className="min-w-0 font-semibold">{name}</span>
                     )}
                     <span className="shrink-0 text-xs text-neutral-300">
-                      {o.n} partie{o.n > 1 ? 's' : ''} · {pct(o.score)}
+                      {o.n} partie{o.n > 1 ? 's' : ''} · {nb(pct(o.score))}
                       {o.accuracy !== null ? ` · préc. ${Math.round(o.accuracy)}` : ''}
                       {o.exitEval !== null ? ` · ${signedPawns(o.exitEval)}` : ''}
                     </span>
@@ -922,7 +932,7 @@ function Gauge({ testid, title, ok, of, text, data }: { testid: string; title: s
   return (
     <section data-testid={testid} {...data} className="rounded-lg bg-surface-2 p-4">
       <h2 className="mb-1 font-bold">{title}</h2>
-      <div className="text-2xl font-black">{of ? pct((ok / of) * 100) : '-'}</div>
+      <div className="text-2xl font-black">{of ? nb(pct((ok / of) * 100)) : '-'}</div>
       <MeterBar value={of ? (ok / of) * 100 : 0} tone={of ? 'accent' : 'muted'} />
       <p className="mt-1.5 text-xs text-neutral-400">
         {ok} sur {of} {text}

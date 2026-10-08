@@ -177,8 +177,9 @@ export async function findGameByUrl(username: string, gameUrl: string): Promise<
   return null
 }
 
-// Libellés français des codes de l'API.
-const TIME_CLASS_FR: Record<string, string> = { bullet: 'bullet', blitz: 'blitz', rapid: 'rapide', daily: 'différé' }
+// Libellés français des cadences : codes `time_class` de l'API, plus « unlimited » (parties
+// ChessLocal sans pendule, hors API).
+const TIME_CLASS_FR: Record<string, string> = { bullet: 'bullet', blitz: 'blitz', rapid: 'rapide', daily: 'différé', unlimited: 'sans limite' }
 
 export function timeClassLabel(timeClass: string): string {
   return TIME_CLASS_FR[timeClass] ?? timeClass

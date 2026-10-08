@@ -86,13 +86,25 @@ function localCandidate(g: SavedGame): Candidate | null {
 }
 
 export interface Collected {
-  candidates: Candidate[] // les plus récentes d'abord, `count` au plus
+  candidates: Candidate[] // les plus récentes d'abord, `count` au plus, PGN illisibles écartés
+  failed: number // PGN illisibles (ou sans coup) parmi les `count` retenues
   offline: boolean // chess.com injoignable : seules ses parties déjà analysées servent
+}
+
+const pliesOf = (pgn: string) => {
+  try {
+    const c = new Chess()
+    c.loadPgn(pgn)
+    return c.history().length
+  } catch {
+    return 0
+  }
 }
 
 // Liste des parties du rapport. Aucune requête pour la cadence « sans limite » (elle n'existe que
 // dans l'app). chess.com injoignable : repli sur ses parties de ce pseudo déjà en cache, ou erreur
-// réessayable s'il n'y en a pas.
+// réessayable s'il n'y en a pas. Les PGN illisibles sont écartés ici, une fois pour toutes : la
+// progression, le bandeau d'interruption et le rapport comptent la même liste.
 export async function collectGames(config: InsightsConfig, username: string): Promise<Collected> {
   const out: Candidate[] = []
   let offline = false
@@ -121,8 +133,11 @@ export async function collectGames(config: InsightsConfig, username: string): Pr
       }
     }
   }
-  const unique = [...new Map(out.map((c) => [c.key, c])).values()]
-  return { candidates: unique.sort((a, b) => b.date - a.date).slice(0, config.count), offline }
+  const picked = [...new Map(out.map((c) => [c.key, c])).values()].sort((a, b) => b.date - a.date).slice(0, config.count)
+  const candidates = picked.filter((c) => pliesOf(c.pgn) > 0)
+  const failed = picked.length - candidates.length
+  if (failed) console.warn('[insights] parties ignorées (PGN illisible)', picked.filter((c) => !candidates.includes(c)).map((c) => c.key))
+  return { candidates, failed, offline }
 }
 
 // Lignes en cache utilisables pour ces parties à cette profondeur et pour ce compte (undefined :
@@ -186,16 +201,6 @@ function keepAwake(signal: AbortSignal): () => void {
   return stop
 }
 
-const pliesOf = (pgn: string) => {
-  try {
-    const c = new Chess()
-    c.loadPgn(pgn)
-    return c.history().length
-  } catch {
-    return 0
-  }
-}
-
 export interface RunProgress {
   game: number // partie en cours (1-based)
   total: number
@@ -203,33 +208,24 @@ export interface RunProgress {
   etaSec: number | null
 }
 
-export interface RunResult {
-  rows: ReviewRow[] // dans l'ordre des candidats, parties illisibles exclues
-  failed: number // PGN illisibles (ou sans coup)
-}
-
 // Analyse les candidats manquants du cache, séquentiellement, sur UN moteur, demandé à `engine()`
 // seulement s'il reste une partie à analyser. Une annulation lève une AbortError à la granularité
-// d'une recherche ; rien de partiel n'est écrit. Les PGN illisibles sont écartés AVANT l'analyse :
-// toute erreur pendant l'analyse (moteur mort) remonte au lieu de faire passer les parties
-// suivantes pour illisibles.
+// d'une recherche ; rien de partiel n'est écrit. Les candidats viennent de `collectGames`, PGN
+// lisibles : toute erreur pendant l'analyse (moteur mort) remonte au lieu de faire passer les
+// parties suivantes pour illisibles. Lignes rendues dans l'ordre des candidats.
 export async function runSeries(
-  allCandidates: Candidate[],
+  candidates: Candidate[],
   depth: number,
   engine: () => Engine,
   signal: AbortSignal,
   onProgress: (p: RunProgress) => void,
-): Promise<RunResult> {
+): Promise<ReviewRow[]> {
   const stopAwake = keepAwake(signal)
   try {
-    const plies = new Map(allCandidates.map((c) => [c.key, pliesOf(c.pgn)]))
-    const candidates = allCandidates.filter((c) => plies.get(c.key)! > 0)
-    const failed = allCandidates.length - candidates.length
-    if (failed) console.warn('[insights] parties ignorées (PGN illisible)', allCandidates.filter((c) => !plies.get(c.key)).map((c) => c.key))
     const cached = await cachedFor(candidates, depth)
     const rows: (ReviewRow | null)[] = cached.map((r) => r ?? null)
     const todo = candidates.map((c, i) => ({ c, i })).filter(({ i }) => !rows[i])
-    const positions = todo.map(({ c }) => plies.get(c.key)! + 1)
+    const positions = todo.map(({ c }) => pliesOf(c.pgn) + 1)
     let remaining = positions.reduce((a, b) => a + b, 0)
     let analysed = rows.filter(Boolean).length
     let measured = 0 // positions réellement analysées
@@ -269,7 +265,7 @@ export async function runSeries(
       analysed++
     }
     onProgress({ game: candidates.length, total: candidates.length, analysed, etaSec: 0 })
-    return { rows: rows.filter((r): r is ReviewRow => r !== null), failed }
+    return rows.filter((r): r is ReviewRow => r !== null)
   } finally {
     stopAwake()
   }

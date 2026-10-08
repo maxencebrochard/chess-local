@@ -18,13 +18,12 @@ export interface InsightsConfig {
 export interface InsightsLastRun {
   keys: string[] // clés `reviews` du rapport, dans l'ordre
   at: number
-  requested: number // parties demandées (le rapport peut en avoir moins)
   depth?: number
   // Pseudo chess.com normalisé de la série (null : parties ChessLocal seules). Une même partie
   // chess.com analysée depuis l'autre compte réécrit la ligne : le rapport n'est alors plus restauré.
   username?: string | null
   partial?: boolean // série interrompue : le rapport ne couvre qu'une partie de la liste
-  total?: number // parties de la liste au moment de l'interruption
+  total?: number // parties de la liste de la série (PGN illisibles exclus)
   failed?: number // parties au PGN illisible, ignorées
 }
 
@@ -63,7 +62,6 @@ export function readInsights(): InsightsSaved {
     lastRun = {
       keys: l.keys as string[],
       at: l.at,
-      requested: typeof l.requested === 'number' ? l.requested : l.keys.length,
       depth: typeof l.depth === 'number' ? l.depth : undefined,
       username: typeof l.username === 'string' || l.username === null ? l.username : undefined,
       partial: l.partial === true,

@@ -5,7 +5,7 @@
 // Un motif n'est nommé que si un détecteur l'a vérifié sur la position : sinon, le
 // générique de la classe parle.
 import { Chess, type PieceSymbol } from 'chess.js'
-import { CLASS_META, figurine, type GameReview, type MoveClass } from './review'
+import { CLASS_META, figurine, moveAccuracy, type GameReview, type MoveClass } from './review'
 import { openingForMoves } from './openings'
 import { openingFamilyFr } from './openingNames'
 import { Picker, type Gender, type Vars } from './coachPhrases'
@@ -38,7 +38,7 @@ export function mateAgainst(mateAfter: number | null, side: 'w' | 'b'): number {
 }
 
 // Numéro du coup au demi-coup i, depuis le compteur du FEN de départ : « 5. » ou « 5... ».
-function moveNumber(review: GameReview, i: number): string {
+export function moveNumber(review: GameReview, i: number): string {
   const full = parseInt(review.startFen.split(' ')[5] ?? '1', 10) || 1
   const offset = review.startTurn === 'b' ? 1 : 0
   const no = full + Math.floor((i + offset) / 2)
@@ -432,9 +432,7 @@ function accuracyOnRange(review: GameReview, color: 'w' | 'b', from: number, to:
   const accs: number[] = []
   for (let i = Math.max(0, from); i < Math.min(to, review.moves.length); i++) {
     if (colorAt(review, i) !== color) continue
-    const m = review.moves[i]
-    const drop = Math.max(0, m.winPctBefore - m.winPctAfter)
-    accs.push(Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669)))
+    accs.push(moveAccuracy(review.moves[i]))
   }
   if (accs.length === 0) return null
   return Math.round((accs.reduce((a, b) => a + b, 0) / accs.length) * 10) / 10
