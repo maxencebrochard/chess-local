@@ -12,6 +12,7 @@ import { EngineLineRow } from '../components/EngineLineRow'
 import { MoveList } from '../components/MoveList'
 import { MoveStrip } from '../components/MoveStrip'
 import { ReviewSummary } from '../components/ReviewSummary'
+import { Toggle } from '../components/Toggle'
 import { Engine, type EngineLine } from '../lib/engine'
 import { db } from '../lib/db'
 import { bookContinuations, openingForMoves } from '../lib/openings'
@@ -901,6 +902,10 @@ export default function Analysis() {
             ))}
           </div>
         )}
+
+        <div className="hidden rounded bg-surface-2 px-3 py-2 md:block">
+          <Toggle label="⚔ Compter les attaquants autour des rois" value={showAttackers} onChange={setShowAttackers} testId="toggle-attackers" />
+        </div>
 
         <div className="md:hidden">
           <MoveStrip
