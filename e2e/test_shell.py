@@ -288,6 +288,18 @@ def suite(p):
     page.wait_for_timeout(500)
     st = scroll_state(page)
     check("[touch-4] scroll remis à zéro sur la nouvelle route", st["hash"] == "#/jouer" and st["mainScrollTop"] == 0, f"({st})")
+    # Même chemin, requête seule changée (fiche de Mats éclair depuis le hub) : un écran nouveau,
+    # remis en haut aussi. Par le hash, comme un lien ou un retour arrière.
+    go(page, "#/mats")
+    page.evaluate("() => { document.querySelector('main').scrollTop = 9999 }")
+    page.wait_for_timeout(200)
+    st = scroll_state(page)
+    check("[touch-4] précondition : /mats défile et est défilé", st["mainScrollable"] and st["mainScrollTop"] > 0, f"({st})")
+    page.evaluate("() => { location.hash = '#/mats?d=chrono-kq' }")
+    ck.appears("[touch-4] fiche ouverte par la requête", page, "[data-sheet='chrono-kq'] [data-square='a1']", timeout=5000)
+    page.wait_for_timeout(300)
+    st = scroll_state(page)
+    check("[touch-4] scroll remis à zéro quand seule la requête change", st["hash"] == "#/mats?d=chrono-kq" and st["mainScrollable"] and st["mainScrollTop"] == 0, f"({st})")
     ctx.close()
 
     # ---------- Desktop : nav latérale, mêmes règles ----------

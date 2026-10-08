@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import Home from './pages/Home'
 import Play from './pages/Play'
@@ -64,12 +64,20 @@ function Shell() {
     else navigate('/', { replace: true })
   }
 
-  // Chaque page s'ouvre en haut : `<main>` est le seul conteneur qui défile, et il est
-  // partagé entre les routes. Dépend de `pathname` seul : un `navigate('.', { replace })`
-  // ou un `setParams` dans une page ne doivent pas remettre le scroll à zéro.
+  // Chaque écran s'ouvre en haut : `<main>` est le seul conteneur qui défile, et il est
+  // partagé entre les routes. Un écran nouveau, c'est un autre chemin, ou une autre requête
+  // atteinte par push ou par l'historique (fiche `/mats?d=`, ouverture `/ouvertures?famille=`).
+  // Un replace de même chemin est un état interne de la page, qui garde son défilement :
+  // `navigate('.', { replace, state: null })` au montage, `setParams({ etape }, { replace })`,
+  // option d'une fiche.
+  const navigationType = useNavigationType()
+  const search = location.search
+  const shown = useRef({ pathname, search })
   useLayoutEffect(() => {
-    mainRef.current?.scrollTo(0, 0)
-  }, [pathname])
+    const prev = shown.current
+    shown.current = { pathname, search }
+    if (prev.pathname !== pathname || (prev.search !== search && navigationType !== 'REPLACE')) mainRef.current?.scrollTo(0, 0)
+  }, [pathname, search, navigationType])
 
   return (
     <div className="flex h-dvh flex-col md:flex-row">

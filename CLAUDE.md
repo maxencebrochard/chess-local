@@ -44,7 +44,8 @@ L'API chess.com est simulée par `e2e/fixtures/chesscom.json` (parties fictives)
 Le gate n'utilise jamais `--live`.
 `test_revision.py` sème IndexedDB nativement (après `wait_schema`, l'app ayant créé les 6 stores), bloque le service worker et remplace `puzzles.json` par une route ; ses dates sont relatives aux jours civils locaux (midi J-n, ou minuit plus une minute pour « aujourd'hui »), jamais « il y a une heure ».
 `test_pwa.py` ne tourne que sur le build local : sous-chemin, manifest, service worker, précache, puis redémarrage avec le serveur réellement tué (`set_offline` ne coupe pas le réseau du service worker).
-`test_upgrade.py` (prod uniquement) est le garde-fou de continuité des données : il sert l'ancien build déployé (`origin/gh-pages@388d3ed`, extrait de git), y crée de vraies données par l'interface dans un profil persistant, bascule sur le build courant sur le même port, vérifie IndexedDB, réglages et chiffres affichés à l'identique, puis restaure une sauvegarde de l'ancien build dans le nouveau ; `E2E_MUTATION=rename-db|clear-ratings|drop-table|clear-settings` sert une copie mutée du nouveau build pour prouver que la suite passe au rouge.
+`test_upgrade.py` (prod uniquement) est le garde-fou de continuité des données : pour chaque ancien build déployé épinglé dans `OLD_BUILDS` (tags `deployed-2026-07-20` et `deployed-2026-10-06`, extraits de git ; `git fetch origin tag <tag>` s'il manque), il le sert, y crée de vraies données par l'interface dans un profil persistant, bascule sur le build courant sur le même port, vérifie IndexedDB, réglages et chiffres affichés à l'identique, puis restaure une sauvegarde de l'ancien build dans le nouveau ; `E2E_MUTATION=rename-db|clear-ratings|drop-table|clear-settings` sert une copie mutée du nouveau build pour prouver que la suite passe au rouge.
+Après un déploiement, ajouter le nouveau tag à `OLD_BUILDS` et retirer un build que plus aucun appareil ne porte.
 Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` : deux lancements simultanés ne se gênent pas.
 Les captures vont dans `e2e/shots/` (gitignoré).
 
@@ -61,6 +62,10 @@ Autres scripts :
 - `node scripts/prepare-mates-index.mjs` régénère `src/data/mateIndex.json` (puzzles classés par géométrie de mat avec `src/lib/mateNet.ts`) : à relancer après `prepare-data.mjs` ; la suite `mats` vérifie qu'il est à jour (`--check`).
 - `scripts/deploy.sh` build puis force-push `dist/` sur la branche `gh-pages`.
   Action sortante : ne pas le lancer sans demande explicite.
+  Le push final est en HTTPS et échoue avec le compte GitHub par défaut de la machine ; `set -e` arrête alors le script avant `rm -rf dist/.git`, le commit reste dans `dist/`.
+  Depuis `dist/`, le push peut se faire en SSH : `git push -f git@github.com:maxencebrochard/chess-local.git gh-pages`, puis `rm -rf dist/.git` depuis la racine.
+  Poser ensuite le tag du déploiement, seule poignée durable sur ce commit (la branche est réécrite à chaque déploiement) : `git fetch origin gh-pages && git tag deployed-AAAA-MM-JJ FETCH_HEAD && git push origin tag deployed-AAAA-MM-JJ`.
+  La date du tag est le jour UTC du `__BUILD__` (affiché en bas de `/import`), que `test_upgrade.py` recoupe.
 - `?debug-uci` dans l'URL logge le trafic UCI en console.
 - `node scripts/bench-bots.mjs --preset chain --games 80 --out bench.jsonl` mesure l'Elo des bots (parties bot contre bot, Bradley-Terry ancré sur Iris = 1600, IC 95 % par bootstrap).
   Il exécute la vraie `bots.ts` et la vraie classe `Engine` sur le même WASM, dans Node ; compter environ une heure.

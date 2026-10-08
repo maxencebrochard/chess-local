@@ -29,7 +29,7 @@ try:
 except ImportError:
     sys.exit("python-chess manquant : pip install -r e2e/requirements.txt")
 
-from helpers import BASE, Checker, click_square, desktop_context, mobile_context, overflow_x, shot
+from helpers import BASE, Checker, click_square, desktop_context, mobile_context, overflow_x, scroll_state, shot
 
 ck = Checker("mats")
 check = ck.check
@@ -206,8 +206,9 @@ def entry_suite(p, browser):
     check("[accueil] quatre familles d'exercices", sections == ["chrono", "mateIn", "geo", "motif"], f"({sections})")
     n = {s: page.locator(f"[data-section='{s}'] [data-drill]").count() for s in sections}
     check("[accueil] cartes : 9 contre la montre, 4 mat en N, 5 géométrie, 14 motifs", n == {"chrono": 9, "mateIn": 4, "geo": 5, "motif": 14}, f"({n})")
-    for name in ["Dame", "Tour", "Deux tours", "Dame + tour", "Fou + cavalier", "Deux fous", "Dame + pion", "Promotion puis mat"]:
-        check(f"[accueil] carte « {name} »", page.locator("[data-section='chrono'] [data-drill]", has_text=re.compile(f"^.*{re.escape(name)}")).count() > 0)
+    titles = page.locator("[data-section='chrono'] [data-drill] span.font-bold").all_inner_texts()
+    check("[accueil] titres exacts des cartes contre la montre (dame + pion nommé contre roi)",
+          titles == ["Dame", "Tour", "Deux tours", "Dame + tour", "Deux fous", "Fou + cavalier", "Dame + pion contre roi", "Promotion puis mat", "Mélange"], f"({titles})")
     for name in ["Mat du couloir", "Mat étouffé", "Anastasie", "Boden", "Mat arabe", "Damiano", "épaulettes"]:
         check(f"[accueil] motif « {name} »", page.locator("[data-section='motif'] [data-drill]", has_text=name).count() > 0)
     check("[accueil] pas de débordement horizontal (393 px)", overflow_x(page) == 0, f"({overflow_x(page)})")
@@ -231,6 +232,20 @@ def entry_suite(p, browser):
     page.go_back()
     page.wait_for_timeout(400)
     check("[fiche] retour arrière → accueil", page.locator("[data-section]").count() == 4)
+
+    # Fiche ouverte depuis le hub DÉFILÉ : seule la requête change (`?d=`), la coquille doit
+    # quand même remettre <main> en haut. Damiano : carte du bas, fiche avec échiquier (lessonFen),
+    # donc plus haute que la fenêtre : sans correctif, le défilement du hub reste.
+    page.evaluate("() => { document.querySelector('main').scrollTop = 9999 }")
+    page.wait_for_timeout(200)
+    st = scroll_state(page)
+    check("[fiche défilée] précondition : hub défilé", st["mainScrollable"] and st["mainScrollTop"] > 0, f"({st})")
+    page.locator("[data-drill='motif-damiano']").click()
+    ck.appears("[fiche défilée] fiche Damiano ouverte", page, "[data-sheet='motif-damiano'] [data-square='g1']", timeout=5000)
+    page.wait_for_timeout(300)
+    st = scroll_state(page)
+    check("[fiche défilée] précondition : la fiche défile (sinon scrollTop vaudrait 0 par construction)", st["mainScrollable"], f"({st})")
+    check("[fiche défilée] fiche ouverte en haut (<main> remis à zéro sur changement de requête)", st["mainScrollTop"] == 0, f"({st})")
     ctx.close()
 
 
