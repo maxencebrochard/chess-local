@@ -36,7 +36,8 @@ interface SettingsState {
   showLegalMoves: boolean
   setShowLegalMoves: (v: boolean) => void
   // Calque « Compte les attaquants » : zone de chaque roi et compte attaquants / défenseurs,
-  // dans l'Analyse et les parties contre le moteur.
+  // dans l'Analyse, Jouer et la partie contre le moteur lancée depuis l'analyse ; l'exercice
+  // « Mes attaques manquées » l'affiche toujours.
   showAttackers: boolean
   setShowAttackers: (v: boolean) => void
   playSounds: boolean

@@ -34,8 +34,9 @@ export interface KeyMove {
   onJudged: (found: boolean) => void
 }
 // `other` : partie reprise après rechargement, premier coup différent du coup attendu et verdict
-// perdu : on rappelle le coup du bilan sans juger.
-type KeyResult = 'checking' | 'found' | 'close' | 'missed' | 'other'
+// perdu : on rappelle le coup du bilan sans juger. `unverified` : Stockfish n'a pas pu juger le
+// coup : rien n'est noté, Recommencer relance une tentative propre.
+type KeyResult = 'checking' | 'found' | 'close' | 'missed' | 'other' | 'unverified'
 
 // Verdict dérivé d'une partie reprise : seul le coup exact se reconnaît sans moteur.
 function restoredKeyResult(chess: Chess, player: Color, key: KeyMove | undefined): KeyResult | null {
@@ -260,7 +261,9 @@ export function PositionGame(props: PositionGameProps) {
       const wAfter = new Chess(move.after).isCheckmate() ? 100 : winPct(-cp(after.lines[0]))
       conclude(wBefore - wAfter < 5 ? 'close' : 'missed')
     } catch {
-      conclude('missed')
+      if (gen !== genRef.current) return
+      pendingJudgeRef.current = null
+      setKeyResult('unverified')
     }
   }
 
@@ -384,7 +387,9 @@ export function PositionGame(props: PositionGameProps) {
       ? playerMovesSoFar <= 1
         ? (keyResult === 'found' ? "C'est le coup du bilan : mène l'attaque !" : `Ça tient aussi (au bilan : ${keyFig}). Mène l'attaque !`)
         : "Mène l'attaque jusqu'au bout."
-    : keyResult === 'missed' || keyResult === 'other'
+    : keyResult === 'unverified' && playerMovesSoFar <= 1
+      ? "Stockfish n'a pas pu vérifier ton coup : Recommencer pour réessayer."
+    : keyResult === 'missed' || keyResult === 'other' || keyResult === 'unverified'
       ? playerMovesSoFar <= 1 && keyResult === 'missed' ? `Au bilan : ${keyFig}. Annuler pour réessayer.` : `Au bilan : ${keyFig}. La partie continue.`
     : null
   const subline =
@@ -395,7 +400,7 @@ export function PositionGame(props: PositionGameProps) {
     (objective ? null : `Tu joues les ${player === 'w' ? 'Blancs' : 'Noirs'}, sans limite de coups.`)
   const sublineClass =
     end ? ''
-    : notice || reps === 2 || keyResult === 'missed' ? 'text-amber-300'
+    : notice || reps === 2 || keyResult === 'missed' || keyResult === 'unverified' ? 'text-amber-300'
     : keyResult === 'found' || keyResult === 'close' ? 'text-accent'
     : 'text-neutral-400'
   const viewFen = live ? fen : history[viewIndex].after
