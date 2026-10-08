@@ -2,17 +2,20 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { Cta } from '../components/Cta'
 import { db, DEFAULT_RATING } from '../lib/db'
+import { describeKinds, loadReviewQueue, type ReviewItem } from '../lib/revision'
 
 export default function Home() {
   const navigate = useNavigate()
   const [ratings, setRatings] = useState<Record<string, number>>({})
   const [solved, setSolved] = useState(0)
   const [nbGames, setNbGames] = useState(0)
+  const [due, setDue] = useState<ReviewItem[] | null>(null) // null : compte pas encore connu
 
   useEffect(() => {
     void db.ratings.toArray().then((rs) => setRatings(Object.fromEntries(rs.map((r) => [r.key, r.value]))))
     void db.puzzleAttempts.where('date').above(0).toArray().then((a) => setSolved(a.filter((x) => x.success).length))
     void db.games.count().then(setNbGames)
+    void loadReviewQueue().then((q) => setDue(q.due))
   }, [])
 
   const r = (key: string) => ratings[key] ?? DEFAULT_RATING
@@ -32,7 +35,7 @@ export default function Home() {
   ]
 
   return (
-    <div className="mx-auto flex h-full max-w-2xl flex-col p-4 md:justify-center md:p-8">
+    <div data-review-ready={due !== null ? '' : undefined} className="mx-auto flex h-full max-w-2xl flex-col p-4 md:justify-center md:p-8">
       <h1 className="mb-4 text-3xl font-black">
         ♞ Chess<span className="text-accent">Local</span>
       </h1>
@@ -58,6 +61,25 @@ export default function Home() {
           </span>
         </div>
       </Link>
+
+      {/* Révision espacée : visible seulement quand quelque chose est dû ; descente (push), la
+          séance démarre à l'arrivée. */}
+      {due !== null && due.length > 0 && (
+        <Link
+          to="/revision"
+          className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-surface-2 px-4 py-2 shadow-lg transition hover:bg-surface-3"
+        >
+          <span className="text-2xl" aria-hidden="true">🔁</span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold">À réviser aujourd'hui</span>
+            <span className="block truncate text-xs text-neutral-400">{describeKinds(due)}</span>
+          </span>
+          <span data-review-count className="shrink-0 rounded-full bg-amber-400 px-3 py-1 text-base font-black text-neutral-900">
+            {due.length}
+          </span>
+          <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
+        </Link>
+      )}
 
       {/* Cartes stats horizontales */}
       <div className="mb-4 grid grid-cols-4 gap-2">

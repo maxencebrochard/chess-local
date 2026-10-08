@@ -16,10 +16,10 @@ const MAX_SETTING_STRING = 100 // un pseudo chess.com fait moins de 30 caractèr
 // Clé additive, hors sauvegarde et hors réglages : date du dernier export réussi.
 const LAST_EXPORT_KEY = 'chess-local-last-export'
 // Clés de l'app dans localStorage (le persist Zustand, la date du dernier export, la partie contre
-// le moteur en cours) et clé de la séance d'Apprendre dans sessionStorage : les seules que la
-// réinitialisation a le droit de toucher.
+// le moteur en cours) et clés des séances d'Apprendre et de révision dans sessionStorage : les
+// seules que la réinitialisation a le droit de toucher.
 const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY]
-const LEARN_SESSION_KEY = 'learn-session-v1'
+const SESSION_KEYS = ['learn-session-v1', 'revision-session-v1']
 
 export const TABLES = ['games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions'] as const
 export type TableName = (typeof TABLES)[number]
@@ -359,10 +359,10 @@ export async function importBackup(plan: BackupPlan): Promise<ImportResult> {
     const name = err instanceof Error ? ` (${err.name})` : ''
     throw new Error(`La restauration a échoué${name} : rien n'a été modifié, tes données actuelles sont intactes.`)
   }
-  // La séance d'Apprendre en cours pourrait pointer vers des erreurs disparues. On ne retire que
-  // sa clé : l'origine GitHub Pages est partagée par tous les sites du compte, un clear() global
-  // effacerait le stockage d'autres projets.
-  sessionStorage.removeItem(LEARN_SESSION_KEY)
+  // Les séances d'Apprendre et de révision en cours pourraient pointer vers des erreurs disparues.
+  // On ne retire que leurs clés : l'origine GitHub Pages est partagée par tous les sites du
+  // compte, un clear() global effacerait le stockage d'autres projets.
+  for (const key of SESSION_KEYS) sessionStorage.removeItem(key)
   let settingsApplied = false
   if (plan.settingsState) {
     try {
@@ -387,7 +387,7 @@ export async function resetApp(): Promise<void> {
   // Seulement les clés de l'app, jamais clear() : l'origine GitHub Pages est partagée par tous les
   // sites du compte.
   for (const key of APP_LOCAL_KEYS) localStorage.removeItem(key)
-  sessionStorage.removeItem(LEARN_SESSION_KEY)
+  for (const key of SESSION_KEYS) sessionStorage.removeItem(key)
   location.hash = '#/'
   location.reload()
 }

@@ -6,6 +6,7 @@ import { EngineContinuation, GoFurtherRow } from '../components/EngineContinuati
 import { CourseSheet } from '../components/CourseSheet'
 import { Cta } from '../components/Cta'
 import { HEvalBar } from '../components/HEvalBar'
+import { MistakeExercise } from '../components/MistakeExercise'
 import { PuzzlePlayer } from '../components/PuzzlePlayer'
 import { puzzleContinuationStart, puzzlePlayerColor, useExerciseContinuation } from '../components/useExerciseContinuation'
 import { courseFor, type Course } from '../lib/courses'
@@ -19,7 +20,8 @@ import {
   type EndgameGoal, type LearnDomain, type Session, type SessionItem,
 } from '../lib/learn'
 import { openingDe, openingFamilyFr } from '../lib/openingNames'
-import { figurine, winPct } from '../lib/review'
+import { describeKinds, dueLabel, loadReviewQueue, type ReviewQueue } from '../lib/revision'
+import { figurine } from '../lib/review'
 import { sounds } from '../lib/sounds'
 import { useSettings } from '../store/settings'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -53,6 +55,7 @@ export default function Learn() {
   const [showCourse, setShowCourse] = useState(false)
   const [returnTo, setReturnTo] = useState<string | null>(null)
   const [lessonsDone, setLessonsDone] = useState<Record<string, number>>({})
+  const [review, setReview] = useState<ReviewQueue | null>(null)
   const scoredItems = useRef(new Set<number>())
   const engineRef = useRef<Engine | null>(null)
 
@@ -73,6 +76,8 @@ export default function Learn() {
 
   useEffect(() => {
     void refresh()
+    // La file de révision relit trois tables entières : au montage seulement, pas après chaque exercice.
+    void loadReviewQueue().then(setReview)
   }, [refresh])
 
   useEffect(
@@ -226,6 +231,7 @@ export default function Learn() {
   function closeSession() {
     setSession(null)
     setResults([])
+    void loadReviewQueue().then(setReview) // une séance (Mes erreurs surtout) change ce qui est dû
     if (returnTo) {
       setReturnTo(null)
       navigate(returnTo, { replace: true })
@@ -381,6 +387,30 @@ export default function Learn() {
           « Mes erreurs » se remplit automatiquement quand tu fais le bilan d'une partie.
         </p>
       )}
+      {/* Révision espacée : descente (push) avec retour ici en fin de séance. */}
+      <Link
+        to="/revision"
+        state={{ returnTo: '/apprendre' }}
+        className="mt-4 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
+      >
+        <span className="text-2xl">🔁</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Révision espacée</span>
+          <span className="block text-xs text-neutral-400">
+            {review === null ? '…'
+              : review.due.length > 0 ? `À réviser aujourd'hui : ${describeKinds(review.due)}`
+              : review.upcoming.length > 0 ? `Rien à réviser aujourd'hui · prochaine ${dueLabel(review.upcoming[0].due)}`
+              : 'Puzzles, erreurs et variantes ratés reviennent à J+1, J+3, J+7 puis J+21'}
+          </span>
+        </span>
+        {review !== null && review.due.length > 0 ? (
+          <span data-review-count className="shrink-0 rounded-full bg-amber-400 px-2.5 py-0.5 text-sm font-bold text-neutral-900">
+            {review.due.length}
+          </span>
+        ) : (
+          <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
+        )}
+      </Link>
       <Link
         to="/ouvertures"
         className="mt-4 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
@@ -569,7 +599,9 @@ function ExerciseView(props: ExerciseProps) {
       )}
       {item.kind === 'endgame' && <EndgameExercise {...props} />}
       {item.kind === 'opening' && <OpeningExercise {...props} />}
-      {item.kind === 'mistake' && <MistakeExercise {...props} />}
+      {item.kind === 'mistake' && (
+        <MistakeExercise mistake={item.mistake} active={phase === 'play'} onFinish={props.onFinish} getEngine={props.getEngine} />
+      )}
       {verdictBar}
       {furtherStart && (
         <GoFurtherRow
@@ -852,60 +884,3 @@ function OpeningExercise({ item, phase, onFinish }: ExerciseProps) {
   )
 }
 
-// ---------- Mes erreurs (retry) ----------
-function MistakeExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
-  const mistake = item.kind === 'mistake' ? item.mistake : null
-  const [fen] = useState(mistake?.fenBefore ?? '')
-  const [checking, setChecking] = useState(false)
-  const finished = useRef(false)
-  const moverColor: 'w' | 'b' = fen ? (new Chess(fen).turn()) : 'w'
-
-  if (!mistake) return null
-
-  function handleMove(from: string, to: string, promotion?: string): boolean {
-    if (phase !== 'play' || checking || finished.current) return false
-    const c = new Chess(fen)
-    let mv
-    try {
-      mv = c.move({ from, to, promotion: promotion ?? 'q' })
-    } catch {
-      return false
-    }
-    const played = mv.from + mv.to + (mv.promotion ?? '')
-    if (played === mistake!.bestUci || c.isCheckmate()) {
-      finished.current = true
-      onFinish(true)
-      return true
-    }
-    setChecking(true)
-    void (async () => {
-      const engine = getEngine()
-      // Le coup joué est bon s'il ne perd presque rien face au meilleur.
-      const before = await engine.search({ fen, depth: 12, multipv: 1 })
-      const after = await engine.search({ fen: c.fen(), depth: 12, multipv: 1 })
-      const cp = (l?: { scoreMate: number | null; scoreCp: number | null }) =>
-        l ? (l.scoreMate !== null ? (l.scoreMate > 0 ? 10000 : -10000) : (l.scoreCp ?? 0)) : 0
-      const wBefore = winPct(cp(before.lines[0]))
-      const wAfter = winPct(-cp(after.lines[0]))
-      finished.current = true
-      setChecking(false)
-      onFinish(wBefore - wAfter < 5)
-    })()
-    return true
-  }
-
-  return (
-    <div className="flex flex-col gap-2 px-3">
-      <div className="rounded bg-surface-2 px-3 py-1.5 text-center text-sm">
-        <span className="font-semibold">{mistake.gameLabel}</span> : tu avais joué{' '}
-        <span className="font-bold text-red-400">{figurine(mistake.playedSan, moverColor)}</span>. Trouve mieux.
-      </div>
-      {checking && <p className="text-center text-sm text-neutral-400">Je vérifie…</p>}
-      <div className="flex justify-center">
-        <div className="boardbox md:w-[min(56vh,520px)]">
-          <Board fen={fen} orientation={moverColor} interactive={phase === 'play' && !checking} movableColor={moverColor} onMove={handleMove} />
-        </div>
-      </div>
-    </div>
-  )
-}

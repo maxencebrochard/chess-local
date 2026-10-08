@@ -42,6 +42,7 @@ Les contextes pré-remplissent `localStorage['chess-local-settings']` au format 
 Changer la forme du store `src/store/settings.ts` impose de mettre à jour `DEFAULT_SETTINGS` dans `e2e/helpers.py`.
 L'API chess.com est simulée par `e2e/fixtures/chesscom.json` (parties fictives) : tout nouvel appel réseau doit y être ajouté.
 Le gate n'utilise jamais `--live`.
+`test_revision.py` sème IndexedDB nativement (après `wait_schema`, l'app ayant créé les 6 stores), bloque le service worker et remplace `puzzles.json` par une route ; ses dates sont relatives aux jours civils locaux (midi J-n, ou minuit plus une minute pour « aujourd'hui »), jamais « il y a une heure ».
 `test_pwa.py` ne tourne que sur le build local : sous-chemin, manifest, service worker, précache, puis redémarrage avec le serveur réellement tué (`set_offline` ne coupe pas le réseau du service worker).
 `test_upgrade.py` (prod uniquement) est le garde-fou de continuité des données : il sert l'ancien build déployé (`origin/gh-pages@388d3ed`, extrait de git), y crée de vraies données par l'interface dans un profil persistant, bascule sur le build courant sur le même port, vérifie IndexedDB, réglages et chiffres affichés à l'identique, puis restaure une sauvegarde de l'ancien build dans le nouveau ; `E2E_MUTATION=rename-db|clear-ratings|drop-table|clear-settings` sert une copie mutée du nouveau build pour prouver que la suite passe au rouge.
 Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` : deux lancements simultanés ne se gênent pas.
@@ -101,6 +102,9 @@ La partie en cours est rejouée depuis `localStorage['chess-local-position-game-
 En dépendent : `coach.ts` (commentaires post-partie générés par règles), `liveCoach.ts` (classe rapide du mode entraîneur), `ReviewSummary`, `EvalGraph`, `MoveList`.
 Un bilan écrit les fautes dans la table `mistakes`, rejouées ensuite dans Apprendre → Mes erreurs.
 L'entraîneur d'ouvertures (`/ouvertures`, `src/lib/openingTrainer.ts`) enregistre ses tentatives dans `learnSessions` avec le domaine `opening-drill` (format d'`itemId` documenté dans `db.ts`) ; `pickNextDomain` les ignore.
+La révision espacée (`/revision`, `src/lib/revision.ts`) n'a pas de table : l'échéance de chaque item raté (puzzle, faute, variante `full`) se calcule depuis son historique daté (`puzzleAttempts`, `learnSessions`, `mistakes`), agrégé par jour civil local, avec une échelle de Leitner `[1, 3, 7, 21]` jours ; un item en retard de plus de 30 jours sort de la file.
+Un résultat de révision s'écrit là où l'écran d'origine écrit (`scoreItem('mistakes')` + `mistakes.update`, `recordDrill`, ou le domaine `revision` pour les puzzles), jamais dans un Elo.
+Le compteur de l'accueil ne charge jamais `puzzles.json` ; seule la séance le fait.
 
 ### Persistance
 
@@ -109,6 +113,7 @@ Ajouter une table ou un index = nouveau bloc `db.version(n)` qui redéclare tous
 La table `ratings` est unique et indexée par clé texte : cadences (`bullet`, `blitz`, `rapid`, `unlimited`), `puzzle`, et domaines d'Apprendre (`learn-endgame`, `learn-tactic`, ...).
 Tous les Elo passent par `applyRating`/`eloUpdate`.
 Les réglages sont dans Zustand persist (`localStorage['chess-local-settings']`).
+Les séances en cours d'Apprendre et de révision vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`) : `importBackup` et `resetApp` effacent ces deux clés, et seulement elles.
 `main.tsx` demande `navigator.storage.persist()` et `backup.ts` exporte/restaure tout : iOS peut purger IndexedDB.
 
 ### Chemins et PWA

@@ -75,8 +75,10 @@ export async function pickNextDomain(): Promise<LearnDomain> {
   const pending = await db.mistakes.where('solved').equals(0).count()
   // Filtre avant la limite : les tentatives de l'entraîneur d'ouvertures (domaine 'opening-drill'),
   // les finales jouées jusqu'au bout (domaine 'endgame-play'), les leçons de cours terminées
-  // (domaine 'course') et les séries de Mats éclair (domaine 'mats') ne doivent pas chasser les
-  // domaines d'Apprendre de la fenêtre.
+  // (domaine 'course'), les séries de Mats éclair (domaine 'mats') et les puzzles revus par la
+  // révision espacée (domaine 'revision') ne doivent pas chasser les domaines d'Apprendre de la
+  // fenêtre. Les fautes revues par la révision s'écrivent dans 'mistakes' et comptent, à dessein,
+  // comme du travail sur les erreurs.
   const learnDomains = new Set<string>(Object.keys(DOMAIN_META))
   const sessions = await db.learnSessions.orderBy('date').reverse().filter((s) => learnDomains.has(s.domain)).limit(30).toArray()
   if (pending > 0) {
