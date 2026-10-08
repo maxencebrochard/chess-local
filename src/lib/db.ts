@@ -60,6 +60,8 @@ export interface LearnSession {
   // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
   // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).
   // mats : itemId = `<exercice>:<cadence>`, ex. `chrono-kq:30s`, `mate-2:3min`.
+  // revision : puzzles revus par la révision espacée, itemId = `puzzle:<id>` (sans Elo) ; les
+  // fautes et variantes revues s'écrivent dans leurs domaines d'origine (`mistakes`, `opening-drill`).
   domain: string
   itemId: string
   success: 0 | 1

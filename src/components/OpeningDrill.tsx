@@ -37,6 +37,12 @@ interface Props {
   onClose: () => void
   onAnalyse: (moves: string[]) => void
   session: { ok: number; total: number }
+  // Habillage de séance (révision espacée) : titre à la place du mode et compteur masqué, ligne
+  // d'état sous l'en-tête, libellé du bouton suivant, ligne sous le verdict (« Revient dans 3 jours »).
+  title?: string
+  subtitle?: string
+  nextLabel?: string
+  resultNote?: string | null
 }
 
 const SUITE_COUNT = 5
@@ -391,7 +397,7 @@ export function OpeningDrill(props: Props) {
   const last = pending ?? moves[moves.length - 1]
   const lastMove = last ? { from: last.slice(0, 2), to: last.slice(2, 4) } : null
   const interactive = !result && !pending && !thinking && myTurn
-  const nextLabel = mode === 'next' ? 'Position suivante' : mode === 'suite' ? 'Suite suivante' : 'Variante suivante'
+  const nextLabel = props.nextLabel ?? (mode === 'next' ? 'Position suivante' : mode === 'suite' ? 'Suite suivante' : 'Variante suivante')
 
   return (
     <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto bg-surface">
@@ -412,13 +418,14 @@ export function OpeningDrill(props: Props) {
             ✕
           </button>
           <h1 className="min-w-0 flex-1 truncate text-center text-lg font-black">
-            {MODE_LABEL[mode]}
+            {props.title ?? MODE_LABEL[mode]}
             <span className="ml-2 text-sm font-semibold text-neutral-500">{fam.label}</span>
           </h1>
           <span className="w-9 text-right text-sm font-bold text-accent" title="Réussites de la séance">
-            {props.session.total > 0 ? `${props.session.ok}/${props.session.total}` : ''}
+            {props.title === undefined && props.session.total > 0 ? `${props.session.ok}/${props.session.total}` : ''}
           </span>
         </header>
+        {props.subtitle && <p className="px-3 pb-1 text-center text-xs font-semibold text-neutral-400">{props.subtitle}</p>}
 
         <div className="flex items-center gap-2 px-3 pb-1">
           <span data-variant-name className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-200">
@@ -478,6 +485,11 @@ export function OpeningDrill(props: Props) {
                 {mode !== 'next' && plyTarget === null && moves.length >= variant!.moves.length ? 'Fin de la théorie connue' : `${moves.length} demi-coups`}
               </span>
             </div>
+            {props.resultNote && !result.empty && (
+              <p data-result-note className="text-sm font-semibold text-neutral-300">
+                {props.resultNote}
+              </p>
+            )}
             <div className="flex items-center gap-2">
               <button
                 onClick={props.onRetry}
