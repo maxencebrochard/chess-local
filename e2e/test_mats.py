@@ -111,12 +111,31 @@ def data_suite():
 
 # ---------- outils ----------
 
+# Schéma Dexie courant (src/lib/db.ts, version(3) donc 30 côté IndexedDB) : Mats éclair n'y ajoute ni version ni table.
+DB_VERSION = 30
+DB_STORES = sorted(["games", "ratings", "puzzleAttempts", "rushScores", "mistakes", "learnSessions", "reviews"])
+
 DB_JS = """async () => {
   const d = await new Promise((res, rej) => { const r = indexedDB.open('chess-local'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) })
   const rows = await new Promise((res) => { const q = d.transaction('learnSessions').objectStore('learnSessions').getAll(); q.onsuccess = () => res(q.result) })
   const out = { version: d.version, stores: [...d.objectStoreNames].sort(), rows: rows.filter((r) => r.domain === 'mats') }
   d.close()
   return out
+}"""
+
+
+# Journal des états du chrono : un observateur de mutations dans la page note l'état du DOM (trait,
+# phase, chrono en marche, temps restant) après chaque commit React. La réponse de Stockfish peut tenir
+# en 10 ms quand le roi n'a qu'un coup légal : un sondage depuis Playwright la rate, l'observateur non.
+CLOCK_LOG_JS = """() => {
+  const run = document.querySelector('[data-run]')
+  const log = (window.__clockLog = [])
+  const snap = () => {
+    const t = run.querySelector('[role=timer]')
+    log.push({ fen: run.dataset.fen, phase: run.dataset.phase, running: t ? t.dataset.running : null, ms: t ? Number(t.dataset.ms) : null })
+  }
+  new MutationObserver(snap).observe(run, { attributes: true, subtree: true, attributeFilter: ['data-fen', 'data-phase', 'data-running', 'data-ms'] })
+  snap()
 }"""
 
 
@@ -272,6 +291,7 @@ def chrono_suite(p, browser):
     won = False
     stopped_ok = True
     frozen_seen = 0
+    page.evaluate(CLOCK_LOG_JS)
     for _ in range(40):
         phase = attr(page, "[data-run]", "data-phase")
         if phase != "play":
@@ -283,29 +303,25 @@ def chrono_suite(p, browser):
             page.wait_for_timeout(150)
             continue
         move = chess.Move.from_uci(solver.best(fen))
-        # Sans attente après le coup : la réponse du moteur (150 ms) doit être observée.
         play_uci(page, move.uci(), after=0)
         board.push(move)
         if board.is_checkmate() or move.promotion:
             page.wait_for_timeout(300)
             continue
-        # Pendant la réponse de Stockfish, le chrono du joueur est arrêté et ne bouge plus.
-        samples = []
+        # Pendant la réponse de Stockfish, le chrono du joueur est arrêté et ne bouge plus : chaque état
+        # du DOM au trait du moteur doit montrer le chrono à l'arrêt, au même temps restant.
         end = time.time() + 8
-        while time.time() < end and attr(page, "[data-run]", "data-phase") == "play":
-            running, ms, turn_fen = page.evaluate("""() => {
-              const t = document.querySelector('[role=timer]'), r = document.querySelector('[data-run]')
-              return [t.dataset.running, Number(t.dataset.ms), r.dataset.fen]
-            }""")
-            if chess.Board(turn_fen).turn == me:
+        while time.time() < end:
+            phase, turn_fen = page.evaluate("() => { const r = document.querySelector('[data-run]'); return [r?.dataset.phase, r?.dataset.fen] }")
+            if phase != "play" or not turn_fen or chess.Board(turn_fen).turn == me:
                 break
-            samples.append((running, ms))
-            page.wait_for_timeout(10)
-        frozen = [ms for running, ms in samples if running == "false"]
-        if len(frozen) >= 2:
+            page.wait_for_timeout(20)
+        snaps = page.evaluate("() => window.__clockLog.splice(0)")
+        engine_turn = [s for s in snaps if s["phase"] == "play" and s["fen"] and chess.Board(s["fen"]).turn != me]
+        if engine_turn:
             frozen_seen += 1
-            stopped_ok = stopped_ok and max(frozen) - min(frozen) < 50
-        stopped_ok = stopped_ok and all(running == "false" for running, _ in samples)
+            ms = [s["ms"] for s in engine_turn]
+            stopped_ok = stopped_ok and all(s["running"] == "false" for s in engine_turn) and max(ms) - min(ms) < 50
     solver.close()
     check("[chrono] mat contre Stockfish (deux tours)", won, f"(phase {attr(page, '[data-run]', 'data-phase')}, {attr(page, '[data-run]', 'data-fen')})")
     check("[chrono] chrono arrêté et figé pendant chaque réponse de Stockfish", stopped_ok and frozen_seen >= 1, f"({frozen_seen} réponses observées)")
@@ -336,7 +352,7 @@ def chrono_suite(p, browser):
     dump = mats_rows(page, 2)
     keys = sorted(r["itemId"] for r in dump["rows"])
     check("[chrono] deux séries, deux lignes", keys == ["chrono-krr:120s", "chrono-krr:15s"], f"({keys})")
-    check("[données] pas de nouvelle version ni table Dexie", dump["version"] == 20 and "learnSessions" in dump["stores"] and len(dump["stores"]) == 6, f"({dump['version']}, {dump['stores']})")
+    check("[données] pas de nouvelle version ni table Dexie", dump["version"] == DB_VERSION and dump["stores"] == DB_STORES, f"({dump['version']}, {dump['stores']})")
 
     # Rechargement : records relus depuis IndexedDB.
     page.goto(f"{BASE}/#/mats")
