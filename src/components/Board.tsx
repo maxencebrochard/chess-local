@@ -56,9 +56,11 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
 
   // Son du coup, joué par l'échiquier lui-même : toute page dont la position avance d'un coup
   // sonne comme chess.com (puzzle, exercice, navigation dans l'analyse...). Restent muets : un saut
-  // (nouveau puzzle, chargement, plusieurs coups d'un coup), un retour en arrière (coup faux repris,
-  // entrée dans un « réessayer ») et un coup que la page ne surligne pas comme dernier coup (coup
-  // faux affiché en rouge, que suit le son d'échec). `silent` : la page joue ses sons elle-même.
+  // (nouveau puzzle, chargement, plusieurs coups d'un coup), un retour en arrière (coup faux repris)
+  // et un coup que la page ne surligne pas comme dernier coup (coup faux affiché en rouge, que suit
+  // le son d'échec). `silent` : la page joue ses sons elle-même, ou affiche un saut de position
+  // (réessayer de l'analyse) ; une position vue sous `silent` ne sert jamais de point de départ,
+  // la sortie du mode est donc muette elle aussi.
   // Un coup moins de 60 ms après le précédent reste muet : défiler vite dans l'analyse ne doit pas
   // empiler les sons.
   const prevFen = useRef<string | null>(null)
@@ -68,7 +70,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   const lastMoveGiven = lastMove !== undefined
   useEffect(() => {
     const prev = prevFen.current
-    prevFen.current = fen
+    prevFen.current = silent ? null : fen
     if (silent || prev === null || prev === fen) return
     const move = oneMoveBetween(prev, fen)
     if (!move) return
@@ -77,9 +79,9 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
     if (now - lastBoardSoundAt < 60) return
     lastBoardSoundAt = now
     playMoveSound(move, move.color !== me)
-    // Seule la fen déclenche : un changement de surlignage seul n'est pas un coup.
+    // Fen et `silent` seuls déclenchent : un changement de surlignage seul n'est pas un coup.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fen])
+  }, [fen, silent])
 
   const legalTargets = useMemo(() => {
     if (!selected) return new Set<string>()

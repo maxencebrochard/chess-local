@@ -12,6 +12,9 @@ Chessnut vient directement du dépôt de son auteur (commit `2b8eaf14a31edad7e9d
 | `spatial/` | Spatial | Maurizio Monge | MIT, voir `LICENSE-MIT-chess-art.txt` | https://github.com/maurimo/chess-art | Aucune. |
 | `chessnut/` | Chessnut | Alexis Luengas (auteur ; le dépôt amont ne porte aucun avis de copyright, ni fichier NOTICE) | Apache 2.0, voir `LICENSE-Apache-2.0-chessnut.txt` (texte amont, identique) | https://github.com/LexLuengas/chessnut-pieces | Aucune (fichiers identiques à l'amont). |
 
-Le jeu « Classique » de l'app n'est pas dans ce dossier : ce sont les pièces intégrées à la bibliothèque `react-chessboard` (dépendance npm), utilisées telles quelles.
+Le jeu « Classique » de l'app n'est pas dans ce dossier : ce sont les pièces intégrées à la bibliothèque `react-chessboard` 5.10.0 (dépendance npm, licence MIT, copyright 2022 Ryan Gregory), rendues telles quelles.
+Ces dessins sont les pièces SVG standard de Wikimedia Commons (catégorie « SVG chess pieces/Standard transparent », les douze fichiers `Chess_<pièce><couleur>t45.svg`, 2006), œuvre de l'utilisateur Cburnett, publiée par lui sous quatre licences au choix : GFDL, CC BY-SA 3.0, BSD 3 clauses et GPL.
+L'app les reprend sous la BSD 3 clauses (permissive, attribution requise : la voici, texte dans `LICENSE-BSD-3-Clause-cburnett.txt`).
+`react-chessboard` les cite dans l'en-tête de son `src/pieces.tsx` sous la CC BY-SA 3.0 (https://creativecommons.org/licenses/by-sa/3.0/, source https://commons.wikimedia.org/w/index.php?curid=1499810) ; l'attribution que cette licence exige est donnée ici et dans le README.
 
 Jeux écartés exprès : ceux sous CC BY-NC-SA (clause non commerciale, donc pas libres), ceux marqués « freeware » ou sans licence, et les jeux copyleft (GPL, AGPL) dès qu'un équivalent permissif existait.

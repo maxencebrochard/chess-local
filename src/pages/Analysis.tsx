@@ -757,9 +757,9 @@ export default function Analysis() {
               interactive={!!retry && (retry.status === 'trying' || retry.status === 'failed')}
               movableColor={retry ? colorAtIndex(retry.moveIndex) : undefined}
               onMove={retry ? handleRetryMove : undefined}
-              // Pas de surlignage (les teintes de classe le remplacent) ; undefined hors réessai
-              // pour que l'échiquier sonne en avançant d'un coup, null pendant le réessai.
-              lastMove={retry ? null : undefined}
+              // Pas de surlignage (les teintes de classe le remplacent) ni de dernier coup donné :
+              // l'échiquier sonne en avançant d'un coup. Le réessai affiche un saut de position.
+              silent={!!retry}
               arrows={guidedArrows}
               badge={retry ? null : { square: m.uci.slice(2, 4), cls: m.class }}
               markSquares={retry ? undefined : { [m.uci.slice(0, 2)]: tint, [m.uci.slice(2, 4)]: tint }}
@@ -852,6 +852,7 @@ export default function Analysis() {
               movableColor={retry ? colorAtIndex(retry.moveIndex) : undefined}
               onMove={retry ? handleRetryMove : handleMove}
               lastMove={retry ? null : lastMove}
+              silent={!!retry}
               arrows={arrows}
               showAttackers={showAttackers}
             />

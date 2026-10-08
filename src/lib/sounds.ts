@@ -43,7 +43,7 @@ type State = AudioContextState | 'interrupted'
 const stateOf = (c: AudioContext) => c.state as State
 
 function newContext(): AudioContext | null {
-  const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  const Ctor = window.AudioContext
   if (!Ctor) return null
   const c = new Ctor({ latencyHint: 'interactive' })
   gain = c.createGain()
