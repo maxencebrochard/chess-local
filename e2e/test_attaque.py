@@ -12,7 +12,9 @@
    partie, autre position qui remplace une tentative en cours (notée abandonnée).
 5. Vraie attaque : défenseur à 1320, coups de l'attaquant par un second Stockfish dans la page,
    jusqu'à « Attaque réussie » (bandeau en place, échiquier immobile, retrouvé après rechargement), Conclure, ligne IndexedDB,
-   liste « ✓ battu à 1320 ». Puis Plan (calque EngineContinuation), Analyser et retour, Suivante.
+   liste « ✓ battu à 1320 ». Puis Plan (calque EngineContinuation), Analyser et retour, Suivante,
+   et la même position rouverte depuis la liste après un autre choix de niveau : la partie
+   terminée n'est pas reprise, le défenseur est au niveau choisi.
 6. Mise en page : 393x852, 393x660 et 1440x900, sans débordement horizontal.
 
 Usage : npm run test:e2e -- --suite attaque
@@ -493,6 +495,7 @@ def suite(p):
         elif status == "over":
             r = rows(page)
             check("[attaque] mat noté", r and r[-1]["outcome"] == "mate" and r[-1]["success"] == 1 and r[-1]["defenderElo"] == 1320, f"({r[-1:]})")
+        ended = attr(page, "status") == "over"
         shot(page, "attaque_fin_852")
         bar_fits(page, "fin 393x852")
         no_overflow(page, "fin 393x852")
@@ -533,6 +536,21 @@ def suite(p):
         check("[liste] position marquée « ✓ battu à 1320 »", item.count() == 1 and "✓ battu à 1320" in (item.text_content() or ""), f"({item.text_content() if item.count() else None})")
         tab = page.locator(f"[role='tab'][data-category='{target['category']}']").text_content() or ""
         check("[liste] onglet : 1 position réussie", re.search(r"(?<!\d)1/\d+", tab) is not None, f"({tab})")
+
+        # Même position rouverte depuis la liste (sans retour d'analyse) après un autre choix de
+        # niveau : la partie terminée à 1320 n'est pas reprise, son niveau non plus.
+        if ended:
+            page.locator("[role='radio'][data-level='2500']").first.tap() if page.locator("[role='radio'][data-level='2500']").count() else ck.fail("[niveau] pastille 2500")
+            if open_attack(page, target["id"]):
+                chip = page.locator("[data-testid='level-chip']").text_content() or ""
+                check("[niveau] position terminée rouverte : puce au niveau choisi « 2500 »", "2500" in chip and "1320" not in chip, f"({chip})")
+                check("[niveau] position terminée rouverte : ligne moteur « Elo 2500 »", page.locator(GAME, has_text="Elo 2500").count() == 1)
+                check("[niveau] position terminée rouverte : partie repartie du début", attr(page, "status") == "playing" and attr(page, "fen") == target["fen"],
+                      f"(status={attr(page, 'status')}, fen={attr(page, 'fen')})")
+                stored = page.evaluate("() => JSON.parse(localStorage.getItem('chess-local-position-game-v1') || 'null')")
+                check("[niveau] position terminée rouverte : niveau 2500 persisté avec la partie",
+                      stored is not None and stored.get("key") == f"attaque:{target['id']}" and stored.get("level") == 2500 and stored.get("end") is None,
+                      f"({stored and {k: stored.get(k) for k in ('key', 'level', 'end')}})")
 
     # --- 6. Mise en page ---
     page.set_viewport_size({"width": 393, "height": 660})

@@ -10,7 +10,7 @@ import {
   ATTACKS, attackStats, CATEGORY_LABEL, CATEGORY_ORDER, DECISIVE_CP, gameKey, LEVELS, loadLevel, opponentFor,
   outcomeOf, recordAttempt, recordReplaced, saveLevel, statsKey, type AttackCategory, type AttackPosition, type AttackStats, type Level,
 } from '../lib/attack'
-import { inProgressKey, loadStoredGame, validFen } from '../lib/positionGame'
+import { inProgressKey, loadStoredGame, resumedGame, validFen } from '../lib/positionGame'
 
 // Consigne sans la catégorie (déjà donnée par l'onglet) : « Roques opposés : pousse ton pion h. »
 // -> « Pousse ton pion h. »
@@ -196,12 +196,12 @@ function AttackList() {
 function AttackPlay({ id }: { id: string }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const restore = !!(location.state as { restore?: boolean } | null)?.restore
   const pos = ATTACKS.find((a) => a.id === id)
   // Niveau de la partie : celui d'une tentative reprise, sinon le niveau choisi.
   const [level, setLevel] = useState<Level>(() => {
-    const stored = loadStoredGame()
-    if (pos && stored?.key === gameKey(pos.id) && stored.startFen === pos.fen && stored.level !== undefined) return stored.level
-    return loadLevel()
+    const stored = pos ? resumedGame(gameKey(pos.id), pos.fen, restore) : null
+    return stored?.level !== undefined ? stored.level : loadLevel()
   })
   const [attempt, setAttempt] = useState(0) // remonte la partie au changement de niveau
   const [picking, setPicking] = useState<Level | undefined>(undefined)
@@ -217,7 +217,6 @@ function AttackPlay({ id }: { id: string }) {
       </div>
     )
   }
-  const restore = !!(location.state as { restore?: boolean } | null)?.restore
   const list = byCategory(pos.category)
   const next = list[(list.indexOf(pos) + 1) % list.length]
 

@@ -18,7 +18,7 @@ import { courseFor } from '../lib/courses'
 import { Engine } from '../lib/engine'
 import {
   boardEnd, decisiveEnd, decisiveStreak, DECISIVE_TURNS, engineAcceptsDraw, halfmoveClock, judge, loadStoredGame,
-  repetitions, replay, resignEnd, storeGame, verdictText, type GameEnd, type Objective, type Opponent, type StoredGame,
+  repetitions, replay, resignEnd, resumedGame, storeGame, verdictText, type GameEnd, type Objective, type Opponent, type StoredGame,
 } from '../lib/positionGame'
 import { figurine, winPct } from '../lib/review'
 import { sounds } from '../lib/sounds'
@@ -99,8 +99,8 @@ interface Init {
 }
 
 function initialGame(p: PositionGameProps): Init {
-  const stored = loadStoredGame()
-  if (p.resume !== false && stored && stored.key === p.gameKey && stored.startFen === p.startFen && (!stored.end || p.restoreFinished)) {
+  const stored = p.resume !== false ? resumedGame(p.gameKey, p.startFen, !!p.restoreFinished) : null
+  if (stored) {
     const chess = replay(p.startFen, stored.uci)
     return {
       chess,

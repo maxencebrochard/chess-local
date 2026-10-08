@@ -225,6 +225,13 @@ export function loadStoredGame(): StoredGame | null {
   }
 }
 
+// Partie persistée que cette position reprend : même clé, même FEN de départ, et pas terminée
+// sauf si `restoreFinished` (retour de l'analyse).
+export function resumedGame(key: string, startFen: string, restoreFinished: boolean): StoredGame | null {
+  const g = loadStoredGame()
+  return g && g.key === key && g.startFen === startFen && (!g.end || restoreFinished) ? g : null
+}
+
 export function storeGame(g: StoredGame) {
   try {
     localStorage.setItem(POSITION_GAME_KEY, JSON.stringify(g))

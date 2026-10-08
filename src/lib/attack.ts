@@ -53,10 +53,6 @@ export function saveLevel(level: Level) {
   } catch {}
 }
 
-export function levelLabel(level: Level): string {
-  return level === null ? 'Pleine force' : `Elo ${level}`
-}
-
 // Bridage par les options UCI de Stockfish (Skill Level : il choisit, avec une part de hasard,
 // parmi ses meilleurs coups), jamais les coups tirés au hasard des bots faibles de bots.ts.
 export function opponentFor(level: Level): Opponent {
@@ -104,11 +100,9 @@ export interface AttackStats {
   attempts: number // toutes les tentatives, abandons compris
   finished: number // tentatives menées à leur terme (hors Recommencer)
   successes: number // mat ou avantage décisif sans aide
-  best: AttackOutcome | null
   bestLevel: Level | undefined // meilleur niveau battu sans aide (undefined : jamais)
 }
 
-const OUTCOME_RANK: Record<AttackOutcome, number> = { mate: 5, decisive: 4, draw: 3, loss: 2, resign: 1, abandon: 0 }
 const levelRank = (l: Level) => (l === null ? Infinity : l)
 
 // Statistiques par `id|fen` : une position régénérée sous le même id repart de zéro.
@@ -117,7 +111,7 @@ export async function attackStats(): Promise<Map<string, AttackStats>> {
   const out = new Map<string, AttackStats>()
   for (const r of rows) {
     const key = `${r.itemId}|${r.fen ?? ''}`
-    const s = out.get(key) ?? { attempts: 0, finished: 0, successes: 0, best: null, bestLevel: undefined }
+    const s = out.get(key) ?? { attempts: 0, finished: 0, successes: 0, bestLevel: undefined }
     const outcome = r.outcome ?? (r.success ? 'decisive' : 'loss')
     s.attempts++
     if (outcome !== 'abandon') s.finished++
@@ -126,22 +120,12 @@ export async function attackStats(): Promise<Map<string, AttackStats>> {
       const lvl = r.defenderElo === undefined ? null : r.defenderElo
       if (s.bestLevel === undefined || levelRank(lvl) > levelRank(s.bestLevel)) s.bestLevel = lvl
     }
-    if (!s.best || OUTCOME_RANK[outcome] > OUTCOME_RANK[s.best]) s.best = outcome
     out.set(key, s)
   }
   return out
 }
 
 export const statsKey = (p: AttackPosition) => `${p.id}|${p.fen}`
-
-export const OUTCOME_LABEL: Record<AttackOutcome, string> = {
-  mate: 'Mat',
-  decisive: 'Avantage décisif',
-  draw: 'Nulle',
-  loss: 'Défaite',
-  resign: 'Abandon',
-  abandon: 'Recommencée',
-}
 
 // Tentative d'attaque en cours écrasée par une autre partie (autre position, finale, partie
 // libre : un seul emplacement de persistance) : notée abandonnée.
