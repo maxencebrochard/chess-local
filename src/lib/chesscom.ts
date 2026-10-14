@@ -94,12 +94,12 @@ function toGame(g: RawGame, user: string): ChesscomGame | null {
 }
 
 // URLs des archives mensuelles, les plus récentes d'abord ; un joueur sans partie a une liste vide.
-async function recentArchives(user: string, months: number): Promise<string[]> {
+async function recentArchives(user: string): Promise<string[]> {
   const data = (await fetchJson(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/games/archives`)) as {
     archives?: unknown
   }
   const archives = Array.isArray(data?.archives) ? data.archives.filter((a): a is string => typeof a === 'string') : []
-  return archives.slice(-months).reverse()
+  return archives.reverse()
 }
 
 async function fetchArchive(archiveUrl: string): Promise<RawGame[]> {
@@ -111,7 +111,7 @@ async function fetchArchive(archiveUrl: string): Promise<RawGame[]> {
 export async function fetchRecentGames(username: string, months = 3, limit = 30): Promise<ChesscomGame[]> {
   const user = normalizeUsername(username)
   const games: ChesscomGame[] = []
-  for (const archiveUrl of await recentArchives(user, months)) {
+  for (const archiveUrl of (await recentArchives(user)).slice(0, months)) {
     for (const raw of await fetchArchive(archiveUrl)) {
       const game = toGame(raw, user)
       if (game) games.push(game)
@@ -122,13 +122,13 @@ export async function fetchRecentGames(username: string, months = 3, limit = 30)
 }
 
 // Les `limit` parties les plus récentes d'une cadence (`time_class` de l'API : bullet, blitz,
-// rapid), pour Insights. Archives lues du mois le plus récent au plus ancien, `maxMonths` au plus,
+// rapid), pour Insights. Archives lues du mois le plus récent au plus ancien,
 // et arrêt dès que la cadence a assez de parties : un joueur actif n'en lit qu'une ou deux. Le
 // différé et les variantes sont écartés par le filtre de cadence et par `toGame`.
-export async function fetchGamesByClass(username: string, timeClass: string, limit: number, maxMonths = 12): Promise<ChesscomGame[]> {
+export async function fetchGamesByClass(username: string, timeClass: string, limit: number): Promise<ChesscomGame[]> {
   const user = normalizeUsername(username)
   const games: ChesscomGame[] = []
-  for (const archiveUrl of await recentArchives(user, maxMonths)) {
+  for (const archiveUrl of await recentArchives(user)) {
     for (const raw of await fetchArchive(archiveUrl)) {
       if (raw.time_class !== timeClass) continue
       const game = toGame(raw, user)
@@ -163,7 +163,7 @@ export async function findGameByUrl(username: string, gameUrl: string): Promise<
   const id = extractGameId(gameUrl)
   if (!id) return null
   const user = normalizeUsername(username)
-  for (const archiveUrl of await recentArchives(user, 3)) {
+  for (const archiveUrl of (await recentArchives(user)).slice(0, 3)) {
     const raw = (await fetchArchive(archiveUrl)).find((g) => extractGameId(g.url) === id)
     if (!raw) continue
     const game = toGame(raw, user)
