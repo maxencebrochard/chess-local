@@ -36,8 +36,7 @@ def delayed_settings(p, browser, setting):
     page.wait_for_function("window.__audioHeld")
     ck.check(f"[{setting}] aperçu en attente", sounds_heard(page, 0) == [])
     if setting == "désactivé":
-        page.locator("div.flex.items-center.justify-between").filter(
-            has=page.get_by_text("Sons", exact=True)).get_by_role("button").click()
+        page.get_by_role("switch", name="Sons", exact=True).click()
     else:
         slider.fill(setting)
     page.evaluate("window.__releaseAudio()")
