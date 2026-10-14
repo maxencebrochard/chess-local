@@ -1,7 +1,6 @@
 // Partie contre Stockfish à pleine force depuis une position, sans plafond de coups : seules les
 // règles du jeu (mat, pat, répétition, 50 coups, matériel insuffisant), l'abandon ou une nulle
-// acceptée l'arrêtent. Sert aux finales jouées jusqu'au bout et au bouton « Jouer contre le
-// moteur » de l'analyse. Le joueur a le trait au départ ; la partie est persistée à chaque coup.
+// acceptée l'arrêtent. Le joueur a le trait au départ ; la partie est persistée à chaque coup.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chess, type Color, type Move } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
@@ -26,8 +25,9 @@ const ENGINE_MOVETIME_MS = 700
 
 // Coup attendu au premier coup du joueur (« Mes attaques manquées » : le coup du bilan). Un autre
 // coup est vérifié par Stockfish : il « tient aussi » s'il perd moins de 5 points de win%
-// (même règle que « Mes erreurs »). `onJudged` est appelé une fois par tentative : réussite si le
-// coup est trouvé sans aide ; Annuler ou Recommencer avant le verdict compte comme un échec.
+// (même règle que « Mes erreurs »). `onJudged` suit le contrat `LearnSession` dans db.ts, au plus
+// une fois par tentative ; Annuler, Recommencer ou abandonner pendant la vérification compte
+// comme un échec. Une erreur moteur ou un départ de la page pendant la vérification ne note rien.
 export interface KeyMove {
   uci: string
   san: string
@@ -45,7 +45,7 @@ function restoredKeyResult(chess: Chess, player: Color, key: KeyMove | undefined
 }
 
 export interface PositionGameProps {
-  gameKey: string // clé de persistance : `finale:<id>` ou `position`
+  gameKey: string // clé de persistance fournie par l'écran appelant, distincte selon l'exercice
   startFen: string
   title: string
   objective: Objective

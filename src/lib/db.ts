@@ -64,8 +64,8 @@ export interface LearnSession {
   // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
   // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).
   // missed-attack : itemId = id de la ligne `mistakes`, fen = sa `fenBefore` (le couple identifie
-  // l'attaque : une sauvegarde restaurée peut réattribuer les ids), success = coup du bilan
-  // retrouvé sans aide.
+  // l'attaque : une sauvegarde restaurée peut réattribuer les ids), success = premier coup sans
+  // aide, égal au coup du bilan ou accepté par `PositionGame.judgeKeyMove` après vérification.
   // mats : itemId = `<exercice>:<cadence>`, ex. `chrono-kq:30s`, `mate-2:3min`.
   // revision : puzzles revus par la révision espacée, itemId = `puzzle:<id>` (sans Elo) ; les
   // fautes et variantes revues s'écrivent dans leurs domaines d'origine (`mistakes`, `opening-drill`).

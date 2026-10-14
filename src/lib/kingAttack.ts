@@ -245,15 +245,15 @@ export function pgnKey(startFen: string, sans: string[]): string {
 
 // ------------------------------------------------------------------ progression
 
-// Une ligne `learnSessions` par tentative : domaine à part, hors de la rotation d'Apprendre
-// (`pickNextDomain` filtre sur les clés de `DOMAIN_META`). `success` = coup du bilan retrouvé.
+// Une ligne `learnSessions` par tentative notée : domaine à part, hors de la rotation d'Apprendre
+// (`pickNextDomain` filtre sur les clés de `DOMAIN_META`). Contrat de `success` : `LearnSession` dans db.ts.
 const MISSED_ATTACK_DOMAIN = 'missed-attack'
 
 export async function recordMissedAttack(id: number, fen: string, success: boolean): Promise<void> {
   await db.learnSessions.add({ date: Date.now(), domain: MISSED_ATTACK_DOMAIN, itemId: String(id), fen, success: success ? 1 : 0, ratingAfter: null })
 }
 
-// Clés `id|fen` des attaques dont le coup a déjà été retrouvé sans aide.
+// Clés `id|fen` des attaques réussies selon le contrat `LearnSession` dans db.ts.
 export async function solvedMissedAttacks(): Promise<Set<string>> {
   const rows = await db.learnSessions.where('domain').equals(MISSED_ATTACK_DOMAIN).toArray()
   return new Set(rows.filter((r) => r.success === 1).map((r) => `${r.itemId}|${r.fen ?? ''}`))
