@@ -1,7 +1,8 @@
 # ChessLocal
 
 Version privée et locale de chess.com.
-Tourne entièrement sur le Mac : aucun serveur, aucun compte, aucune donnée qui sort de la machine.
+Tourne entièrement dans le navigateur, sur ordinateur ou en PWA sur iPhone : aucun serveur, aucun compte, aucune donnée qui sort de la machine.
+La navigation reste en place pendant le défilement du contenu ; les gestes en butée des listes, calques et feuilles ne se propagent pas à la page.
 
 ## Lancer
 
