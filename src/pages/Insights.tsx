@@ -194,13 +194,19 @@ export default function Insights() {
     const user = needsUserFor(cfg) ? normalizeUsername(username) : null
     if (user) setChesscomUsername(user)
     const { candidates, failed, offline } = collected
+    const found = candidates.length + failed
+    const historySource = user ? (cfg.sources.includes('local') ? 'chess.com et ChessLocal' : 'chess.com') : 'ChessLocal'
+    const historyMessage = `${found} partie${found === 1 ? '' : 's'} de ${timeClassLabel(cfg.timeClass)} trouvée${found === 1 ? '' : 's'} sur tout ton historique ${historySource}.`
     if (offline) setNotice('Hors ligne : seules tes parties chess.com déjà analysées sont utilisées.')
+    else if (found > 0 && found < cfg.count) setNotice(historyMessage)
     if (candidates.length === 0) {
       setStage({ kind: 'idle' })
       setError({
         message: failed
           ? 'Aucune de ces parties ne se laisse analyser (PGN illisibles).'
-          : `Aucune partie de ${timeClassLabel(cfg.timeClass)} trouvée${cfg.sources.length === 1 ? (cfg.sources[0] === 'local' ? ' dans ChessLocal' : ' sur chess.com') : ''}.`,
+          : offline
+            ? `Aucune partie de ${timeClassLabel(cfg.timeClass)} disponible hors ligne.`
+            : historyMessage,
         retry: false,
       })
       return

@@ -487,6 +487,549 @@
           }
         ]
       }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/archives": {
+      "body": {
+        "archives": [
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2025/07",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2025/08",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2025/09",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2025/10",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2025/11",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2025/12",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2026/01",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2026/02",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2026/03",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2026/04",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2026/05",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2026/06",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2026/07",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2026/08",
+          "https://api.chess.com/pub/player/insights_archives_qa/games/2026/09"
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2025/07": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3000",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3000\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1751328000,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2025/08": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3010",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3010\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1754006400,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          },
+          {
+            "url": "https://www.chess.com/game/live/3011",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3011\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1754006401,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          },
+          {
+            "url": "https://www.chess.com/game/live/3012",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3012\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1754006402,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          },
+          {
+            "url": "https://www.chess.com/game/live/3013",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3013\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1754006403,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          },
+          {
+            "url": "https://www.chess.com/game/live/3014",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3014\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1754006404,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          },
+          {
+            "url": "https://www.chess.com/game/live/3015",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3015\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1754006405,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          },
+          {
+            "url": "https://www.chess.com/game/live/3016",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3016\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1754006406,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          },
+          {
+            "url": "https://www.chess.com/game/live/3017",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3017\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1754006407,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          },
+          {
+            "url": "https://www.chess.com/game/live/3018",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3018\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1754006408,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          },
+          {
+            "url": "https://www.chess.com/game/live/3019",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3019\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1754006409,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2025/09": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3020",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3020\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1756684800,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2025/10": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3030",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3030\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1759363200,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2025/11": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3040",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3040\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1762041600,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2025/12": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3050",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3050\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1764720000,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2026/01": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3060",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3060\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1767398400,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2026/02": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3070",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3070\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1770076800,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2026/03": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3080",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3080\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1772755200,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2026/04": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3090",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3090\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1775433600,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2026/05": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3100",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3100\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1778112000,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2026/06": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3110",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3110\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1780790400,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2026/07": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3120",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3120\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1783468800,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2026/08": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3130",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3130\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1786147200,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/insights_archives_qa/games/2026/09": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/3140",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"insights_archives_qa\"]\n[Black \"BotAlpha\"]\n[Result \"1-0\"]\n[WhiteElo \"850\"]\n[BlackElo \"812\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/3140\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1788825600,
+            "white": {
+              "username": "insights_archives_qa",
+              "rating": 850,
+              "result": "win"
+            },
+            "black": {
+              "username": "BotAlpha",
+              "rating": 812,
+              "result": "checkmated"
+            },
+            "rules": "chess"
+          }
+        ]
+      }
     }
   }
 }
