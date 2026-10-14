@@ -417,6 +417,7 @@ def part_home_and_session(p, browser):
         row = page.locator("[data-review-end] li", has_text="L17")
         check("[fin 1] récapitulatif : L17 « Acquis »", row.count() == 1 and "Acquis" in row.inner_text(), f"({row.inner_text() if row.count() else ''!r})")
         check("[fin 1] aucun débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
+        check("[fin 1] défilement contenu", page.locator("[data-review-end]").evaluate("e => getComputedStyle(e).overscrollBehaviorY") == "contain")
         shot(page, "revision_end_852")
         if ck.appears("[fin 1] « Continuer (2 restants) »", page, "button:has-text('Continuer (2 restants)')", timeout=3000):
             page.locator("button", has_text="Continuer").click()
@@ -511,6 +512,7 @@ def part_layouts(p, browser):
             kind = item_kind(page)
             check(f"[{tag}] séance ouverte", kind is not None, f"({kind})")
             check(f"[{tag}] séance sans débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
+            check(f"[{tag}] défilement contenu", page.locator("main > .fixed").evaluate("e => getComputedStyle(e).overscrollBehaviorY") == "contain")
             board = page.locator("[id^='chessboard-']").first
             bb = board.bounding_box() if board.count() else None
             check(f"[{tag}] échiquier visible en entier", bb is not None and bb["y"] >= 0 and bb["y"] + bb["height"] <= page.viewport_size["height"], f"({bb})")
