@@ -10,6 +10,8 @@ courante (`data-uci` du conteneur du drill) et l'indice une fois demandé (`data
 import json
 import os
 
+import chess
+
 from helpers import BASE, Checker, mobile_context, desktop_context, overflow_x, shot, tap_move
 
 ck = Checker("openings")
@@ -251,9 +253,13 @@ def suite(p):
         page.locator("button", has_text="Position suivante").click()
         page.wait_for_timeout(400)
         pos2 = drill_uci(page)
-        wrong = next((m for m in ("a2a3", "h2h3", "g2g3", "b2b3") if " ".join(pos2 + [m]) not in BOOK
-                      and page.evaluate("(sq) => !!document.querySelector(`[data-square='${sq}'] [data-piece='wP']`)", m[:2])
-                      and page.evaluate("(sq) => !document.querySelector(`[data-square='${sq}'] [data-piece]`)", m[2:])), None)
+        # Le tirage peut mettre les Blancs en échec : un pion présent et une case vide
+        # ne suffisent pas à rendre son déplacement légal.
+        board = chess.Board()
+        for uci in pos2:
+            board.push_uci(uci)
+        wrong = next((m.uci() for m in board.legal_moves
+                      if not m.promotion and " ".join(pos2 + [m.uci()]) not in BOOK), None)
         check("[prochain] un coup légal hors théorie existe", wrong is not None, f"({pos2})")
         if wrong:
             play_uci(page, wrong)

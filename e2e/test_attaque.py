@@ -609,11 +609,19 @@ def suite(p):
                 check("[niveau] position terminée rouverte : niveau 2500 persisté avec la partie",
                       stored is not None and stored.get("key") == f"attaque:{target['id']}" and stored.get("level") == 2500 and stored.get("end") is None,
                       f"({stored and {k: stored.get(k) for k in ('key', 'level', 'end')}})")
-                play_best(page, tcolor, 10, "niveau rouvert")
-                wait_turn(page, tcolor)
-                reopened = [m for m in workers(uci_log(page)).values() if "go movetime 700" in m]
+                # Sans rechargement (notamment après un mat), le journal conserve les
+                # défenseurs des parties précédentes. Seule cette nouvelle recherche compte.
+                log_start = len(uci_log(page))
+                played = play_best(page, tcolor, 10, "niveau rouvert")
+                turn = wait_turn(page, tcolor)
+                ws = workers(uci_log(page)[log_start:])
+                reopened = [m for m in ws.values() if "go movetime 700" in m]
+                options = options_before_first_go(reopened[0]) if len(reopened) == 1 else []
                 check("[niveau] position rouverte : défenseur réellement réglé à 2500",
-                      len(reopened) == 1 and "setoption name UCI_Elo value 2500" in options_before_first_go(reopened[0]))
+                      played and turn == "turn" and len(reopened) == 1
+                      and "setoption name UCI_LimitStrength value true" in options
+                      and "setoption name UCI_Elo value 2500" in options,
+                      f"(coup joué={played}, retour={turn}, workers={ws}, fen={attr(page, 'fen')})")
 
     # --- 6. Mise en page ---
     page.set_viewport_size({"width": 393, "height": 660})

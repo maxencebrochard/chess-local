@@ -541,6 +541,32 @@ def pieces_suite(p, browser):
     ctx.close()
 
 
+def course_audio_suite(p, browser):
+    for course, lesson, expected in [
+        ("finales", "mat-deux-tours", ["move-self", "move-opponent"]),
+        ("roque", "grec-schema", ["move-check", "capture"]),
+    ]:
+        ctx = ctx_with_audio(p, browser, {**SOUND_ON, "pieceSet": "chessnut"})
+        page = ctx.new_page()
+        page.goto(f"{BASE}/#/apprendre/{course}/{lesson}")
+        page.locator("[data-square='a1']").click()
+        expect_exact(f"[{course}] diagramme muet", sounds_heard(page, 0), [])
+        check(f"[{course}] pièces Chessnut", all_from(piece_srcs(page), "chessnut"))
+        page.get_by_role("button", name="Continuer", exact=True).click()
+        n = len(sound_log(page))
+        # Aucun délai artificiel après Continuer : le pilote doit attendre le nouveau plateau.
+        if course == "finales":
+            tap_move(page, "a1", "a4")
+        else:
+            page.get_by_role("button", name="💡 Solution").click()
+        expect_exact(f"[{course}] coup puis réponse", wait_sounds(page, n, 2), expected)
+        n = len(sound_log(page))
+        page.get_by_role("button", name="← Précédent").click()
+        expect_exact(f"[{course}] retour au diagramme muet", sounds_heard(page, n), [])
+        shot(page, f"f10_diagramme_{course}")
+        ctx.close()
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
     try:
@@ -552,6 +578,7 @@ def suite(p):
         learn_suite(p, browser)
         volume_suite(p, browser)
         pieces_suite(p, browser)
+        course_audio_suite(p, browser)
     finally:
         browser.close()
 
