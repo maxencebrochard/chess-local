@@ -125,34 +125,36 @@ ORPHAN_SEED = {"puzzleAttempts": [pa(1, "L20", 5, False), pa(2, "L10", 0, False)
 
 # ---------- IndexedDB natif ----------
 
+TABLES = sorted(["games", "ratings", "puzzleAttempts", "rushScores", "mistakes", "learnSessions", "reviews"])
+
 OPEN_DB = """
 () => new Promise((res, rej) => {
   const r = indexedDB.open('chess-local')
   r.onsuccess = () => {
     const db = r.result
-    if (db.objectStoreNames.length !== 6) { db.close(); rej(new Error('schéma absent : ' + db.objectStoreNames.length + ' stores')); return }
+    if (JSON.stringify(Array.from(db.objectStoreNames).sort()) !== JSON.stringify(TABLES)) { db.close(); rej(new Error('schéma absent : ' + db.objectStoreNames.length + ' stores')); return }
     res(db)
   }
   r.onerror = () => rej(r.error)
 })
-"""
+""".replace("TABLES", json.dumps(TABLES))
 
 
 def wait_schema(page, tries=40):
-    """L'app (Dexie) crée la base au premier accès : attendre ses 6 stores avant d'y écrire
+    """L'app (Dexie) crée la base au premier accès : attendre les tables du schéma courant avant d'y écrire
     nativement (un open() natif sur une base absente en créerait une vide)."""
     for _ in range(tries):
-        n = page.evaluate(
+        tables = page.evaluate(
             """() => new Promise((res) => {
               indexedDB.databases().then((list) => {
                 if (!list.some((d) => d.name === 'chess-local')) return res(0)
                 const r = indexedDB.open('chess-local')
-                r.onsuccess = () => { const n = r.result.objectStoreNames.length; r.result.close(); res(n) }
+                r.onsuccess = () => { const tables = Array.from(r.result.objectStoreNames).sort(); r.result.close(); res(tables) }
                 r.onerror = () => res(-1)
               })
             })"""
         )
-        if n == 6:
+        if tables == TABLES:
             return True
         page.wait_for_timeout(250)
     return False
@@ -208,7 +210,7 @@ def seeded(p, browser, seed=SEED, standalone=True, desktop=False):
     page = ctx.new_page()
     page.goto(f"{BASE}/#/stats")
     ck.appears("[seed] Stats chargée", page, "main :text('Statistiques')", timeout=15000)
-    if check("[seed] schéma à 6 stores créé par l'app", wait_schema(page)):
+    if check("[seed] schéma courant avec reviews créé par l'app", wait_schema(page)):
         seed_db(page, seed)
     return ctx, page
 
