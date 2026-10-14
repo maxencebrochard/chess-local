@@ -1142,7 +1142,14 @@ def local_run(p, browser):
     if not ck.appears(f"{tag} panneau", page, "[data-testid=insights-config]", timeout=15000):
         ctx.close()
         return
+    tap(f"{tag} source ChessLocal retirée", page, "[data-testid=src-local]")
+    page.fill("[data-testid=insights-username]", USER)
+    check(f"{tag} chess.com seul en blitz : lancement possible", page.locator("[data-testid=insights-run]").is_enabled())
     tap(f"{tag} cadence Sans limite", page, "[data-testid=tc-unlimited]")
+    check(f"{tag} chess.com seul sans limite : lancement désactivé et expliqué",
+          page.locator("[data-testid=insights-run]").is_disabled() and "chess.com ne fournit pas la cadence « Sans limite »" in main_text(page))
+    tap(f"{tag} source ChessLocal rétablie", page, "[data-testid=src-local]")
+    check(f"{tag} sans limite avec ChessLocal : lancement réactivé", page.locator("[data-testid=insights-run]").is_enabled())
     tap(f"{tag} source chess.com retirée", page, "[data-testid=src-chesscom]")
     tap(f"{tag} choix 10 parties", page, "[data-testid=count-10]")
     check(f"{tag} sans pseudo ni chess.com : pas de champ pseudo, lancement possible", page.locator("[data-testid=insights-username]").count() == 0 and page.locator("[data-testid=insights-run]").is_enabled())
@@ -1154,6 +1161,28 @@ def local_run(p, browser):
         cached = rows_of(page, "reviews")
         check(f"{tag} cache : ligne local:7 contre Noa, profondeur 12", [(r["key"], r["opponent"], r["depth"], r["result"]) for r in cached] == [("local:7", "Noa", 12, "win")], f"({[(r['key'], r['opponent']) for r in cached]})")
         check(f"{tag} pendule : partie sans horloge signalée", "Aucune pendule" in page.locator("[data-testid=insights-time]").inner_text())
+        saved = page.evaluate("key => JSON.parse(localStorage.getItem(key))", INSIGHTS_KEY)
+        tables = {t: rows_of(page, t) for t in ("games", "ratings", "puzzleAttempts", "rushScores", "mistakes", "learnSessions", "reviews")}
+        for row in tables["games"] + tables["reviews"]:
+            row["timeClass"] = "rapid"
+            row["timeControl"] = "600"
+        backup = {"_app": "chess-local", "_version": 3, "_date": "2026-10-14T12:00:00.000Z", **tables}
+        page.goto(f"{BASE}/#/stats")
+        if ck.appears(f"{tag} restauration disponible", page, "input[type=file]", state="attached"):
+            page.set_input_files("input[type=file]", {"name": "autre-appareil.json", "mimeType": "application/json", "buffer": json.dumps(backup).encode()})
+            if ck.appears(f"{tag} confirmation de restauration", page, "[data-testid=restore-confirm]"):
+                page.click("[data-testid=restore-cancel]")
+                check(f"{tag} restauration annulée : rapport conservé", page.evaluate("key => JSON.parse(localStorage.getItem(key))", INSIGHTS_KEY) == saved)
+                page.set_input_files("input[type=file]", {"name": "autre-appareil.json", "mimeType": "application/json", "buffer": json.dumps(backup).encode()})
+                if ck.appears(f"{tag} restauration confirmable", page, "[data-testid=restore-confirm]"):
+                    page.click("[data-testid=restore-confirm]")
+                    if ck.appears(f"{tag} restauration réussie", page, "[data-testid=backup-msg][data-kind=success]"):
+                        check(f"{tag} restauration : toutes les données identiques au fichier", {t: rows_of(page, t) for t in tables} == tables)
+                        restored = page.evaluate("key => JSON.parse(localStorage.getItem(key))", INSIGHTS_KEY)
+                        check(f"{tag} restauration : dernier rapport invalidé, configuration conservée", restored == {"config": saved["config"], "lastRun": None})
+                        page.goto(f"{BASE}/#/insights")
+                        if ck.appears(f"{tag} retour au panneau après restauration", page, "[data-testid=insights-config]"):
+                            check(f"{tag} aucune réutilisation du rapport avec les anciennes clés", page.locator("[data-testid=insights-report]").count() == 0)
     ctx.close()
 
 

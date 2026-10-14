@@ -5,7 +5,7 @@
 import { db } from './db'
 import { POSITION_GAME_KEY } from './positionGame'
 import { ATTACK_PREFS_KEY } from './attack'
-import { INSIGHTS_KEY } from './insightsStore'
+import { INSIGHTS_KEY, readInsights, writeInsights } from './insightsStore'
 import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, useSettings } from '../store/settings'
 import { BOTS } from './bots'
 import { TIME_CONTROLS } from './timeControls'
@@ -373,6 +373,7 @@ export async function importBackup(plan: BackupPlan): Promise<ImportResult> {
   // On ne retire que leurs clés : l'origine GitHub Pages est partagée par tous les sites du
   // compte, un clear() global effacerait le stockage d'autres projets.
   for (const key of SESSION_KEYS) sessionStorage.removeItem(key)
+  writeInsights({ config: readInsights().config, lastRun: null })
   let settingsApplied = false
   if (plan.settingsState) {
     try {
