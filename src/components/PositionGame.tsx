@@ -1,9 +1,7 @@
-// Partie contre Stockfish depuis une position, sans plafond de coups : seules les règles du jeu
+// Partie contre Stockfish depuis une position, sans plafond de coups : les règles du jeu
 // (mat, pat, répétition, 50 coups, matériel insuffisant), l'abandon ou une nulle acceptée
-// l'arrêtent. Sert aux finales jouées jusqu'au bout et au bouton « Jouer contre le moteur » de
-// l'analyse (pleine force), et à l'entraîneur d'attaque (défenseur à l'Elo choisi, avantage
-// décisif qui permet de conclure). Le joueur a le trait au départ ; la partie est persistée à
-// chaque coup.
+// l'arrêtent. L'entraîneur d'attaque permet aussi de conclure sur un avantage décisif tenu.
+// Le joueur a le trait au départ ; la partie est persistée à chaque coup.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Chess, type Color, type Move } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
@@ -24,7 +22,7 @@ import { figurine, winPct } from '../lib/review'
 import { sounds } from '../lib/sounds'
 import { useSettings } from '../store/settings'
 
-// Temps de réflexion de Stockfish par coup : pleine force, sans faire attendre.
+// Temps de réflexion de Stockfish par coup : borné pour ne pas faire attendre.
 const ENGINE_MOVETIME_MS = 700
 // Suivi de l'avantage décisif : éval courte de chaque position au trait du joueur.
 const DECISIVE_EVAL_MS = 300

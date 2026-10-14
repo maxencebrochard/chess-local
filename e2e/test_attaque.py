@@ -381,6 +381,14 @@ def suite(p):
     shot(page, "attaque_list_852")
     no_overflow(page, "liste 393x852")
 
+    page.get_by_role("button", name="Position au hasard").tap()
+    ck.appears("[hasard] partie ouverte", page, GAME)
+    random_id = page.url.rsplit("/", 1)[-1]
+    check("[hasard] position dans la catégorie affichée",
+          any(a["id"] == random_id and a["category"] == "centre" for a in ATTACKS))
+    page.goto(f"{BASE}/#/attaque")
+    ck.appears("[hasard] retour liste", page, "[data-testid='defender']")
+
     page.locator("[role='radio'][data-level='1500']").first.tap() if page.locator("[role='radio'][data-level='1500']").count() else ck.fail("[niveau] pastille 1500")
     page.reload()
     ck.appears("[niveau] liste rechargée", page, "[data-testid='defender']")
@@ -439,6 +447,13 @@ def suite(p):
         n_rows = len(rows(page))
         page.locator("[data-testid='level-chip']").tap()
         ck.appears("[niveau] feuille de niveau", page, "[data-testid='level-sheet']")
+        page.locator("[data-testid='level-sheet'] [role='radio'][data-level='2500']").tap()
+        shot(page, "attaque_confirmation")
+        page.locator("[data-testid='level-cancel']").tap()
+        check("[niveau] annuler conserve position, niveau et historique",
+              attr(page, "fen") == fen_before and len(rows(page)) == n_rows
+              and "1500" in (page.locator("[data-testid='level-chip']").text_content() or ""))
+        page.locator("[data-testid='level-chip']").tap()
         page.locator("[data-testid='level-sheet'] [role='radio'][data-level='max']").tap()
         page.locator("[data-testid='level-confirm']").tap()
         page.wait_for_timeout(300)
@@ -543,6 +558,11 @@ def suite(p):
         if plan_btn.count():
             plan_btn.tap()
             ck.appears("[plan] calque du plan de Stockfish", page, "[data-continuation='plan']")
+            if ck.appears("[plan] ligne calculée", page, "[data-continuation='plan'] button[aria-label='Coup suivant']:enabled", timeout=60000):
+                page.get_by_role("button", name="Coup suivant", exact=True).tap()
+                check("[plan] premier coup sélectionné",
+                      page.locator("[data-continuation='plan'] [data-current='true']").count() > 0)
+            shot(page, "attaque_plan")
             page.keyboard.press("Escape")
             page.wait_for_timeout(300)
         else:
@@ -589,6 +609,11 @@ def suite(p):
                 check("[niveau] position terminée rouverte : niveau 2500 persisté avec la partie",
                       stored is not None and stored.get("key") == f"attaque:{target['id']}" and stored.get("level") == 2500 and stored.get("end") is None,
                       f"({stored and {k: stored.get(k) for k in ('key', 'level', 'end')}})")
+                play_best(page, tcolor, 10, "niveau rouvert")
+                wait_turn(page, tcolor)
+                reopened = [m for m in workers(uci_log(page)).values() if "go movetime 700" in m]
+                check("[niveau] position rouverte : défenseur réellement réglé à 2500",
+                      len(reopened) == 1 and "setoption name UCI_Elo value 2500" in options_before_first_go(reopened[0]))
 
     # --- 6. Mise en page ---
     page.set_viewport_size({"width": 393, "height": 660})
@@ -614,6 +639,12 @@ def suite(p):
     if open_attack(dpage, ATTACKS[0]["id"]):
         shot(dpage, "attaque_game_1440")
         no_overflow(dpage, "partie 1440x900")
+    for pid in ("att-09MPR", "att-0CJDv", "att-01nId", "att-0BNSS"):
+        if open_attack(dpage, pid):
+            dpage.get_by_role("button", name="Conseils").click()
+            check(f"[plan] {pid} : nombre en lettres dans les conseils",
+                  dpage.locator(GAME, has_text="Quatre de tes pièces").count() == 1)
+            shot(dpage, f"attaque_conseils_{pid}")
     browser.close()
 
 
