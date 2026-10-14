@@ -495,11 +495,52 @@ def part_review_chain(p, browser):
     ctx.close()
 
 
+def part_engine_failure(p, browser):
+    """Une commande UCI rejetée ne note pas un échec ; Recommencer permet de rejouer."""
+    ctx = mobile_context(p, browser, ck, standalone=True)
+    ctx.add_init_script("""(() => {
+      const Native = window.Worker
+      window.Worker = class extends Native {
+        postMessage(...args) {
+          if (window.__failAttackSearch && args[0] === 'go depth 12') {
+            window.__failAttackSearch = false
+            throw new Error('Commande UCI rejetée pour le test')
+          }
+          return super.postMessage(...args)
+        }
+      }
+    })()""")
+    page = ctx.new_page()
+    page.goto(f"{BASE}/#/apprendre")
+    page.wait_for_selector("[data-testid=missed-attacks-card]")
+    seed_mistakes(page)
+    page.goto(f"{BASE}/#/attaques-manquees/1")
+    page.wait_for_selector("[data-testid=position-game]")
+    page.wait_for_timeout(600)
+    page.evaluate("window.__failAttackSearch = true")
+    tap_move(page, "c3", "d5")
+    ck.appears("[panne] invitation à réessayer sans faux verdict", page,
+               '[data-testid=objective-subline]:has-text("Stockfish n\'a pas pu vérifier")', timeout=15000)
+    check("[panne] la réponse réelle du moteur arrive", wait_idle(page))
+    check("[panne] aucune tentative notée", not learn_sessions(page))
+    page.screenshot(path=f"{SHOTS}/attaque_panne_moteur.png")
+    page.get_by_role("button", name="Recommencer").click()
+    tap_move(page, "d3", "h7")
+    ck.appears("[panne] nouvelle tentative reconnue", page,
+               "[data-testid=objective-subline]:has-text(\"C'est le coup du bilan\")")
+    check("[panne] réponse réelle après reprise", wait_idle(page))
+    rows = learn_sessions(page)
+    check("[panne] seule la nouvelle réussite est enregistrée", len(rows) == 1
+          and rows[0].get("domain") == "missed-attack" and rows[0].get("success") == 1, f"({rows})")
+    ctx.close()
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
     part_diagnostic(p, browser)
     part_overlay(p, browser)
     part_review_chain(p, browser)
+    part_engine_failure(p, browser)
     browser.close()
 
 
