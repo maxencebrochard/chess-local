@@ -199,9 +199,12 @@ def solve(page, pz):
 
 def quick_taps(page, *ucis, gap=40):
     """Coups enchaînés le plus vite possible (taps espacés de `gap` ms), sans attendre l'app."""
+    # Stabiliser le plateau avant la rafale, jamais entre ses taps : les attentes
+    # d'actionnabilité pourraient sinon laisser passer le délai vers le puzzle suivant.
+    centers = {sq: sq_center(page, sq) for uci in ucis for sq in (uci[:2], uci[2:4])}
     for uci in ucis:
-        x1, y1 = sq_center(page, uci[:2])
-        x2, y2 = sq_center(page, uci[2:4])
+        x1, y1 = centers[uci[:2]]
+        x2, y2 = centers[uci[2:4]]
         page.touchscreen.tap(x1, y1)
         page.wait_for_timeout(gap)
         page.touchscreen.tap(x2, y2)

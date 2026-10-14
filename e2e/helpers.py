@@ -383,15 +383,19 @@ def click_square(page, square):
 
 def sq_center(page, square):
     """Centre (x, y) en px CSS de la case, quelle que soit l'orientation du board."""
-    box = page.locator(f"[data-square='{square}']").first.bounding_box()
+    target = page.locator(f"[data-square='{square}']").first
+    # Un changement de puzzle peut remplacer le DOM avant sa première mise en page.
+    # Attendre les mêmes garanties qu'un vrai tap avant de figer les coordonnées du drag.
+    target.tap(trial=True)
+    box = target.bounding_box()
     if not box:
         raise RuntimeError(f"case {square} introuvable")
     return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
 
 
 def tap_square(page, square):
-    x, y = sq_center(page, square)
-    page.touchscreen.tap(x, y)
+    # Le locator attend une case visible et stable et se résout à nouveau si React la remplace.
+    page.locator(f"[data-square='{square}']").first.tap()
 
 
 def tap_move(page, frm, to, pause=250):
