@@ -9,3 +9,7 @@ commands:
 
 # Pas de CI GitHub sur ce repo : le gate ne doit pas attendre des checks qui n'existeront jamais.
 no_ci: true
+
+# Agent du gate pour ce repo (review, tests, corrections) : Codex, modèle par défaut de ~/.codex/config.toml.
+# Remplace l'agent de la config globale pour ce repo seulement.
+agent: codex
