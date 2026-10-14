@@ -1,7 +1,8 @@
 # ChessLocal
 
 Version privée et locale de chess.com.
-Tourne entièrement dans le navigateur, sur ordinateur ou en PWA sur iPhone : aucun serveur, aucun compte, aucune donnée qui sort de la machine.
+Tourne dans le navigateur sur Mac et iPhone : calculs et stockage sur l'appareil, sans serveur ChessLocal ni compte à créer.
+L'import et les Insights chess.com interrogent son API publique avec ton pseudo ; les bilans Stockfish sont calculés localement.
 La navigation reste en place pendant le défilement du contenu ; les gestes en butée des listes, calques et feuilles ne se propagent pas à la page.
 
 ## Lancer
@@ -35,8 +36,17 @@ npm run preview
 - **Import chess.com** : page `/import` : pseudo chess.com (API publique, sans login) → liste des parties récentes → bilan en un tap ; ou coller un lien de partie ; ou Raccourci Apple pour partager depuis l'app chess.com (instructions dans la page).
 - **Sons** : set standard lichess (move, capture, fin de partie, low time, réussite/échec puzzle), préchargés via WebAudio.
 - **Archive** : toutes les parties sauvegardées (IndexedDB), relecture, bilan en un clic, export PGN global.
-- **Insights** : page `/insights` (depuis Stats et l'accueil), façon chess.com Insights : choix de la cadence (bullet, blitz, rapide, sans limite) et des 10, 25, 50 ou 100 dernières parties (chess.com et ChessLocal), bilan Stockfish de chacune avec progression, pause et reprise, mis en cache sur l'appareil ; résumé du coach, 3 forces et 3 faiblesses chiffrées avec un plan d'entraînement vers les modules de l'app, précision par phase (hors théorie), ouvertures par couleur, gestion de la pendule (gaffes sous pression, défaites au temps), erreurs typiques (pièces en prise, menaces ignorées, motifs manqués), conversion et défense, exemples tirés de tes parties ouverts dans l'Analyse.
-- **Stats** : classements par cadence, bilan V/N/D, thèmes d'échiquier, réglages, sauvegarde et restauration de toutes les données (fichier JSON), état du stockage, réinitialisation de l'app.
+- **Insights** : page `/insights` (depuis Stats et l'accueil) : choix de la cadence et des 10, 25, 50 ou 100 dernières parties, issues de chess.com et/ou des parties ChessLocal contre les bots.
+  Bullet, blitz et rapide sont disponibles pour les deux sources ; « Sans limite » exige ChessLocal, car chess.com ne fournit pas cette cadence.
+  Les archives chess.com sont parcourues des plus récentes aux plus anciennes jusqu'au nombre demandé ou à épuisement ; si l'historique en contient moins, le nombre trouvé est indiqué.
+  Chaque partie reçoit un bilan Stockfish avec progression et estimation de durée ; la série se met en pause en arrière-plan et reprend au retour, et « Annuler » puis « Reprendre » conserve les bilans terminés.
+  Le cache est réutilisé à profondeur et compte identiques ; changer le nombre demandé peut changer la profondeur et entraîner un nouveau calcul.
+  Le dernier rapport se rouvre hors ligne ; si chess.com est injoignable lors d'une nouvelle série, seules ses parties déjà analysées pour ce pseudo et cette cadence sont disponibles.
+  Le rapport propose un résumé du coach par règles, jusqu'à 3 forces et 3 faiblesses chiffrées selon les données disponibles, un plan d'entraînement vers les modules de l'app et des exemples ouverts dans l'Analyse.
+  Il couvre la tendance de précision, la précision par phase hors théorie, les ouvertures par couleur, les résultats par couleur et Elo adverse, les erreurs typiques, les attaques sur le roi manquées, la conversion, la défense, les gaffes adverses punies et les résultats juste après une défaite.
+  Les mesures de pendule utilisent les annotations `%clk` des PGN chess.com ; ChessLocal n'enregistre pas les temps par coup.
+- **Stats** : classements par cadence, bilan V/N/D, thèmes d'échiquier, réglages, sauvegarde et restauration des données IndexedDB et des réglages (fichier JSON), état du stockage, réinitialisation de l'app.
+  Les bilans Insights en cache sont inclus dans la sauvegarde, mais pas la configuration ni la sélection du dernier rapport ; une restauration conserve la configuration locale et invalide ce rapport, sans supprimer les bilans restaurés.
 
 ## Architecture
 

@@ -4,9 +4,9 @@
 // règles depuis les chiffres seuls. Exécuté aussi sous Node par la suite E2E (banc).
 //
 // Conventions :
-// - seuls les coups du joueur comptent, et jamais les coups théoriques (`book`) dans une précision
-//   ou un compte de fautes : réciter la théorie n'est pas un mérite, sinon l'ouverture serait
-//   toujours une « force » ;
+// - seuls les coups du joueur comptent ; les précisions par phase et les comptes de fautes
+//   excluent les coups théoriques (`book`), pour ne pas faire de la théorie une « force » ;
+//   les précisions par partie reprennent celles du bilan `review.ts` ;
 // - phases : `detectPhases` (coach.ts), ouverture étendue à au moins 20 demi-coups comme chez
 //   chess.com (bornée par la finale) ;
 // - une faiblesse coûte la part du win% perdu par le joueur dans ce qu'elle désigne : c'est
