@@ -43,7 +43,7 @@ type State = AudioContextState | 'interrupted'
 const stateOf = (c: AudioContext) => c.state as State
 
 function newContext(): AudioContext | null {
-  const Ctor = window.AudioContext
+  const Ctor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
   if (!Ctor) return null
   const c = new Ctor({ latencyHint: 'interactive' })
   gain = c.createGain()
@@ -137,6 +137,8 @@ export function play(name: SoundName) {
   if (!c) return
   void Promise.all([load(name), ready(c)]).then(([buf, ok]) => {
     if (!buf || !ok || c !== ctx || !gain) return
+    const { playSounds, soundVolume } = useSettings.getState()
+    if (!playSounds || soundVolume <= 0) return
     gain.gain.setValueAtTime(soundVolume, c.currentTime)
     const src = c.createBufferSource()
     src.buffer = buf
