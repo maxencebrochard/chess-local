@@ -66,8 +66,8 @@ function Shell() {
     else navigate('/', { replace: true })
   }
 
-  // Chaque écran s'ouvre en haut : `<main>` est le seul conteneur qui défile, et il est
-  // partagé entre les routes. Un écran nouveau, c'est un autre chemin, ou une autre requête
+  // Chaque écran s'ouvre en haut : `<main>` porte le défilement partagé entre les routes.
+  // Un écran nouveau, c'est un autre chemin, ou une autre requête
   // atteinte par push ou par l'historique (fiche `/mats?d=`, ouverture `/ouvertures?famille=`).
   // Un replace de même chemin est un état interne de la page, qui garde son défilement :
   // `navigate('.', { replace, state: null })` au montage, `setParams({ etape }, { replace })`,

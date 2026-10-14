@@ -245,6 +245,7 @@ function zoneRect(zone: string[], orientation: 'w' | 'b'): React.CSSProperties {
 }
 
 // Coin haut-droit de la case, en % de l'échiquier, selon l'orientation.
+// Au bord droit visuel, rentrer la pastille pour éviter un débordement horizontal sur mobile.
 function badgePosition(square: string, orientation: 'w' | 'b'): React.CSSProperties {
   let file = square.charCodeAt(0) - 97 // a=0
   let rankFromTop = 8 - +square[1]
