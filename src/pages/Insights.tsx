@@ -183,7 +183,7 @@ export default function Insights() {
     seriesRef.current = null
     let collected
     try {
-      collected = await collectGames(cfg, username)
+      collected = await collectGames(cfg, username, ctrl.signal)
     } catch (e) {
       if (token !== tokenRef.current) return
       setStage({ kind: 'idle' })

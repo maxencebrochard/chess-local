@@ -20,11 +20,13 @@ type Side = ChesscomGame['white']
 // contrairement à un pseudo inconnu ou un lien qui ne mène nulle part.
 export class ChesscomNetworkError extends Error {}
 
-async function fetchJson(url: string): Promise<unknown> {
+async function fetchJson(url: string, signal?: AbortSignal): Promise<unknown> {
+  signal?.throwIfAborted()
   let res: Response
   try {
-    res = await fetch(url)
+    res = await fetch(url, { signal })
   } catch (e) {
+    signal?.throwIfAborted()
     // Erreur bas niveau (réseau, blocage, bug navigateur) : le détail part en console,
     // l'utilisateur reçoit une phrase courte sans URL technique.
     console.warn('[chess.com] requête impossible', url, e)
@@ -33,8 +35,11 @@ async function fetchJson(url: string): Promise<unknown> {
   if (res.status === 404) throw new Error('Joueur introuvable sur chess.com.')
   if (!res.ok) throw new ChesscomNetworkError(`chess.com a répondu ${res.status}. Réessaie dans un instant.`)
   try {
-    return await res.json()
+    const data: unknown = await res.json()
+    signal?.throwIfAborted()
+    return data
   } catch (e) {
+    signal?.throwIfAborted()
     console.warn('[chess.com] réponse illisible', url, e)
     throw new ChesscomNetworkError('Réponse chess.com illisible. Réessaie dans un instant.')
   }
@@ -94,16 +99,16 @@ function toGame(g: RawGame, user: string): ChesscomGame | null {
 }
 
 // URLs des archives mensuelles, les plus récentes d'abord ; un joueur sans partie a une liste vide.
-async function recentArchives(user: string): Promise<string[]> {
-  const data = (await fetchJson(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/games/archives`)) as {
+async function recentArchives(user: string, signal?: AbortSignal): Promise<string[]> {
+  const data = (await fetchJson(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/games/archives`, signal)) as {
     archives?: unknown
   }
   const archives = Array.isArray(data?.archives) ? data.archives.filter((a): a is string => typeof a === 'string') : []
   return archives.reverse()
 }
 
-async function fetchArchive(archiveUrl: string): Promise<RawGame[]> {
-  const data = (await fetchJson(archiveUrl)) as { games?: unknown }
+async function fetchArchive(archiveUrl: string, signal?: AbortSignal): Promise<RawGame[]> {
+  const data = (await fetchJson(archiveUrl, signal)) as { games?: unknown }
   return Array.isArray(data?.games) ? (data.games as RawGame[]) : []
 }
 
@@ -125,11 +130,11 @@ export async function fetchRecentGames(username: string, months = 3, limit = 30)
 // rapid), pour Insights. Archives lues du mois le plus récent au plus ancien,
 // et arrêt dès que la cadence a assez de parties : un joueur actif n'en lit qu'une ou deux. Le
 // différé et les variantes sont écartés par le filtre de cadence et par `toGame`.
-export async function fetchGamesByClass(username: string, timeClass: string, limit: number): Promise<ChesscomGame[]> {
+export async function fetchGamesByClass(username: string, timeClass: string, limit: number, signal?: AbortSignal): Promise<ChesscomGame[]> {
   const user = normalizeUsername(username)
   const games: ChesscomGame[] = []
-  for (const archiveUrl of await recentArchives(user)) {
-    for (const raw of await fetchArchive(archiveUrl)) {
+  for (const archiveUrl of await recentArchives(user, signal)) {
+    for (const raw of await fetchArchive(archiveUrl, signal)) {
       if (raw.time_class !== timeClass) continue
       const game = toGame(raw, user)
       if (game) games.push(game)

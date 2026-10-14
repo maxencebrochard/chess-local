@@ -105,7 +105,8 @@ const pliesOf = (pgn: string) => {
 // dans l'app). chess.com injoignable : repli sur ses parties de ce pseudo déjà en cache, ou erreur
 // réessayable s'il n'y en a pas. Les PGN illisibles sont écartés ici, une fois pour toutes : la
 // progression, le bandeau d'interruption et le rapport comptent la même liste.
-export async function collectGames(config: InsightsConfig, username: string): Promise<Collected> {
+export async function collectGames(config: InsightsConfig, username: string, signal: AbortSignal): Promise<Collected> {
+  signal.throwIfAborted()
   const out: Candidate[] = []
   let offline = false
   if (config.sources.includes('local')) {
@@ -118,11 +119,12 @@ export async function collectGames(config: InsightsConfig, username: string): Pr
   if (config.sources.includes('chesscom') && config.timeClass !== 'unlimited') {
     const user = normalizeUsername(username)
     try {
-      for (const g of await fetchGamesByClass(user, config.timeClass, config.count)) {
+      for (const g of await fetchGamesByClass(user, config.timeClass, config.count, signal)) {
         const c = chesscomCandidate(g, user, config.timeClass)
         if (c) out.push(c)
       }
     } catch (e) {
+      signal.throwIfAborted()
       if (!(e instanceof ChesscomNetworkError)) throw e
       const cached = await db.reviews.where('date').above(0).filter((r) => r.source === 'chesscom' && r.username === user && r.timeClass === config.timeClass).toArray()
       if (cached.length === 0) throw e
@@ -133,6 +135,7 @@ export async function collectGames(config: InsightsConfig, username: string): Pr
       }
     }
   }
+  signal.throwIfAborted()
   const picked = [...new Map(out.map((c) => [c.key, c])).values()].sort((a, b) => b.date - a.date).slice(0, config.count)
   const candidates = picked.filter((c) => pliesOf(c.pgn) > 0)
   const failed = picked.length - candidates.length
