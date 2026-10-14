@@ -109,7 +109,7 @@ La partie en cours est rejouée depuis `localStorage['chess-local-position-game-
 `review.ts` évalue chaque position en multipv 2 à profondeur fixe, convertit en win% (formule lichess) et classe chaque coup selon la chute de win%.
 `MoveClass`, `CLASS_META` (libellés, couleurs, symboles) et les seuils vivent uniquement là.
 En dépendent : `coach.ts` (commentaires post-partie générés par règles), `liveCoach.ts` (classe rapide du mode entraîneur), `ReviewSummary`, `EvalGraph`, `MoveList`.
-Un bilan écrit les fautes dans la table `mistakes`, rejouées ensuite dans Apprendre → Mes erreurs.
+Un bilan lancé dans Analyse écrit les fautes dans la table `mistakes`, rejouées ensuite dans Apprendre → Mes erreurs.
 `kingAttack.ts` (chess.js seul) relit ces fautes pour « Mes attaques manquées » (`/attaques-manquees`) : le type d'attaque (mat, sacrifice près du roi, pion contre le roque, pièce vers le roi) est recalculé sur l'échiquier depuis `fenBefore` et `bestUci`, jamais stocké ; seules les lignes avec `color` (camp du joueur connu du bilan) comptent, `gameKey` identifie la partie.
 Le même module porte le calque « Compte les attaquants » (réglage `showAttackers`) : zone = anneau du roi de Stockfish (3x3 ramené dans b-g / 2-7), compte des seules pièces ; la suite `diagnostic_attaque` le vérifie contre un oracle python-chess.
 Insights (`/insights`) réutilise `reviewGame` (paramètre `pause` pour suspendre la série quand la page est masquée), met les bilans en cache dans `reviews` (clé `chesscom:<id>` ou `local:<id>`, une profondeur par rapport) et calcule tout dans `insights.ts`, pur et testé sous Node par `test_insights.py` ; il n'écrit jamais dans `mistakes`.
@@ -126,7 +126,7 @@ La table `ratings` est unique et indexée par clé texte : cadences (`bullet`, `
 Tous les Elo passent par `applyRating`/`eloUpdate`.
 Les réglages sont dans Zustand persist (`localStorage['chess-local-settings']`).
 Les séances en cours d'Apprendre et de révision vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`) : `importBackup` et `resetApp` effacent ces deux clés, et seulement elles.
-`main.tsx` demande `navigator.storage.persist()` et `backup.ts` exporte/restaure tout : iOS peut purger IndexedDB.
+`main.tsx` demande `navigator.storage.persist()` ; iOS peut purger IndexedDB, et le périmètre des sauvegardes de `backup.ts` est décrit dans [README.md, section Features](README.md#features).
 
 ### Chemins et PWA
 
