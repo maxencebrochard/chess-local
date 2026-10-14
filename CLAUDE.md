@@ -140,7 +140,7 @@ Un nouvel asset lourd ou une nouvelle extension doit être couvert par `globPatt
 
 Les jeux de pièces sont des SVG libres dans `public/pieces/<jeu>/` (liste dans `src/lib/pieces.ts`, réglage `pieceSet`), rendus en `<img>` par `Board` via l'option `pieces` de react-chessboard ; `classique` = pièces intégrées à la lib.
 Les sons (`public/sounds/`, CC0, `scripts/make-sounds.sh`) passent tous par `src/lib/sounds.ts`, qui lit lui-même `playSounds` et `soundVolume` : pas de test du réglage aux appels.
-`Board` joue le son d'un coup quand la position avance d'un coup légal ; si la page lui fournit `lastMove`, seul ce coup sonne (`lastMove` à `null` ou désignant un autre coup, cas du coup faux affiché en rouge : muet) ; sans `lastMove`, toute avancée d'un coup sonne.
+Les conditions du son automatique de coup (`lastMove`, `silent` et anti-empilement partagé) sont documentées auprès de l'effet dans `src/components/Board.tsx`.
 Une page qui joue ses sons de coup elle-même (Jouer, finales jouées) ou affiche un saut de position (réessai de l'analyse) lui passe `silent`, comme les diagrammes ; la position qui suit un `silent` reste muette.
 Aucun asset de chess.com, et toute ressource ajoutée doit être sous licence libre documentée dans le `LICENSES.md` de son dossier : le dépôt est public.
 
