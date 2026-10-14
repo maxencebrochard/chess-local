@@ -5,8 +5,9 @@
 import { db, type LearnSession, type Mistake } from './db'
 import { scoreItem } from './learn'
 import {
-  DRILL_DOMAIN, familyKey, families, getFamily, popularFamilies, recordDrill, type Color, type Family, type Variant,
+  DRILL_DOMAIN, families, getFamily, popularFamilies, recordDrill, type Color, type Family, type Variant,
 } from './openingTrainer'
+import { familyKey } from './openingFamilies'
 import { openingFr } from './openingNames'
 import { loadPuzzles } from './puzzles'
 import openingsData from '../data/openings.json'
