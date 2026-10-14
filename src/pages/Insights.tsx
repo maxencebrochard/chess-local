@@ -163,7 +163,7 @@ export default function Insights() {
       userError = username.trim() ? (e as Error).message : null
     }
   }
-  const canRunFor = (cfg: InsightsConfig) => !busy && cfg.sources.length > 0 && (!needsUserFor(cfg) || (username.trim() !== '' && !userError))
+  const canRunFor = (cfg: InsightsConfig) => !busy && (cfg.sources.includes('local') || needsUserFor(cfg)) && (!needsUserFor(cfg) || (username.trim() !== '' && !userError))
   const canRun = canRunFor(config)
   // Reprendre relance la série interrompue, même si le panneau a changé depuis.
   const resumeCfg = seriesRef.current?.cfg ?? config
@@ -431,7 +431,7 @@ function ConfigPanel(props: {
             </Chip>
           ))}
         </div>
-        {config.timeClass === 'unlimited' && <p className="mt-2 text-xs text-neutral-400">« Sans limite » n'existe que dans ChessLocal : seules tes parties contre les bots comptent.</p>}
+        {config.timeClass === 'unlimited' && <p className="mt-2 text-xs text-neutral-400">chess.com ne fournit pas la cadence « Sans limite ». Sélectionne ChessLocal pour analyser tes parties contre les bots.</p>}
       </div>
       <div>
         <h2 className="mb-2 text-sm font-semibold text-neutral-300">Parties récentes</h2>
