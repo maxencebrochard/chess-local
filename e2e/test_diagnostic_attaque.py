@@ -13,7 +13,7 @@ import json
 
 import chess
 
-from helpers import BASE, SHOTS, Checker, desktop_context, mobile_context, overflow_x, tap_move
+from helpers import BASE, SHOTS, HOLD_BESTMOVE, Checker, desktop_context, mobile_context, overflow_x, tap_move
 
 ck = Checker("diagnostic_attaque")
 check = ck.check
@@ -166,6 +166,7 @@ def wait_idle(page, timeout=20000):
 
 def part_diagnostic(p, browser):
     ctx = mobile_context(p, browser, ck, standalone=True)
+    ctx.add_init_script(HOLD_BESTMOVE)
     page = ctx.new_page()
     page.goto(f"{BASE}/#/apprendre")
     if not ck.appears("[apprendre] page chargée", page, "main :text('Apprendre')", timeout=20000):
@@ -210,6 +211,7 @@ def part_diagnostic(p, browser):
     # --- Stats : même synthèse, lien vers la liste ---
     page.goto(f"{BASE}/#/stats")
     if ck.appears("[stats] carte « Attaques manquées »", page, "[data-testid=attack-stats]", timeout=15000):
+        ck.appears("[stats] synthèse chargée", page, "[data-testid=attack-stats]:has-text('Dans tes fautes relevées')", timeout=15000)
         text = page.locator("[data-testid=attack-stats]").inner_text()
         check("[stats] même synthèse que la liste", SUMMARY in text, f"({text!r})")
         page.locator("[data-testid=attack-stats] a").first.click()
@@ -273,9 +275,15 @@ def part_diagnostic(p, browser):
     page.goto(f"{BASE}/#/attaques-manquees/2")
     if ck.appears("[recommencer] exercice monté", page, "[data-testid=position-game]", timeout=20000):
         page.wait_for_timeout(600)
-        tap_move(page, "d2", "d3")
-        checking = "Je vérifie" in page.locator("[data-testid=objective-subline]").inner_text()
+        # Retenir la vraie réponse UCI garantit une vérification encore en cours au clic.
+        # Les clics Playwright attendent aussi la stabilité des cases avant de jouer.
+        page.evaluate("window.__heldUci = []")
+        page.locator("[data-square='d2']").click()
+        page.locator("[data-square='d3']").click()
+        checking = ck.appears("[recommencer] vérification en cours", page,
+                              "[data-testid=objective-subline]:has-text('Je vérifie')")
         page.get_by_role("button", name="Recommencer").click()
+        page.evaluate("window.__releaseUci()")
         check("[recommencer] cliqué pendant la vérification", checking)
         page.wait_for_timeout(500)
         tap_move(page, "g5", "f7")
