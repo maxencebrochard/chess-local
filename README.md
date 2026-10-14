@@ -21,6 +21,7 @@ npm run preview
 
 - **Accueil** : carte Problèmes (résolus et classement puzzles, bouton « Résolvez ! »), quatre cartes Elo (rapide, blitz, bullet, puzzles) vers les stats, tuiles Analyse, Puzzle Rush, Archive (nombre de parties) et chess.com, grand bouton Jouer.
 - **Jouer** : 9 bots de 400 à 3200 Elo (Stockfish 18 WASM, force limitée par UCI_Elo, fautes humaines pondérées par leur gravité sous 1320 Elo), mode 2 joueurs sur le même écran, cadences bullet/blitz/rapide avec incrément, pendules, confirmation d'abandon, classement Elo local par cadence, partie en cours et dernière configuration retrouvées au retour.
+  Chaque réglage mémorisé invalide revient à sa valeur par défaut à l'ouverture de Jouer : mode contre un bot, Nina, Blancs ou 10 min, selon le réglage concerné.
 - **Puzzles** : 120 000 puzzles de la base lichess (CC0), stratifiés de 400 à 3200, chargés hors bundle (fetch lazy), classement puzzle Elo local, indices, séries.
 - **Puzzle Rush** : 3 min, 5 min ou survie, difficulté croissante, 3 erreurs éliminatoires, records sauvegardés.
 - **Entraîneur d'ouvertures** : page `/ouvertures` (accessible depuis Apprendre), choix de l'ouverture et de la couleur, arbre des variantes lichess, trois modes (prochain coup, suite de coups, variante complète), coups théoriques alternatifs acceptés, Stockfish au-delà de la théorie (indicatif), progression par variante.
