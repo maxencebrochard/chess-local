@@ -15,7 +15,7 @@ import tempfile
 
 import chess
 
-from helpers import BASE, Checker, desktop_context, drag_piece, mobile_context, piece_on, shot, tap_move
+from helpers import BASE, Checker, desktop_context, drag_piece, mobile_context, overflow_x, piece_on, shot, tap_move
 
 ck = Checker("cours_roque")
 check = ck.check
@@ -401,7 +401,7 @@ def suite(p):
         check(f"[660] {lid} étape {si + 1} : échiquier entier à l'écran", in_viewport(page, board), f"({board.bounding_box()})")
         check(f"[660] {lid} étape {si + 1} : Continuer à l'écran", in_viewport(page, continue_btn(page)))
         check(f"[660] {lid} étape {si + 1} : bulle visible", page.locator(".bg-white").first.is_visible())
-        check(f"[660] {lid} étape {si + 1} : pas de défilement horizontal", page.evaluate("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"))
+        check(f"[660] {lid} étape {si + 1} : pas de défilement horizontal", overflow_x(page) == 0)
         shot(page, f"roque_660_{lid}_{si + 1}")
     ctx.close()
 

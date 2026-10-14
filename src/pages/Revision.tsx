@@ -236,7 +236,7 @@ export default function Revision() {
   if (ended) {
     const ok = results.filter((r) => r.ok).length
     return (
-      <div data-review-end className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto bg-surface">
+      <div data-review-end className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
         <div className="mx-auto flex min-h-full max-w-lg flex-col items-center justify-center gap-4 p-6 text-center">
           <div className="text-6xl">{ok === results.length ? '🏆' : ok > 0 ? '💪' : '📚'}</div>
           <h1 className="text-2xl font-black">
@@ -311,7 +311,7 @@ export default function Revision() {
     : null
 
   return (
-    <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto bg-surface">
+    <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
       <div data-review-item={item.kind} className="mx-auto flex min-h-full max-w-2xl flex-col">
         <header className="flex items-center px-3 py-1">
           <button onClick={close} aria-label="Quitter la révision" className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white">

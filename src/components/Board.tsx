@@ -255,6 +255,6 @@ function badgePosition(square: string, orientation: 'w' | 'b'): React.CSSPropert
   return {
     left: `${(file + 1) * 12.5}%`,
     top: `${rankFromTop * 12.5}%`,
-    transform: 'translate(-60%, -40%)',
+    transform: file === 7 ? 'translate(-100%, -40%)' : 'translate(-60%, -40%)',
   }
 }

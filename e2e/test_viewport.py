@@ -12,7 +12,7 @@ structurelle, pas le rendu exact du téléphone.
   `overscroll-behavior: contain`, coquille exactement à la taille du viewport, sans débordement
   horizontal, safe areas appliquées (émulées à 59/34 px en standalone via CDP) ;
 - le helper `overflow_x` des autres suites reste capable d'échouer avec body fixé : preuve par
-  deux débordements horizontaux provoqués (dans `<main>`, puis hors de la coquille) ;
+  des débordements provoqués dans body, les calques fixes et les scrollers verticaux ;
 - gestes TACTILES réels (CDP) dans les deux sens, sur la nav, sur `<main>` en butée haute et
   basse avec poursuite au-delà, et sur une page dont le contenu tient : avec un débordement du
   document provoqué exprès (ce qu'iOS produit quand sa zone visible ne colle pas à la mise en
@@ -28,7 +28,7 @@ check = ck.check
 SAFE_TOP, SAFE_BOTTOM = 59, 34
 # Pages qui défilent dans `<main>` ou non : la liste couvre les deux (mesuré sur main :
 # `/`, `/analyse`, `/puzzles` en 393x852 tiennent sans défiler).
-PAGES = ["/", "/mats", "/mats?d=geo-diagonale-ligne", "/apprendre", "/analyse", "/jouer", "/puzzles", "/stats"]
+PAGES = ["/", "/mats", "/mats?d=geo-diagonale-ligne", "/apprendre", "/analyse", "/jouer", "/puzzles", "/stats", "/revision"]
 # Débordement provoqué : un élément ajouté en fin de `host`, retiré par `remove_injected`. En
 # hauteur sur body, c'est le débordement du document (ce qu'iOS produit quand sa zone visible ne
 # colle pas à la mise en page) : sans lui, Chromium n'a nulle part où chaîner le geste et tous
@@ -221,20 +221,71 @@ def page_suite(page, label, path, standalone, slug):
 
 
 def overflow_x_suite(page, label):
-    """Le helper `overflow_x` des autres suites doit pouvoir échouer avec body fixé : html n'a
-    plus de contenu dans le flux, il mesure body (ce qui s'échappe de la coquille) et `<main>`
-    (ses pages). Preuve par deux débordements provoqués, puis retour à 0."""
+    """Chaque branche détecte un débordement provoqué, puis revient à zéro."""
     page.goto(f"{BASE}/#/")
     ck.appears(f"{label} : page affichée", page, "main >> *")
     try:
         inject(page, "main", WIDE)
         check(f"{label} : un élément trop large dans <main> est détecté", overflow_x(page) > 0, f"({overflow_x(page)} px)")
         remove_injected(page)
+        check(f"{label} : <main> sans débordement après retrait", overflow_x(page) == 0)
         inject(page, "#root", f"{WIDE}; position: absolute; left: 0; top: 0")
         check(f"{label} : un élément qui s'échappe de la coquille est détecté", overflow_x(page) > 0, f"({overflow_x(page)} px)")
     finally:
         remove_injected(page)
     check(f"{label} : plus rien une fois retiré", overflow_x(page) == 0, f"({overflow_x(page)} px)")
+
+    page.evaluate("""() => {
+      const strip = document.createElement('div')
+      strip.dataset.e2e = 'overflow'
+      strip.className = 'overflow-x-auto'
+      strip.innerHTML = '<div style="width:600px;height:1px"></div>'
+      document.querySelector('main').appendChild(strip)
+    }""")
+    try:
+        check(f"{label} : bande réellement défilable", page.locator("[data-e2e=overflow]").evaluate("e => e.scrollWidth > e.clientWidth"))
+        check(f"{label} : bande horizontale volontaire exclue", overflow_x(page) == 0)
+    finally:
+        remove_injected(page)
+
+    page.goto(f"{BASE}/#/apprendre/finales/mat-deux-tours")
+    if not ck.appears(f"{label} : calque de leçon ouvert", page, "button[aria-label='Fermer la leçon']"):
+        return
+    for host, name in (("main > .fixed", "calque fixe"), ("main > .fixed .overflow-y-auto", "scroller interne")):
+        check(f"{label} : {name} sans débordement initial", overflow_x(page) == 0)
+        try:
+            inject(page, host, WIDE)
+            check(f"{label} : débordement du {name} détecté", overflow_x(page) > 0)
+        finally:
+            remove_injected(page)
+        check(f"{label} : {name} sans débordement après retrait", overflow_x(page) == 0)
+
+
+def badge_suite(page, label):
+    for orientation in ("w", "b"):
+        page.goto(f"{BASE}/#/analyse")
+        if not ck.appears(f"{label} : analyse ouverte", page, "[id^=chessboard-]"):
+            continue
+        page.evaluate("""(color) => history.replaceState({ ...history.state, usr: {
+          pgn: '1. h3 a6 2. g3 b6 *', color, review: true
+        } }, '', location.href)""", orientation)
+        page.reload()
+        if not ck.appears(f"{label} {orientation} : bilan calculé", page, "text=Démarrer le bilan", timeout=240000):
+            continue
+        page.click("text=Démarrer le bilan")
+        for san, square, edge in (("h3", "h3", orientation == "w"), ("a6", "a6", orientation == "b"),
+                                  ("g3", "g3", False), ("b6", "b6", False)):
+            page.locator(".fixed button[data-current]", has_text=san).first.click()
+            badge = page.locator(".boardbox .pointer-events-none.absolute.z-10")
+            box = badge.bounding_box()
+            cell = page.locator(f".boardbox [data-square='{square}']").first.bounding_box()
+            check(f"{label} {orientation} {san} : pastille visible", box is not None and cell is not None)
+            if box and cell:
+                right = box["x"] + box["width"]
+                expected = cell["x"] + cell["width"] + (0 if edge else box["width"] * 0.4)
+                check(f"{label} {orientation} {san} : placement de la pastille", abs(right - expected) < 1)
+                check(f"{label} {orientation} {san} : pastille dans le viewport", box["x"] >= 0 and right <= page.viewport_size["width"])
+            check(f"{label} {orientation} {san} : aucun débordement", overflow_x(page) == 0)
 
 
 SHEET = "div.fixed .overflow-y-auto"
@@ -328,6 +379,7 @@ def suite(p):
                 slug = path.strip("/").replace("?", "_").replace("=", "-").replace("/", "_") or "accueil"
                 page_suite(page, label, path, standalone, f"{size}_{slug}")
             overflow_x_suite(page, f"[{size}] helper overflow_x")
+            badge_suite(page, f"[{size}] pastille")
             sheet_suite(page, f"[{size}] feuille de cours")
             ctx.close()
         desktop_suite(p, browser)
