@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { db, DEFAULT_RATING, type PuzzleAttempt, type Rating, type SavedGame } from '../lib/db'
