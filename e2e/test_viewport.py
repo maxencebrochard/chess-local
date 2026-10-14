@@ -286,6 +286,8 @@ def badge_suite(page, label):
                 check(f"{label} {orientation} {san} : placement de la pastille", abs(right - expected) < 1)
                 check(f"{label} {orientation} {san} : pastille dans le viewport", box["x"] >= 0 and right <= page.viewport_size["width"])
             check(f"{label} {orientation} {san} : aucun débordement", overflow_x(page) == 0)
+            if edge:
+                shot(page, f"viewport_pastille_{page.viewport_size['height']}_{orientation}_{san}")
 
 
 SHEET = "div.fixed .overflow-y-auto"
@@ -308,6 +310,7 @@ def sheet_suite(page, label):
     if not ck.appears(f"{label} : feuille ouverte", page, SHEET):
         return
     page.wait_for_timeout(400)
+    shot(page, f"viewport_feuille_{page.viewport_size['height']}")
     ob = page.evaluate(f"() => getComputedStyle(document.querySelector('{SHEET}')).overscrollBehaviorY")
     check(f"{label} : la feuille ne chaîne pas son défilement", ob == "contain", f"({ob})")
     inject(page, "body", TALL)
