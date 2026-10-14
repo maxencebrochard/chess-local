@@ -36,7 +36,7 @@ export default function Home() {
 
   return (
     <div data-review-ready={due !== null ? '' : undefined} className="mx-auto flex h-full max-w-2xl flex-col p-4 md:justify-center md:p-8">
-      <h1 className="mb-4 text-3xl font-black">
+      <h1 className="mb-2 md:mb-4 text-3xl font-black">
         ♞ Chess<span className="text-accent">Local</span>
       </h1>
 
@@ -47,7 +47,7 @@ export default function Home() {
       <Link
         to="/puzzles"
         replace
-        className="mb-4 block rounded-2xl bg-gradient-to-br from-[#4e7837] to-[#2e4a20] p-5 shadow-lg transition hover:brightness-110"
+        className="mb-2 md:mb-4 block rounded-2xl bg-gradient-to-br from-[#4e7837] to-[#2e4a20] p-3 md:p-5 shadow-lg transition hover:brightness-110"
       >
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -67,7 +67,7 @@ export default function Home() {
       {due !== null && due.length > 0 && (
         <Link
           to="/revision"
-          className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-surface-2 px-4 py-2 shadow-lg transition hover:bg-surface-3"
+          className="mb-2 md:mb-4 flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-surface-2 px-4 py-2 shadow-lg transition hover:bg-surface-3"
         >
           <span className="text-2xl" aria-hidden="true">🔁</span>
           <span className="min-w-0 flex-1">
@@ -82,7 +82,7 @@ export default function Home() {
       )}
 
       {/* Cartes stats horizontales */}
-      <div className="mb-4 grid grid-cols-4 gap-2">
+      <div className="mb-2 md:mb-4 grid grid-cols-4 gap-2">
         {statCards.map((s) => (
           <Link key={s.label} to="/stats" replace className="rounded-xl bg-surface-2 p-3 text-center transition hover:bg-surface-3">
             <div className="text-2xl">{s.icon}</div>
@@ -93,7 +93,7 @@ export default function Home() {
       </div>
 
       {/* Tuiles secondaires */}
-      <div className="mb-4 grid grid-cols-2 gap-2">
+      <div className="mb-2 md:mb-4 grid grid-cols-2 gap-2">
         {tiles.map((t) => (
           <Link key={t.to} to={t.to} replace={t.tab} className="flex items-center gap-3 rounded-xl bg-surface-2 p-3 transition hover:bg-surface-3">
             <span className="text-2xl">{t.icon}</span>
@@ -106,7 +106,7 @@ export default function Home() {
       </div>
 
       {/* Insights : descente (empilée), hors des cartes Elo qui mènent à Stats. */}
-      <Link to="/insights" className="mb-4 flex min-h-11 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 transition hover:bg-surface-3">
+      <Link to="/insights" className="mb-2 md:mb-4 flex min-h-11 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 transition hover:bg-surface-3">
         <span className="text-xl" aria-hidden="true">🧠</span>
         <span className="font-bold">Insights</span>
         <span className="min-w-0 flex-1 truncate text-xs text-neutral-400">où tu pèches, quoi travailler</span>
