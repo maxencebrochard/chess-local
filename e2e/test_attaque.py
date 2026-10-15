@@ -614,14 +614,16 @@ def suite(p):
                 log_start = len(uci_log(page))
                 played = play_best(page, tcolor, 10, "niveau rouvert")
                 turn = wait_turn(page, tcolor)
-                ws = workers(uci_log(page)[log_start:])
+                full_log = uci_log(page)
+                ws = workers(full_log[log_start:])
                 reopened = [m for m in ws.values() if "go movetime 700" in m]
                 options = options_before_first_go(reopened[0]) if len(reopened) == 1 else []
-                check("[niveau] position rouverte : défenseur réellement réglé à 2500",
+                if not check("[niveau] position rouverte : défenseur réellement réglé à 2500",
                       played and turn == "turn" and len(reopened) == 1
                       and "setoption name UCI_LimitStrength value true" in options
                       and "setoption name UCI_Elo value 2500" in options,
-                      f"(coup joué={played}, retour={turn}, workers={ws}, fen={attr(page, 'fen')})")
+                      f"(coup joué={played}, retour={turn}, workers={ws}, fen={attr(page, 'fen')})"):
+                    print(f"[diagnostic niveau rouvert] avant log_start : {workers(full_log[:log_start])}", flush=True)
 
     # --- 6. Mise en page ---
     page.set_viewport_size({"width": 393, "height": 660})

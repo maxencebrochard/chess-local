@@ -10,7 +10,8 @@ portés par un tag `deployed-AAAA-MM-JJ`, extraits de git), chacun dans son prop
 son propre port ; chaque check est préfixé du tag du build joué.
 Volet 1, montée de version sur place :
   l'ANCIEN build est servi sous /chess-local/ ; dans un profil navigateur PERSISTANT, de vraies
-  données sont créées PAR L'INTERFACE (puzzles, Rush, partie vs Noa, bilan, Apprendre, thème) ;
+  données sont créées PAR L'INTERFACE (puzzles, Rush, partie vs Noa, bilan, Apprendre, thème ;
+  pour le 15 octobre seulement : cache Insights et réglages pièces, volume, attaquants) ;
   instantané brut de l'IndexedDB et des réglages ; puis le NOUVEAU build (E2E_DIST) remplace
   l'ancien sur le MÊME port, le même profil rouvre l'app, le service worker se met à jour, et
   tout doit être là : lignes identiques table par table, réglages identiques, chiffres AFFICHÉS
@@ -50,18 +51,22 @@ from run import HOST, ROOT, SUBPATH, free_port, port_is_listening
 # doit retrouver à l'écran (les chiffres et les données attendus, eux, sont communs à tous).
 # Le `__BUILD__` de chaque ancien build est lu dans son bundle extrait, comme pour le nouveau.
 #   deployed-2026-07-20 : schéma Dexie version(2), archive en « vs Noa », abandon sans confirmation.
-#   deployed-2026-10-06 : version installée sur l'iPhone ; même schéma, archive en « contre Noa »,
-#                         feuille de confirmation d'abandon.
+#   deployed-2026-10-06 : même schéma, archive en « contre Noa », confirmation d'abandon.
+#   deployed-2026-10-15 : version installée sur l'iPhone de Max ; version(3), cache `reviews`
+#                         d'Insights, réglages pieceSet/soundVolume/showAttackers.
+# On conserve les deux précédents : des appareils peuvent encore les porter.
 OLD_BUILDS = (
     {"tag": "deployed-2026-07-20", "sha": "388d3edae6fd6ec152ccca70b0573d242d612090", "labels": {"archive_bot": "vs Noa"}},
     {"tag": "deployed-2026-10-06", "sha": "54bf85a3656123490bec3aa87108a2e18a50f8bd", "labels": {"archive_bot": "contre Noa"}},
+    {"tag": "deployed-2026-10-15", "sha": "de63ea79eea4f20d6596c841f8c9579929f602a6",
+     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
 )
 DB_NAME = "chess-local"
 SETTINGS_KEY = "chess-local-settings"
 TABLES = ("games", "ratings", "puzzleAttempts", "rushScores", "mistakes", "learnSessions")
-# Table ajoutée par le build courant (version(3), cache d'Insights) : absente de l'ancien build,
-# elle doit exister, vide, après la montée de version, et figurer dans l'export du nouveau build.
-NEW_TABLES = ("reviews",)
+# Depuis le 15 octobre, `reviews` est déjà alimentée dans le build déployé.
+# Elle ne doit être créée vide que lors de la migration des deux builds antérieurs.
+CURRENT_TABLES = TABLES + ("reviews",)
 DEFAULT_RATING = 800
 # Partie courte avec une gaffe nette (3... Cf6?? laisse le mat du berger) : le bilan en fait une
 # ligne de `mistakes` sans attendre le bilan d'une partie de 40 coups.
@@ -337,7 +342,7 @@ def compare_snapshots(tag, before, after):
 
 def compare_backup(tag, before, backup):
     """Le JSON d'« Exporter tout » (lecture par Dexie, donc par l'app) contre l'instantané brut."""
-    for name in TABLES:
+    for name in before["db"]["stores"]:
         rows = backup.get(name)
         if not check(f"{tag} export : table {name} présente", isinstance(rows, list)):
             continue
@@ -397,7 +402,7 @@ def cards_of(cards):
 
 def displayed_ok(tag, page, base, exp, labels):
     """Une visite de chaque page qui affiche des données, un check par chiffre attendu.
-    `labels` : libellés du build affiché (OLD_LABELS ou NEW_LABELS)."""
+    `labels` : libellés du build affiché (OLD_BUILDS ou NEW_LABELS)."""
     def has_all(needles):
         def fn():
             text = page.locator("main").first.inner_text()
@@ -667,7 +672,7 @@ def learn_phase(page, base):
     if not play_solution(page, info):
         play_wrong_move(page, info)  # promotion : n'importe quel coup donne un verdict, donc une séance enregistrée
     expect("[ancien] apprendre : verdict de l'exercice (séance enregistrée)",
-           wait_until(page, lambda: (page.locator("text=Réussi").count() > 0 or page.locator("text=Raté").count() > 0, "(pas de verdict)"), 15000))
+           wait_until(page, lambda: (page.locator("text=Réussi").count() > 0 or page.locator("text=Raté").count() > 0, f"(pas de verdict : puzzle {info}, état {page.evaluate(FIBER_JS)})"), 15000))
     page.click("header button:has-text('✕')")
     page.wait_for_timeout(300)
 
@@ -678,6 +683,32 @@ def theme_phase(page, base):
     page.locator("button[title='Bois']").click()
     expect("[ancien] thème Bois enregistré dans les réglages",
            wait_until(page, lambda: ('"themeId":"brown"' in (page.evaluate(f"() => localStorage.getItem({json.dumps(SETTINGS_KEY)})") or ""), "(themeId brown absent)")))
+
+
+def insights_phase(page, base):
+    """Analyse par Stockfish la partie contre Noa déjà jouée, sans semer le cache."""
+    page.goto(f"{base}/#/insights")
+    page.get_by_test_id("tc-rapid").click()
+    page.get_by_test_id("src-chesscom").click()
+    page.get_by_test_id("insights-run").click()
+    ck.appears("[ancien] Insights : rapport de la partie contre Noa", page,
+               "[data-testid=insights-report]", timeout=180000)
+    expect("[ancien] Insights : bilan enregistré dans reviews",
+           wait_until(page, lambda: (len(snapshot(page)["db"]["stores"]["reviews"]["rows"]) == 1,
+                                     "(un bilan attendu)")))
+
+
+def recent_settings_phase(page, base):
+    """Valeurs non défaut choisies par l'interface du build du 15 octobre."""
+    page.goto(f"{base}/#/stats")
+    page.get_by_role("radio", name="Chessnut", exact=True).click()
+    page.get_by_role("switch", name="Sons", exact=True).click()
+    page.get_by_role("slider", name="Volume des sons").fill("35")
+    page.get_by_test_id("toggle-attackers").click()
+    wanted = {"pieceSet": "chessnut", "soundVolume": 0.35, "showAttackers": True}
+    expect("[ancien] pièces, volume et attaquants enregistrés hors valeurs par défaut",
+           wait_until(page, lambda: (all(snapshot(page)["settings"]["state"].get(k) == v
+                                        for k, v in wanted.items()), str(wanted))))
 
 
 def export_backup(tag, page, base, dest):
@@ -920,6 +951,9 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
         phase("bilan", review_phase, page, base)
         phase("apprendre", learn_phase, page, base)
         phase("thème", theme_phase, page, base)
+        if "reviews" in build.get("extra_tables", ()):
+            phase("Insights", insights_phase, page, base)
+            phase("réglages récents", recent_settings_phase, page, base)
         backup = phase("export", export_backup, "[ancien]", page, base, backup_path)
 
         # Instantané dos à dos avec l'export : aucune écriture entre les deux.
@@ -927,7 +961,7 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
         stores = before["db"]["stores"] if before["db"] else {}
         counts = {t: len(s["rows"]) for t, s in stores.items()}
         log(f"instantané avant : {counts}, réglages {before['settings'] and before['settings'].get('state')}")
-        for t in TABLES:
+        for t in TABLES + build.get("extra_tables", ()):
             check(f"[ancien] table {t} alimentée avant la montée de version", counts.get(t, 0) > 0, f"({counts.get(t, 0)} ligne(s))")
         at_default = [r["key"] for r in stores.get("ratings", {}).get("rows", []) if r["value"] == DEFAULT_RATING]
         check("[ancien] aucun Elo à sa valeur par défaut (sinon l'affichage ne prouverait rien)", not at_default, f"({at_default})")
@@ -973,7 +1007,7 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
         exported = phase("export après", export_backup, "[nouveau]", page, base, os.path.join(work, "sauvegarde-nouveau-build.json"))
         if exported:
             compare_backup("[nouveau]", before, exported)
-            for t in NEW_TABLES:
+            for t in sorted(set(CURRENT_TABLES) - set(stores)):
                 check(f"[nouveau] export : nouvelle table {t} présente et vide", exported.get(t) == [], f"({type(exported.get(t)).__name__})")
             check("[nouveau] export au format v3", exported.get("_version") == 3, f"({exported.get('_version')})")
         ctx.close()
