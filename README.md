@@ -4,6 +4,8 @@ Version privée et locale de chess.com.
 Tourne dans le navigateur sur Mac et iPhone : calculs et stockage sur l'appareil, sans serveur ChessLocal ni compte à créer.
 L'import et les Insights chess.com interrogent son API publique avec ton pseudo ; les bilans Stockfish sont calculés localement.
 La navigation reste en place pendant le défilement du contenu ; les gestes en butée des listes, calques et feuilles ne se propagent pas à la page.
+Sur écran tactile, les contacts sur les cases proches des bords gauche et droit de l'écran sont réservés à l'échiquier afin d'éviter le geste retour/suivant d'iOS pendant un déplacement de pièce ; le glissé et le clic-clic restent disponibles.
+Pour faire défiler un cours depuis un diagramme, commence le geste au centre du diagramme ou dans le contenu autour : ses cases proches des bords de l'écran bloquent aussi le défilement vertical.
 
 ## Lancer
 
