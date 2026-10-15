@@ -6,7 +6,7 @@ import { db } from './db'
 import { POSITION_GAME_KEY } from './positionGame'
 import { ATTACK_PREFS_KEY } from './attack'
 import { INSIGHTS_KEY, readInsights, writeInsights } from './insightsStore'
-import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, useSettings } from '../store/settings'
+import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, migrateSettings, useSettings } from '../store/settings'
 import { BOTS } from './bots'
 import { TIME_CONTROLS } from './timeControls'
 import { isPieceSet } from './pieces'
@@ -264,10 +264,14 @@ function cleanSettings(raw: unknown): SettingsValues | null {
     return null
   }
   if (!isPlain(blob) || !isPlain(blob.state)) return null
+  // La version persist est indépendante de la version du schéma de sauvegarde.
+  // Sans version, le fichier appartient au format historique (version 0).
+  const version = typeof blob.version === 'number' && Number.isInteger(blob.version) && blob.version >= 0 ? blob.version : 0
+  const migrated: SettingsValues = migrateSettings(blob.state, version)
   const defaults = settingsDefaults()
   const state: SettingsValues = { ...defaults }
   for (const k of Object.keys(defaults)) {
-    const v = blob.state[k]
+    const v = migrated[k]
     if (typeof v !== typeof defaults[k]) continue
     if (isStr(v) && v.length > MAX_SETTING_STRING) continue
     state[k] = v

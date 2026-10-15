@@ -471,10 +471,17 @@ export default function Play() {
     }
   }, [afterMove])
 
-  function handlePlayerMove(from: string, to: string, promotion?: string): boolean {
+  function handlePlayerMove(from: string, to: string, promotion?: string, premove = false): boolean {
     const c = chessRef.current
     if (status !== 'playing') return false
     if (viewIndex !== -1) return false
+    if (mode !== 'local' && c.turn() !== playerColor) return false
+    if (premove && effectiveTc.baseMs !== null) {
+      const remaining = Math.max(0, clocksRef.current[playerColor] - 100)
+      clocksRef.current = { ...clocksRef.current, [playerColor]: remaining }
+      setClocks(clocksRef.current)
+      if (remaining === 0) { onFlag(playerColor); return false }
+    }
     try {
       const move = c.move({ from, to, promotion: promotion ?? 'q' })
       const cont = afterMove(move, true)
@@ -878,6 +885,7 @@ export default function Play() {
                 fen={viewFen}
                 orientation={orientation}
                 interactive={status === 'playing' && viewIndex === -1}
+                allowPremove={status === 'playing' && viewIndex === -1}
                 movableColor={playerColor}
                 onMove={handlePlayerMove}
                 lastMove={lastMove}
@@ -936,6 +944,7 @@ export default function Play() {
             fen={viewFen}
             orientation={orientation}
             interactive={status === 'playing' && viewIndex === -1}
+            allowPremove={mode !== 'local' && status === 'playing' && viewIndex === -1}
             movableColor={mode === 'bot' ? playerColor : undefined}
             onMove={handlePlayerMove}
             lastMove={lastMove}

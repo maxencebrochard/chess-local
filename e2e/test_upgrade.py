@@ -305,11 +305,22 @@ def compare_rows(tag, name, rows_before, rows_after, keypath):
            f"(perdues : {lost[:5]}, modifiées : {changed[:5]})")
 
 
+def old_settings_json():
+    seed = json.loads(settings_json())
+    seed["version"] = 0
+    seed["state"].pop("pieceSet", None)
+    return json.dumps(seed)
+
+
 def compare_settings(tag, before, after):
     sa = after.get("settings") if isinstance(after, dict) else None
     if not check(f"{tag} réglages présents ({SETTINGS_KEY})", isinstance(sa, dict) and isinstance(sa.get("state"), dict), f"({after.get('settingsRaw')!r})"):
         return
-    diff = {k: (v, sa["state"].get(k)) for k, v in before["settings"]["state"].items() if not same(sa["state"].get(k), v)}
+    expected = dict(before["settings"]["state"])
+    if sa.get("version", 0) >= 1 and before["settings"].get("version", 0) < 1:
+        if expected.get("pieceSet") in (None, "celtique"):
+            expected["pieceSet"] = "wikimedia"
+    diff = {k: (v, sa["state"].get(k)) for k, v in expected.items() if not same(sa["state"].get(k), v)}
     verify(f"{tag} réglages : chaque valeur d'avant conservée", not diff, f"({diff})")
 
 
@@ -347,7 +358,7 @@ def compare_backup(tag, before, backup):
         if not check(f"{tag} export : table {name} présente", isinstance(rows, list)):
             continue
         compare_rows(f"{tag} export :", name, before["db"]["stores"].get(name, {}).get("rows", []), rows, before["db"]["stores"].get(name, {}).get("keyPath", "id"))
-    verify(f"{tag} export : réglages identiques", backup.get("settings") == before["settingsRaw"], f"({backup.get('settings')!r})")
+    compare_settings(f"{tag} export", before, {"settings": json.loads(backup.get("settings") or "null")})
 
 
 # ---------------------------------------------------------------------------
@@ -748,7 +759,7 @@ def open_profile(p, profile_dir, seed):
     if seed:
         ctx.add_init_script(
             f"try {{ if (!localStorage.getItem({json.dumps(SETTINGS_KEY)})) "
-            f"localStorage.setItem({json.dumps(SETTINGS_KEY)}, {json.dumps(settings_json())}) }} catch {{}}"
+            f"localStorage.setItem({json.dumps(SETTINGS_KEY)}, {json.dumps(old_settings_json())}) }} catch {{}}"
         )
     mock_chesscom(ctx, ck)
     page = ctx.pages[0] if ctx.pages else ctx.new_page()

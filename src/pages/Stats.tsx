@@ -348,6 +348,7 @@ export default function Stats() {
             ))}
           </div>
         </div>
+        <Toggle label="Prémouvements" value={settings.premoves} onChange={settings.setPremoves} />
         <Toggle label="Afficher les coups légaux" value={settings.showLegalMoves} onChange={settings.setShowLegalMoves} />
         <div>
           <Toggle label="Sons" value={settings.playSounds} onChange={settings.setPlaySounds} />

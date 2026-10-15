@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Régénère public/sounds/*.mp3 depuis les packs Kenney « Impact Sounds » et « Interface Sounds »
-# (CC0 1.0, https://kenney.nl). Rien de chess.com ni de lichess : voir public/sounds/LICENSES.md.
-# Prérequis : curl, unzip, ffmpeg avec libmp3lame.
+# Régénère les notifications Kenney et les impacts synthétiques originaux de public/sounds/.
+# CC0 1.0 ; rien de chess.com ni de lichess : voir public/sounds/LICENSES.md.
+# Prérequis : curl, unzip, ffmpeg avec libmp3lame, Python 3 avec numpy.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -22,7 +22,6 @@ SUMS
 )
 unzip -qo "$WORK/impact.zip" -d "$WORK/impact"
 unzip -qo "$WORK/iface.zip" -d "$WORK/iface"
-I="$WORK/impact/Audio"
 F="$WORK/iface/Audio"
 
 # render <nom> <crête dBFS> <filtre> <entrées...> : mixe les entrées par le filtre ffmpeg (sortie [m]),
@@ -51,21 +50,12 @@ rm -f "$OUT"/*.mp3
   tr -d '\r' < "$WORK/iface/License.txt" | sed 's/^\t*//'
 } > "$OUT/LICENSE-Kenney-CC0.txt"
 
-# Coups : impacts bois légers (le « toc » d'une pièce posée), prise : impact bois moyen.
-render move-self -1 "$one" "$I/impactWood_light_002.ogg"
-render move-opponent -1 "$one" "$I/impactWood_light_000.ogg"
-render capture -1 "$one" "$I/impactWood_medium_002.ogg"
-# Roque : deux pièces posées coup sur coup (roi puis tour).
-render castle -1 "[1]adelay=90:all=1[b];[0][b]amix=inputs=2:normalize=0[m]" "$I/impactWood_light_001.ogg" "$I/impactWood_light_003.ogg"
-# Échec : le toc du coup, doublé d'un tintement de verre bref.
-render move-check -1 "[1]volume=-6dB[b];[0][b]amix=inputs=2:normalize=0[m]" "$I/impactWood_light_002.ogg" "$F/glass_006.ogg"
-# Promotion : le toc du coup suivi d'une note claire.
-render promote -1 "[1]adelay=40:all=1,volume=-4dB[b];[0][b]amix=inputs=2:normalize=0[m]" "$I/impactWood_light_002.ogg" "$F/confirmation_001.ogg"
+# Coups et refus : synthèse originale, sans fichier sonore d'entrée.
+python3 "$ROOT/scripts/synthesize-moves.py"
 # Notifications, un cran sous les coups.
 render game-start -4 "$one" "$F/question_004.ogg"
 render game-end -4 "$one" "$F/confirmation_004.ogg"
 render low-time -4 "[1]adelay=160:all=1[b];[0][b]amix=inputs=2:normalize=0[m]" "$F/tick_004.ogg" "$F/tick_004.ogg"
-render illegal -4 "$one" "$F/error_004.ogg"
 render success -4 "$one" "$F/confirmation_002.ogg"
 render fail -4 "$one" "$F/error_006.ogg"
 

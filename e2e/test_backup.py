@@ -131,13 +131,13 @@ SEED = {
 # Profil de départ : TOUS les réglages loin de leur défaut, Jouer compris (mode, couleur, bot,
 # cadence). Une restauration, un export, une annulation ou une réinitialisation annulée qui en
 # perdrait un seul fait échouer les égalités strictes ci-dessous.
-SEED_SETTINGS = {"themeId": "purple", "pieceSet": "chessnut", "showLegalMoves": False, "showAttackers": True, "playSounds": False, "soundVolume": 0.4,
+SEED_SETTINGS = {"premoves": False, "themeId": "purple", "pieceSet": "chessnut", "showLegalMoves": False, "showAttackers": True, "playSounds": False, "soundVolume": 0.4,
                  "chesscomUsername": "moi", "reviewDepth": "deep",
                  "playMode": "coach", "playBotId": "viktor", "playColor": "b", "playTcLabel": "3 | 2"}
-# Défauts des réglages ajoutés après coup (Jouer, PR #12 ; pièces et volume, F10 ; calque des attaquants, F12) : un fichier qui
+# Défauts des réglages ajoutés après coup (Jouer, PR #12 ; pièces et volume, F10 ; calque des attaquants, F12 ; prémouvements, F14) : un fichier qui
 # ne les contient pas (sauvegarde antérieure à leur ajout) ou qui porte une valeur hors liste
 # blanche les ramène là.
-ADDED_DEFAULTS = {k: DEFAULT_SETTINGS[k] for k in ("playMode", "playBotId", "playColor", "playTcLabel", "pieceSet", "soundVolume", "showAttackers")}
+ADDED_DEFAULTS = {k: DEFAULT_SETTINGS[k] for k in ("playMode", "playBotId", "playColor", "playTcLabel", "pieceSet", "soundVolume", "showAttackers", "premoves")}
 
 
 def same_settings(st, expected):
@@ -381,7 +381,7 @@ def part_roundtrip(p, browser, tmp):
     check("[glob-2] Stats affiche 2 gagnées sans rechargement", page.locator("main :text('2 gagnées')").count() == 1)
     check("[glob-2] puzzles à jour sans rechargement", page.locator("main :text('3 résolus / 4 tentés')").count() == 1)
     check("[glob-2] thème Améthyste sélectionné sans rechargement", "border-accent" in (page.locator("button[title='Améthyste']").get_attribute("class") or ""))
-    page.locator("main button.h-6.w-11").nth(1).click()  # toggle Sons
+    page.get_by_role("switch", name="Sons", exact=True).click()
     page.wait_for_timeout(300)
     st = settings_state(page)
     check("[glob-2] toggle Sons appliqué", st and st["playSounds"] is True, f"({st})")
@@ -661,7 +661,7 @@ def part_prod_format(p, browser, tmp):
         check("[prod v2] thème Océan sélectionné sans rechargement", "border-accent" in (page.locator("button[title='Océan']").get_attribute("class") or ""))
 
         # Fichier v2 qui CONTIENT des réglages de Jouer valides : ils sont appliqués tels quels.
-        play_st = {"themeId": "brown", "pieceSet": "fantasy", "showLegalMoves": False, "showAttackers": True, "playSounds": False, "soundVolume": 0.25,
+        play_st = {"premoves": False, "themeId": "brown", "pieceSet": "fantasy", "showLegalMoves": False, "showAttackers": True, "playSounds": False, "soundVolume": 0.25,
                    "chesscomUsername": "magnus", "reviewDepth": "deep",
                    "playMode": "local", "playBotId": "maximus", "playColor": "random", "playTcLabel": "Illimité"}
         with_play = backup_dict(games=[game(6, "0-1")], settings=json.dumps({"state": play_st, "version": 0}))
@@ -685,7 +685,7 @@ def part_prod_format(p, browser, tmp):
         hostile = backup_dict(games=[game(5, "1-0")], settings=json.dumps({"state": {
             "themeId": "evil", "reviewDepth": "evil", "playSounds": "oui", "setTheme": "x", "chesscomUsername": "attaquant",
             "playMode": "evil", "playColor": "x", "playBotId": "inconnu", "playTcLabel": "7 min",
-            "pieceSet": "neo", "soundVolume": 7}, "version": 0}))
+            "premoves": "oui", "pieceSet": "neo", "soundVolume": 7}, "version": 0}))
         path = write_file(tmp, "reglages_hostiles.json", hostile)
         choose_file(page, path)
         if ck.appears("[réglages hostiles] feuille ouverte", page, "[data-testid=restore-sheet]"):
@@ -695,6 +695,32 @@ def part_prod_format(p, browser, tmp):
         check("[réglages hostiles] données restaurées", kind == "success" and snapshot(page)["games"] == hostile["games"], f"({text!r})")
         check("[réglages hostiles] valeurs hors liste ramenées au défaut, chaîne légitime gardée",
               st == {"themeId": "green", "showLegalMoves": True, "playSounds": True, "chesscomUsername": "attaquant", "reviewDepth": "balanced", **ADDED_DEFAULTS}, f"({st})")
+
+        # La version persist, et non _version du fichier, pilote la migration des pièces.
+        for version, piece_set, expected_piece in (
+            (0, None, "wikimedia"), (0, "celtique", "wikimedia"),
+            (None, "celtique", "wikimedia"), (1, "celtique", "celtique"),
+            (1, "wikimedia", "wikimedia"), (1, "classique", "classique"),
+            (1, "spatial", "spatial"),
+        ):
+            label = f"[pièces persist {version}, {piece_set}]"
+            source = {**SEED_SETTINGS}
+            if piece_set is None:
+                source.pop("pieceSet")
+            else:
+                source["pieceSet"] = piece_set
+            blob = {"state": source}
+            if version is not None:
+                blob["version"] = version
+            data = backup_dict(settings=json.dumps(blob))
+            choose_file(page, write_file(tmp, "migration_pieces.json", data))
+            if ck.appears(f"{label} feuille ouverte", page, "[data-testid=restore-sheet]"):
+                page.click("[data-testid=restore-confirm]")
+            text, kind = message(page, timeout=20000)
+            check(f"{label} restaurée", kind == "success", f"({text!r})")
+            st = settings_state(page)
+            check(f"{label} migration et autres réglages conservés",
+                  st == {**SEED_SETTINGS, "pieceSet": expected_piece}, f"({st})")
     ctx.close()
 
 
