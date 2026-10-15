@@ -210,25 +210,41 @@ def drive(page, eg, depth, max_moves, tag):
     """Le joueur suit le worker en page jusqu'au verdict. Retourne (verdict, étiquettes d'éval vues)."""
     color = eg["side"]
     labels = []
+    trace = []
+
+    def result():
+        v = verdict(page)
+        if v != "success":
+            print(f"[diagnostic {tag}] {json.dumps(trace, ensure_ascii=False)}", flush=True)
+            # Le diagnostic ne doit jamais interrompre la suite.
+            try:
+                print(f"[diagnostic {tag}] écran final : {page.locator('main').inner_text(timeout=2000)}", flush=True)
+            except Exception as e:
+                print(f"[diagnostic {tag}] écran final illisible : {e}", flush=True)
+        return v, labels
+
     for n in range(max_moves):
         before = pieces(page)
         uci = best_move(page, fen_from(before, color), depth)
+        # Garder le parcours exact : les réponses du bot à durée fixe varient sous charge.
+        trace.append({"avant": fen_from(before, color), "proposé": uci})
         if not uci or len(uci) < 4 or not before.get(uci[:2], "").startswith(color):
             ck.fail(f"[{tag}] coup {n + 1} : le worker ne propose rien de jouable", f"({uci})")
-            return verdict(page), labels
+            return result()
         play(page, uci, "drag" if n % 2 else "tap")
         outcome = wait_reply(page, before, uci, color)
         labels.append(eval_label(page))
+        trace[-1].update({"réponse": outcome, "éval": labels[-1]})
         if outcome == "rejected":
             ck.fail(f"[{tag}] coup {n + 1} ({uci}) refusé par l'échiquier")
-            return verdict(page), labels
+            return result()
         if outcome == "timeout":
             ck.fail(f"[{tag}] coup {n + 1} ({uci}) : ni réponse du bot ni verdict en 30 s")
-            return verdict(page), labels
+            return result()
         if outcome == "verdict":
             page.wait_for_timeout(600)
-            return verdict(page), labels
-    return verdict(page), labels
+            return result()
+    return result()
 
 
 def suite(p):
