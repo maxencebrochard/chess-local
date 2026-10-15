@@ -428,8 +428,9 @@ def touch_drag(page, x1, y1, x2, y2, steps=14, step_ms=16, hold_ms=60):
     page.wait_for_timeout(250)
 
 
-def drag_piece(page, frm, to, **kw):
-    x1, y1 = sq_center(page, frm)
+def drag_piece(page, frm, to, start=None, **kw):
+    """Saisie au centre, ou en un point précis de la pièce (bords, coordonnées)."""
+    x1, y1 = start if start is not None else sq_center(page, frm)
     x2, y2 = sq_center(page, to)
     touch_drag(page, x1, y1, x2, y2, **kw)
 

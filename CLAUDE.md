@@ -156,4 +156,10 @@ Les noms d'ouvertures sont en anglais dans les données et traduits à l'afficha
 Mobile d'abord : la cible principale est la PWA iPhone en mode standalone (nav basse, `pt-safe`/`pb-safe`, hauteurs en `dvh`), avec une nav latérale à partir de `md`.
 Les E2E tournent sur le device `iPhone 14 Pro` et en 1440x900.
 Couleurs via les tokens Tailwind `@theme` de `src/index.css` : `surface`, `surface-2`, `surface-3`, `accent`.
-`.boardbox` fixe la taille de l'échiquier sur toutes les pages.
+`.boardbox` fixe la taille de la plupart des échiquiers ; les cours utilisent leur propre conteneur.
+`main.tsx` annule le `touchstart` natif dans les 25 px des bords du viewport sur les cases `[data-board] [data-square]`, pour empêcher les gestes précédent/suivant de WebKit depuis tout échiquier sans couper les événements de react-chessboard.
+`Board` porte toujours `data-board`, indépendamment de sa propriété `interactive` et des classes de mise en page : la protection couvre aussi la réflexion du moteur et les diagrammes.
+La prévention reste ciblée : l'annulation globale casse les boutons et le défilement vertical près du bord ; les diagrammes de cours restent défilables depuis leur centre et l'historique n'est pas modifié.
+La suite `edge_navigation` vérifie en contexte mobile standalone les contacts CDP annulés aux deux bords (dont 20 px du bord réel du viewport) et les coups par glissé sur Analyse, les exercices de `LessonCourse`, Jouer et les puzzles.
+Elle vérifie aussi les coups par glissé central non annulé, le clic-clic, les boutons, le défilement du contenu et le défilement vertical depuis le centre d’un diagramme de cours.
+Les contacts au bord sont aussi annulés sur les diagrammes et pendant la réflexion du moteur, quand l’échiquier est momentanément non jouable.
