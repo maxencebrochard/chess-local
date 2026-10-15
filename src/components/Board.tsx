@@ -180,7 +180,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   const promoColor = pendingPromotion ? chess.turn() : 'w'
 
   return (
-    <div className="relative select-none">
+    <div className="relative select-none" data-board="">
       <Chessboard
         options={{
           id: boardId,
