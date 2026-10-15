@@ -615,6 +615,7 @@ export function PositionGame(props: PositionGameProps) {
               fen={viewFen}
               orientation={player}
               interactive={myTurn && live && !busy}
+              allowPremove={!end && live && !busy}
               movableColor={player}
               onMove={handleMove}
               lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}

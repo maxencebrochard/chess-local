@@ -296,6 +296,7 @@ function PlayPane({ startFen, initialMoves, initialResigned, playerColor, getEng
             fen={fen}
             orientation={playerColor}
             interactive={!over && !thinking && c.turn() === playerColor}
+            allowPremove={!over}
             movableColor={playerColor}
             onMove={handleMove}
             lastMove={last ? { from: last.from, to: last.to } : null}

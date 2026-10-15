@@ -1,4 +1,4 @@
-// Jeux de pièces de l'échiquier. Tous sous licence libre permissive (public/pieces/LICENSES.md) :
+// Jeux de pièces de l'échiquier. Tous sous licence libre (public/pieces/LICENSES.md) :
 // rien ne vient de chess.com. `classique` = pièces intégrées à react-chessboard (aucun fichier).
 
 export interface PieceSet {
@@ -7,6 +7,7 @@ export interface PieceSet {
 }
 
 export const PIECE_SETS: PieceSet[] = [
+  { id: 'wikimedia', name: 'Wikimedia' },
   { id: 'celtique', name: 'Celtique' },
   { id: 'chessnut', name: 'Chessnut' },
   { id: 'fantasy', name: 'Fantasy' },
@@ -14,7 +15,7 @@ export const PIECE_SETS: PieceSet[] = [
   { id: 'classique', name: 'Classique' },
 ]
 
-export const DEFAULT_PIECE_SET = 'celtique'
+export const DEFAULT_PIECE_SET = 'wikimedia'
 
 export const PIECE_CODES = ['wK', 'wQ', 'wR', 'wB', 'wN', 'wP', 'bK', 'bQ', 'bR', 'bB', 'bN', 'bP'] as const
 export type PieceCode = (typeof PIECE_CODES)[number]

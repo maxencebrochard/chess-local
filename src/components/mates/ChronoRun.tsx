@@ -238,7 +238,7 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
     if (!settle(move)) startClock()
   }
 
-  function onMove(from: string, to: string, promotion?: string): boolean {
+  function onMove(from: string, to: string, promotion?: string, premove = false): boolean {
     const c = chessRef.current!
     if (phaseRef.current !== 'play' || thinking || c.turn() !== playerColor) return false
     // Drapeau tombé entre deux ticks : le coup arrive trop tard.
@@ -251,6 +251,16 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
       move = c.move({ from, to, promotion: promotion ?? 'q' })
     } catch {
       return false
+    }
+    if (premove) {
+      stopClock()
+      leftRef.current = Math.max(0, leftRef.current - 100)
+      setLeft(leftRef.current)
+      if (leftRef.current === 0) {
+        c.undo() // Le coût du prémouvement fait tomber le drapeau : aucun coup joué.
+        fail('Temps écoulé : le drapeau est tombé.')
+        return false
+      }
     }
     stopClock()
     playMoveSound(move, false)
@@ -291,6 +301,7 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
             fen={fen}
             orientation={playerColor}
             interactive={phase === 'play' && !thinking}
+            allowPremove={phase === 'play'}
             movableColor={playerColor}
             onMove={onMove}
             lastMove={view ? null : lastMove ? { from: lastMove.from, to: lastMove.to } : null}

@@ -8,6 +8,7 @@ import { attackCounts } from '../lib/kingAttack'
 import { PieceIcon } from './PieceIcon'
 import { DEFAULT_PIECE_SET, PIECE_CODES, isPieceSet, preloadPieceSet } from '../lib/pieces'
 import { playMoveSound, sounds } from '../lib/sounds'
+import { premoveTargets } from '../lib/premove'
 import type { MoveClass } from '../lib/review'
 
 export interface BoardArrow {
@@ -20,8 +21,11 @@ interface BoardProps {
   fen: string
   orientation: 'w' | 'b'
   interactive: boolean
+  // Opt-in du propriétaire : partie active au direct, avec un camp joueur explicite.
+  allowPremove?: boolean
   // Retourne true si le coup est accepté. promotion en minuscule ('q','r','b','n').
-  onMove?: (from: string, to: string, promotion?: string) => boolean
+  // Le dernier argument signale l'exécution d'un prémouvement aux propriétaires de pendule.
+  onMove?: (from: string, to: string, promotion?: string, premove?: boolean) => boolean
   lastMove?: { from: string; to: string } | null
   arrows?: BoardArrow[]
   // Le joueur ne peut bouger que cette couleur (undefined = les deux).
@@ -37,19 +41,28 @@ interface BoardProps {
   silent?: boolean
 }
 
-export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares, showAttackers, silent }: BoardProps) {
-  const { themeId, showLegalMoves, pieceSet: storedSet } = useSettings()
+export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares, showAttackers, silent, allowPremove = false }: BoardProps) {
+  const { themeId, showLegalMoves, premoves, pieceSet: storedSet } = useSettings()
   // Un jeu inconnu (localStorage abîmé) retombe sur le défaut plutôt que sur des images 404.
   const pieceSet = isPieceSet(storedSet) ? storedSet : DEFAULT_PIECE_SET
   const theme = currentTheme(themeId)
   const [selected, setSelected] = useState<Square | null>(null)
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null)
+  const [drag, setDrag] = useState<{ from: string; target: string | null; touch: boolean; lift: number } | null>(null)
+  const [premove, setPremove] = useState<{ from: string; to: string; fen: string; color: 'w' | 'b' } | null>(null)
+  const queued = useRef(premove)
+  const premoveSound = useRef(false)
+  const touchInput = useRef(false)
+  const root = useRef<HTMLDivElement>(null)
+  const contact = useRef({ x: 0, y: 0 })
   // Identifiant DOM propre à chaque échiquier : react-chessboard retrouve ses cases par
   // getElementById (fin d'un tap tactile). Avec l'id par défaut partagé, un second échiquier
   // monté (calque par-dessus un exercice) testait le tap contre les cases du premier.
   const boardId = `chessboard-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
 
   const chess = useMemo(() => new Chess(fen), [fen])
+  const premoveEnabled = allowPremove && premoves && !!movableColor && !chess.isGameOver()
+  const preparing = premoveEnabled && chess.turn() !== movableColor
   const zones = useMemo(() => (showAttackers ? attackCounts(fen) : null), [fen, showAttackers])
 
   useEffect(() => preloadPieceSet(pieceSet), [pieceSet])
@@ -64,12 +77,15 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   // la sortie du mode est donc muette elle aussi.
   // Un coup moins de 60 ms après le précédent reste muet, tous échiquiers confondus : deux
   // échiquiers montés sur le même coup ou un défilement rapide ne doivent pas empiler les sons.
+  // Exception : le prémouvement exécuté doit sonner même juste après la réponse adverse.
   const prevFen = useRef<string | null>(null)
   const me = movableColor ?? orientation
   const lastFrom = lastMove?.from
   const lastTo = lastMove?.to
   const lastMoveGiven = lastMove !== undefined
   useEffect(() => {
+    const executedPremove = premoveSound.current
+    premoveSound.current = false
     const prev = prevFen.current
     prevFen.current = silent ? null : fen
     if (silent || prev === null || prev === fen) return
@@ -77,17 +93,53 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
     if (!move) return
     if (lastMoveGiven && (move.from !== lastFrom || move.to !== lastTo)) return
     const now = performance.now()
-    if (now - lastBoardSoundAt < 60) return
+    if (!executedPremove && now - lastBoardSoundAt < 60) return
     lastBoardSoundAt = now
     playMoveSound(move, move.color !== me)
     // Fen et `silent` seuls déclenchent : un changement de surlignage seul n'est pas un coup.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fen, silent])
 
+  function clearPremove() {
+    queued.current = null
+    setPremove(null)
+  }
+
+  useEffect(() => {
+    const planned = queued.current
+    if (!planned) return
+    if (!premoveEnabled || planned.color !== movableColor) {
+      clearPremove()
+      return
+    }
+    if (fen === planned.fen) return
+    // Une seule réponse adverse, pas un retour arrière ni une nouvelle position.
+    if (!oneMoveBetween(planned.fen, fen) || chess.turn() !== planned.color) {
+      clearPremove()
+      return
+    }
+    if (!interactive) return
+    // Consommer avant le callback : aucun double coup sous StrictMode ou lors d'un rerendu.
+    clearPremove()
+    const move = chess.moves({ square: planned.from as Square, verbose: true })
+      .find((m) => m.to === planned.to && (!m.promotion || m.promotion === 'q'))
+    if (move) {
+      premoveSound.current = !silent
+      if (!onMove?.(move.from, move.to, move.promotion, true)) premoveSound.current = false
+    }
+  }, [fen, chess, premove, premoveEnabled, movableColor, interactive, onMove, silent])
+
+  useEffect(() => {
+    setSelected(null)
+    setPendingPromotion(null)
+    setDrag(null)
+  }, [fen, interactive, allowPremove])
+
   const legalTargets = useMemo(() => {
     if (!selected) return new Set<string>()
-    return new Set(chess.moves({ square: selected, verbose: true }).map((m) => m.to))
-  }, [chess, selected])
+    return preparing ? premoveTargets(chess, selected)
+      : new Set(chess.moves({ square: selected, verbose: true }).map((m) => m.to))
+  }, [chess, selected, preparing])
 
   const checkSquare = useMemo(() => {
     if (!chess.inCheck()) return null
@@ -101,10 +153,10 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   }, [chess])
 
   function canMoveFrom(square: string): boolean {
-    if (!interactive) return false
+    if (!interactive && !preparing) return false
     const piece = chess.get(square as Square)
     if (!piece) return false
-    if (piece.color !== chess.turn()) return false
+    if (!preparing && piece.color !== chess.turn()) return false
     if (movableColor && piece.color !== movableColor) return false
     return true
   }
@@ -116,6 +168,15 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   }
 
   function tryMove(from: string, to: string): boolean {
+    if (!canMoveFrom(from)) return false
+    if (preparing) {
+      if (!premoveTargets(chess, from as Square).has(to)) return false
+      const planned = { from, to, fen, color: movableColor! }
+      queued.current = planned
+      setPremove(planned)
+      setSelected(null)
+      return true
+    }
     if (!legalMove(from, to)) return false
     if (isPromotion(from, to)) {
       setPendingPromotion({ from, to })
@@ -130,10 +191,28 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
     return chess.moves({ square: from as Square, verbose: true }).some((m) => m.to === to)
   }
 
+  function returnPiece(from: string) {
+    // Anime la vraie pièce source après le retrait du clone, sans copie de position ni minuterie.
+    const piece = root.current?.querySelector<HTMLElement>(`[data-square="${from}"] .board-piece`)
+    if (!piece || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const r = piece.getBoundingClientRect()
+    const dx = contact.current.x - r.x - r.width / 2
+    const dy = contact.current.y - r.y - r.height / 2 - (touchInput.current ? r.height * .85 : 0)
+    piece.animate([
+      { transform: `translate(${dx}px, ${dy}px) scale(${touchInput.current ? 1.7 : 1.2})`, zIndex: 20 },
+      { transform: 'none', zIndex: 20 },
+    ], { duration: 120, easing: 'ease-out' })
+  }
+
   function handleSquareClick({ square }: { piece: unknown; square: string }) {
-    if (!interactive) return
+    if (!interactive && !preparing) return
+    if (queued.current) { clearPremove(); setSelected(null); return }
     if (selected === square) {
       setSelected(null) // re-tap : désélection
+      return
+    }
+    if (canMoveFrom(square)) {
+      setSelected(square as Square)
       return
     }
     if (selected && legalTargets.has(square)) {
@@ -171,32 +250,67 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
           ...squareStyles[t],
           backgroundImage: chess.get(t as Square)
             ? 'radial-gradient(circle, transparent 50%, rgba(0,0,0,0.34) 51%)'
-            : 'radial-gradient(circle, rgba(0,0,0,0.34) 30%, transparent 31%)',
+            : 'radial-gradient(circle, rgba(0,0,0,0.34) 22%, transparent 23%)',
         }
       }
     }
   }
 
+  if (premove && premoveEnabled) {
+    squareStyles[premove.from] = { backgroundColor: 'rgba(220, 50, 50, 0.65)' }
+    squareStyles[premove.to] = { backgroundColor: 'rgba(220, 50, 50, 0.65)' }
+  }
+
   const promoColor = pendingPromotion ? chess.turn() : 'w'
 
   return (
-    <div className="relative select-none" data-board="">
+    <div ref={root} tabIndex={-1} className="relative select-none" data-board=""
+      onPointerDownCapture={(e) => {
+        root.current?.focus({ preventScroll: true })
+        touchInput.current = e.pointerType === 'touch'
+        contact.current = { x: e.clientX, y: e.clientY }
+      }}
+      onPointerMoveCapture={(e) => { contact.current = { x: e.clientX, y: e.clientY } }}
+      onPointerCancelCapture={() => { setDrag(null); setSelected(null) }}
+      onKeyDownCapture={(e) => { if (e.key === 'Escape') { clearPremove(); setDrag(null); setSelected(null) } }}
+    >
       <Chessboard
         options={{
           id: boardId,
           position: fen,
           boardOrientation: orientation === 'w' ? 'white' : 'black',
-          allowDragging: interactive,
+          allowDragging: interactive || preparing,
           canDragPiece: ({ square }) => canMoveFrom(square ?? ''),
+          onPieceDrag: ({ square }) => {
+            if (!square) return
+            clearPremove()
+            setSelected(square as Square)
+            setDrag({ from: square, target: square, touch: touchInput.current, lift: (root.current?.clientWidth ?? 0) / 8 * .85 })
+          },
+          onMouseOverSquare: ({ square }) => setDrag((d) => d ? { ...d, target: square } : null),
+          onMouseOutSquare: ({ square }) => setDrag((d) => d?.target === square ? { ...d, target: null } : d),
           onPieceDrop: ({ sourceSquare, targetSquare }) => {
-            if (!targetSquare) return false
+            setDrag(null)
+            setSelected(null)
+            if (!targetSquare) { returnPiece(sourceSquare); return false }
+            if (preparing) {
+              if (!tryMove(sourceSquare, targetSquare)) {
+                if (targetSquare !== sourceSquare && canMoveFrom(sourceSquare)) sounds.illegal()
+                returnPiece(sourceSquare)
+              }
+              // La position reste inchangée : ne pas marquer la destination comme déjà déplacée.
+              return false
+            }
             // Pièce jouable lâchée sur une case interdite : son « coup illégal » (pas pour un
             // lâcher sur sa propre case, qui annule simplement le geste).
             if (targetSquare !== sourceSquare && canMoveFrom(sourceSquare) && !legalMove(sourceSquare, targetSquare)) {
               sounds.illegal()
+              returnPiece(sourceSquare)
               return false
             }
-            return tryMove(sourceSquare, targetSquare)
+            const accepted = tryMove(sourceSquare, targetSquare)
+            if (!accepted) returnPiece(sourceSquare)
+            return accepted
           },
           onSquareClick: handleSquareClick,
           squareStyles,
@@ -209,12 +323,19 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
           // ces styles avec ses défauts, la couleur et la taille sont conservées).
           lightSquareNotationStyle: { pointerEvents: 'none' },
           darkSquareNotationStyle: { pointerEvents: 'none' },
-          dropSquareStyle: { boxShadow: 'inset 0 0 0 3px rgba(255,255,255,0.65)' },
-          animationDurationInMs: 80,
+          dropSquareStyle: { boxShadow: drag?.touch ? 'none' : 'inset 0 0 0 3px rgba(255,255,255,0.65)' },
+          // Décaler le dessin, pas le rectangle mesuré par dnd-kit : son recentrage annulerait le décalage.
+          draggingPieceStyle: { transform: drag?.touch ? 'scale(1.7)' : 'scale(1.2)', '--piece-lift': drag?.touch ? `-${drag.lift / 1.7}px` : '0px', filter: 'drop-shadow(0 3px 2px rgb(0 0 0 / 0.18))' } as React.CSSProperties,
+          draggingPieceGhostStyle: { opacity: 0 },
+          animationDurationInMs: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 120,
           dragActivationDistance: 1,
           boardStyle: { borderRadius: 4, overflow: 'hidden' },
         }}
       />
+      {drag?.touch && drag.target && (
+        <div data-testid="drag-target" aria-hidden="true" className="board-drag-target"
+          style={{ ...zoneRect([drag.target], orientation), width: '25%', height: '25%', transform: 'translate(-25%, -25%)' }} />
+      )}
       {zones &&
         (['w', 'b'] as const).map((side) => {
           const z = zones[side]
@@ -275,11 +396,13 @@ let lastBoardSoundAt = 0
 // Rendus de pièces par jeu, construits une fois : un objet stable évite de re-rendre les 32 pièces.
 const piecesCache = new Map<string, PieceRenderObject>()
 function piecesFor(set: string): PieceRenderObject {
-  if (set === 'classique') return defaultPieces
   let pieces = piecesCache.get(set)
   if (!pieces) {
     pieces = {}
-    for (const code of PIECE_CODES) pieces[code] = () => <PieceIcon set={set} code={code} />
+    for (const code of PIECE_CODES) {
+      const Classic = defaultPieces[code]
+      pieces[code] = (props) => <div className="board-piece">{set === 'classique' ? <Classic {...props} /> : <PieceIcon set={set} code={code} />}</div>
+    }
     piecesCache.set(set, pieces)
   }
   return pieces

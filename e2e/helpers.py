@@ -35,8 +35,9 @@ FINALES = re.compile(r"^\W*Finales$")
 
 DEFAULT_SETTINGS = {
     "themeId": "green",
-    "pieceSet": "celtique",
+    "pieceSet": "wikimedia",
     "showLegalMoves": True,
+    "premoves": True,
     "showAttackers": False,
     "playSounds": False,
     "soundVolume": 1,
@@ -168,7 +169,8 @@ WEBKIT_AUDIO = r"""(() => {
     const url = this.buffer ? bufUrl.get(this.buffer) : undefined
     const name = url ? url.split('/').pop().replace(/\.mp3.*$/, '') : '(muet)'
     const st = this.context.state
-    window.__sounds.push({ name, state: st, audible: st === 'running' && !zombies.has(this.context) })
+    const at = performance.now() + Math.max(0, (a[0] ?? this.context.currentTime) - this.context.currentTime) * 1000
+    window.__sounds.push({ name, at, state: st, audible: st === 'running' && !zombies.has(this.context) })
     return origStart.apply(this, a)
   }
 })()"""
@@ -203,7 +205,7 @@ BASE = base_url()
 
 def settings_json(overrides=None):
     """Réglages au format Zustand persist (`{state, version}`), tels que l'app les relit."""
-    return json.dumps({"state": {**DEFAULT_SETTINGS, **(overrides or {})}, "version": 0})
+    return json.dumps({"state": {**DEFAULT_SETTINGS, **(overrides or {})}, "version": 1})
 
 
 class Checker:
@@ -406,7 +408,7 @@ def tap_move(page, frm, to, pause=250):
     page.wait_for_timeout(pause)
 
 
-def touch_drag(page, x1, y1, x2, y2, steps=14, step_ms=16, hold_ms=60):
+def touch_drag(page, x1, y1, x2, y2, steps=14, step_ms=16, hold_ms=60, during=None, on_step=None, after_release=None):
     """Drag TACTILE réel via CDP `Input.dispatchTouchEvent`. Il passe par le pipeline de gestes
     du navigateur : un défaut de `touch-action` fait défiler la page comme sur un téléphone,
     ce qu'un drag souris de Playwright ne montre jamais."""
@@ -422,8 +424,14 @@ def touch_drag(page, x1, y1, x2, y2, steps=14, step_ms=16, hold_ms=60):
         y = y1 + (y2 - y1) * i / steps
         cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": point(x, y)})
         page.wait_for_timeout(step_ms)
+        if on_step:
+            on_step(i, x, y)
     page.wait_for_timeout(hold_ms)
+    if during:
+        during(x2, y2)
     cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+    if after_release:
+        after_release()
     cdp.detach()
     page.wait_for_timeout(250)
 

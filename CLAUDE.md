@@ -40,7 +40,7 @@ Le code de sortie est la vérité : non nul dès qu'un check échoue, qu'une pag
 Écrire une suite : tout passe par `e2e/helpers.py`.
 `Checker` porte les checks (`check`, `appears`) et le code de sortie, `mobile_context`/`desktop_context` créent des contextes surveillés (iPhone 14 Pro tactile, `standalone=True` pour le viewport de la PWA installée), `drag_piece` fait un vrai drag TACTILE via CDP.
 Un check doit pouvoir échouer : pas de `check(nom, True)`, pas d'attente nue dont l'échec interrompt la suite (utiliser `ck.appears`).
-Les contextes pré-remplissent `localStorage['chess-local-settings']` au format Zustand persist (`{state: {...}, version: 0}`) avec `reviewDepth: 'fast'` et les sons coupés.
+Les contextes pré-remplissent `localStorage['chess-local-settings']` au format Zustand persist (`{state: {...}, version: 1}`) avec `reviewDepth: 'fast'` et les sons coupés.
 Changer la forme du store `src/store/settings.ts` impose de mettre à jour `DEFAULT_SETTINGS` dans `e2e/helpers.py`.
 L'API chess.com est simulée par `e2e/fixtures/chesscom.json` (parties fictives) : tout nouvel appel réseau doit y être ajouté.
 Le gate n'utilise jamais `--live`.
@@ -125,6 +125,9 @@ Ajouter une table ou un index = nouveau bloc `db.version(n)` qui redéclare tous
 La table `ratings` est unique et indexée par clé texte : cadences (`bullet`, `blitz`, `rapid`, `unlimited`), `puzzle`, et domaines d'Apprendre (`learn-endgame`, `learn-tactic`, ...).
 Tous les Elo passent par `applyRating`/`eloUpdate`.
 Les réglages sont dans Zustand persist (`localStorage['chess-local-settings']`).
+La migration persist des réglages (version 1) est partagée avec l’import des sauvegardes : une version 0 ou absente avec `pieceSet` absent ou `celtique` donne `wikimedia`, comme une montée de version locale.
+Un choix `celtique` enregistré en version 1 est conservé ; cette version persist est indépendante de la version du schéma de sauvegarde.
+L’import valide ensuite les types (dont `premoves`, booléen sinon défaut) et les valeurs contre les listes réelles de l’application.
 Les séances en cours d'Apprendre et de révision vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`) : `importBackup` et `resetApp` effacent ces deux clés, et seulement elles.
 `main.tsx` demande `navigator.storage.persist()` ; iOS peut purger IndexedDB, et le périmètre des sauvegardes de `backup.ts` est décrit dans [README.md, section Features](README.md#features).
 
@@ -139,10 +142,32 @@ Un nouvel asset lourd ou une nouvelle extension doit être couvert par `globPatt
 ### Pièces et sons
 
 Les jeux de pièces sont des SVG libres dans `public/pieces/<jeu>/` (liste dans `src/lib/pieces.ts`, réglage `pieceSet`), rendus en `<img>` par `Board` via l'option `pieces` de react-chessboard ; `classique` = pièces intégrées à la lib.
-Les sons (`public/sounds/`, CC0, `scripts/make-sounds.sh`) passent tous par `src/lib/sounds.ts`, qui lit lui-même `playSounds` et `soundVolume` : pas de test du réglage aux appels.
+Les sons (`public/sounds/`, CC0, `scripts/make-sounds.sh` pour les notifications Kenney et `scripts/synthesize-moves.py` pour les impacts originaux sans entrée audio) passent tous par `src/lib/sounds.ts`, qui lit lui-même `playSounds` et `soundVolume` : pas de test du réglage aux appels.
+`Board` porte le ressenti tactile partagé : clone à 1,7, dessin décalé de 0,85 case au-dessus du contact, disque de visée et retour animé des refus.
+Le décalage vit sur `.board-piece` via `--piece-lift`, car déplacer le rectangle du clone serait compensé par le recentrage de dnd-kit.
+La cible vient des callbacks de collision de react-chessboard, jamais de la position du dessin décalé.
+La souris conserve son échelle 1,2 et son cadre de destination ; les animations respectent `prefers-reduced-motion`.
+`e2e/test_feeling.py` vérifie la géométrie pendant le geste CDP et l'audio horodaté à la pose ; les mesures sonores et limites sont dans `docs/f14-feeling.md`.
 Les conditions du son automatique de coup (`lastMove`, `silent` et anti-empilement partagé) sont documentées auprès de l'effet dans `src/components/Board.tsx`.
 Une page qui joue ses sons de coup elle-même (Jouer, finales jouées) ou affiche un saut de position (réessai de l'analyse) lui passe `silent`, comme les diagrammes ; la position qui suit un `silent` reste muette.
 Aucun asset de chess.com, et toute ressource ajoutée doit être sous licence libre documentée dans le `LICENSES.md` de son dossier : le dépôt est public.
+
+### Prémouvements
+
+`Board.allowPremove` est un opt-in explicite, avec `movableColor` obligatoire ; le propriétaire le coupe en revue d'historique, en fin de partie ou pendant une action bloquante.
+`interactive` conserve son rôle de permission de jouer immédiatement ; le Board peut préparer un coup adverse quand `allowPremove` est actif même si `interactive` est faux.
+Play (bot et entraîneur), PositionGame (attaque, finales, analyse/jouer), EngineContinuation en mode jouer et ChronoRun l'activent ; puzzles, plans et exercices à solution unique restent exclus.
+La file locale contient un seul coup non persisté, même sur ordinateur : deux cases rouges, pièce au départ, aucun son à la saisie, annulation par toucher sur une case ou Échap, remplacement par un nouveau glissé.
+`lib/premove.ts` valide uniquement la géométrie : échec, occupation et obstacles sont ignorés à la saisie, car le coup adverse peut libérer une case ou offrir une prise ; les droits de roque et le sens des pions restent requis.
+Après exactement un coup adverse, chess.js revalide entièrement le coup, promotion en dame, puis le Board consomme la file avant d'appeler `onMove(from, to, promotion, true)` une seule fois.
+Un coup illégal est oublié sans bruit ; retour arrière, changement de position, désactivation du réglage ou changement de camp vident aussi la file.
+Le quatrième argument distingue un prémouvement pour les propriétaires de pendule : Play et ChronoRun débitent 100 ms avant le coup, sans débit sur une annulation ; si le temps est insuffisant, le drapeau tombe sans jouer.
+Ce coût reprend la [règle officielle vérifiée le 15 octobre 2026](https://support.chess.com/en/articles/8562432-what-are-pre-moves-and-how-do-they-work), avec une fin au drapeau simplifiée, sans affichage intermédiaire bloqué à 0,1 s.
+Les modes illimités n'ont aucun débit ; le temps réel de traitement reste soumis à la pendule existante.
+Les sons existants restent propriétaires de l'exécution ; le son automatique du Board exempte le prémouvement de l'anti-empilement de 60 ms pour ne pas le perdre juste après la réponse moteur.
+`settings.premoves` vaut true par défaut, le merge Zustand conserve les anciens stockages sans clé et le nettoyage des sauvegardes récupère automatiquement ce défaut.
+`e2e/test_premove.py` contrôle les gestes iPhone, la file, le son, les refus, la promotion, la pendule, les réglages et l'exclusion des puzzles ; `PREMOVE_CASE` permet de cibler un scénario pour les preuves par mutation.
+La vidéo de référence et ses extractions ffmpeg restent exclusivement dans un dossier temporaire hors dépôt.
 
 ### Données
 
