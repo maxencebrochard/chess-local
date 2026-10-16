@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Cta } from '../components/Cta'
 import { PositionGame } from '../components/PositionGame'
-import { recordReplaced } from '../lib/attack'
+import { recordReplaced } from '../lib/attempts'
 import { courseFor } from '../lib/courses'
 import { ENDGAMES, type EndgameItem } from '../lib/learn'
 import {

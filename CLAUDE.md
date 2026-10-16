@@ -64,6 +64,9 @@ Autres scripts :
 - `node scripts/prepare-mates-index.mjs` régénère `src/data/mateIndex.json` (puzzles classés par géométrie de mat avec `src/lib/mateNet.ts`) : à relancer après `prepare-data.mjs` ; la suite `mats` vérifie qu'il est à jour (`--check`).
 - `python3 scripts/prepare-attacks.py` régénère `src/data/attacks.json` (banque de l'entraîneur d'attaque) : parties lichess des puzzles d'attaque (API publique, cache `data/lichess-puzzle-games.jsonl` non versionné), positions reculées avant la combinaison et triées par Stockfish natif (`STOCKFISH`, sinon celui du PATH).
   Thème, consigne et plan sont calculés par `scripts/attack_facts.py`, que la suite `attaque` réutilise ; `--relabel` les recalcule sans moteur.
+- `python3 scripts/prepare-defenses.py` régénère `src/data/defenses.json` (banque de l'entraîneur de défense) : mêmes puzzles et même cache lichess que l'attaque, positions reculées de 1, 3 ou 5 demi-coups (défenseur au trait, avant le coup qui a craqué), gardées si Stockfish natif les juge défendables avec un seul bon coup et sous une vraie menace (coup nul), cache d'évals `data/defense-evals.jsonl` non versionné, clés incluant les seuils.
+  `scripts/attack_facts.py` prend l'attaquant en paramètre (`att`, défaut le camp au trait) ; les phrases vues du défenseur sont dans `scripts/defense_facts.py`, que la suite `defense` réutilise ; `--relabel` les recalcule sans moteur.
+  Le script affiche les rejets par critère et par catégorie ; le calibrage retenu est noté dans son docstring.
 - `scripts/deploy.sh` build puis force-push `dist/` sur la branche `gh-pages`.
   Action sortante : ne pas le lancer sans demande explicite.
   Le push final est en HTTPS et échoue avec le compte GitHub par défaut de la machine ; `set -e` arrête alors le script avant `rm -rf dist/.git`, le commit reste dans `dist/`.
@@ -101,8 +104,13 @@ Les autres pages y envoient leur contenu par state de navigation :
 Archive et fin de partie passent par `?game=<id>` (lecture dans Dexie), avec `&review=1` pour lancer le bilan directement.
 `Analysis.tsx` consomme `location.state` au montage puis fait `navigate('.', { replace: true, state: null })` pour qu'un refresh ne rejoue pas le chargement.
 `returnTo` affiche un bouton retour (libellé `returnLabel`, « Retour à l'exercice » par défaut) qui navigue avec `state: { restore: true }` ; `Learn.tsx` et `Revision.tsx` restaurent alors leur séance depuis `sessionStorage`.
-Partie contre Stockfish depuis une position : `components/PositionGame.tsx` (logique pure dans `lib/positionGame.ts`), utilisé par `/attaque/:id` (`pages/Attack.tsx`), `/finales/:id` (finales jouées jusqu'au bout, `pages/Endgames.tsx`) et `/analyse/jouer` (bouton « Jouer contre le moteur » de l'analyse, `pages/PositionPlay.tsx`).
+Partie contre Stockfish depuis une position : `components/PositionGame.tsx` (logique pure dans `lib/positionGame.ts`), utilisé par `/attaque/:id` (`pages/Attack.tsx`), `/defense/:id` (`pages/Defense.tsx`), `/finales/:id` (finales jouées jusqu'au bout, `pages/Endgames.tsx`), `/analyse/jouer` (bouton « Jouer contre le moteur » de l'analyse, `pages/PositionPlay.tsx`), `/attaques-manquees/:id` et `/defenses-ratees/:id`.
 La partie en cours est rejouée depuis `localStorage['chess-local-position-game-v1']` ; les résultats des finales vont dans `learnSessions` (domaine `endgame-play`, hors Elo).
+Un seul emplacement de persistance : une tentative en cours écrasée par une autre partie passe par `recordReplaced` (`lib/attempts.ts`), qui aiguille selon le préfixe de clé (`attaque:` et `defense:` notées abandonnées) ; tout appelant de `PositionGame` lui passe `onReplace={recordReplaced}`.
+L'entraîneur de défense (`/defense`, `lib/defense.ts`) utilise l'objectif `hold` de `PositionGame` (prop `hold: { moves, floorCp }`, 12 coups, plancher -3) : après chaque réponse de Stockfish, l'oracle à pleine force évalue la position ; strictement sous le plancher (ou mat contre le joueur) deux tours de suite donne la fin `collapsed`, et au 12e coup une éval de confirmation d'une seconde, échiquier bloqué, décide `held` ou `collapsed`.
+La partie s'arrête sur ces deux fins, sans Continuer ni Annuler ; une nulle de l'échiquier ou un gain réussissent aussi, pas de bouton Nulle ; la série sous le plancher est persistée avec la partie (`holdFall`).
+Ses niveaux sont ceux de l'attaque (`LEVELS`, 2100 par défaut), mémorisés sous `localStorage['chess-local-defense']`, purgé par la réinitialisation.
+Chaque tentative est une ligne `learnSessions` du domaine `defense` (format dans `db.ts` : `outcome` parmi `held | draw | win | mated | collapsed | resign | abandon`, Elo de l'attaquant dans `attackerElo`), sans Elo et ignorée par `pickNextDomain`.
 
 ### Pipeline d'évaluation
 
@@ -111,6 +119,8 @@ La partie en cours est rejouée depuis `localStorage['chess-local-position-game-
 En dépendent : `coach.ts` (commentaires post-partie générés par règles), `liveCoach.ts` (classe rapide du mode entraîneur), `ReviewSummary`, `EvalGraph`, `MoveList`.
 Un bilan lancé dans Analyse écrit les fautes dans la table `mistakes`, rejouées ensuite dans Apprendre → Mes erreurs.
 `kingAttack.ts` (chess.js seul) relit ces fautes pour « Mes attaques manquées » (`/attaques-manquees`) : le type d'attaque (mat, sacrifice près du roi, pion contre le roque, pièce vers le roi) est recalculé sur l'échiquier depuis `fenBefore` et `bestUci`, jamais stocké ; seules les lignes avec `color` (camp du joueur connu du bilan) comptent, `gameKey` identifie la partie.
+« Mes défenses ratées » (`/defenses-ratees`, `missedDefense` du même module) relit les mêmes lignes avec `color` et une classe `mistake` ou `blunder` : sur `fenBefore`, le joueur au trait, au moins deux pièces adverses visent la zone de son roi et au moins autant que ses défenseurs (`zoneCounts`), l'adversaire a au moins trois pièces, et son roi est roqué ou au centre.
+L'exercice reprend exactement celui des attaques manquées (retrouver `bestUci`, `keyMove`), noté dans le domaine `missed-defense` ; une même faute peut figurer dans les deux listes.
 Le même module porte le calque « Compte les attaquants » (réglage `showAttackers`) : zone = anneau du roi de Stockfish (3x3 ramené dans b-g / 2-7), compte des seules pièces ; la suite `diagnostic_attaque` le vérifie contre un oracle python-chess.
 Insights (`/insights`) réutilise `reviewGame` (paramètre `pause` pour suspendre la série quand la page est masquée), met les bilans en cache dans `reviews` (clé `chesscom:<id>` ou `local:<id>`, une profondeur par rapport) et calcule tout dans `insights.ts`, pur et testé sous Node par `test_insights.py` ; il n'écrit jamais dans `mistakes`.
 L'entraîneur d'ouvertures (`/ouvertures`, `src/lib/openingTrainer.ts`) enregistre ses tentatives dans `learnSessions` avec le domaine `opening-drill` (format d'`itemId` documenté dans `db.ts`) ; `pickNextDomain` les ignore.
@@ -156,7 +166,7 @@ Aucun asset de chess.com, et toute ressource ajoutée doit être sous licence li
 
 `Board.allowPremove` est un opt-in explicite, avec `movableColor` obligatoire ; le propriétaire le coupe en revue d'historique, en fin de partie ou pendant une action bloquante.
 `interactive` conserve son rôle de permission de jouer immédiatement ; le Board peut préparer un coup adverse quand `allowPremove` est actif même si `interactive` est faux.
-Play (bot et entraîneur), PositionGame (attaque, finales, analyse/jouer), EngineContinuation en mode jouer et ChronoRun l'activent ; puzzles, plans et exercices à solution unique restent exclus.
+Play (bot et entraîneur), PositionGame (attaque, défense, finales, analyse/jouer), EngineContinuation en mode jouer et ChronoRun l'activent ; puzzles, plans et exercices à solution unique restent exclus.
 La file locale contient un seul coup non persisté, même sur ordinateur : deux cases rouges, pièce au départ, aucun son à la saisie, annulation par toucher sur une case ou Échap, remplacement par un nouveau glissé.
 `lib/premove.ts` valide uniquement la géométrie : échec, occupation et obstacles sont ignorés à la saisie, car le coup adverse peut libérer une case ou offrir une prise ; les droits de roque et le sens des pions restent requis.
 Après exactement un coup adverse, chess.js revalide entièrement le coup, promotion en dame, puis le Board consomme la file avant d'appeler `onMove(from, to, promotion, true)` une seule fois.
@@ -172,7 +182,7 @@ La vidéo de référence et ses extractions ffmpeg restent exclusivement dans un
 ### Données
 
 `public/puzzles.json` : 120 000 puzzles lichess au format compact `[id, fen, moves, rating, themes]`, hors bundle, chargés une fois par `loadPuzzles()`.
-`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`), `attackCourse.json` (cours « Démolir le roque », `#/apprendre/roque`), `attacks.json` (généré, banque de l'entraîneur d'attaque, `#/attaque`).
+`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`), `attackCourse.json` (cours « Démolir le roque », `#/apprendre/roque`), `attacks.json` (généré, banque de l'entraîneur d'attaque, `#/attaque`), `defenses.json` (généré, banque de l'entraîneur de défense, `#/defense`).
 Une leçon terminée est une ligne `learnSessions` `{ domain: 'course', itemId: '<slug>:<id>' }` (`finales:`, `roque:`) : les ids de leçons sont figés (`FROZEN_IDS` du contrôle).
 Les noms d'ouvertures sont en anglais dans les données et traduits à l'affichage par `openingNames.ts`.
 

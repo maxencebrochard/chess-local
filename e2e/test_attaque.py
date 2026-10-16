@@ -125,7 +125,9 @@ def indep_category(board):
 
     d, a = side(board.king(not att), not att), side(board.king(att), att)
     if d == "c":
-        return "centre" if a else None
+        # Roi adverse au centre : l'attaquant a seulement son roi sur ses deux premières rangées
+        # (colonne f comprise, comme attack_facts.category).
+        return "centre" if rel(board.king(att), att) <= 1 else None
     if d in ("q", "k") and a in ("q", "k"):
         return "opposes" if d != a else "meme"
     return None
@@ -194,7 +196,7 @@ def check_data():
                 bad["file"].append(a["id"])
         m = re.search(r"pousse (?:ton pion|tes pions) ([a-h](?:(?:, | et )[a-h])*)\.", g)
         if m:
-            for fl in re.findall(r"[a-h]", m.group(1)):
+            for fl in re.findall(r"\b[a-h]\b", m.group(1)):  # « g et h » : pas le « e » de « et »
                 fi = "abcdefgh".index(fl)
                 if fi not in near or not any(chess.square_file(s) == fi and rel(s, att) >= 3 for s in b.pieces(chess.PAWN, att)):
                     bad["storm"].append(a["id"])

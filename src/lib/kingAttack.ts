@@ -258,3 +258,116 @@ export async function solvedMissedAttacks(): Promise<Set<string>> {
   const rows = await db.learnSessions.where('domain').equals(MISSED_ATTACK_DOMAIN).toArray()
   return new Set(rows.filter((r) => r.success === 1).map((r) => `${r.itemId}|${r.fen ?? ''}`))
 }
+
+// ------------------------------------------------------------------ défense ratée
+
+// « Mes défenses ratées » : les fautes (mistake, blunder) du joueur jouées pendant que l'ADVERSAIRE
+// attaquait son roi, recalculées sur `fenBefore` (le joueur au trait), jamais stockées :
+// - au moins deux pièces adverses visent la zone de son roi, et au moins autant que ses
+//   défenseurs (`zoneCounts`, mêmes définitions que le calque) ;
+// - l'adversaire a de quoi attaquer (au moins trois pièces hors pions et roi) ;
+// - le roi du joueur est roqué (aile a-c ou g-h) ou au centre (colonne d ou e), sur ses deux
+//   premières rangées ;
+// - `bestUci` (le coup de défense de Stockfish) est légal.
+// Une même faute peut figurer aussi dans « Mes attaques manquées » : le meilleur coup y attaquait le
+// roi adverse, ici le joueur était attaqué. Les deux lectures sont vraies, chaque liste a la sienne.
+export const DEFENSE_CLASSES = new Set(['mistake', 'blunder'])
+
+export type DefenseKing = 'roque' | 'centre'
+
+export const DEFENSE_KING_META: Record<DefenseKing, { label: string; emoji: string; lesson: string }> = {
+  roque: {
+    label: 'Roque attaqué', emoji: '🏰',
+    lesson: "Sous l'attaque, chaque coup compte : cherche d'abord ce que l'adversaire menace, puis neutralise sa pièce la plus dangereuse ou rapproche un défenseur.",
+  },
+  centre: {
+    label: 'Roi au centre attaqué', emoji: '👑',
+    lesson: "Un roi resté au centre attire les colonnes ouvertes : ferme le jeu, échange les attaquants, et mets le roi à l'abri dès que possible.",
+  },
+}
+
+export interface MissedDefense {
+  king: Square // roi du joueur, attaqué
+  where: DefenseKing
+  bestSan: string // coup de défense du bilan, en SAN
+  attackers: number // comptes sur la position avant le coup
+  defenders: number
+}
+
+// Roi « au centre » : colonne d ou e, sur ses deux premières rangées.
+function centralKing(king: Square, color: Color): boolean {
+  const f = fileOf(king)
+  const r = rankOf(king)
+  const home = color === 'w' ? r <= 1 : r >= 6
+  return home && (f === 3 || f === 4)
+}
+
+export function missedDefense(fenBefore: string, bestUci: string): MissedDefense | null {
+  let c: Chess
+  try {
+    c = new Chess(fenBefore)
+  } catch {
+    return null
+  }
+  const me = c.turn()
+  const { king, attackers, defenders } = zoneCounts(c, me)
+  const where: DefenseKing | null = castledKing(king, me) ? 'roque' : centralKing(king, me) ? 'centre' : null
+  if (!where) return null
+  if (attackers.length < 2 || attackers.length < defenders.length) return null
+  if (!hasAttackingForce(c, other(me))) return null
+  const mv = uciMove(new Chess(fenBefore), bestUci)
+  if (!mv) return null
+  return { king, where, bestSan: mv.san, attackers: attackers.length, defenders: defenders.length }
+}
+
+export interface MissedDefenseItem extends MissedDefense {
+  mistake: Mistake
+  playedFig: string // coup joué, en figurine du camp qui l'a joué
+}
+
+export interface DefenseDiagnostic {
+  games: number // parties distinctes (`gameKey`) parmi les fautes du joueur
+  faults: number // fautes du joueur (camp connu et au trait)
+  items: MissedDefenseItem[] // du plus récent au plus ancien
+}
+
+export function diagnoseMissedDefenses(rows: Mistake[]): DefenseDiagnostic {
+  const mine = playerMistakes(rows).sort((a, b) => b.date - a.date)
+  const games = new Set(mine.map((r) => r.gameKey)).size
+  const items: MissedDefenseItem[] = []
+  for (const mistake of mine) {
+    if (!DEFENSE_CLASSES.has(mistake.cls)) continue
+    try {
+      const found = missedDefense(mistake.fenBefore, mistake.bestUci)
+      if (found) items.push({ ...found, mistake, playedFig: figurine(mistake.playedSan, mistake.color!) })
+    } catch {
+      // Coup illisible dans cette position : ligne ignorée.
+    }
+  }
+  return { games, faults: mine.length, items }
+}
+
+export async function loadDefenseDiagnostic(): Promise<DefenseDiagnostic> {
+  return diagnoseMissedDefenses(await db.mistakes.toArray())
+}
+
+// « Dans tes fautes relevées sur 2 parties, 3 défenses ratées. »
+export function defenseSummary(d: DefenseDiagnostic): string {
+  if (d.faults === 0) return "Aucune faute à ton nom pour l'instant : fais le bilan d'une partie contre un bot ou importée de chess.com."
+  const scope = `Dans tes fautes relevées sur ${plural(d.games, 'partie')}`
+  const n = d.items.length
+  if (n === 0) return `${scope}, aucune défense ratée.`
+  return `${scope}, ${n} défense${n > 1 ? 's' : ''} ratée${n > 1 ? 's' : ''}.`
+}
+
+// Domaine `missed-defense` : même contrat que `missed-attack` (voir db.ts).
+const MISSED_DEFENSE_DOMAIN = 'missed-defense'
+
+export async function recordMissedDefense(id: number, fen: string, success: boolean): Promise<void> {
+  await db.learnSessions.add({ date: Date.now(), domain: MISSED_DEFENSE_DOMAIN, itemId: String(id), fen, success: success ? 1 : 0, ratingAfter: null })
+}
+
+export async function solvedMissedDefenses(): Promise<Set<string>> {
+  const rows = await db.learnSessions.where('domain').equals(MISSED_DEFENSE_DOMAIN).toArray()
+  return new Set(rows.filter((r) => r.success === 1).map((r) => `${r.itemId}|${r.fen ?? ''}`))
+}

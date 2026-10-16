@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ATTACK_RED } from '../components/AttackLegend'
 import { PositionGame } from '../components/PositionGame'
+import { recordReplaced } from '../lib/attempts'
 import { db, type Mistake } from '../lib/db'
 import {
   ATTACK_KIND_META, ATTACK_KINDS, ATTACK_PRINCIPLE, attackSummary, countsText, diagnoseMissedAttacks,
@@ -183,6 +184,7 @@ function MissedAttackPlay({ id }: { id: number }) {
       otherLabel="Attaque suivante"
       onExit={() => navigate('/attaques-manquees', { replace: true })}
       onOther={next !== null ? () => navigate(`/attaques-manquees/${next}`, { replace: true }) : undefined}
+      onReplace={recordReplaced}
     />
   )
 }

@@ -6,8 +6,9 @@ import { db } from './db'
 import type { EndgameGoal } from './learn'
 
 export type Color = 'w' | 'b'
-// Objectif du joueur : gagner, ou tenir la nulle. `null` : partie libre, sans objectif.
-export type Objective = 'win' | 'draw' | null
+// Objectif du joueur : gagner, tenir la nulle, ou tenir face à une attaque (`hold`, entraîneur de
+// défense : HOLD_MOVES coups sans que l'éval passe sous le plancher). `null` : partie libre.
+export type Objective = 'win' | 'draw' | 'hold' | null
 export type GameResult = '1-0' | '0-1' | '1/2-1/2'
 
 // ---------- Finales ----------
@@ -60,11 +61,19 @@ export async function solvedEndgames(): Promise<Set<string>> {
 // ---------- Fin de partie ----------
 
 // `decisive` : partie conclue par le joueur sur un avantage décisif tenu (entraîneur d'attaque).
-export type EndKind = 'mate' | 'stalemate' | 'repetition' | 'insufficient' | 'fifty' | 'resign' | 'agreed' | 'decisive'
+// `held` / `collapsed` : objectif « tenir » atteint ou perdu (entraîneur de défense), hors échiquier.
+export type EndKind = 'mate' | 'stalemate' | 'repetition' | 'insufficient' | 'fifty' | 'resign' | 'agreed' | 'decisive' | 'held' | 'collapsed'
+
+// Éval du joueur (de SON point de vue) qui a décidé d'une fin `held` ou `collapsed`.
+export interface EndEval {
+  cp: number | null
+  mate: number | null
+}
 
 export interface GameEnd {
   result: GameResult
   kind: EndKind
+  eval?: EndEval // `held` / `collapsed` seulement
 }
 
 // Fin lue sur l'échiquier, ou null si la partie continue. Aucun plafond de coups : seules les
@@ -95,15 +104,65 @@ export function decisiveStreak(prev: number, cp: number | null, mate: number | n
 // Tours consécutifs au-dessus du seuil pour proposer de conclure : l'avantage doit tenir.
 export const DECISIVE_TURNS = 2
 
+// ---------- Objectif « tenir » (entraîneur de défense) ----------
+
+// Réussite : HOLD_MOVES coups du joueur, éval de confirmation au moins au plancher sans mat contre
+// lui. Échec : éval strictement sous le plancher (ou mat contre lui) DECISIVE_TURNS tours de suite.
+export const HOLD_MOVES = 12
+export const HOLD_FLOOR_CP = -300
+
+export interface HoldRule {
+  moves: number
+  floorCp: number
+}
+
+// Série de tours où l'éval du joueur (à son trait, de son point de vue) est strictement sous le
+// plancher, ou un mat contre lui : `decisiveStreak` vu de l'attaquant (éval inversée, seuil
+// `-floorCp + 1` en centipions entiers, donc « strictement sous le plancher » pour le joueur).
+export function holdStreak(prev: number, cp: number | null, mate: number | null, floorCp: number): number {
+  return decisiveStreak(prev, cp === null ? null : -cp, mate === null ? null : -mate, -floorCp + 1)
+}
+
+// Éval de confirmation, du point de vue du joueur : tient s'il reste au plancher ou au-dessus, sans
+// mat contre lui (un mat en sa faveur tient).
+export function holdsAt(cp: number | null, mate: number | null, floorCp: number): boolean {
+  if (mate !== null) return mate > 0
+  return cp !== null && cp >= floorCp
+}
+
+// Fins hors échiquier de l'objectif « tenir ». `held` porte un résultat nul (le joueur n'a ni gagné
+// ni perdu la partie, il a tenu) ; `collapsed` est une défaite.
+export function heldEnd(evalAt: EndEval): GameEnd {
+  return { result: '1/2-1/2', kind: 'held', eval: evalAt }
+}
+
+export function collapsedEnd(player: Color, evalAt: EndEval): GameEnd {
+  return { result: player === 'w' ? '0-1' : '1-0', kind: 'collapsed', eval: evalAt }
+}
+
+// « -1,2 », « +0,4 », « mat en 3 contre toi » : éval lisible du joueur.
+export function evalText(e: EndEval | undefined): string {
+  if (!e) return 'éval inconnue'
+  if (e.mate !== null) return e.mate > 0 ? `mat en ${e.mate} pour toi` : `mat en ${-e.mate} contre toi`
+  const v = (e.cp ?? 0) / 100
+  return `éval ${v > 0 ? '+' : v < 0 ? '-' : ''}${Math.abs(v).toFixed(1).replace('.', ',')}`
+}
+
 function scoreFor(result: GameResult, player: Color): 1 | 0.5 | 0 {
   if (result === '1/2-1/2') return 0.5
   return (result === '1-0') === (player === 'w') ? 1 : 0
 }
 
-// Objectif gain : il faut gagner. Objectif nulle : la nulle suffit, gagner aussi.
+// Objectif gain : il faut gagner. Objectif nulle : la nulle suffit, gagner aussi. Objectif tenir :
+// `held`, une nulle de l'échiquier ou un gain ; `collapsed`, un mat subi ou un abandon échouent.
 export function judge(end: GameEnd, player: Color, objective: Objective): 'success' | 'fail' | null {
   if (!objective) return null
   const score = scoreFor(end.result, player)
+  if (objective === 'hold') {
+    if (end.kind === 'held') return 'success'
+    if (end.kind === 'collapsed' || end.kind === 'resign') return 'fail'
+    return score >= 0.5 ? 'success' : 'fail'
+  }
   return (objective === 'win' ? score === 1 : score >= 0.5) ? 'success' : 'fail'
 }
 
@@ -111,6 +170,21 @@ export function judge(end: GameEnd, player: Color, objective: Objective): 'succe
 export function verdictText(end: GameEnd, player: Color, objective: Objective, playerMoves: number): { title: string; reason: string } {
   const verdict = judge(end, player, objective)
   const score = scoreFor(end.result, player)
+  if (objective === 'hold') {
+    const s = playerMoves > 1 ? 's' : ''
+    const moves = `${playerMoves} coup${s}`
+    const reason =
+      end.kind === 'held' ? `Tu as tenu ${moves} : ${evalText(end.eval)}.`
+      : end.kind === 'collapsed' ? `L'attaque a percé après ${moves} tenu${s} : ${evalText(end.eval)}.`
+      : end.kind === 'mate' ? (score === 1 ? `Mat en ${moves} : la contre-attaque a gagné.` : `Tu es mat après ${moves}.`)
+      : end.kind === 'resign' ? `Tu as abandonné après ${moves}.`
+      : end.kind === 'stalemate' ? 'Nulle par pat.'
+      : end.kind === 'repetition' ? 'Nulle par triple répétition.'
+      : end.kind === 'insufficient' ? 'Nulle : plus assez de matériel pour mater.'
+      : end.kind === 'fifty' ? 'Nulle par la règle des 50 coups.'
+      : 'Nulle acceptée par Stockfish.'
+    return { title: verdict === 'success' ? 'Défense réussie' : 'La défense a cédé', reason }
+  }
   const title =
     verdict === 'success' ? 'Objectif atteint'
     : verdict === 'fail' ? 'Objectif manqué'
@@ -192,7 +266,7 @@ export interface Opponent {
 export const POSITION_GAME_KEY = 'chess-local-position-game-v1'
 
 export interface StoredGame {
-  key: string // `finale:<id>`, `attaque:<id>` ou `position`
+  key: string // `finale:<id>`, `attaque:<id>`, `defense:<id>`, `defense-ratee:<id>` ou `position`
   startFen: string
   player: Color
   label: string | null
@@ -201,10 +275,15 @@ export interface StoredGame {
   assisted: boolean // indice ou coup repris
   recorded?: boolean // résultat de la tentative déjà noté
   back?: unknown // partie libre : state de navigation qui rouvre l'analyse d'origine
-  level?: number | null // entraîneur d'attaque : Elo du défenseur de cette partie, null = pleine force
+  // Entraîneurs d'attaque et de défense : Elo de l'adversaire bridé de cette partie (le défenseur
+  // pour l'attaque, l'attaquant pour la défense), null = pleine force.
+  level?: number | null
   // Entraîneur d'attaque : avantage décisif atteint (`offered` : choix Continuer/Conclure affiché,
   // `continued` : le joueur poursuit, plus de proposition).
   decisive?: 'offered' | 'continued'
+  // Entraîneur de défense : série de tours sous le plancher, et dernier demi-coup évalué. Rejouée
+  // à la reprise : un rechargement n'efface pas un premier tour déjà sous le plancher.
+  holdFall?: { count: number; ply: number }
 }
 
 // Partie en cours (non terminée, au moins un coup) de cette finale ou position d'attaque, telle que la liste l'annonce.

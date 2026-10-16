@@ -1,4 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
+import type { AttackOutcome } from './attack'
+import type { DefenseOutcome } from './defense'
 import type { GameReview } from './review'
 
 export interface SavedGame {
@@ -58,16 +60,22 @@ export interface LearnSession {
   date: number
   // endgame | tactic | opening | strategy | mistakes | endgame-play | course (leçon terminée d'un
   // cours d'Apprendre), opening-drill (entraîneur d'ouvertures), missed-attack (tentative sur une
-  // attaque manquée), mats (une série de « Mats éclair »), revision (révision espacée) ou attack
-  // (entraîneur d'attaque : itemId = id de la position, une ligne par tentative).
+  // attaque manquée), mats (une série de « Mats éclair »), revision (révision espacée), attack
+  // (entraîneur d'attaque : itemId = id de la position, une ligne par tentative), defense
+  // (entraîneur de défense : itemId = id de la position `def-<puzzle>`, une ligne par tentative) ou
+  // missed-defense (tentative sur une défense ratée, même contrat que missed-attack).
   // course : itemId = `<slug>:<id>`, le slug désignant le cours (`finales:` pour le cours de finales,
   // `roque:` pour « Démolir le roque »), ex. `finales:mat-dame`, `roque:grec-schema`.
   // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
   // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
   // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).
-  // missed-attack : itemId = id de la ligne `mistakes`, fen = sa `fenBefore` (le couple identifie
-  // l'attaque : une sauvegarde restaurée peut réattribuer les ids), success = premier coup sans
-  // aide, égal au coup du bilan ou accepté par `PositionGame.judgeKeyMove` après vérification.
+  // missed-attack, missed-defense : itemId = id de la ligne `mistakes`, fen = sa `fenBefore` (le
+  // couple identifie l'exercice : une sauvegarde restaurée peut réattribuer les ids), success =
+  // premier coup sans aide, égal au coup du bilan ou accepté par `PositionGame.judgeKeyMove` après
+  // vérification.
+  // defense : fen = position de départ, success = défense réussie sans aide (outcome held, draw ou
+  // win), outcome parmi held | draw | win | mated | collapsed | resign | abandon, attackerElo =
+  // Elo de l'attaquant (null = pleine force), assisted comme pour attack ; defenderElo absent.
   // mats : itemId = `<exercice>:<cadence>`, ex. `chrono-kq:30s`, `mate-2:3min`.
   // revision : puzzles revus par la révision espacée, itemId = `puzzle:<id>` (sans Elo) ; les
   // fautes et variantes revues s'écrivent dans leurs domaines d'origine (`mistakes`, `opening-drill`).
@@ -75,12 +83,15 @@ export interface LearnSession {
   itemId: string
   success: 0 | 1
   ratingAfter: number | null
-  fen?: string // finales jouées jusqu'au bout, attaques manquées et entraîneur d'attaque : position de départ (champ non indexé)
+  fen?: string // finales jouées jusqu'au bout, attaques manquées, défenses ratées, entraîneurs d'attaque et de défense : position de départ (champ non indexé)
   score?: number // mats : mats réussis dans la série (champ non indexé)
-  // Entraîneur d'attaque (champs non indexés) : issue de la tentative, Elo du défenseur (null =
-  // pleine force), aide utilisée (indice ou coup repris).
-  outcome?: 'mate' | 'decisive' | 'draw' | 'loss' | 'resign' | 'abandon'
+  // Entraîneurs d'attaque et de défense (champs non indexés) : issue de la tentative (union des
+  // issues des deux domaines, `draw` et `resign` et `abandon` communs), Elo du défenseur bridé
+  // (attack) ou de l'attaquant bridé (defense, depuis l'entraîneur de défense), null = pleine
+  // force, aide utilisée (indice ou coup repris).
+  outcome?: AttackOutcome | DefenseOutcome
   defenderElo?: number | null
+  attackerElo?: number | null
   assisted?: boolean
 }
 

@@ -5,11 +5,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { Cta } from '../components/Cta'
+import { LEVEL_HELP, LevelPicker as Picker } from '../components/LevelPicker'
 import { PositionGame } from '../components/PositionGame'
 import {
-  ATTACKS, attackStats, CATEGORY_LABEL, CATEGORY_ORDER, DECISIVE_CP, gameKey, LEVELS, loadLevel, opponentFor,
-  outcomeOf, recordAttempt, recordReplaced, saveLevel, statsKey, type AttackCategory, type AttackPosition, type AttackStats, type Level,
+  ATTACKS, attackStats, CATEGORY_LABEL, CATEGORY_ORDER, DECISIVE_CP, gameKey, loadLevel, opponentFor,
+  outcomeOf, recordAttempt, saveLevel, statsKey, type AttackCategory, type AttackPosition, type AttackStats, type Level,
 } from '../lib/attack'
+import { recordReplaced } from '../lib/attempts'
 import { inProgressKey, loadStoredGame, resumedGame, validFen } from '../lib/positionGame'
 
 // Consigne sans la catégorie (déjà donnée par l'onglet) : « Roques opposés : pousse ton pion h. »
@@ -37,30 +39,8 @@ export default function Attack() {
 // ---------- Niveau du défenseur ----------
 
 function LevelPicker({ value, onChange }: { value: Level; onChange: (l: Level) => void }) {
-  return (
-    <div role="radiogroup" aria-label="Niveau du défenseur" className="grid grid-cols-5 gap-1.5">
-      {LEVELS.map((l) => {
-        const on = l === value
-        return (
-          <button
-            key={l ?? 'max'}
-            role="radio"
-            aria-checked={on}
-            data-level={l ?? 'max'}
-            onClick={() => onChange(l)}
-            className={`min-h-10 cursor-pointer rounded-lg px-1 text-sm font-bold tabular-nums ${
-              on ? 'bg-accent text-white' : 'bg-surface-3 text-neutral-300 hover:bg-surface-3/70'
-            }`}
-          >
-            {l ?? 'Max'}
-          </button>
-        )
-      })}
-    </div>
-  )
+  return <Picker value={value} onChange={onChange} label="Niveau du défenseur" />
 }
-
-const LEVEL_HELP = 'Stockfish bridé à cet Elo : il joue moins précisément, mais jamais au hasard comme les bots faibles. Max : pleine force.'
 
 // ---------- Liste ----------
 
