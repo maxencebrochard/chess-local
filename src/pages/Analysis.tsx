@@ -11,12 +11,14 @@ import { HEvalBar } from '../components/HEvalBar'
 import { EngineLineRow } from '../components/EngineLineRow'
 import { MoveList } from '../components/MoveList'
 import { MoveStrip } from '../components/MoveStrip'
+import { CriticalMoments } from '../components/CriticalMoments'
 import { ReviewSummary } from '../components/ReviewSummary'
 import { Toggle } from '../components/Toggle'
 import { Engine, type EngineLine } from '../lib/engine'
 import { db } from '../lib/db'
 import { bookContinuations, openingForMoves } from '../lib/openings'
 import { openingFr } from '../lib/openingNames'
+import { restorableBilan } from '../lib/criticalMoments'
 import { pgnKey } from '../lib/kingAttack'
 import { CLASS_META, figurine, reviewGame, winPct, type GameReview, type MoveClass } from '../lib/review'
 import { coachComments, coachSummary } from '../lib/coach'
@@ -139,6 +141,7 @@ export default function Analysis() {
       review?: boolean
       returnTo?: string
       returnLabel?: string
+      bilan?: unknown // retour d'un moment critique : bilan à rouvrir tel quel (CriticalMoments.tsx)
     } | null
     if (state?.returnTo) setReturnTo(state.returnTo)
     if (state?.returnLabel) setReturnLabel(state.returnLabel)
@@ -171,7 +174,13 @@ export default function Analysis() {
         setReviewColor(state.color)
         setOrientation(state.color)
       }
-      if (state.review) {
+      const bilan = restorableBilan(state.bilan, state.pgn)
+      if (bilan) {
+        gameKeyRef.current = bilan.gameKey
+        setReview(bilan.review)
+        setViewIndex(-1)
+        setReviewStage('summary')
+      } else if (state.review) {
         const ctx = { color: state.color ?? null, label: state.label ?? null }
         reviewTimer.current = window.setTimeout(() => void runReview(state.pgn, ctx), 300)
       }
@@ -657,6 +666,7 @@ export default function Analysis() {
           }}
           onClose={() => setReviewStage(null)}
           onSelectMove={setViewIndex}
+          extra={<CriticalMoments review={review} playerColor={reviewColor} names={names} label={gameMeta} gameKey={gameKeyRef.current} returnTo={returnTo} returnLabel={returnLabel} />}
         />
         </div>
       </div>

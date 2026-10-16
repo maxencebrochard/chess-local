@@ -46,6 +46,8 @@ export interface KeyMove {
   uci: string
   san: string
   onJudged: (found: boolean) => void
+  // Consigne après le coup trouvé (« Joue la suite ») ; absente : « Mène l'attaque ».
+  followUp?: string
   cheer?: string // relance après le bon coup (défaut « mène l'attaque ! »)
   keepGoing?: string // rappel une fois la partie engagée (défaut « Mène l'attaque jusqu'au bout. »)
 }
@@ -588,6 +590,7 @@ export function PositionGame(props: PositionGameProps) {
   // Retour sur le premier coup : le verdict au premier coup, puis un rappel plus sobre tant que la
   // partie continue (plus d'« Annuler pour réessayer » une fois l'attaque engagée).
   const keyFig = props.keyMove ? figurine(props.keyMove.san, player) : ''
+  const followUp = props.keyMove?.followUp
   const cheer = props.keyMove?.cheer ?? "mène l'attaque !"
   const cheerCap = cheer.charAt(0).toUpperCase() + cheer.slice(1)
   const playerMovesSoFar = history.filter((m) => m.color === player).length
@@ -595,8 +598,8 @@ export function PositionGame(props: PositionGameProps) {
     keyResult === 'checking' ? 'Je vérifie ton coup…'
     : keyResult === 'found' || keyResult === 'close'
       ? playerMovesSoFar <= 1
-        ? (keyResult === 'found' ? `C'est le coup du bilan : ${cheer}` : `Ça tient aussi (au bilan : ${keyFig}). ${cheerCap}`)
-        : (props.keyMove?.keepGoing ?? "Mène l'attaque jusqu'au bout.")
+        ? (keyResult === 'found' ? (followUp ? `C'est le coup du bilan. ${followUp} !` : `C'est le coup du bilan : ${cheer}`) : `Ça tient aussi (au bilan : ${keyFig}). ${followUp ? `${followUp} !` : cheerCap}`)
+        : (props.keyMove?.keepGoing ?? `${followUp ?? "Mène l'attaque"} jusqu'au bout.`)
     : keyResult === 'unverified' && playerMovesSoFar <= 1
       ? "Stockfish n'a pas pu vérifier ton coup : Recommencer pour réessayer."
     : keyResult === 'missed' || keyResult === 'other' || keyResult === 'unverified'
