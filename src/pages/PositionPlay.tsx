@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { PositionGame } from '../components/PositionGame'
-import { recordReplaced } from '../lib/attack'
+import { recordReplaced } from '../lib/attempts'
 import { loadStoredGame, validFen } from '../lib/positionGame'
 import { useSettings } from '../store/settings'
 

@@ -5,6 +5,7 @@
 import { db } from './db'
 import { POSITION_GAME_KEY } from './positionGame'
 import { ATTACK_PREFS_KEY } from './attack'
+import { DEFENSE_PREFS_KEY } from './defense'
 import { INSIGHTS_KEY, readInsights, writeInsights } from './insightsStore'
 import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, migrateSettings, useSettings } from '../store/settings'
 import { BOTS } from './bots'
@@ -22,7 +23,7 @@ const LAST_EXPORT_KEY = 'chess-local-last-export'
 // le moteur en cours, le niveau du défenseur de l'entraîneur d'attaque, la configuration et le
 // dernier rapport d'Insights) et clés des séances d'Apprendre et de révision dans sessionStorage :
 // les seules que la réinitialisation a le droit de toucher.
-const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, INSIGHTS_KEY]
+const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, DEFENSE_PREFS_KEY, INSIGHTS_KEY]
 const SESSION_KEYS = ['learn-session-v1', 'revision-session-v1']
 
 export const TABLES = ['games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions', 'reviews'] as const

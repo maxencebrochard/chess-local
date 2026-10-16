@@ -26,6 +26,7 @@ e2e/shots/
 
 # E2E
 __pycache__/
-# Caches de génération des positions de l'entraîneur d'attaque (régénérables)
+# Caches de génération des positions des entraîneurs d'attaque et de défense (régénérables)
 data/lichess-puzzle-games.jsonl
 data/attack-evals.jsonl
+data/defense-evals.jsonl

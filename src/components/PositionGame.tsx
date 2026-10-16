@@ -1,6 +1,7 @@
 // Partie contre Stockfish depuis une position, sans plafond de coups : les règles du jeu
 // (mat, pat, répétition, 50 coups, matériel insuffisant), l'abandon ou une nulle acceptée
-// l'arrêtent. L'entraîneur d'attaque permet aussi de conclure sur un avantage décisif tenu.
+// l'arrêtent. L'entraîneur d'attaque permet aussi de conclure sur un avantage décisif tenu, et
+// l'entraîneur de défense arrête la partie quand l'objectif « tenir » est atteint ou perdu.
 // Le joueur a le trait au départ ; la partie est persistée à chaque coup.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Chess, type Color, type Move } from 'chess.js'
@@ -15,8 +16,9 @@ import { MoveStrip } from './MoveStrip'
 import { courseFor } from '../lib/courses'
 import { Engine } from '../lib/engine'
 import {
-  boardEnd, decisiveEnd, decisiveStreak, DECISIVE_TURNS, engineAcceptsDraw, halfmoveClock, judge, loadStoredGame,
-  repetitions, replay, resignEnd, resumedGame, storeGame, verdictText, type GameEnd, type Objective, type Opponent, type StoredGame,
+  boardEnd, collapsedEnd, decisiveEnd, decisiveStreak, DECISIVE_TURNS, engineAcceptsDraw, halfmoveClock, heldEnd, holdsAt, holdStreak, judge,
+  loadStoredGame, repetitions, replay, resignEnd, resumedGame, storeGame, verdictText, type GameEnd, type HoldRule, type Objective, type Opponent,
+  type StoredGame,
 } from '../lib/positionGame'
 import { figurine, winPct } from '../lib/review'
 import { playMoveSound, sounds } from '../lib/sounds'
@@ -25,6 +27,8 @@ import { playMoveSound, sounds } from '../lib/sounds'
 const ENGINE_MOVETIME_MS = 700
 // Suivi de l'avantage décisif : éval courte de chaque position au trait du joueur.
 const DECISIVE_EVAL_MS = 300
+// Objectif « tenir » : éval de confirmation, plus longue, après le dernier coup à tenir.
+const HOLD_CONFIRM_MS = 1000
 
 // Fin d'une tentative, remontée une seule fois : `end.kind === 'decisive'` quand l'avantage
 // décisif est atteint, même si le joueur choisit ensuite de continuer.
@@ -42,6 +46,8 @@ export interface KeyMove {
   uci: string
   san: string
   onJudged: (found: boolean) => void
+  cheer?: string // relance après le bon coup (défaut « mène l'attaque ! »)
+  keepGoing?: string // rappel une fois la partie engagée (défaut « Mène l'attaque jusqu'au bout. »)
 }
 // `other` : partie reprise après rechargement, premier coup différent du coup attendu et verdict
 // perdu : on rappelle le coup du bilan sans juger. `unverified` : Stockfish n'a pas pu juger le
@@ -85,6 +91,11 @@ export interface PositionGameProps {
   headerAction?: ReactNode // à droite du titre, à la place du bouton du cours
   planButton?: boolean // fin de partie : « Plan », la suite de Stockfish depuis la position de départ
   allowDraw?: boolean // bouton Nulle (vrai par défaut)
+  // Objectif « tenir » (objective 'hold') : nombre de coups du joueur et plancher d'éval. Après
+  // chaque réponse de Stockfish, l'oracle évalue la position ; strictement sous le plancher (ou mat
+  // contre le joueur) DECISIVE_TURNS tours de suite : `collapsed`. Au dernier coup à tenir, une éval
+  // de confirmation (HOLD_CONFIRM_MS, échiquier bloqué) décide `held` ou `collapsed`.
+  hold?: HoldRule
 }
 
 interface Init {
@@ -93,6 +104,7 @@ interface Init {
   assisted: boolean
   recorded: boolean
   decisive: StoredGame['decisive'] | null
+  holdFall: { count: number; ply: number }
 }
 
 function initialGame(p: PositionGameProps): Init {
@@ -105,14 +117,15 @@ function initialGame(p: PositionGameProps): Init {
       assisted: stored.assisted,
       recorded: stored.recorded ?? !!stored.end,
       decisive: stored.decisive ?? null,
+      holdFall: stored.holdFall ?? { count: 0, ply: -1 },
     }
   }
   const chess = new Chess(p.startFen)
-  return { chess, end: boardEnd(chess), assisted: false, recorded: false, decisive: null }
+  return { chess, end: boardEnd(chess), assisted: false, recorded: false, decisive: null, holdFall: { count: 0, ply: -1 } }
 }
 
 export function PositionGame(props: PositionGameProps) {
-  const { startFen, title, objective, goalHint, lesson, courseId, onExit, onOther, opponent, decisiveCp } = props
+  const { startFen, title, objective, goalHint, lesson, courseId, onExit, onOther, opponent, decisiveCp, hold } = props
   const navigate = useNavigate()
   const [init] = useState(() => initialGame(props))
   const player = new Chess(startFen).turn()
@@ -126,7 +139,8 @@ export function PositionGame(props: PositionGameProps) {
   const recordedRef = useRef(init.recorded)
   // Stockfish joue (dès le montage si une partie reprise lui laisse le trait).
   const [thinking, setThinking] = useState(() => !init.end && init.chess.turn() !== new Chess(startFen).turn())
-  const [busy, setBusy] = useState<'hint' | 'draw' | null>(null) // indice ou nulle en calcul
+  // Indice, nulle ou confirmation de l'objectif « tenir » en calcul.
+  const [busy, setBusy] = useState<'hint' | 'draw' | 'confirm' | null>(null)
   const [hint, setHint] = useState<BoardArrow | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [showLesson, setShowLesson] = useState(false)
@@ -137,6 +151,14 @@ export function PositionGame(props: PositionGameProps) {
   const [decisive, setDecisive] = useState<StoredGame['decisive'] | null>(init.decisive)
   // Série de tours au-dessus du seuil, et dernier demi-coup évalué (une éval n'est comptée qu'une fois).
   const streakRef = useRef({ count: 0, ply: -1 })
+  // Objectif « tenir » : série de tours sous le plancher et dernier demi-coup évalué, persistés avec
+  // la partie (l'état déclenche la persistance, le ref sert aux callbacks asynchrones).
+  const [holdFall, setHoldFallState] = useState(init.holdFall)
+  const holdFallRef = useRef(init.holdFall)
+  const setHoldFall = (v: { count: number; ply: number }) => {
+    holdFallRef.current = v
+    setHoldFallState(v)
+  }
   const engineRef = useRef<Engine | null>(null)
   // Moteur à pleine force pour l'indice, la nulle et le suivi de l'avantage quand l'adversaire est
   // bridé : un moteur limité ne sert jamais d'oracle.
@@ -204,9 +226,10 @@ export function PositionGame(props: PositionGameProps) {
       back: props.back,
       level: opponent?.level,
       decisive: decisive ?? undefined,
+      holdFall: hold ? holdFall : undefined,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history, end, assisted, decisive])
+  }, [history, end, assisted, decisive, holdFall])
 
   const finish = useCallback((e: GameEnd) => {
     setEnd(e)
@@ -214,10 +237,13 @@ export function PositionGame(props: PositionGameProps) {
     ;(verdict === 'fail' ? sounds.fail : verdict === 'success' ? sounds.success : sounds.gameEnd)()
     if (!recordedRef.current) {
       recordedRef.current = true
-      props.onFinished?.(verdict === 'success' && !assisted, { end: e, assisted })
+      // Miroir et non l'état capturé : une fin prononcée après une éval asynchrone (objectif
+      // « tenir ») voit une aide demandée pendant cette éval.
+      const helped = assistedRef.current
+      props.onFinished?.(verdict === 'success' && !helped, { end: e, assisted: helped })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [player, objective, assisted, props.onFinished])
+  }, [player, objective, props.onFinished])
 
   // Après chaque coup (joueur ou moteur) : affichage, son, fin de partie éventuelle.
   const afterMove = useCallback((move: Move): GameEnd | null => {
@@ -266,6 +292,59 @@ export function PositionGame(props: PositionGameProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decisiveCp, player, props.onFinished])
 
+  // Objectif « tenir » : à chaque tour du joueur, l'oracle évalue la position (de son point de vue).
+  // Strictement sous le plancher DECISIVE_TURNS tours de suite : la défense a cédé, la partie
+  // s'arrête. Comme pour l'avantage décisif, la fin n'est prononcée que sur la position évaluée : si
+  // le joueur a déjà rejoué, la série est notée et le verdict attend le tour suivant.
+  const trackHold = useCallback(async () => {
+    if (!hold) return
+    const gen = genRef.current
+    const ply = chessRef.current.history().length
+    let line
+    try {
+      line = (await getOracle().search({ fen: chessRef.current.fen(), movetimeMs: DECISIVE_EVAL_MS, multipv: 1 })).lines[0]
+    } catch {
+      return
+    }
+    if (gen !== genRef.current || ply <= holdFallRef.current.ply) return
+    const cp = line?.scoreCp ?? null
+    const mate = line?.scoreMate ?? null
+    const count = holdStreak(holdFallRef.current.count, cp, mate, hold.floorCp)
+    setHoldFall({ count, ply })
+    const c = chessRef.current
+    if (count < DECISIVE_TURNS || c.history().length !== ply || boardEnd(c)) return
+    genRef.current++
+    setThinking(false)
+    finish(collapsedEnd(player, { cp, mate }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hold, player, finish])
+
+  // Dernier coup à tenir joué : éval de confirmation par l'oracle, échiquier bloqué. Stockfish a le
+  // trait : son éval est inversée pour le joueur.
+  const confirmHold = useCallback(async () => {
+    if (!hold) return
+    const gen = genRef.current
+    setThinking(false)
+    setBusy('confirm')
+    try {
+      const line = (await getOracle().search({ fen: chessRef.current.fen(), movetimeMs: HOLD_CONFIRM_MS, multipv: 1 })).lines[0]
+      if (gen !== genRef.current) return
+      // Recherche sans ligne d'éval : un raté du moteur, pas un verdict (Relancer la refait).
+      if (!line || (line.scoreCp == null && line.scoreMate == null)) throw new Error('éval absente')
+      const evalAt = { cp: line.scoreCp == null ? null : -line.scoreCp, mate: line.scoreMate == null ? null : -line.scoreMate }
+      finish(holdsAt(evalAt.cp, evalAt.mate, hold.floorCp) ? heldEnd(evalAt) : collapsedEnd(player, evalAt))
+    } catch {
+      if (gen === genRef.current) setNotice("Stockfish n'a pas pu confirmer : Relancer.")
+    } finally {
+      if (gen === genRef.current) setBusy(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hold, player, finish])
+
+  // Tous les coups à tenir sont joués (et la partie n'est pas finie) : la confirmation remplace la
+  // réponse de Stockfish.
+  const holdDone = (c: Chess) => !!hold && c.turn() !== player && c.history({ verbose: true }).filter((m) => m.color === player).length >= hold.moves
+
   const engineMove = useCallback(async () => {
     const gen = genRef.current
     const c = chessRef.current
@@ -274,7 +353,10 @@ export function PositionGame(props: PositionGameProps) {
       const res = await getEngine().search({ fen: c.fen(), movetimeMs: ENGINE_MOVETIME_MS, multipv: 1 })
       if (gen !== genRef.current) return
       const move = c.move({ from: res.bestMove.slice(0, 2), to: res.bestMove.slice(2, 4), promotion: res.bestMove[4] })
-      if (!afterMove(move)) void trackDecisive()
+      if (!afterMove(move)) {
+        void trackDecisive()
+        void trackHold()
+      }
     } catch {
       // Pas de coup exploitable (ne devrait pas arriver) : dit-le, « Relancer » réessaie.
       if (gen === genRef.current) setNotice("Stockfish n'a pas répondu.")
@@ -282,13 +364,21 @@ export function PositionGame(props: PositionGameProps) {
       if (gen === genRef.current) setThinking(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [afterMove])
+  }, [afterMove, trackHold])
 
-  // Reprise d'une partie interrompue pendant que Stockfish réfléchissait, et arrêt du moteur au
-  // démontage (null obligatoire : StrictMode rejoue les effets).
+  // Coup suivant de la partie, côté Stockfish : sa réponse, ou la confirmation de l'objectif
+  // « tenir » quand le dernier coup à tenir est joué.
+  function opponentTurn() {
+    if (holdDone(chessRef.current)) void confirmHold()
+    else void engineMove()
+  }
+
+  // Reprise d'une partie interrompue pendant que Stockfish réfléchissait (ou pendant la
+  // confirmation de l'objectif « tenir »), et arrêt du moteur au démontage (null obligatoire :
+  // StrictMode rejoue les effets).
   useEffect(() => {
     const c = chessRef.current
-    if (!boardEnd(c) && !init.end && c.turn() !== player) void engineMove()
+    if (!boardEnd(c) && !init.end && c.turn() !== player) opponentTurn()
     return () => {
       // Page quittée pendant la vérification : rien n'est noté.
       pendingJudgeRef.current = null
@@ -318,7 +408,7 @@ export function PositionGame(props: PositionGameProps) {
     if (first && props.keyMove) void judgeKeyMove(move, props.keyMove, assisted)
     // Jouer après « Attaque réussie », c'est choisir de continuer.
     if (decisive === 'offered') setDecisive('continued')
-    if (!afterMove(move)) void engineMove()
+    if (!afterMove(move)) opponentTurn()
     return true
   }
 
@@ -375,6 +465,7 @@ export function PositionGame(props: PositionGameProps) {
     if (!end && !recordedRef.current && playerMoves > 0) props.onAbandon?.({ assisted })
     genRef.current++
     streakRef.current = { count: 0, ply: -1 }
+    setHoldFall({ count: 0, ply: -1 })
     setDecisive(null)
     chessRef.current = new Chess(startFen)
     recordedRef.current = false
@@ -405,6 +496,7 @@ export function PositionGame(props: PositionGameProps) {
     genRef.current++
     if (mine === 1) setKeyResult(null) // premier coup repris : le verdict repart avec lui
     streakRef.current = { count: 0, ply: -1 }
+    setHoldFall({ count: 0, ply: -1 })
     setFen(c.fen())
     setHistory(c.history({ verbose: true }))
     setViewIndex(-1)
@@ -494,32 +586,41 @@ export function PositionGame(props: PositionGameProps) {
   // Retour sur le premier coup : le verdict au premier coup, puis un rappel plus sobre tant que la
   // partie continue (plus d'« Annuler pour réessayer » une fois l'attaque engagée).
   const keyFig = props.keyMove ? figurine(props.keyMove.san, player) : ''
+  const cheer = props.keyMove?.cheer ?? "mène l'attaque !"
+  const cheerCap = cheer.charAt(0).toUpperCase() + cheer.slice(1)
   const playerMovesSoFar = history.filter((m) => m.color === player).length
   const keyLine =
     keyResult === 'checking' ? 'Je vérifie ton coup…'
     : keyResult === 'found' || keyResult === 'close'
       ? playerMovesSoFar <= 1
-        ? (keyResult === 'found' ? "C'est le coup du bilan : mène l'attaque !" : `Ça tient aussi (au bilan : ${keyFig}). Mène l'attaque !`)
-        : "Mène l'attaque jusqu'au bout."
+        ? (keyResult === 'found' ? `C'est le coup du bilan : ${cheer}` : `Ça tient aussi (au bilan : ${keyFig}). ${cheerCap}`)
+        : (props.keyMove?.keepGoing ?? "Mène l'attaque jusqu'au bout.")
     : keyResult === 'unverified' && playerMovesSoFar <= 1
       ? "Stockfish n'a pas pu vérifier ton coup : Recommencer pour réessayer."
     : keyResult === 'missed' || keyResult === 'other' || keyResult === 'unverified'
       ? playerMovesSoFar <= 1 && keyResult === 'missed' ? `Au bilan : ${keyFig}. Annuler pour réessayer.` : `Au bilan : ${keyFig}. La partie continue.`
     : null
+  // Objectif « tenir » : un tour déjà sous le plancher, le suivant décide.
+  const holdWarning = hold && !end && holdFall.count > 0 && holdFall.count < DECISIVE_TURNS
+    ? `Éval sous ${hold.floorCp / 100} : un tour de plus et la défense cède.`
+    : null
   const subline =
     notice ??
     (reps === 2 ? 'Position déjà vue 2 fois : une fois de plus et c\'est nulle.' : null) ??
+    holdWarning ??
     keyLine ??
     goalHint ??
     (objective ? null : `Tu joues les ${player === 'w' ? 'Blancs' : 'Noirs'}, sans limite de coups.`)
   const sublineClass =
     end || offered ? ''
-    : notice || reps === 2 || keyResult === 'missed' || keyResult === 'unverified' ? 'text-amber-300'
+    : notice || reps === 2 || holdWarning || keyResult === 'missed' || keyResult === 'unverified' ? 'text-amber-300'
     : keyResult === 'found' || keyResult === 'close' ? 'text-accent'
     : 'text-neutral-400'
   const viewFen = live ? fen : history[viewIndex].after
   const lastMove = live ? history[history.length - 1] : history[viewIndex]
-  const boardEndKind = end && end.kind !== 'resign' && end.kind !== 'agreed' && end.kind !== 'decisive'
+  // Fin lue sur l'échiquier : seule à permettre « Annuler ». Jamais après `held` ou `collapsed`.
+  const boardEndKind = end && end.kind !== 'resign' && end.kind !== 'agreed' && end.kind !== 'decisive' && end.kind !== 'held' && end.kind !== 'collapsed'
+  const holdShown = hold ? Math.min(playerMoves, hold.moves) : 0
 
   return (
     <div
@@ -528,6 +629,8 @@ export function PositionGame(props: PositionGameProps) {
       data-status={end ? 'over' : 'playing'}
       data-verdict={verdict ?? 'none'}
       data-decisive={decisive ?? 'none'}
+      data-end={end?.kind ?? 'none'}
+      data-hold-fall={hold ? holdFall.count : undefined}
       data-thinking={thinking || busy ? '1' : '0'}
       className="mx-auto flex h-full max-w-2xl flex-col"
     >
@@ -574,6 +677,7 @@ export function PositionGame(props: PositionGameProps) {
                 : offered ? <>✓ {props.successTitle ?? 'Objectif atteint'}</>
                 : objective === 'win' ? 'Objectif : gagner'
                 : objective === 'draw' ? 'Objectif : tenir la nulle'
+                : objective === 'hold' ? `Objectif : tenir ${hold?.moves ?? 0} coups`
                 : (props.objectiveLabel ?? 'Partie libre')}
             </p>
             {lesson && (
@@ -598,9 +702,21 @@ export function PositionGame(props: PositionGameProps) {
 
         <div className="flex h-7 items-center gap-2 px-3 text-xs text-neutral-400">
           <span className="font-semibold text-neutral-300">🤖 Stockfish 18</span>
-          <span>{thinking ? 'réfléchit…' : busy === 'hint' ? 'cherche un indice…' : busy === 'draw' ? 'étudie ta proposition…' : opponent ? opponent.label : 'pleine force'}</span>
+          <span>
+            {thinking ? 'réfléchit…' : busy === 'hint' ? 'cherche un indice…' : busy === 'draw' ? 'étudie ta proposition…'
+              : busy === 'confirm' ? 'vérifie ta défense…' : opponent ? opponent.label : 'pleine force'}
+          </span>
           <span className="ml-auto flex items-center gap-2">
             {assisted && !end && <span className="rounded bg-surface-3 px-1.5 py-0.5">avec aide</span>}
+            {hold && (
+              <span
+                data-testid="hold-counter"
+                data-moves={holdShown}
+                className={`rounded px-1.5 py-0.5 font-semibold tabular-nums ${holdWarning ? 'bg-amber-900/50 text-amber-200' : 'bg-surface-3 text-neutral-200'}`}
+              >
+                Coup {holdShown}/{hold.moves}
+              </span>
+            )}
             {showClock && (
               <span className={`rounded px-1.5 py-0.5 ${clock >= 80 ? 'bg-amber-900/50 text-amber-200' : 'bg-surface-3'}`}>
                 50 coups : {Math.floor(clock / 2)}/50
@@ -651,8 +767,8 @@ export function PositionGame(props: PositionGameProps) {
             {objective !== 'draw' && props.allowDraw !== false && (
               <Action label="Nulle" icon="½" onClick={() => void offerDraw()} disabled={!myTurn || !!busy} />
             )}
-            {!thinking && chessRef.current.turn() !== player ? (
-              <Action label="Relancer" icon="🤖" onClick={() => void engineMove()} />
+            {!thinking && !busy && chessRef.current.turn() !== player ? (
+              <Action label="Relancer" icon="🤖" onClick={opponentTurn} />
             ) : (
               <Action label="Indice" icon="💡" onClick={() => void requestHint()} disabled={!myTurn || !!busy} />
             )}

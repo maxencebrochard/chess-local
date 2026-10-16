@@ -106,6 +106,30 @@ def suite(p):
     check("[learn] Mes erreurs grisé (vide)", not page.locator("button", has_text="Mes erreurs").is_enabled())
     page.screenshot(path=f"{SHOTS}/learn_home.png")
 
+    # --- Tuiles de défense, à côté de celles de l'attaque ---
+    tile = page.locator("main a", has_text="Entraîneur de défense")
+    check("[défense] tuile « Entraîneur de défense » et son sous-titre",
+          tile.count() == 1 and "Tiens face à l'attaque sur ton roi" in (tile.inner_text() if tile.count() else ""))
+    order = page.evaluate("""() => [...document.querySelectorAll('main a, main button')].map((e) => e.textContent)
+      .map((t) => ["Mes attaques manquées", "Mes défenses ratées", "Entraîneur d'attaque", "Entraîneur de défense"].findIndex((n) => t.includes(n)))
+      .filter((i) => i >= 0)""")
+    check("[défense] chaque tuile de défense suit celle de l'attaque", order == [0, 1, 2, 3], f"({order})")
+    card = page.locator("[data-testid=missed-defenses-card]")
+    check("[défense] carte « Mes défenses ratées » à 0 sans bilan", card.count() == 1 and card.get_attribute("data-count") == "0"
+          and card.inner_text().strip().endswith("0"), f"({card.inner_text() if card.count() else None!r})")
+    if tile.count():
+        tile.click()
+        ck.appears("[défense] la tuile ouvre la liste de l'entraîneur", page, "[data-testid=defense-item]")
+        check("[défense] URL #/defense", page.evaluate("() => location.hash") == "#/defense", f"({page.url})")
+        page.go_back()
+        page.wait_for_timeout(600)
+    if card.count():
+        card.click()
+        ck.appears("[défense] la carte ouvre « Mes défenses ratées » (vide)", page, "[data-testid=defense-empty]")
+        check("[défense] URL #/defenses-ratees", page.evaluate("() => location.hash") == "#/defenses-ratees", f"({page.url})")
+        page.go_back()
+        page.wait_for_timeout(600)
+
     # --- Séance Finales (leçon -> cours -> jeu) ---
     page.locator("main button", has_text=FINALES).click()
     page.wait_for_timeout(1200)

@@ -15,7 +15,7 @@ import { ROQUE } from '../lib/attackCourse'
 import { FINALES, lessonForExercise } from '../lib/endgameCourse'
 import type { Course as LessonCourse } from '../lib/lessonCourse'
 import { Engine } from '../lib/engine'
-import { loadAttackDiagnostic } from '../lib/kingAttack'
+import { loadAttackDiagnostic, loadDefenseDiagnostic } from '../lib/kingAttack'
 import {
   buildEndgameSession, buildSession, DOMAIN_META, domainRating, pickNextDomain, scoreItem,
   type EndgameGoal, type LearnDomain, type Session, type SessionItem,
@@ -46,6 +46,7 @@ export default function Learn() {
   const [ratings, setRatings] = useState<Record<string, number | null>>({})
   const [mistakeCount, setMistakeCount] = useState(0)
   const [attackCount, setAttackCount] = useState(0)
+  const [defenseCount, setDefenseCount] = useState(0)
   const [session, setSession] = useState<Session | null>(null)
   const [itemIdx, setItemIdx] = useState(0)
   const [phase, setPhase] = useState<ItemPhase>('lesson')
@@ -63,6 +64,7 @@ export default function Learn() {
 
   const refresh = useCallback(async () => {
     const attacks = loadAttackDiagnostic().then((d) => d.items.length).catch(() => 0)
+    const defenses = loadDefenseDiagnostic().then((d) => d.items.length).catch(() => 0)
     const [entries, mistakes, done] = await Promise.all([
       Promise.all((['endgame', 'tactic', 'opening', 'strategy'] as LearnDomain[]).map(async (d) => [d, await domainRating(d)] as const)),
       db.mistakes.where('solved').equals(0).count(),
@@ -77,6 +79,7 @@ export default function Learn() {
     setMistakeCount(mistakes)
     setLessonsDone(Object.fromEntries(done))
     setAttackCount(await attacks)
+    setDefenseCount(await defenses)
   }, [])
 
   useEffect(() => {
@@ -449,6 +452,21 @@ export default function Learn() {
           {attackCount}
         </span>
       </button>
+      <button
+        onClick={() => navigate('/defenses-ratees')}
+        data-testid="missed-defenses-card"
+        data-count={defenseCount}
+        className="mt-2 flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
+      >
+        <span className="text-2xl">🧱</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Mes défenses ratées</span>
+          <span className="block text-xs text-neutral-400">Les moments de tes bilans où ton roi était attaqué et où tu as craqué</span>
+        </span>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold ${defenseCount > 0 ? 'bg-accent/20 text-accent' : 'bg-surface-3 text-neutral-400'}`}>
+          {defenseCount}
+        </span>
+      </button>
       <Link
         to="/ouvertures"
         className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
@@ -479,6 +497,17 @@ export default function Learn() {
         <span className="min-w-0 flex-1">
           <span className="block font-bold">Entraîneur d'attaque</span>
           <span className="block text-xs text-neutral-400">Roques opposés, même aile, roi au centre : mène l'attaque au bout</span>
+        </span>
+        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
+      </Link>
+      <Link
+        to="/defense"
+        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
+      >
+        <span className="text-2xl">🛡️</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Entraîneur de défense</span>
+          <span className="block text-xs text-neutral-400">Tiens face à l'attaque sur ton roi</span>
         </span>
         <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
       </Link>

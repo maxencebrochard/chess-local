@@ -4,7 +4,9 @@ dérivent le thème, la consigne et la première phrase du plan. Partagé par
 `scripts/prepare-attacks.py` (génération de `src/data/attacks.json`) et `e2e/test_attaque.py`
 (qui recalcule tout, et vérifie en plus des invariants indépendants sur l'échiquier).
 
-L'attaquant est le camp au trait.
+L'attaquant est par défaut le camp au trait ; `att` le fixe explicitement (banque de défense,
+`scripts/prepare-defenses.py` : l'attaquant est le camp qui N'EST PAS au trait). Les phrases vues
+du défenseur vivent dans `scripts/defense_facts.py`.
 """
 import chess
 
@@ -34,14 +36,14 @@ def material(board, color):
     return sum(VALUES[p.piece_type] for p in board.piece_map().values() if p.color == color)
 
 
-def category(board):
-    """Catégorie du point de vue de l'attaquant (camp au trait), ou None :
+def category(board, att=None):
+    """Catégorie du point de vue de l'attaquant (`att`, par défaut le camp au trait), ou None :
     - centre : roi adverse en colonne d ou e sur ses deux premières rangées, roi de
       l'attaquant sur ses deux premières rangées ;
     - opposes / meme : les deux rois roqués (a-c ou g-h, deux premières rangées), sur des ailes
       différentes ou sur la même.
     Un roi en colonne f, ou sorti de ses deux premières rangées, n'entre dans aucune catégorie."""
-    att = board.turn
+    att = board.turn if att is None else att
     dk, ak = board.king(not att), board.king(att)
     if relative_rank(dk, not att) <= 1 and chess.square_file(dk) in (3, 4):
         return "centre" if relative_rank(ak, att) <= 1 else None
@@ -51,9 +53,11 @@ def category(board):
     return "meme" if aw == dw else "opposes"
 
 
-def facts(board):
-    """Faits mesurés autour du roi adverse ; cases et colonnes nommées pour être citées."""
-    att, dfn = board.turn, not board.turn
+def facts(board, att=None):
+    """Faits mesurés autour du roi adverse (celui du camp qui n'est pas `att`, par défaut le camp au
+    trait) ; cases et colonnes nommées pour être citées."""
+    att = board.turn if att is None else att
+    dfn = not att
     dk = board.king(dfn)
     kf, kr = chess.square_file(dk), chess.square_rank(dk)
     k_rel = relative_rank(dk, dfn)
@@ -65,12 +69,17 @@ def facts(board):
     r2 = kr + 2 * fwd
     if 0 <= r2 <= 7:
         zone |= {chess.square(f, r2) for f in near_files}
-    attackers = set()
+    attackers, defenders = set(), set()
     for sq in zone:
         for a in board.attackers(att, sq):
             p = board.piece_at(a)
             if p and p.piece_type not in (chess.PAWN, chess.KING):
                 attackers.add(a)
+        # Défenseurs (banque de défense) : pièces du camp du roi qui visent ces mêmes cases.
+        for d in board.attackers(dfn, sq):
+            p = board.piece_at(d)
+            if p and p.piece_type not in (chess.PAWN, chess.KING):
+                defenders.add(d)
 
     def pawns_on(color, f):
         return [s for s in board.pieces(chess.PAWN, color) if chess.square_file(s) == f]
@@ -118,6 +127,7 @@ def facts(board):
 
     return {
         "attackers": sorted(chess.square_name(s) for s in attackers),
+        "defenders": sorted(chess.square_name(s) for s in defenders),
         "open": open_files,
         "semiOpen": semi_open,
         "heavyOn": heavy_on,
@@ -183,9 +193,9 @@ def goal(cat, f):
 NUMBER_FR = {2: "Deux", 3: "Trois", 4: "Quatre", 5: "Cinq", 6: "Six", 7: "Sept"}
 
 
-def plan(board, cat, f):
+def plan(board, cat, f, att=None):
     """Trois ou quatre phrases, chacune tirée d'un fait mesuré, le levier d'abord."""
-    att = board.turn
+    att = board.turn if att is None else att
     dk, ak = chess.square_name(board.king(not att)), chess.square_name(board.king(att))
     lv = lever(cat, f)
     if cat == "opposes":

@@ -1,6 +1,6 @@
 // Entraîneur d'attaque (/attaque) : banque de positions d'attaque (src/data/attacks.json, générée
 // et vérifiée par scripts/prepare-attacks.py), niveau du défenseur, résultats des tentatives.
-import { db, type LearnSession } from './db'
+import { db } from './db'
 import type { Color, GameEnd, Opponent, StoredGame } from './positionGame'
 import attacksData from '../data/attacks.json'
 
@@ -27,31 +27,35 @@ export const CATEGORY_LABEL: Record<AttackCategory, string> = {
   centre: 'Roi au centre',
 }
 
-// ---------- Défenseur ----------
+// ---------- Niveau de l'adversaire (défenseur ici, attaquant dans l'entraîneur de défense) ----------
 
-// Elo du défenseur (Stockfish bridé par UCI_Elo, plancher réel 1320), null = pleine force.
+// Elo de l'adversaire (Stockfish bridé par UCI_Elo, plancher réel 1320), null = pleine force.
 export type Level = number | null
 export const LEVELS: Level[] = [1320, 1500, 1700, 1900, 2100, 2300, 2500, 2800, 3000, null]
 export const DEFAULT_LEVEL: Level = 1700
 
-// Préférence de l'entraîneur, hors persist Zustand et hors sauvegarde (simple confort).
+// Préférence de l'entraîneur, hors persist Zustand et hors sauvegarde (simple confort). Chaque
+// entraîneur a sa clé (`DEFENSE_PREFS_KEY` dans defense.ts), même forme `{ level }`.
 export const ATTACK_PREFS_KEY = 'chess-local-attack'
 
-export function loadLevel(): Level {
+export function loadLevelFrom(key: string, fallback: Level): Level {
   try {
-    const raw = localStorage.getItem(ATTACK_PREFS_KEY)
+    const raw = localStorage.getItem(key)
     const level = raw ? (JSON.parse(raw) as { level?: unknown }).level : undefined
-    return LEVELS.includes(level as Level) ? (level as Level) : DEFAULT_LEVEL
+    return LEVELS.includes(level as Level) ? (level as Level) : fallback
   } catch {
-    return DEFAULT_LEVEL
+    return fallback
   }
 }
 
-export function saveLevel(level: Level) {
+export function saveLevelTo(key: string, level: Level) {
   try {
-    localStorage.setItem(ATTACK_PREFS_KEY, JSON.stringify({ level }))
+    localStorage.setItem(key, JSON.stringify({ level }))
   } catch {}
 }
+
+export const loadLevel = (): Level => loadLevelFrom(ATTACK_PREFS_KEY, DEFAULT_LEVEL)
+export const saveLevel = (level: Level) => saveLevelTo(ATTACK_PREFS_KEY, level)
 
 // Bridage par les options UCI de Stockfish (Skill Level : il choisit, avec une part de hasard,
 // parmi ses meilleurs coups), jamais les coups tirés au hasard des bots faibles de bots.ts.
@@ -71,7 +75,8 @@ export const DECISIVE_CP = 700
 export const ATTACK_DOMAIN = 'attack'
 export const gameKey = (id: string) => `attaque:${id}`
 
-export type AttackOutcome = NonNullable<LearnSession['outcome']>
+// Issues d'une tentative d'attaque (champ `outcome` de `LearnSession`, domaine `attack`).
+export type AttackOutcome = 'mate' | 'decisive' | 'draw' | 'loss' | 'resign' | 'abandon'
 
 export function outcomeOf(end: GameEnd, player: Color): AttackOutcome {
   if (end.kind === 'decisive') return 'decisive'
@@ -128,8 +133,9 @@ export async function attackStats(): Promise<Map<string, AttackStats>> {
 export const statsKey = (p: AttackPosition) => `${p.id}|${p.fen}`
 
 // Tentative d'attaque en cours écrasée par une autre partie (autre position, finale, partie
-// libre : un seul emplacement de persistance) : notée abandonnée.
-export function recordReplaced(stored: StoredGame) {
+// libre : un seul emplacement de persistance) : notée abandonnée. Appelée par `recordReplaced`
+// (attempts.ts), qui aiguille selon le préfixe de la clé.
+export function recordAttackReplaced(stored: StoredGame) {
   if (!stored.key.startsWith('attaque:')) return
   const pos = ATTACKS.find((a) => gameKey(a.id) === stored.key && a.fen === stored.startFen)
   if (pos) void recordAttempt(pos, 'abandon', stored.level ?? null, stored.assisted)
