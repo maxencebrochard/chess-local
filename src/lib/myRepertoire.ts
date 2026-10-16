@@ -58,8 +58,8 @@ export interface PlayedMove {
 export interface Deviation {
   id: string // `<couleur>|<clé de position>`
   color: Color
-  family: string // famille lichess de l'ouverture de la position
-  opening: string // nom lichess de l'ouverture de la position
+  family: string // famille lichess de l'ouverture de la partie la plus récente
+  opening: string // nom lichess de l'ouverture de la partie la plus récente
   prefix: string[] // coups de la partie la plus récente jusqu'à la position (trait au joueur)
   prefixes: string[] // tous les ordres de coups (UCI joints par des espaces) qui y ont mené
   played: PlayedMove[] // coups joués à la place de la théorie, du plus fréquent au moins fréquent
@@ -323,7 +323,8 @@ function tally(t: { wins: number; draws: number; losses: number }, r: Outcome) {
 export function computeRepertoire(input: RepGame[], timeClass = 'all'): RepertoireReport {
   const report: RepertoireReport = { games: 0, skipped: 0, reviewed: 0, byColor: { w: emptyColor(), b: emptyColor() } }
   const openings = { w: new Map<string, OpeningReport>(), b: new Map<string, OpeningReport>() }
-  const devs = new Map<string, Deviation & { drops: number[]; moves: number[] }>()
+  const devs = new Map<string, Deviation & { drops: number[]; moves: number[]; families: Set<string> }>()
+  const exitByFamily = new Map<string, number[]>()
 
   const seen = new Set<string>()
   for (const g of input) {
@@ -361,12 +362,12 @@ export function computeRepertoire(input: RepGame[], timeClass = 'all'): Repertoi
         ply, moveNumber: Math.floor(ply / 2) + 1,
         expected: bookMovesAt(exit.position!).slice(0, EXPECTED_MAX).map((m) => ({ uci: m.uci, san: '', lines: m.lines, name: m.line.name })),
         games: 0, wins: 0, draws: 0, losses: 0, reviewed: 0, avgDrop: null, verdict: 'unknown',
-        last, drops: [], moves: [],
+        last, drops: [], moves: [], families: new Set(),
       }
       devs.set(id, d)
     } else if (g.date > d.last.date) {
       // La partie la plus récente fournit les coups de la séance et le lien « Partie ».
-      Object.assign(d, { prefix, ply, moveNumber: Math.floor(ply / 2) + 1, last })
+      Object.assign(d, { family: exit.family, opening: exit.opening, prefix, ply, moveNumber: Math.floor(ply / 2) + 1, last })
     }
     if (!d.prefixes.includes(prefix.join(' '))) d.prefixes.push(prefix.join(' '))
     const pm = d.played.find((m) => m.uci === played)
@@ -375,14 +376,17 @@ export function computeRepertoire(input: RepGame[], timeClass = 'all'): Repertoi
     d.games++
     tally(d, g.result)
     d.moves.push(Math.floor(ply / 2) + 1)
+    d.families.add(exit.family)
+    const fk = `${color}|${exit.family}`
+    exitByFamily.set(fk, [...(exitByFamily.get(fk) ?? []), Math.floor(ply / 2) + 1])
     const drop = reviewDrop(g.review, moves, ply)
     if (drop !== null) d.drops.push(drop)
   }
 
   const all: Deviation[] = []
   const exitMoves = { w: [] as number[], b: [] as number[] }
-  const exitByFamily = new Map<string, number[]>()
-  for (const { drops, moves, ...d } of devs.values()) {
+  const familiesOf = new Map<string, Set<string>>()
+  for (const { drops, moves, families, ...d } of devs.values()) {
     d.reviewed = drops.length
     d.avgDrop = drops.length ? drops.reduce((a, b) => a + b, 0) / drops.length : null
     d.verdict = d.avgDrop === null ? 'unknown' : d.avgDrop >= COSTLY_DROP ? 'costly' : 'ok'
@@ -390,8 +394,7 @@ export function computeRepertoire(input: RepGame[], timeClass = 'all'): Repertoi
     d.played = d.played.map((m) => ({ ...m, san: sanAt(d.prefix, m.uci) })).sort((a, b) => b.games - a.games || (a.uci < b.uci ? -1 : 1))
     d.expected = d.expected.map((e) => ({ ...e, san: sanAt(d.prefix, e.uci) }))
     exitMoves[d.color].push(...moves)
-    const fk = `${d.color}|${d.family}`
-    exitByFamily.set(fk, [...(exitByFamily.get(fk) ?? []), ...moves])
+    familiesOf.set(d.id, families)
     all.push(d)
   }
   all.sort(byPriority)
@@ -401,7 +404,7 @@ export function computeRepertoire(input: RepGame[], timeClass = 'all'): Repertoi
     cr.mine = exitMoves[color].length
     cr.typicalMove = lowMedian(exitMoves[color])
     for (const op of openings[color].values()) {
-      op.deviations = cr.deviations.filter((d) => d.family === op.family)
+      op.deviations = cr.deviations.filter((d) => familiesOf.get(d.id)!.has(op.family))
       op.typicalMove = lowMedian(exitByFamily.get(`${color}|${op.family}`) ?? [])
     }
     cr.openings = [...openings[color].values()].sort((a, b) => b.games - a.games || (a.family < b.family ? -1 : a.family > b.family ? 1 : 0))
