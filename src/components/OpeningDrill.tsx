@@ -526,7 +526,7 @@ export function OpeningDrill(props: Props) {
                 onClick={props.onNext}
                 className="ml-auto cursor-pointer rounded-lg bg-surface-2 px-3 py-2 text-sm font-bold text-neutral-200 hover:bg-surface-3"
               >
-                Position suivante
+                {props.nextLabel ?? 'Position suivante'}
               </button>
             )}
           </div>

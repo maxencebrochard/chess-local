@@ -11,6 +11,7 @@ import Stats from './pages/Stats'
 import Import from './pages/Import'
 import Learn from './pages/Learn'
 import OpeningTrainer from './pages/OpeningTrainer'
+import MyRepertoire from './pages/MyRepertoire'
 import Endgames from './pages/Endgames'
 import PositionPlay from './pages/PositionPlay'
 import CriticalMoment from './pages/CriticalMoment'
@@ -30,7 +31,7 @@ const NAV = [
   { to: '/', icon: '♞', label: 'Accueil', match: [] as string[] },
   { to: '/jouer', icon: '♟', label: 'Jouer', match: [] as string[] },
   { to: '/puzzles', icon: '🧩', label: 'Puzzles', match: ['/rush'] },
-  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque', '/defenses-ratees', '/defense'] },
+  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/repertoire', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque', '/defenses-ratees', '/defense'] },
   { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import', '/analyse/jouer', '/moment-critique'] },
   { to: '/archive', icon: '📚', label: 'Archive', match: [] as string[] },
   { to: '/stats', icon: '📊', label: 'Stats', match: ['/insights'] },
@@ -134,6 +135,7 @@ function Shell() {
             <Route path="/rush" element={<PuzzleRush />} />
             <Route path="/apprendre" element={<Learn />} />
             <Route path="/ouvertures" element={<OpeningTrainer />} />
+            <Route path="/repertoire" element={<MyRepertoire />} />
             <Route path="/apprendre/finales" element={<CourseIndex key={FINALES.slug} course={FINALES} />} />
             <Route path="/apprendre/finales/:id" element={<CourseLesson course={FINALES} />} />
             <Route path="/apprendre/roque" element={<CourseIndex key={ROQUE.slug} course={ROQUE} />} />

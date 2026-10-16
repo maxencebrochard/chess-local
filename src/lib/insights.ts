@@ -237,7 +237,7 @@ export function gameLabel(row: Pick<ReviewRow, 'source' | 'opponent' | 'opponent
 }
 
 // Ligne exploitable : bilan cohérent avec son PGN (chaque SAN se rejoue depuis le départ).
-function validRow(row: ReviewRow): boolean {
+export function validRow(row: ReviewRow): boolean {
   const r = row?.review
   if (!r || !Array.isArray(r.moves) || typeof r.startFen !== 'string') return false
   if (row.playerColor !== 'w' && row.playerColor !== 'b') return false

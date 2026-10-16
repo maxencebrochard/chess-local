@@ -70,6 +70,8 @@ export interface LearnSession {
   // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
   // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
   // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).
+  // Mon répertoire (/repertoire) écrit aussi des lignes `next:` : la position est alors celle d'une
+  // sortie de théorie, avec les coups réels de la partie (un ordre de coups qui transpose compris).
   // missed-attack, missed-defense : itemId = id de la ligne `mistakes`, fen = sa `fenBefore` (le
   // couple identifie l'exercice : une sauvegarde restaurée peut réattribuer les ids), success =
   // premier coup sans aide, égal au coup du bilan ou accepté par `PositionGame.judgeKeyMove` après

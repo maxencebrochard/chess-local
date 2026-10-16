@@ -6,7 +6,7 @@ import openingsData from '../data/openings.json'
 import { db } from './db'
 import type { EngineLine } from './engine'
 import { openingFamilyFr, openingFr } from './openingNames'
-import { BY_NAME, familyKey } from './openingFamilies'
+import { BY_NAME, familyKey, familyOfLine } from './openingFamilies'
 
 export interface OpeningLine {
   eco: string
@@ -119,6 +119,12 @@ export function getFamily(key: string): Family | null {
 
 export function popularFamilies(): Family[] {
   return POPULAR_KEYS.map((k) => getFamily(k)).filter((f): f is Family => f !== null)
+}
+
+// Famille synthétique d'une séance de Mon répertoire (lignes de `drillLines`, réécrites depuis
+// les coups réels de la partie) : clé et libellé de la famille lichess de `name`.
+export function lineFamily(name: string, lines: OpeningLine[]): Family {
+  return buildFamily(familyOfLine(name), lines)
 }
 
 export interface SearchHit {
@@ -290,8 +296,10 @@ export function modeStats(progress: Progress, fam: Family, color: Color, mode: D
     if (!r.itemId.startsWith(prefix)) continue
     const uci = r.itemId.slice(prefix.length)
     // Une position `next` appartient à la famille si une ligne de la famille la prolonge.
+    // Une position de Mon répertoire (1.e4 seul, par exemple) n'est rattachée qu'à une famille dans
+    // laquelle elle est déjà entrée, comme les positions de l'entraîneur.
     const inFamily = mode === 'next'
-      ? lines.some((l) => l.uci.startsWith(uci + ' '))
+      ? lines.some((l) => l.uci.startsWith(uci + ' ')) && entryPly(fam, uciMoves(uci)) > 0
       : fam.variants.some((v) => v.line.uci === uci)
     if (!inFamily) continue
     total++
