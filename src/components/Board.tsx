@@ -219,7 +219,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
       tryMove(selected, square)
       return
     }
-    setSelected(canMoveFrom(square) ? (square as Square) : null)
+    setSelected(null)
   }
 
   // Teintes en `backgroundColor`, motifs (échec, pastille, anneau) en `backgroundImage`, jamais le
