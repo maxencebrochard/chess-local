@@ -18,6 +18,9 @@ export interface ReviewedMove {
   bestMoveUci: string
   winPctBefore: number // point de vue du joueur au trait
   winPctAfter: number
+  // Win% du 2e coup de Stockfish (même point de vue), null s'il n'y a qu'une ligne. Absent des
+  // bilans mis en cache avant les « Moments critiques » (table `reviews`).
+  winPctSecond?: number | null
 }
 
 export interface GameReview {
@@ -214,6 +217,7 @@ export async function reviewGame(
       san: mv.san, uci: mv.lan, class: cls,
       evalAfterCp, mateAfter, bestMoveUci,
       winPctBefore: wBefore, winPctAfter: wAfter,
+      winPctSecond: before[1] ? winPct(lineCp(before[1])) : null,
     })
     cpLosses[mover].push(Math.min(1000, Math.max(0, cpBefore - cpAfterMover)))
     replay.move(mv.san)

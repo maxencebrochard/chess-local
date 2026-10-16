@@ -1,6 +1,7 @@
 // Écran de résumé du bilan, réplique de l'interface chess.com :
 // bulle coach, graphe, joueurs + précision (carte blanche / carte sombre),
 // tallies à pastilles, classement de la partie, verdicts par phase, CTA.
+import type { ReactNode } from 'react'
 import { CoachBubble } from './CoachBubble'
 import { ClassIcon } from './ClassIcon'
 import { Cta } from './Cta'
@@ -21,9 +22,10 @@ interface ReviewSummaryProps {
   onStart: () => void
   onClose: () => void
   onSelectMove: (index: number) => void
+  extra?: ReactNode // sections ajoutées en fin de résumé (Moments critiques)
 }
 
-export function ReviewSummary({ review, whiteName, blackName, playerColor, onStart, onClose, onSelectMove }: ReviewSummaryProps) {
+export function ReviewSummary({ review, whiteName, blackName, playerColor, onStart, onClose, onSelectMove, extra }: ReviewSummaryProps) {
   const phases = phaseReport(review)
   const mood = (playerColor === 'b' ? review.accuracyBlack : review.accuracyWhite) >= 75 ? 'happy' : 'worried'
 
@@ -81,6 +83,8 @@ export function ReviewSummary({ review, whiteName, blackName, playerColor, onSta
           <PhaseRow label="Milieu de partie" verdicts={phases.middlegame} />
           <PhaseRow label="Finale" verdicts={phases.endgame} />
         </div>
+
+        {extra}
       </div>
 
       <div className="border-t border-black/40 p-3">

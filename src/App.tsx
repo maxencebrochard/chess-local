@@ -13,6 +13,7 @@ import Learn from './pages/Learn'
 import OpeningTrainer from './pages/OpeningTrainer'
 import Endgames from './pages/Endgames'
 import PositionPlay from './pages/PositionPlay'
+import CriticalMoment from './pages/CriticalMoment'
 import Mates from './pages/Mates'
 import MissedAttacks from './pages/MissedAttacks'
 import MissedDefenses from './pages/MissedDefenses'
@@ -30,7 +31,7 @@ const NAV = [
   { to: '/jouer', icon: '♟', label: 'Jouer', match: [] as string[] },
   { to: '/puzzles', icon: '🧩', label: 'Puzzles', match: ['/rush'] },
   { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque', '/defenses-ratees', '/defense'] },
-  { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import', '/analyse/jouer'] },
+  { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import', '/analyse/jouer', '/moment-critique'] },
   { to: '/archive', icon: '📚', label: 'Archive', match: [] as string[] },
   { to: '/stats', icon: '📊', label: 'Stats', match: ['/insights'] },
 ]
@@ -145,6 +146,7 @@ function Shell() {
             <Route path="/defenses-ratees/:id" element={<MissedDefenses />} />
             <Route path="/analyse" element={<Analysis />} />
             <Route path="/analyse/jouer" element={<PositionPlay />} />
+            <Route path="/moment-critique" element={<CriticalMoment />} />
             <Route path="/finales" element={<Endgames />} />
             <Route path="/finales/:id" element={<Endgames />} />
             <Route path="/attaque" element={<Attack />} />

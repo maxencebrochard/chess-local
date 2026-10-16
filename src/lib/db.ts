@@ -63,7 +63,8 @@ export interface LearnSession {
   // attaque manquée), mats (une série de « Mats éclair »), revision (révision espacée), attack
   // (entraîneur d'attaque : itemId = id de la position, une ligne par tentative), defense
   // (entraîneur de défense : itemId = id de la position `def-<puzzle>`, une ligne par tentative) ou
-  // missed-defense (tentative sur une défense ratée, même contrat que missed-attack).
+  // missed-defense (tentative sur une défense ratée, même contrat que missed-attack), ou
+  // critical-moment (moments critiques du bilan, hors Elo).
   // course : itemId = `<slug>:<id>`, le slug désignant le cours (`finales:` pour le cours de finales,
   // `roque:` pour « Démolir le roque »), ex. `finales:mat-dame`, `roque:grec-schema`.
   // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
@@ -77,13 +78,16 @@ export interface LearnSession {
   // win), outcome parmi held | draw | win | mated | collapsed | resign | abandon, attackerElo =
   // Elo de l'attaquant (null = pleine force), assisted comme pour attack ; defenderElo absent.
   // mats : itemId = `<exercice>:<cadence>`, ex. `chrono-kq:30s`, `mate-2:3min`.
+  // critical-moment : fen = position du moment, itemId = `question:<attendu>:<choisi>` (réponse à
+  // « Plan, menace ou coup forcé ? », success = bonne réponse) ou `coup:<attendu>` (tentative notée
+  // par le keyMove de la position rejouée), attendu et choisi parmi `forced`, `threat`, `plan`.
   // revision : puzzles revus par la révision espacée, itemId = `puzzle:<id>` (sans Elo) ; les
   // fautes et variantes revues s'écrivent dans leurs domaines d'origine (`mistakes`, `opening-drill`).
   domain: string
   itemId: string
   success: 0 | 1
   ratingAfter: number | null
-  fen?: string // finales jouées jusqu'au bout, attaques manquées, défenses ratées, entraîneurs d'attaque et de défense : position de départ (champ non indexé)
+  fen?: string // finales jouées jusqu'au bout, attaques manquées, défenses ratées, entraîneurs d'attaque et de défense, moments critiques : position de départ (champ non indexé)
   score?: number // mats : mats réussis dans la série (champ non indexé)
   // Entraîneurs d'attaque et de défense (champs non indexés) : issue de la tentative (union des
   // issues des deux domaines, `draw` et `resign` et `abandon` communs), Elo du défenseur bridé

@@ -39,9 +39,11 @@ interface BoardProps {
   showAttackers?: boolean
   // Diagramme : aucun son quand la position change.
   silent?: boolean
+  // Coordonnées sur les cases (vrai par défaut) ; coupées sur les vignettes, où elles masquent les pièces.
+  notation?: boolean
 }
 
-export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares, showAttackers, silent, allowPremove = false }: BoardProps) {
+export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares, showAttackers, silent, allowPremove = false, notation = true }: BoardProps) {
   const { themeId, showLegalMoves, premoves, pieceSet: storedSet } = useSettings()
   // Un jeu inconnu (localStorage abîmé) retombe sur le défaut plutôt que sur des images 404.
   const pieceSet = isPieceSet(storedSet) ? storedSet : DEFAULT_PIECE_SET
@@ -323,6 +325,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
           // ces styles avec ses défauts, la couleur et la taille sont conservées).
           lightSquareNotationStyle: { pointerEvents: 'none' },
           darkSquareNotationStyle: { pointerEvents: 'none' },
+          showNotation: notation,
           dropSquareStyle: { boxShadow: drag?.touch ? 'none' : 'inset 0 0 0 3px rgba(255,255,255,0.65)' },
           // Décaler le dessin, pas le rectangle mesuré par dnd-kit : son recentrage annulerait le décalage.
           draggingPieceStyle: { transform: drag?.touch ? 'scale(1.7)' : 'scale(1.2)', '--piece-lift': drag?.touch ? `-${drag.lift / 1.7}px` : '0px', filter: 'drop-shadow(0 3px 2px rgb(0 0 0 / 0.18))' } as React.CSSProperties,
