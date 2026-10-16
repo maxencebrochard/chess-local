@@ -315,6 +315,7 @@ export function PositionGame(props: PositionGameProps) {
     if (count < DECISIVE_TURNS || c.history().length !== ply || boardEnd(c)) return
     genRef.current++
     setThinking(false)
+    setBusy(null)
     finish(collapsedEnd(player, { cp, mate }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hold, player, finish])
