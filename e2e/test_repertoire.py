@@ -192,13 +192,15 @@ def oracle(games, time_class="all"):
         d = cr["devs"].get(did)
         if d is None:
             d = cr["devs"][did] = {"id": did, "family": fam, "opening": name, "games": 0, "wins": 0, "draws": 0, "losses": 0,
-                                    "played": {}, "drops": [], "moves": [], "last": None, "lastDate": -1, "expected": [m["uci"] for m in book_moves(key)[:3]]}
+                                    "played": {}, "drops": [], "moves": [], "families": set(), "last": None, "lastDate": -1, "expected": [m["uci"] for m in book_moves(key)[:3]]}
         d["games"] += 1
         d[{"win": "wins", "draw": "draws", "loss": "losses"}[g["result"]]] += 1
         d["played"][moves[ply]] = d["played"].get(moves[ply], 0) + 1
         d["moves"].append(ply // 2 + 1)
+        d["families"].add(fam)
+        op.setdefault("exitMoves", []).append(ply // 2 + 1)
         if g["date"] > d["lastDate"]:
-            d["lastDate"], d["last"], d["prefix"], d["ply"] = g["date"], g["key"], moves[:ply], ply
+            d["lastDate"], d["last"], d["prefix"], d["ply"], d["family"], d["opening"] = g["date"], g["key"], moves[:ply], ply, fam, name
         dr = drop_of(g.get("review"), moves, ply)
         if dr is not None:
             d["drops"].append(dr)
@@ -225,8 +227,8 @@ def oracle(games, time_class="all"):
         cr["mine"] = sum(len(d["moves"]) for d in devs)
         cr["typicalMove"] = low_median([m for d in devs for m in d["moves"]])
         for fam, op in cr["openings"].items():
-            op["typicalMove"] = low_median([m for d in devs if d["family"] == fam for m in d["moves"]])
-            op["order"] = [d["id"] for d in devs if d["family"] == fam]
+            op["typicalMove"] = low_median(op.get("exitMoves", []))
+            op["order"] = [d["id"] for d in devs if fam in d["families"]]
         cr["openingOrder"] = [f for f, _ in sorted(cr["openings"].items(), key=lambda kv: (-kv[1]["games"], kv[0]))]
     return out
 
@@ -317,7 +319,12 @@ def bench_cases():
     short["review"] = dict(synthetic_review(parse(short["pgn"])[:5], {}))
     junk = [dict(rep_game(301), key="cas:illisible", pgn="1. e4 e5 2. Ke3 *"), dict(rep_game(301), key="cas:vide", pgn='[White "a"]\n\n*'),
             dict(rep_game(301), key="cas:doublon")] + [dict(rep_game(301), key="cas:doublon", result="win")]
+    # Même position non nommée par deux familles : Van Geet (1. Cc3 d5 2. e4) puis Scandinave (1. e4 d5 2. Cc3).
+    trans = [{"key": f"cas:transpo-{i}", "pgn": san_pgn(sans, "QaTr", USER, "0-1"), "playerColor": "b", "result": "win",
+              "timeClass": "blitz", "date": date, "opponent": "QaTr", "review": None}
+             for i, (sans, date) in enumerate([("Nc3 d5 e4 d4", 1781100000000), ("e4 d5 Nc3 d4", 1781200000000)])]
     return {
+        "transposition": {"games": trans, "tc": "all"},
         "fixture": {"games": allg, "tc": "all"},
         "fixture:blitz": {"games": allg, "tc": "blitz"},
         "fixture:bullet": {"games": allg, "tc": "bullet"},
@@ -455,6 +462,14 @@ def bench_checks(out, cases):
           sum(o["theirs"] for o in fam.values()) == 1 and sum(o["inBook"] for o in fam.values()) == 1 and sum(o["end"] for o in fam.values()) == 1,
           f"({[(k, o['theirs'], o['inBook'], o['end']) for k, o in fam.items()]})")
     check(f"{tag} partie « depuis une position » (en-tête FEN) ignorée et comptée", ch["skipped"] == 1, f"({ch['skipped']})")
+    tr = got["transposition"]["byColor"]["b"]
+    tdev, _ = find_dev(got["transposition"], "b", "e4 d5 Nc3")
+    tfam = {o["family"]: o for o in tr["openings"]}
+    check(f"{tag} transposition Van Geet / Scandinave : une sortie listée et coup typique 2 dans chaque famille, nom de la partie la plus récente",
+          tdev is not None and tdev["games"] == 2 and (tdev["family"], tdev["opening"]) == ("Scandinavian Defense", "Scandinavian Defense")
+          and sorted(tfam) == ["Scandinavian Defense", "Van Geet Opening"]
+          and all(o["typicalMove"] == 2 and [d["id"] for d in o["deviations"]] == [tdev["id"]] for o in tfam.values()),
+          f"({tdev and (tdev['family'], tdev['opening'])}, {[(k, o['typicalMove'], len(o['deviations'])) for k, o in tfam.items()]})")
     ab = got["abimes"]
     check(f"{tag} bilan d'une autre partie, win% illisible, départ non standard, bilan trop court : aucun coût",
           all(d["reviewed"] == 0 and d["verdict"] == "unknown" for c in "wb" for d in ab["byColor"][c]["deviations"]), "")
