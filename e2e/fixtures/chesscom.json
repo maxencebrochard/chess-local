@@ -1,5 +1,5 @@
 {
-  "_": "API chess.com simulée pour les E2E (voir mock_chesscom dans e2e/helpers.py). Parties et adversaires fictifs. Toute URL absente d'ici fait échouer la suite. Le pseudo insights_qa (parties avec horloges %clk, une défaite au temps, une gaffe sous pression) sert à la suite insights ; popeye232 est compté par archive_import et all_buttons : ne pas y toucher.",
+  "_": "API chess.com simulée pour les E2E (voir mock_chesscom dans e2e/helpers.py). Parties et adversaires fictifs. Toute URL absente d'ici fait échouer la suite. Le pseudo insights_qa (parties avec horloges %clk, une défaite au temps, une gaffe sous pression) sert à la suite insights ; popeye232 est compté par archive_import et all_buttons : ne pas y toucher. Le pseudo repertoire_qa (sorties de théorie : transposition, coup de sortie différent, sortie adverse, fin de théorie, partie finie dans la théorie, variante chess960, partie depuis une position) sert à la suite repertoire.",
   "routes": {
     "https://api.chess.com/pub/player/popeye232/games/archives": {
       "body": {
@@ -1027,6 +1027,267 @@
               "result": "checkmated"
             },
             "rules": "chess"
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/repertoire_qa/games/archives": {
+      "body": {
+        "archives": [
+          "https://api.chess.com/pub/player/repertoire_qa/games/2026/07",
+          "https://api.chess.com/pub/player/repertoire_qa/games/2026/08",
+          "https://api.chess.com/pub/player/repertoire_qa/games/2026/09"
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/repertoire_qa/games/2026/07": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/306",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"repertoire_qa\"]\n[Black \"QaKing\"]\n[Result \"0-1\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"600\"]\n[Link \"https://www.chess.com/game/live/306\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 0-1",
+            "time_control": "600",
+            "time_class": "rapid",
+            "end_time": 1783620000,
+            "rules": "chess",
+            "white": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "abandoned"
+            },
+            "black": {
+              "username": "QaKing",
+              "rating": 1000,
+              "result": "win"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/daily/307",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"repertoire_qa\"]\n[Black \"QaDaily\"]\n[Result \"1-0\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"1/86400\"]\n[Link \"https://www.chess.com/game/live/307\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. b4 d5 5. exd5 Nh6 6. h3 Be6 7. dxc6 Bg4 8.\nNh4 1-0",
+            "time_control": "1/86400",
+            "time_class": "daily",
+            "end_time": 1784052000,
+            "rules": "chess",
+            "white": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "win"
+            },
+            "black": {
+              "username": "QaDaily",
+              "rating": 1000,
+              "result": "resigned"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/311",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"QaEdge\"]\n[Black \"repertoire_qa\"]\n[Result \"1-0\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"60+1\"]\n[Link \"https://www.chess.com/game/live/311\"]\n\n1. e4 d5 2. exd5 Qxd5 3. Nc3 Qd8 4. d4 h6 5. Qd2 c6 6. b4 Qb6 7. Nge2 Rh7 8.\nBa3 Qxd4 1-0",
+            "time_control": "60+1",
+            "time_class": "bullet",
+            "end_time": 1785175200,
+            "rules": "chess",
+            "white": {
+              "username": "QaEdge",
+              "rating": 1000,
+              "result": "win"
+            },
+            "black": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "checkmated"
+            }
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/repertoire_qa/games/2026/08": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/305",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"repertoire_qa\"]\n[Black \"QaQueen\"]\n[Result \"1-0\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"300\"]\n[Link \"https://www.chess.com/game/live/305\"]\n\n1. d4 d5 2. Bf4 Nf6 3. b3 Kd7 4. Bd6 Ke8 5. e3 Nfd7 6. Bxc7 g6 1-0",
+            "time_control": "300",
+            "time_class": "blitz",
+            "end_time": 1785952800,
+            "rules": "chess",
+            "white": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "win"
+            },
+            "black": {
+              "username": "QaQueen",
+              "rating": 1000,
+              "result": "resigned"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/302",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"repertoire_qa\"]\n[Black \"QaPawn\"]\n[Result \"1-0\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"180+2\"]\n[Link \"https://www.chess.com/game/live/302\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Nf3 Bc5 4. h3 h6 5. Nh2 g6 6. Be2 Rb8 7. Ba6 f5 8. c3\n1-0",
+            "time_control": "180+2",
+            "time_class": "blitz",
+            "end_time": 1786557600,
+            "rules": "chess",
+            "white": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "win"
+            },
+            "black": {
+              "username": "QaPawn",
+              "rating": 1000,
+              "result": "resigned"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/309",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"QaRank\"]\n[Black \"repertoire_qa\"]\n[Result \"0-1\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"600+5\"]\n[Link \"https://www.chess.com/game/live/309\"]\n\n1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 Qb6 6. b4 d5 7. Rb1 Qc7 8. Bh6\nQd8 9. Qd3 Bd7 0-1",
+            "time_control": "600+5",
+            "time_class": "rapid",
+            "end_time": 1787248800,
+            "rules": "chess",
+            "white": {
+              "username": "QaRank",
+              "rating": 1000,
+              "result": "resigned"
+            },
+            "black": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "win"
+            }
+          }
+        ]
+      }
+    },
+    "https://api.chess.com/pub/player/repertoire_qa/games/2026/09": {
+      "body": {
+        "games": [
+          {
+            "url": "https://www.chess.com/game/live/304",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"repertoire_qa\"]\n[Black \"QaBishop\"]\n[Result \"0-1\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"60\"]\n[Link \"https://www.chess.com/game/live/304\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Qe2 b6 5. Bxf7+ Kxf7 6. Qd1 Bc5 7. a4 Nb8 8.\nh4 Qe8 9. c3 0-1",
+            "time_control": "60",
+            "time_class": "bullet",
+            "end_time": 1789754400,
+            "rules": "chess",
+            "white": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "timeout"
+            },
+            "black": {
+              "username": "QaBishop",
+              "rating": 1000,
+              "result": "win"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/301",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"repertoire_qa\"]\n[Black \"QaRook\"]\n[Result \"0-1\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"180\"]\n[Link \"https://www.chess.com/game/live/301\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. h3 Ke7 5. Rg1 Nh6 6. Kf1 Nd4 7. Nxe5 Nf3 8.\nBa6 0-1",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1789927200,
+            "rules": "chess",
+            "white": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "resigned"
+            },
+            "black": {
+              "username": "QaRook",
+              "rating": 1000,
+              "result": "win"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/303",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"repertoire_qa\"]\n[Black \"QaKnight\"]\n[Result \"1/2-1/2\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"180\"]\n[Link \"https://www.chess.com/game/live/303\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. a3 Rb8 5. Bxf7+ Kf8 6. O-O Bxa3 7. Nxe5 Qe8\n8. Bxg8 1/2-1/2",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1790100000,
+            "rules": "chess",
+            "white": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "agreed"
+            },
+            "black": {
+              "username": "QaKnight",
+              "rating": 1000,
+              "result": "agreed"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/308",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"QaFile\"]\n[Black \"repertoire_qa\"]\n[Result \"1-0\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"180\"]\n[Link \"https://www.chess.com/game/live/308\"]\n\n1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 Qb6 6. Nb1 Qc6 7. Nf3 Bh3 8.\nBa6 Bd7 9. Bh6 Qc5 1-0",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1790272800,
+            "rules": "chess",
+            "white": {
+              "username": "QaFile",
+              "rating": 1000,
+              "result": "win"
+            },
+            "black": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "resigned"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/310",
+            "pgn": "[Event \"Live Chess\"]\n[Site \"Chess.com\"]\n[White \"QaDiag\"]\n[Black \"repertoire_qa\"]\n[Result \"1/2-1/2\"]\n[WhiteElo \"1010\"]\n[BlackElo \"1000\"]\n[TimeControl \"180\"]\n[Link \"https://www.chess.com/game/live/310\"]\n\n1. e4 e6 2. Qf3 f6 3. b3 c5 4. Bc4 Nc6 5. Ke2 Ke7 6. g4 1/2-1/2",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1790359200,
+            "rules": "chess",
+            "white": {
+              "username": "QaDiag",
+              "rating": 1000,
+              "result": "repetition"
+            },
+            "black": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "repetition"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/312",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1790445600,
+            "rules": "chess960",
+            "pgn": "[Event \"Live Chess 960\"]\n[White \"repertoire_qa\"]\n[Black \"Qa960\"]\n[Result \"1-0\"]\n[SetUp \"1\"]\n[FEN \"bbrknrqn/pppppppp/8/8/8/8/PPPPPPPP/BBRKNRQN w KQkq - 0 1\"]\n\n1. e4 e5 1-0",
+            "white": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "win"
+            },
+            "black": {
+              "username": "Qa960",
+              "rating": 1000,
+              "result": "resigned"
+            }
+          },
+          {
+            "url": "https://www.chess.com/game/live/313",
+            "time_control": "180",
+            "time_class": "blitz",
+            "end_time": 1790532000,
+            "rules": "chess",
+            "pgn": "[Event \"Live Chess\"]\n[White \"repertoire_qa\"]\n[Black \"QaSetup\"]\n[Result \"1-0\"]\n[SetUp \"1\"]\n[FEN \"4k3/8/8/8/8/8/4P3/4K3 w - - 0 1\"]\n\n1. e4 Kd7 2. e5 Ke6 1-0",
+            "white": {
+              "username": "repertoire_qa",
+              "rating": 1010,
+              "result": "win"
+            },
+            "black": {
+              "username": "QaSetup",
+              "rating": 1000,
+              "result": "resigned"
+            }
           }
         ]
       }

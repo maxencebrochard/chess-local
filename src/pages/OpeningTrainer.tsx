@@ -4,8 +4,9 @@
 // navigateur, rechargement et retour depuis l'analyse retrouvent la même fiche.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Chess } from 'chess.js'
+import { MoveText } from '../components/MoveText'
 import { OpeningDrill, type DrillItem } from '../components/OpeningDrill'
+import { Segmented } from '../components/Segmented'
 import { Engine } from '../lib/engine'
 import { openingFr } from '../lib/openingNames'
 import {
@@ -13,7 +14,6 @@ import {
   popularFamilies, recordDrill, searchFamilies, uciMoves, variantStatus,
   type Color, type DrillMode, type Family, type Progress, type Variant, type VariantStatus,
 } from '../lib/openingTrainer'
-import { figurine } from '../lib/review'
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 const LENGTHS = [
@@ -354,47 +354,6 @@ export default function OpeningTrainer() {
       )}
     </div>
   )
-}
-
-function Segmented<T extends string>({ label, options, value, onChange }: {
-  label: string
-  options: { id: T; label: string }[]
-  value: T
-  onChange: (v: T) => void
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-[4.5rem] shrink-0 text-sm font-semibold text-neutral-400">{label}</span>
-      <div role="group" aria-label={label} className="flex min-w-0 flex-1 gap-1 rounded-lg bg-surface-2 p-1">
-        {options.map((o) => (
-          <button
-            key={o.id}
-            onClick={() => onChange(o.id)}
-            aria-pressed={value === o.id}
-            className={`flex-1 cursor-pointer rounded-md px-1 py-1.5 text-[13px] font-bold whitespace-nowrap ${value === o.id ? 'bg-surface-3 text-white shadow' : 'text-neutral-400 hover:text-white'}`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// Coups en notation figurine : « 1.e4 e5 2.♘f3 ♘c6 3.d4 ».
-function MoveText({ moves, from = 0 }: { moves: string[]; from?: number }) {
-  const text = useMemo(() => {
-    const c = new Chess()
-    const parts: string[] = []
-    moves.forEach((m, i) => {
-      const san = c.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] }).san
-      if (i < from) return
-      const fig = figurine(san, i % 2 === 0 ? 'w' : 'b')
-      parts.push(i % 2 === 0 ? `${i / 2 + 1}.${fig}` : i === from ? `${Math.ceil(i / 2)}…${fig}` : fig)
-    })
-    return parts.join(' ')
-  }, [moves, from])
-  return <>{text}</>
 }
 
 function VariantRow({ variant, status, onClick }: { variant: Variant; status: VariantStatus; onClick: () => void }) {
