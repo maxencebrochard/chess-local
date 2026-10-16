@@ -82,6 +82,7 @@ export interface PositionGameProps {
   onReplace?: (replaced: StoredGame) => void
   back?: unknown // gardé avec la partie persistée (partie libre)
   showAttackers?: boolean // calque « Compte les attaquants » (cadres sur l'échiquier + légende)
+  attackersPrinciple?: string // repère de la légende du calque ; absent : celui de l'attaquant
   objectiveLabel?: string // titre du bandeau quand il n'y a pas d'objectif (défaut « Partie libre »)
   keyMove?: KeyMove
   opponent?: Opponent // absent : Stockfish à pleine force, sans option
@@ -742,7 +743,7 @@ export function PositionGame(props: PositionGameProps) {
             />
           </div>
         </div>
-        {props.showAttackers && <AttackLegend fen={viewFen} className="px-3 pt-1" compact />}
+        {props.showAttackers && <AttackLegend fen={viewFen} className="px-3 pt-1" compact principle={props.attackersPrinciple} />}
         <div className="min-h-10">
           <MoveStrip
             sans={history.map((m) => m.san)}
