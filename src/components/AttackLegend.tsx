@@ -8,7 +8,8 @@ export const ATTACK_RED = '#ff7769'
 
 // `compact` : le principe s'efface sous 700 px de haut (exercice : l'échiquier doit rester au-dessus
 // de la barre d'actions) ; il reste dans le `title` des puces et dans la leçon.
-export function AttackLegend({ fen, className = '', compact = false }: { fen: string; className?: string; compact?: boolean }) {
+// `principle` : repère affiché, celui de l'attaquant par défaut.
+export function AttackLegend({ fen, className = '', compact = false, principle = ATTACK_PRINCIPLE }: { fen: string; className?: string; compact?: boolean; principle?: string }) {
   const counts = useMemo(() => attackCounts(fen), [fen])
   return (
     <div data-testid="attack-legend" className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-400 ${className}`}>
@@ -36,7 +37,7 @@ export function AttackLegend({ fen, className = '', compact = false }: { fen: st
         )
       })}
       <span className={`min-w-0 ${compact ? '[@media(max-height:700px)]:hidden' : ''}`}>
-        Repère : {ATTACK_PRINCIPLE.charAt(0).toLowerCase() + ATTACK_PRINCIPLE.slice(1)}
+        Repère : {principle.charAt(0).toLowerCase() + principle.slice(1)}
       </span>
     </div>
   )

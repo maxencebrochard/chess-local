@@ -9,7 +9,7 @@ import { PositionGame } from '../components/PositionGame'
 import { recordReplaced } from '../lib/attempts'
 import { db, type Mistake } from '../lib/db'
 import {
-  countsText, defenseSummary, DEFENSE_KING_META, diagnoseMissedDefenses, recordMissedDefense,
+  countsText, defenseSummary, DEFENSE_KING_META, DEFENSE_PRINCIPLE, diagnoseMissedDefenses, recordMissedDefense,
   solvedMissedDefenses, type DefenseDiagnostic, type MissedDefenseItem,
 } from '../lib/kingAttack'
 import { inProgressKey } from '../lib/positionGame'
@@ -172,6 +172,7 @@ function MissedDefensePlay({ id }: { id: number }) {
       returnTo={`/defenses-ratees/${row.id}`}
       returnLabel="Retour à la défense"
       showAttackers
+      attackersPrinciple={DEFENSE_PRINCIPLE}
       keyMove={{
         uci: row.bestUci,
         san: item.bestSan,

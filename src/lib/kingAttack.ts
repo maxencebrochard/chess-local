@@ -67,6 +67,8 @@ export function attackCounts(fen: string): Record<Color, ZoneCounts> {
 
 // Principe du calque, affiché tel quel sous l'échiquier : un repère, pas une règle absolue.
 export const ATTACK_PRINCIPLE = 'Attaque quand tes attaquants dépassent les défenseurs.'
+// Le même repère vu du camp attaqué (exercice « Mes défenses ratées »).
+export const DEFENSE_PRINCIPLE = 'Neutralise la pièce la plus dangereuse ou rapproche un défenseur.'
 
 // ------------------------------------------------------------------ attaque manquée
 

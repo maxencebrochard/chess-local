@@ -833,6 +833,9 @@ def part_missed(p, browser):
         check("[ratées] objectif « trouve la défense »", page.locator("[data-testid='objective']").inner_text().startswith("Objectif : trouve la défense"))
         check("[ratées] calque des comptes forcé", page.locator("[data-testid=king-zone]").count() == 2)
         check("[ratées] Noirs en bas (camp du joueur)", white_at_bottom(page) is False)
+        legend = page.locator("[data-testid=attack-legend]").inner_text()
+        check("[ratées] repère de la légende vu du défenseur", "Repère : neutralise la pièce la plus dangereuse ou rapproche un défenseur." in legend
+              and "Attaque quand" not in legend and "attaque quand" not in legend, f"({legend!r})")
         shot(page, "defense_ratee_exercice_852")
         tap_move(page, "d8", "g5")
         if not ck.appears("[ratées] le coup du bilan est reconnu", page, "[data-testid=objective-subline]:has-text(\"C'est le coup du bilan : tiens bon !\")", timeout=8000):
