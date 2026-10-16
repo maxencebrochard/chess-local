@@ -97,18 +97,34 @@ def exercise_drags(p, browser):
         page.goto(f"{BASE}/#/apprendre")
         page.locator("main button", has_text=FINALES).tap()
         page.get_by_text("Voir le cours complet", exact=True).tap()
-        if ck.appears("[diagramme centre] cours complet", page, "div.fixed [data-square='d4']"):
+        if ck.appears("[diagramme centre] cours complet", page, "div.fixed [data-board] [data-piece]"):
             panel = page.locator("div.fixed .overflow-y-auto")
-            ck.check("[diagramme centre] panneau défilable", panel.evaluate("el => el.scrollHeight > el.clientHeight"))
-            square = page.locator("div.fixed [data-square='d4']")
-            square.tap(trial=True)
-            box = square.bounding_box()
-            x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
-            before = panel.evaluate("el => el.scrollTop")
-            touch_drag(page, x, y, x, y - 120)
-            event = last_start(page)
-            ck.check("[diagramme centre] contact non annulé", event and event["trusted"] and event["cancelable"] and not event["prevented"], str(event))
-            ck.check("[diagramme centre] défilement vertical", panel.evaluate("el => el.scrollTop") > before)
+            ck.check("[diagramme centre] panneau défilable", panel.evaluate("el => el.scrollHeight - el.clientHeight >= 120"))
+            # Une case vide et une pièce, colonnes c à f du premier diagramme : loin des bords.
+            # react-chessboard pose touch-action: none sur ses pièces, le contact sur une pièce
+            # est le cas qui a déjà bloqué le défilement.
+            for kind, with_piece in (("case vide", False), ("pièce", True)):
+                square = page.evaluate("""withPiece => {
+                  const board = document.querySelector('div.fixed [data-board]');
+                  return [...board.querySelectorAll('[data-square]')].find(s => 'cdef'.includes(s.dataset.square[0])
+                    && !!s.querySelector('[data-piece]') === withPiece)?.dataset.square ?? null;
+                }""", with_piece)
+                if not ck.check(f"[diagramme centre {kind}] case trouvée", square is not None, str(square)):
+                    continue
+                panel.evaluate("el => { el.scrollTop = 0 }")
+                target = page.locator(f"div.fixed [data-board] [data-square='{square}']").first
+                target.tap(trial=True)
+                box = target.bounding_box()
+                x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+                before = panel.evaluate("el => el.scrollTop")
+                page.evaluate("window.__touchStarts = []")
+                touch_drag(page, x, y, x, y - 120)
+                event = last_start(page)
+                ck.check(f"[diagramme centre {kind}] contact non annulé", event and event["trusted"] and event["cancelable"]
+                         and not event["prevented"] and event["square"] == square and bool(event["piece"]) == with_piece, str(event))
+                # Le geste de 120 px défile d'environ 105 px (seuil de démarrage du défilement).
+                moved = panel.evaluate("el => el.scrollTop") - before
+                ck.check(f"[diagramme centre {kind}] défilement vertical", moved >= 80, f"{moved} px")
     ctx.close()
 
 
