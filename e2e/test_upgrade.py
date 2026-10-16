@@ -11,7 +11,7 @@ son propre port ; chaque check est préfixé du tag du build joué.
 Volet 1, montée de version sur place :
   l'ANCIEN build est servi sous /chess-local/ ; dans un profil navigateur PERSISTANT, de vraies
   données sont créées PAR L'INTERFACE (puzzles, Rush, partie vs Noa, bilan, Apprendre, thème ;
-  pour le 15 octobre seulement : cache Insights et réglages pièces, volume, attaquants) ;
+  depuis le 15 octobre : cache Insights et réglages pièces, volume, attaquants) ;
   instantané brut de l'IndexedDB et des réglages ; puis le NOUVEAU build (E2E_DIST) remplace
   l'ancien sur le MÊME port, le même profil rouvre l'app, le service worker se met à jour, et
   tout doit être là : lignes identiques table par table, réglages identiques, chiffres AFFICHÉS
@@ -54,11 +54,15 @@ from run import HOST, ROOT, SUBPATH, free_port, port_is_listening
 #   deployed-2026-10-06 : même schéma, archive en « contre Noa », confirmation d'abandon.
 #   deployed-2026-10-15 : version installée sur l'iPhone de Max ; version(3), cache `reviews`
 #                         d'Insights, réglages pieceSet/soundVolume/showAttackers.
-# On conserve les deux précédents : des appareils peuvent encore les porter.
+#   deployed-2026-10-16 : jeu façon chess.com (glissé, sons, prémouvements, pièces Wikimedia),
+#                         réglage premoves ; même schéma version(3).
+# On conserve les précédents : des appareils peuvent encore les porter.
 OLD_BUILDS = (
     {"tag": "deployed-2026-07-20", "sha": "388d3edae6fd6ec152ccca70b0573d242d612090", "labels": {"archive_bot": "vs Noa"}},
     {"tag": "deployed-2026-10-06", "sha": "54bf85a3656123490bec3aa87108a2e18a50f8bd", "labels": {"archive_bot": "contre Noa"}},
     {"tag": "deployed-2026-10-15", "sha": "de63ea79eea4f20d6596c841f8c9579929f602a6",
+     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
+    {"tag": "deployed-2026-10-16", "sha": "9fb6f489aed18591031a7d664050f86cb4365323",
      "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
 )
 DB_NAME = "chess-local"
@@ -710,7 +714,7 @@ def insights_phase(page, base):
 
 
 def recent_settings_phase(page, base):
-    """Valeurs non défaut choisies par l'interface du build du 15 octobre."""
+    """Valeurs non défaut choisies par l'interface des builds depuis le 15 octobre."""
     page.goto(f"{base}/#/stats")
     page.get_by_role("radio", name="Chessnut", exact=True).click()
     page.get_by_role("switch", name="Sons", exact=True).click()
