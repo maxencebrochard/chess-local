@@ -9,7 +9,7 @@ import { PositionGame } from '../components/PositionGame'
 import { recordReplaced } from '../lib/attempts'
 import { db, type Mistake } from '../lib/db'
 import {
-  ATTACK_PRINCIPLE, countsText, defenseSummary, DEFENSE_KING_META, diagnoseMissedDefenses, recordMissedDefense,
+  countsText, defenseSummary, DEFENSE_KING_META, diagnoseMissedDefenses, recordMissedDefense,
   solvedMissedDefenses, type DefenseDiagnostic, type MissedDefenseItem,
 } from '../lib/kingAttack'
 import { inProgressKey } from '../lib/positionGame'
@@ -157,7 +157,7 @@ function MissedDefensePlay({ id }: { id: number }) {
   const row = item.mistake
   const restore = !!(location.state as { restore?: boolean } | null)?.restore
   const meta = DEFENSE_KING_META[item.where]
-  const lesson = `${meta.lesson} ${ATTACK_PRINCIPLE} Ici, il avait ${countsText(item.attackers, item.defenders)} autour de ton roi. Tu avais joué ${item.playedFig}.`
+  const lesson = `${meta.lesson} Ici, il avait ${countsText(item.attackers, item.defenders)} autour de ton roi. Tu avais joué ${item.playedFig}.`
 
   return (
     <PositionGame
