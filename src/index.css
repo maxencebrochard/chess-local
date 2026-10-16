@@ -58,6 +58,13 @@ body {
   background: color-mix(in srgb, var(--color-surface-3) 25%, transparent);
 }
 
+/* react-chessboard pose touch-action: none en ligne sur chaque pièce, même sans glissé possible.
+   Sur un échiquier non jouable, une pièce se comporte comme une case vide : un diagramme de cours
+   reste défilable depuis n'importe quelle case. Dans un .boardbox, son touch-action: none l'emporte. */
+.board-still [data-piece] {
+  touch-action: auto !important;
+}
+
 .board-piece {
   position: relative;
   width: 100%;

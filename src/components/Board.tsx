@@ -264,7 +264,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   const promoColor = pendingPromotion ? chess.turn() : 'w'
 
   return (
-    <div ref={root} tabIndex={-1} className="relative select-none" data-board=""
+    <div ref={root} tabIndex={-1} className={`relative select-none ${interactive || preparing ? '' : 'board-still'}`} data-board=""
       onPointerDownCapture={(e) => {
         root.current?.focus({ preventScroll: true })
         touchInput.current = e.pointerType === 'touch'
