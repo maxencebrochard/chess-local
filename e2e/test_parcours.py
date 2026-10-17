@@ -176,7 +176,16 @@ def part_data():
         d["levels"][0]["steps"][0]["title"] += " — vite"
 
     def m_read(d):
-        d["levels"][0]["steps"][0]["read"] = "fork"
+        d["levels"][0]["steps"][0]["read"] = "inconnu"
+
+    def m_no_lesson(d):
+        del d["levels"][0]["steps"][0]["lesson"]
+
+    def m_no_read(d):
+        del d["levels"][0]["steps"][1]["read"]
+
+    def m_no_exercise(d):
+        del d["levels"][0]["steps"][0]["exercise"]
 
     def m_order(d):
         d["levels"][0], d["levels"][1] = d["levels"][1], d["levels"][0]
@@ -199,9 +208,9 @@ def part_data():
 
     muts = [
         (m_lesson, "leçon inconnue"), (m_rename, "supprimée ou renommée"), (m_theme, "thème inconnu"), (m_band, "loin de l'Elo"),
-        (m_pass, "seuil"), (m_dash, "tiret"), (m_read, "read sans série notée"), (m_order, "ordre figé"),
+        (m_pass, "seuil"), (m_dash, "tiret"), (m_read, "cours détaillé inconnu"), (m_order, "ordre figé"),
         (m_course_order, "avant une leçon qui la suit"), (m_family, "famille d'ouverture inconnue"), (m_endgame, "finale inconnue"),
-        (m_placement, "réservé"),
+        (m_placement, "réservé"), (m_no_lesson, "leçon absente"), (m_no_read, "leçon absente"), (m_no_exercise, "exercice absent"),
     ]
     with tempfile.TemporaryDirectory() as d:
         for fn, expect in muts:
@@ -241,9 +250,11 @@ ok('neuf : première étape courante', st.current?.step.id === ids[0])
 ok('neuf : deuxième verrouillée', !st.steps[1].unlocked)
 ok('neuf : 0 fait', st.done === 0 && st.total === ids.length)
 st = m.computePath(facts({ lessons: ['bases:valeur-des-pieces'] }))
-ok('leçon faite : étape 1 validée, étape 2 courante et jouable', st.steps[0].done && st.current?.index === 1 && st.steps[1].unlocked)
+ok('leçon faite : crédit conservé, exercice requis', st.steps[0].lessonDone && !st.steps[0].done && st.current?.index === 0 && !st.steps[1].unlocked)
+st = m.computePath(facts({ lessons: ['bases:valeur-des-pieces'], passed: [ids[0]] }))
+ok('leçon et exercice : étape 1 validée, étape 2 courante', st.steps[0].done && st.current?.index === 1 && st.steps[1].unlocked)
 ok('leçon faite : étape 3 encore verrouillée', !st.steps[2].unlocked)
-st = m.computePath(facts({ lessons: ['finales:mat-deux-tours'] }))
+st = m.computePath(facts({ lessons: ['finales:mat-deux-tours'], endgames: ['rr-mate'] }))
 const i2t = ids.indexOf('mat-deux-tours')
 ok('îlot : étape validée hors ordre, la suivante se débloque', st.steps[i2t].done && st.steps[i2t + 1].unlocked)
 ok("îlot : l'étape courante reste la première", st.current?.index === 0)
@@ -274,6 +285,13 @@ ok('placement [T,F,F] : arrêt, 0 niveau', m.placementOver([T, F, F]) && m.place
 ok('placement [F,F] : arrêt dès le 2e raté', m.placementOver([F, F]))
 ok('placement [T,T,T,F,F] : arrêt, 1 niveau', m.placementOver([T, T, T, F, F]) && m.placementLevels([T, T, T, F, F]) === 1)
 ok('placement 12 réussis : 4 niveaux, fini', m.placementOver(Array(12).fill(T)) && m.placementLevels(Array(12).fill(T)) === 4)
+for (const step of m.STEPS) {
+  const lesson = step.lesson ? [step.lesson] : []
+  const onlyLesson = m.computePath(facts({ lessons: lesson })).steps.find((s) => s.step.id === step.id)
+  ok(`${step.id} : leçon seule insuffisante`, !onlyLesson.done)
+  const completed = m.computePath(facts({ lessons: lesson, passed: [step.id] })).steps.find((s) => s.step.id === step.id)
+  ok(`${step.id} : leçon et exercice suffisants`, completed.done)
+}
 console.log(JSON.stringify(out))
 """
 
@@ -414,10 +432,16 @@ def part_fresh_and_lesson(p, browser):
             shot(page, "parcours_lecon_bilan_852")
             check("[étape 1] bilan : ni « Leçon suivante » ni « Sommaire »", page.get_by_role("button", name="Leçon suivante").count() == 0 and page.get_by_role("button", name="Sommaire").count() == 0)
             page.get_by_role("button", name="Retour au parcours").click()
-            ck.appears("[étape 1] étape validée au retour", page, "[data-testid=step-validated]", timeout=8000)
+            ck.appears("[étape 1] exercice disponible au retour", page, "[data-testid=part-exercise]", timeout=8000)
+            check("[étape 1] Solution seule ne valide pas", page.locator("[data-testid=step-validated]").count() == 0)
             check("[étape 1] retour sur la page d'étape", page.evaluate("() => location.hash") == f"#/apprendre/parcours/{first['id']}")
             check("[étape 1] ligne `course` écrite", any(r["itemId"] == first["lesson"] for r in sessions(page, "course")))
             check("[étape 1] aucune ligne `path` pour une leçon seule", len(sessions(page, "path")) == 0)
+            page.locator("[data-testid=part-exercise] button", has_text="Commencer").click()
+            for i in range(first["exercise"]["count"]):
+                check(f"[étape 1] validation {i + 1}", solve_current(page, True, "[étape 1]") is True)
+                next_item(page)
+            ck.appears("[étape 1] série validée", page, "[data-run-end=passed]", timeout=8000)
             shot(page, "parcours_etape_validee_852")
             page.get_by_role("button", name="Étape suivante").click()
             page.wait_for_timeout(400)
@@ -433,6 +457,38 @@ def part_fresh_and_lesson(p, browser):
     part_puzzle_step(page)
     part_reset(page)
     ctx.close()
+
+
+
+def block_path_writes(page):
+    page.evaluate("""() => {
+      if (!window.originalAdd) window.originalAdd = IDBObjectStore.prototype.add
+      IDBObjectStore.prototype.add = function(value, ...args) {
+        if (value.domain === 'path') throw new DOMException('Disque plein', 'QuotaExceededError')
+        return window.originalAdd.call(this, value, ...args)
+      }
+    }""")
+
+
+def retry_save(page, label, key, end_selector, reload=False):
+    if not ck.appears(f"{label} erreur récupérable", page, "[role=alert]", timeout=8000):
+        return
+    check(f"{label} aucun résultat annoncé avant sauvegarde", page.locator(end_selector).count() == 0)
+    saved = page.evaluate("key => JSON.parse(sessionStorage.getItem(key))", key)
+    check(f"{label} résultat conservé", saved is not None)
+    before = sessions(page, "path")
+    page.get_by_role("button", name="Réessayer l’enregistrement").click()
+    ck.appears(f"{label} nouvel échec encore récupérable", page, "[role=alert]", timeout=8000)
+    check(f"{label} aucune écriture partielle", sessions(page, "path") == before)
+    if reload:
+        page.reload()
+        ck.appears(f"{label} résultat repris après rechargement", page, "button:has-text('Enregistrer le résultat')", timeout=10000)
+        page.get_by_role("button", name="Enregistrer le résultat", exact=True).click()
+    else:
+        page.evaluate("() => { IDBObjectStore.prototype.add = window.originalAdd }")
+        page.get_by_role("button", name="Réessayer l’enregistrement").click()
+    ck.appears(f"{label} résultat enregistré", page, end_selector, timeout=10000)
+    check(f"{label} une seule écriture après réessai", len(sessions(page, "path")) == len(before) + 1)
 
 
 def part_puzzle_step(page):
@@ -465,7 +521,7 @@ def part_puzzle_step(page):
         shot(page, "parcours_serie_ratee_852")
         txt = page.locator("[data-run-end]").inner_text()
         check("[série 1] score 2/5 et seuil annoncé", "2/5" in txt and f"Il en faut {ex['pass']} sur {ex['count']}" in txt, f"({txt[:200]!r})")
-        rows = sessions(page, "path")
+        rows = [r for r in sessions(page, "path") if r["itemId"] == step["id"]]
         check("[série 1] ligne `path` : échec, score 2", len(rows) == 1 and rows[0]["itemId"] == step["id"] and rows[0]["success"] == 0 and rows[0]["score"] == 2, f"({rows})")
         check("[série 1] série effacée de sessionStorage", page.evaluate("() => sessionStorage.getItem('path-session-v1')") is None)
         page.get_by_role("button", name="Recommencer").click()
@@ -474,11 +530,14 @@ def part_puzzle_step(page):
     check("[série 2] repart du premier puzzle", run_idx(page) == 0)
     for i, good in enumerate([True, True, False, True, True]):
         check(f"[série 2] puzzle {i + 1}", solve_current(page, good, f"[série 2, puzzle {i + 1}]") == good)
+        if i == ex["count"] - 1:
+            block_path_writes(page)
         next_item(page)
+    retry_save(page, "[série 2]", "path-session-v1", "[data-run-end]", reload=True)
     if ck.appears("[série 2] écran de fin « validée »", page, "[data-run-end='passed']", timeout=8000):
         shot(page, "parcours_serie_validee_852")
         check("[série 2] 2 étoiles", page.locator("[data-run-end] [data-stars='2']").count() == 1)
-        rows = sessions(page, "path")
+        rows = [r for r in sessions(page, "path") if r["itemId"] == step["id"]]
         check("[série 2] seconde ligne `path` : réussite, score 4", len(rows) == 2 and rows[1]["success"] == 1 and rows[1]["score"] == 4, f"({rows})")
         page.get_by_role("button", name="Étape suivante").click()
         page.wait_for_timeout(400)
@@ -541,7 +600,10 @@ def part_placement_and_existing(p, browser):
         check(f"[placement] puzzle {i + 1}", solve_current(page, good, f"[placement {i + 1}]") == good)
         if i == 3:
             check("[placement] 4e puzzle : niveau Intermédiaire", page.locator("[data-run] p", has_text="Niveau Intermédiaire").count() == 1)
+        if i == 4:
+            block_path_writes(page)
         next_item(page)
+    retry_save(page, "[placement]", "path-session-v1", "[data-placement-end]")
     if ck.appears("[placement] fin du test après le 2e raté du niveau 2", page, "[data-placement-end='1']", timeout=8000):
         shot(page, "parcours_placement_fin_852")
         check("[placement] niveau de départ Intermédiaire", "Niveau de départ : Intermédiaire" in page.locator("[data-placement-end]").inner_text())
@@ -561,7 +623,7 @@ def part_placement_and_existing(p, browser):
     # Un second test moins bon ne fait rien perdre.
     seed_sessions(page, [row("path", "placement", ok=False, score=0)])
     # Étapes validées par l'existant : leçons du cours de finales et finale réussie dans Apprendre.
-    seed_sessions(page, [row("course", "finales:mat-deux-tours"), row("course", "finales:mat-dame"), row("endgame", "kq-mate"), row("course", "finales:mat-tour")])
+    seed_sessions(page, [row("course", "finales:mat-deux-tours"), row("endgame", "rr-mate"), row("course", "finales:mat-dame"), row("endgame", "kq-mate"), row("course", "finales:mat-tour")])
     page.reload()
     map_ready(page, "[existant]")
     check("[existant] placement conservé malgré un test à 0", status(page, first2) == "current")
@@ -647,8 +709,11 @@ def part_opening(page):
         btn = page.locator("[data-result] button", has_text="Voir le résultat" if n + 1 == ex["count"] else "Suivant")
         if not check(f"[ouverture] drill {n + 1} : bouton suivant", btn.count() > 0):
             return
+        if n == ex["count"] - 1:
+            block_path_writes(page)
         btn.first.click()
         page.wait_for_timeout(400)
+    retry_save(page, "[ouverture]", "path-session-v1", "[data-run-end]", reload=True)
     if ck.appears("[ouverture] série validée", page, "[data-run-end='passed']", timeout=8000):
         check("[ouverture] 3 étoiles", page.locator("[data-run-end] [data-stars='3']").count() == 1)
         rows = [r for r in sessions(page, "path") if r["itemId"] == step["id"]]
@@ -657,10 +722,48 @@ def part_opening(page):
         check("[ouverture] chaque variante compte aussi dans l'entraîneur", len(drills) == ex["count"] and all(r["itemId"].startswith("full:w:") and r["success"] == 1 for r in drills), f"({len(drills)})")
 
 
+def part_endgame_save(p, browser):
+    for first_failure in (False, True):
+        ctx, page = context(p, browser)
+        seed_sessions(page, [row("path", "placement", score=1), row("course", "finales:mat-dame")])
+        go(page, "/apprendre/parcours/mat-dame")
+        ck.appears("[sauvegarde finale] étape ouverte", page, "[data-testid=part-exercise]", timeout=8000)
+        page.locator("[data-testid=part-exercise] button", has_text="Commencer").click()
+        ck.appears("[sauvegarde finale] leçon ouverte", page, "button:has-text(\"C'est parti\")", timeout=8000)
+        page.evaluate("""() => {
+          const saved = JSON.parse(sessionStorage.getItem('learn-session-v1'))
+          saved.session.items[0].endgame.fen = '7k/5K2/8/6Q1/8/8/8/8 w - - 0 1'
+          sessionStorage.setItem('learn-session-v1', JSON.stringify(saved))
+          history.replaceState({...history.state, usr: {restore: true}}, '')
+        }""")
+        page.reload()
+        ck.appears("[sauvegarde finale] position restaurée", page, "button:has-text(\"C'est parti\")", timeout=8000)
+        page.get_by_role("button", name="C'est parti", exact=True).click()
+        if first_failure:
+            tap_move(page, "g5", "g6")
+            ck.appears("[sauvegarde finale] premier essai : pat", page, "text=✗ Raté", timeout=8000)
+            page.get_by_role("button", name="Réessayer").click()
+        before = sessions(page, "endgame")
+        block_path_writes(page)
+        tap_move(page, "g5", "g7")
+        ck.appears("[sauvegarde finale] écriture refusée", page, "[role=alert]", timeout=8000)
+        check("[sauvegarde finale] note annulée avec la transaction", sessions(page, "endgame") == before)
+        retry_save(page, "[sauvegarde finale]", "learn-session-v1", "text=✓ Réussi !", reload=first_failure)
+        rows = sessions(page, "endgame")
+        check("[sauvegarde finale] seule la première tentative compte pour l’Elo", len(rows) == 1 and rows[0]["success"] == (0 if first_failure else 1))
+        if first_failure:
+            check("[sauvegarde finale] réessai sans nouvelle note", rows == before)
+        else:
+            check("[sauvegarde finale] position finale conservée après écriture", page.locator("[data-square=g7] [data-piece=wQ]").count() == 1)
+        go(page, "/apprendre/parcours/mat-dame")
+        ck.appears("[sauvegarde finale] validation persistée", page, "[data-testid=step-validated]", timeout=8000)
+        ctx.close()
+
+
 def part_layouts(p, browser):
     for name, kw in (("660", {"standalone": False}), ("1440", {"desktop": True})):
         ctx, page = context(p, browser, **kw)
-        seed_sessions(page, [row("course", STEPS[0]["lesson"])])  # étape 2 débloquée
+        seed_sessions(page, [row("course", STEPS[0]["lesson"]), row("path", STEPS[0]["id"], score=5)])  # étape 2 débloquée
         if name == "660":
             go(page, "/")
             ck.appears("[660] accueil", page, "[data-testid=home-path]", timeout=10000)
@@ -714,6 +817,7 @@ def suite(p):
         ctx.close()
         part_fresh_and_lesson(p, browser)
         part_placement_and_existing(p, browser)
+        part_endgame_save(p, browser)
         part_layouts(p, browser)
     finally:
         browser.close()

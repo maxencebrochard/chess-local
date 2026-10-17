@@ -358,13 +358,9 @@ function StepPage({ step }: { step: PathStep }) {
     if (!isScored(ex)) return
     const score = results.filter(Boolean).length
     const passed = score >= ex.pass
+    await recordPathRun(step.id, score, passed)
     clearRun()
     setEnded({ score, passed })
-    try {
-      await recordPathRun(step.id, score, passed)
-    } catch (e) {
-      console.error('[parcours] résultat non enregistré', e)
-    }
     await reload()
   }
 
@@ -491,7 +487,7 @@ function StepPage({ step }: { step: PathStep }) {
               <Cta
                 variant={s.exerciseDone ? 'secondary' : 'primary'}
                 className="w-full py-2.5 text-base"
-                disabled={preparing}
+                disabled={preparing || s.lessonDone === false}
                 onClick={() => {
                   if (ex.kind === 'endgame') {
                     navigate('/apprendre', {
@@ -560,7 +556,7 @@ function Runner({ run, setRun, exercise, title, backTo, isOver, onOver, onQuit, 
   title: string
   backTo: string
   isOver: (results: boolean[]) => boolean
-  onOver: (results: boolean[]) => void
+  onOver: (results: boolean[]) => Promise<void>
   onQuit: () => void
   levelOfItem?: (idx: number) => PathLevel
 }) {
@@ -570,6 +566,7 @@ function Runner({ run, setRun, exercise, title, backTo, isOver, onOver, onQuit, 
   // Verdicts posés de façon synchrone : un second verdict du même item (Réessayer du drill) est ignoré.
   const judged = useRef(new Set(run.results.map((_, i) => i)))
   const over = useRef(false)
+  const [saveState, setSaveState] = useState<'idle' | 'ready' | 'saving' | 'error'>(() => isOver(run.results) ? 'ready' : 'idle')
 
   useEffect(
     () => () => {
@@ -605,12 +602,18 @@ function Runner({ run, setRun, exercise, title, backTo, isOver, onOver, onQuit, 
     }
   }
 
-  function advance() {
+  async function advance() {
     if (run.results.length <= run.idx) return
     if (isOver(run.results)) {
       if (over.current) return
       over.current = true
-      onOver(run.results)
+      setSaveState('saving')
+      try {
+        await onOver(run.results)
+      } catch {
+        setSaveState('error')
+        over.current = false
+      }
       return
     }
     setRetry(0)
@@ -647,6 +650,19 @@ function Runner({ run, setRun, exercise, title, backTo, isOver, onOver, onQuit, 
       ))}
     </div>
   )
+
+  if (saveState !== 'idle') {
+    return (
+      <div className="pt-safe pb-safe fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-surface p-6 text-center" data-testid="run-save">
+        <p role={saveState === 'error' ? 'alert' : 'status'}>
+          {saveState === 'error' ? 'Impossible d’enregistrer le résultat. Il est conservé : libère de l’espace puis réessaie.' : saveState === 'saving' ? 'Enregistrement du résultat…' : 'Ton résultat est conservé et attend son enregistrement.'}
+        </p>
+        <Cta disabled={saveState === 'saving'} onClick={() => void advance()}>
+          {saveState === 'error' ? 'Réessayer l’enregistrement' : 'Enregistrer le résultat'}
+        </Cta>
+      </div>
+    )
+  }
 
   if (item.kind === 'variant' && exercise?.kind === 'opening') {
     const fam = getFamily(exercise.family)
@@ -812,13 +828,9 @@ function PlacementPage() {
 
   async function finish(results: boolean[]) {
     const n = placementLevels(results)
+    await recordPlacement(n)
     clearRun()
     setResult(n)
-    try {
-      await recordPlacement(n)
-    } catch (e) {
-      console.error('[parcours] test non enregistré', e)
-    }
   }
 
   if (result !== null) {
@@ -853,7 +865,7 @@ function PlacementPage() {
         title="🧪 Test de placement"
         backTo={stepPath(PLACEMENT_ID)}
         isOver={(results) => placementOver(results)}
-        onOver={(results) => void finish(results)}
+        onOver={finish}
         onQuit={() => {
           clearRun()
           navigate(MAP_PATH, { replace: true })

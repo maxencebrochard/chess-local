@@ -40,6 +40,7 @@ interface StoredSession {
   phase: ItemPhase
   results: boolean[]
   scoredItems: number[]
+  pendingResult?: boolean
   returnTo?: string // page à rouvrir en fin de séance : leçon du cours de finales, Insights
   returnLabel?: string
   pathStep?: string // étape du parcours d'apprentissage qui a ouvert la séance de finale
@@ -68,6 +69,10 @@ export default function Learn() {
   // valide l'étape, une fois par séance (ligne `path`, sans Elo).
   const [pathStep, setPathStep] = useState<string | null>(null)
   const pathSaved = useRef(false)
+  const [pendingResult, setPendingResult] = useState<boolean | undefined>(undefined)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(false)
+  const finishing = useRef(false)
   const path = usePathState()
   const scoredItems = useRef(new Set<number>())
   const engineRef = useRef<Engine | null>(null)
@@ -130,11 +135,13 @@ export default function Learn() {
         pathSaved.current = false
       }
       navigate('.', { replace: true, state: null })
-    } else if (state?.restore) {
+    } else {
       const raw = sessionStorage.getItem(SESSION_KEY)
       if (raw) {
         try {
           const saved = JSON.parse(raw) as StoredSession
+          if (!state?.restore && saved.pendingResult === undefined) return
+          setPendingResult(saved.pendingResult)
           setSession(saved.session)
           setItemIdx(saved.itemIdx)
           setPhase(saved.phase)
@@ -154,13 +161,13 @@ export default function Learn() {
   useEffect(() => {
     if (session && session.items.length > 0) {
       const stored: StoredSession = {
-        session, itemIdx, phase, results, scoredItems: [...scoredItems.current], returnTo: returnTo ?? undefined, returnLabel, pathStep: pathStep ?? undefined,
+        session, itemIdx, phase, results, pendingResult, scoredItems: [...scoredItems.current], returnTo: returnTo ?? undefined, returnLabel, pathStep: pathStep ?? undefined,
       }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
     } else {
       sessionStorage.removeItem(SESSION_KEY)
     }
-  }, [session, itemIdx, phase, results, returnTo, returnLabel, pathStep])
+  }, [session, itemIdx, phase, results, pendingResult, returnTo, returnLabel, pathStep])
 
   function getEngine(): Engine {
     engineRef.current ??= new Engine()
@@ -193,33 +200,48 @@ export default function Learn() {
   }
 
   async function finishItem(success: boolean) {
-    if (!session) return
+    if (!session || finishing.current) return
+    finishing.current = true
+    setPendingResult(success)
+    setSaving(true)
+    setSaveError(false)
     const item = session.items[itemIdx]
-    // Tactique et stratégie passent par PuzzlePlayer, qui a déjà joué le verdict.
-    if (item.kind !== 'tactic' && item.kind !== 'strategy') (success ? sounds.success : sounds.fail)()
-    if (success && pathStep && item.kind === 'endgame' && !pathSaved.current) {
-      pathSaved.current = true
-      void recordPathRun(pathStep, 1, true).catch(() => {})
-    }
-    // Un réessai ne re-score pas : seule la première tentative compte pour l'Elo.
-    if (!scoredItems.current.has(itemIdx)) {
-      scoredItems.current.add(itemIdx)
-      const before = item.kind === 'mistake' ? null : (ratings[session.domain] ?? 800)
-      const after = await scoreItem(session.domain, itemKey(item), success, item.difficulty)
-      if (item.kind === 'mistake') {
-        await db.mistakes.update(item.mistake.id!, {
-          attempts: item.mistake.attempts + 1,
-          solved: success ? 1 : 0,
-        })
+    const firstAttempt = !scoredItems.current.has(itemIdx)
+    const savePath = success && pathStep && item.kind === 'endgame' && !pathSaved.current
+    const before = item.kind === 'mistake' ? null : (ratings[session.domain] ?? 800)
+    try {
+      const after = await db.transaction('rw', db.ratings, db.learnSessions, db.mistakes, async () => {
+        let rating: number | null = null
+        if (firstAttempt) {
+          rating = await scoreItem(session.domain, itemKey(item), success, item.difficulty)
+          if (item.kind === 'mistake') {
+            await db.mistakes.update(item.mistake.id!, {
+              attempts: item.mistake.attempts + 1,
+              solved: success ? 1 : 0,
+            })
+          }
+        } else if (item.kind === 'mistake' && success) {
+          await db.mistakes.update(item.mistake.id!, { solved: 1 })
+        }
+        if (savePath) await recordPathRun(pathStep!, 1, true)
+        return rating
+      })
+      if (savePath) pathSaved.current = true
+      if (firstAttempt) {
+        scoredItems.current.add(itemIdx)
+        if (after !== null && before !== null) setRatingDelta(after - before)
+        setResults((r) => [...r, success])
       }
-      if (after !== null && before !== null) setRatingDelta(after - before)
-      setResults((r) => [...r, success])
+      if (item.kind !== 'tactic' && item.kind !== 'strategy') (success ? sounds.success : sounds.fail)()
       void refresh()
-    } else if (item.kind === 'mistake' && success) {
-      await db.mistakes.update(item.mistake.id!, { solved: 1 })
-      void refresh()
+      setPhase(success ? 'success' : 'fail')
+      setPendingResult(undefined)
+    } catch {
+      setSaveError(true)
+    } finally {
+      finishing.current = false
+      setSaving(false)
     }
-    setPhase(success ? 'success' : 'fail')
   }
 
   // « Recommencer » d'une séance de finale ouverte par le parcours : même finale, même retour.
@@ -345,7 +367,17 @@ export default function Learn() {
     const course = courseId ? courseFor(courseId) : null
     return (
       <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
-        <div className="mx-auto flex min-h-full max-w-2xl flex-col">
+        {pendingResult !== undefined && (
+          <div className="pt-safe pb-safe fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-surface p-6 text-center" data-testid="learn-save">
+            <p role={saveError ? 'alert' : 'status'}>
+              {saveError ? 'Impossible d’enregistrer le résultat. Il est conservé : libère de l’espace puis réessaie.' : saving ? 'Enregistrement du résultat…' : 'Ton résultat est conservé et attend son enregistrement.'}
+            </p>
+            <Cta disabled={saving} onClick={() => void finishItem(pendingResult)}>
+              {saveError ? 'Réessayer l’enregistrement' : 'Enregistrer le résultat'}
+            </Cta>
+          </div>
+        )}
+        <div className="mx-auto flex min-h-full max-w-2xl flex-col" inert={pendingResult !== undefined} style={pendingResult !== undefined ? { visibility: 'hidden' } : undefined}>
           <header className="flex items-center px-3 py-1">
             <button
               onClick={closeSession}
