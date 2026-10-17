@@ -136,14 +136,14 @@
       "summary": "Un plan simple : prendre la colonne ouverte avec une tour, puis entrer sur la septième rangée.",
       "keyPoints": [
         "Place tes tours sur les colonnes ouvertes, sans pion devant elles.",
-        "Par la colonne ouverte, la tour entre sur la septième rangée, où les pions adverses sont seuls.",
-        "Deux tours sur la septième rangée attaquent tout ce qui s'y trouve."
+        "Une tour sur la septième rangée peut attaquer plusieurs pions, mais certains restent défendus.",
+        "Dans cette ligne, les tours visent a7 et f7 ; le pion f7 masque g7 et h7."
       ],
       "steps": [
         {
           "kind": "diagram",
           "fen": "r4rk1/pp3ppp/2p5/8/8/8/PPP2PPP/2KRR3 w - - 0 1",
-          "text": "Matériel égal, mais les tours blanches contrôlent les colonnes d et e, ouvertes. Le plan : entrer sur la septième rangée, où les pions noirs n'ont plus de défenseur.",
+          "text": "Matériel égal, mais les tours blanches contrôlent les colonnes d et e, ouvertes. Le plan : jouer Td7 pour attaquer b7, sans défenseur, et f7, protégé par la tour f8 et le roi g8.",
           "arrows": [["d1", "d7"], ["e1", "e7"]],
           "marks": {
             "b7": "red",
@@ -157,11 +157,11 @@
           "text": "À toi : utilise une colonne ouverte.",
           "result": "edge",
           "moves": [
-            {"san": "Rd7", "text": "La tour attaque b7 et gêne tout le camp noir.", "hint": "La colonne d mène droit à la septième rangée.", "keeps": ["a2a3", "a2a4", "b2b3", "c2c4", "d1d2", "d1d3", "d1d4", "d1d6", "d1d7", "e1e2", "e1e3", "e1e4", "e1e7", "g2g3", "h2h3", "h2h4"], "close": ["c2c3", "e1e5", "f2f3", "f2f4", "g2g4"]},
+            {"san": "Rd7", "text": "La tour attaque b7, sans défenseur, et f7, défendu par Tf8 et Rg8.", "hint": "La colonne d mène droit à la septième rangée.", "keeps": ["a2a3", "a2a4", "b2b3", "c2c4", "d1d2", "d1d3", "d1d4", "d1d6", "d1d7", "e1e2", "e1e3", "e1e4", "e1e7", "g2g3", "h2h3", "h2h4"], "close": ["c2c3", "e1e5", "f2f3", "f2f4", "g2g4"]},
             {"san": "b5"},
-            {"san": "Ree7", "text": "Deux tours sur la septième : f7 et a7 sont visés.", "hint": "La seconde tour peut rejoindre la première.", "keeps": ["a2a3", "a2a4", "b2b3", "c2c4", "d7b7", "d7c7", "d7d6", "e1d1", "e1e2", "e1e3", "e1e4", "e1e5", "e1e7", "g2g3", "h2h3", "h2h4"], "close": ["c1b1", "c1d1", "c1d2", "c2c3", "d7d1", "d7d2", "d7d3", "d7d4", "d7e7", "e1g1", "e1h1", "f2f3", "f2f4", "g2g4"]}
+            {"san": "Ree7", "text": "Td7 vise a7, défendu par Ta8 ; Te7 vise f7, défendu par Tf8 et Rg8. Le pion f7 fait écran devant g7 et h7.", "hint": "La seconde tour peut rejoindre la première.", "keeps": ["a2a3", "a2a4", "b2b3", "c2c4", "d7b7", "d7c7", "d7d6", "e1d1", "e1e2", "e1e3", "e1e4", "e1e5", "e1e7", "g2g3", "h2h3", "h2h4"], "close": ["c1b1", "c1d1", "c1d2", "c2c3", "d7d1", "d7d2", "d7d3", "d7d4", "d7e7", "e1g1", "e1h1", "f2f3", "f2f4", "g2g4"]}
           ],
-          "end": "Selon Stockfish, les Blancs gardent une nette avance : deux tours actives contre deux tours passives."
+          "end": "Les tours blanches attaquent a7 et f7 et mettent leurs défenseurs sous pression. Ces pions restent protégés ; Stockfish confirme l'avantage blanc."
         }
       ]
     }
