@@ -39,10 +39,10 @@ Les suites tournent en parallèle sur `--jobs N` workers (ou `E2E_JOBS=N`), avec
 Chacune a son groupe de process et son `TMPDIR` (Chromium compris, tué et nettoyé à la fin) ; en parallèle, sa sortie est imprimée d'un bloc à sa fin, avec un point d'avancement par minute.
 En mode dev, `e2e/vite.config.ts` reprend la configuration de l’app et désactive seulement la surveillance des fichiers et HMR : une documentation ou un test modifié ne doit pas recharger la page pendant un geste.
 StrictMode reste actif ; `npm run dev` conserve sa configuration habituelle.
-Les plus longues partent d'abord, d'après `e2e/shots/.durations.json` (durées du dernier lancement réussi, local) ou à défaut `TYPICAL_S` de `run.py`.
+En parallèle, les plus longues partent d'abord, d'après `e2e/shots/.durations.json` (dernière durée réussie par suite et par mode, locale) ou à défaut `TYPICAL_S` de `run.py`.
 Le bilan donne la durée de chaque suite et la durée totale.
 Une suite ne doit donc rien partager avec une autre : port libre pour tout serveur propre, fichiers dans `tempfile`, captures aux noms préfixés par la suite.
-Un check de durée mesure du temps CPU ou un ordre d'événements dans le navigateur, jamais le temps réel d'une machine que les autres suites chargent.
+Les checks de calcul utilisent le temps CPU ; le contrôle audio combine l'ordre des événements et les budgets décrits dans [l'étude F14](docs/f14-feeling.md).
 Ne jamais lancer une suite contre un serveur démarré à la main sur un port fixe : un serveur mort ou fantôme a déjà fait chercher un bug qui n'existait pas.
 Le code de sortie est la vérité : non nul dès qu'un check échoue, qu'une page lève une exception (`pageerror`) ou qu'un appel chess.com sort de la fixture.
 

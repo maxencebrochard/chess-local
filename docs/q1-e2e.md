@@ -2,6 +2,9 @@
 
 ## Méthode
 
+Ce bilan décrit la campagne Q1 avant le rebase intégrant `defense` et `moments` et avant l'attente du compteur ajoutée à `revision`.
+Les effectifs, durées et listes de fichiers ci-dessous sont ceux de cette campagne, pas un inventaire du checkout actuel ni une validation des modifications ultérieures.
+
 La référence est le lancement série du 16 octobre 2026, conservé dans `scratchpad/q1/baseline-serial.log` par le premier agent.
 Il totalise 1 507 s, dont 1 498 s de suites, avec un échec intermittent sur la finale d’opposition.
 Les 43 minutes initialement signalées correspondaient à une machine beaucoup plus chargée.
@@ -25,16 +28,11 @@ Les journaux de reprise sont dans `e2e/shots/q1-*.log`, non versionnés.
 
 ## Critères audio et limites
 
-Le contrôle garde le type du son, son unicité, son audibilité et les gestes tactiles, clic-clic, souris, prise, roque, échec et promotion.
-Après le préchargement observé des sons, le départ doit survenir dans un événement de fin de geste authentique.
-Un départ dans une tâche ultérieure échoue, même si cette tâche arrive avant 80 ms.
-Une programmation Web Audio future de 80 ms ou plus échoue également.
-Le budget de 250 ms depuis l’horodatage de l’événement tolère le partage du processeur, mais ce critère ne garantit plus un traitement synchrone inférieur à 80 ms.
-Il ne mesure pas la latence acoustique d’un iPhone physique.
+Le contrat audio et ses limites sont décrits dans [l'étude F14](f14-feeling.md) et vérifiés par `immediate_sound` dans `e2e/helpers.py`.
 
 ## Preuves par mutation
 
-Les mutations ne touchent que le contexte navigateur ou le serveur de test.
+Les mutations ne touchent que le contexte navigateur, le serveur de test ou le scénario Node du coach.
 Le code de l’application reste inchangé.
 
 | Mutation | Régression injectée | Résultat obtenu | Durée totale |
