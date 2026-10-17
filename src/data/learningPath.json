@@ -1,0 +1,573 @@
+{
+  "levels": [
+    {
+      "id": "debutant",
+      "title": "Débutant",
+      "elo": 800,
+      "color": "#81b64c",
+      "intro": "Les réflexes de base : compter le matériel, voir les menaces, sortir ses pièces et mater avec une pièce lourde.",
+      "placement": {
+        "rating": [
+          650,
+          950
+        ]
+      },
+      "steps": [
+        {
+          "id": "valeur-des-pieces",
+          "icon": "♟",
+          "title": "La valeur des pièces",
+          "summary": "Pion 1, cavalier 3, fou 3, tour 5, dame 9 : de quoi juger chaque prise.",
+          "lesson": "bases:valeur-des-pieces"
+        },
+        {
+          "id": "pieces-en-prise",
+          "icon": "🎯",
+          "title": "Les pièces en prise",
+          "summary": "Repérer une pièce que rien ne défend, et la prendre.",
+          "read": "hangingPiece",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "hangingPiece"
+            ],
+            "rating": [
+              600,
+              950
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "menaces",
+          "icon": "👀",
+          "title": "Voir la menace adverse",
+          "summary": "Après chaque coup adverse : que veut-il faire ?",
+          "lesson": "bases:menaces"
+        },
+        {
+          "id": "mat-en-un",
+          "icon": "#1",
+          "title": "Le mat en un coup",
+          "summary": "Chercher d'abord les échecs : le mat est souvent là.",
+          "read": "mateIn1",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "mateIn1"
+            ],
+            "rating": [
+              600,
+              950
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "developpement",
+          "icon": "🚀",
+          "title": "Développer avant d'attaquer",
+          "summary": "Sortir ses pièces, et punir l'adversaire qui oublie de le faire.",
+          "lesson": "bases:developpement"
+        },
+        {
+          "id": "partie-italienne",
+          "icon": "📖",
+          "title": "Première ouverture : l'italienne",
+          "summary": "Les principes en pratique : centre, cavaliers, fous, roque.",
+          "read": "opening-principles",
+          "exercise": {
+            "kind": "opening",
+            "family": "Italian Game",
+            "color": "w",
+            "count": 3,
+            "pass": 2
+          }
+        },
+        {
+          "id": "mat-deux-tours",
+          "icon": "♜",
+          "title": "Le mat des deux tours",
+          "summary": "L'escalier : une tour coupe, l'autre donne l'échec.",
+          "lesson": "finales:mat-deux-tours"
+        },
+        {
+          "id": "mat-dame",
+          "icon": "♛",
+          "title": "Le mat roi et dame",
+          "summary": "Enfermer le roi avec la dame, sans pat, puis mater.",
+          "lesson": "finales:mat-dame",
+          "exercise": {
+            "kind": "endgame",
+            "id": "kq-mate"
+          }
+        },
+        {
+          "id": "mat-du-couloir",
+          "icon": "🚪",
+          "title": "Le mat du couloir",
+          "summary": "Un roi enfermé derrière ses pions sur sa première rangée.",
+          "read": "backRankMate",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "backRankMate"
+            ],
+            "rating": [
+              650,
+              1000
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "mat-tour",
+          "icon": "♖",
+          "title": "Le mat roi et tour",
+          "summary": "La tour coupe, les rois face à face, l'échec sur la bande.",
+          "lesson": "finales:mat-tour",
+          "exercise": {
+            "kind": "endgame",
+            "id": "kr-mate"
+          }
+        }
+      ]
+    },
+    {
+      "id": "intermediaire",
+      "title": "Intermédiaire",
+      "elo": 1200,
+      "color": "#69c3f2",
+      "intro": "Les motifs tactiques qui gagnent du matériel, les finales de pions et un premier plan de milieu de partie.",
+      "placement": {
+        "rating": [
+          1050,
+          1350
+        ]
+      },
+      "steps": [
+        {
+          "id": "fourchette",
+          "icon": "🍴",
+          "title": "La fourchette",
+          "summary": "Une pièce, deux cibles : l'adversaire n'en sauve qu'une.",
+          "read": "fork",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "fork"
+            ],
+            "rating": [
+              1000,
+              1350
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "clouage",
+          "icon": "📌",
+          "title": "Le clouage",
+          "summary": "Une pièce qui ne peut plus bouger sans exposer plus précieux qu'elle.",
+          "read": "pin",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "pin"
+            ],
+            "rating": [
+              1000,
+              1350
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "enfilade",
+          "icon": "🏹",
+          "title": "L'enfilade",
+          "summary": "Le clouage à l'envers : la pièce de devant s'écarte, celle de derrière tombe.",
+          "read": "skewer",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "skewer"
+            ],
+            "rating": [
+              1000,
+              1350
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "carre-du-pion",
+          "icon": "⬛",
+          "title": "La règle du carré",
+          "summary": "Savoir d'un coup d'œil si le roi rattrape le pion.",
+          "lesson": "finales:carre-du-pion",
+          "exercise": {
+            "kind": "endgame",
+            "id": "kp-square"
+          }
+        },
+        {
+          "id": "opposition",
+          "icon": "♚",
+          "title": "L'opposition",
+          "summary": "Les rois face à face : celui qui a le trait doit céder le passage.",
+          "lesson": "finales:opposition",
+          "exercise": {
+            "kind": "endgame",
+            "id": "kp-opposition-1"
+          }
+        },
+        {
+          "id": "tours-septieme",
+          "icon": "🛤️",
+          "title": "Les tours sur la septième",
+          "summary": "Prendre la colonne ouverte, puis entrer sur la septième rangée.",
+          "lesson": "bases:tours-septieme"
+        },
+        {
+          "id": "mat-en-deux",
+          "icon": "#2",
+          "title": "Le mat en deux coups",
+          "summary": "Un coup qui prépare, un coup qui mate : échecs, prises, menaces.",
+          "read": "mateIn2",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "mateIn2"
+            ],
+            "rating": [
+              1000,
+              1350
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "gambit-dame",
+          "icon": "📖",
+          "title": "Le gambit dame",
+          "summary": "Une ouverture de pions dame, côté blanc, variante par variante.",
+          "exercise": {
+            "kind": "opening",
+            "family": "Queen's Gambit",
+            "color": "w",
+            "count": 3,
+            "pass": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "confirme",
+      "title": "Confirmé",
+      "elo": 1600,
+      "color": "#f2b04c",
+      "intro": "Les combinaisons à plusieurs coups, les premières attaques sur le roque et les finales de pions plus fines.",
+      "placement": {
+        "rating": [
+          1450,
+          1750
+        ]
+      },
+      "steps": [
+        {
+          "id": "attaque-decouverte",
+          "icon": "💥",
+          "title": "L'attaque à la découverte",
+          "summary": "Une pièce s'écarte et en démasque une autre.",
+          "read": "discoveredAttack",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "discoveredAttack"
+            ],
+            "rating": [
+              1400,
+              1750
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "deviation",
+          "icon": "↪️",
+          "title": "La déviation",
+          "summary": "Détourner le défenseur de la case qu'il garde.",
+          "read": "deflection",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "deflection"
+            ],
+            "rating": [
+              1400,
+              1750
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "sacrifice-grec",
+          "icon": "🔥",
+          "title": "Le sacrifice grec",
+          "summary": "Fxh7+, Cg5+, Dh5 : le schéma d'attaque le plus célèbre.",
+          "lesson": "roque:grec-schema"
+        },
+        {
+          "id": "cases-cles",
+          "icon": "🔑",
+          "title": "Les cases clés",
+          "summary": "Le roi qui atteint une case clé fait promouvoir son pion.",
+          "lesson": "finales:cases-cles",
+          "exercise": {
+            "kind": "endgame",
+            "id": "kp-king-front"
+          }
+        },
+        {
+          "id": "attraction",
+          "icon": "🧲",
+          "title": "L'attraction",
+          "summary": "Attirer une pièce adverse, souvent le roi, sur une case fatale.",
+          "read": "attraction",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "attraction"
+            ],
+            "rating": [
+              1400,
+              1750
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "pion-de-tour",
+          "icon": "🏰",
+          "title": "Le pion de tour",
+          "summary": "Le roi défenseur dans le coin : souvent une nulle.",
+          "lesson": "finales:pion-de-tour",
+          "exercise": {
+            "kind": "endgame",
+            "id": "rook-pawn-corner"
+          }
+        },
+        {
+          "id": "sacrifice",
+          "icon": "🎁",
+          "title": "Le sacrifice",
+          "summary": "Donner du matériel pour obtenir davantage.",
+          "read": "sacrifice",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "sacrifice"
+            ],
+            "rating": [
+              1400,
+              1750
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "sicilienne",
+          "icon": "📖",
+          "title": "La défense sicilienne",
+          "summary": "La réponse la plus jouée à 1.e4, côté noir.",
+          "exercise": {
+            "kind": "opening",
+            "family": "Sicilian Defense",
+            "color": "b",
+            "count": 3,
+            "pass": 2
+          }
+        },
+        {
+          "id": "compter-les-pieces",
+          "icon": "⚖️",
+          "title": "Compter attaquants et défenseurs",
+          "summary": "Avant de sacrifier, compter les pièces près du roi.",
+          "lesson": "roque:compter-les-pieces"
+        }
+      ]
+    },
+    {
+      "id": "avance",
+      "title": "Avancé",
+      "elo": 2000,
+      "color": "#eb6150",
+      "intro": "Les coups que l'on ne voit pas : coups intermédiaires, coups tranquilles, zugzwang, et les finales de tours classiques.",
+      "placement": {
+        "rating": [
+          1850,
+          2150
+        ]
+      },
+      "steps": [
+        {
+          "id": "coup-intermediaire",
+          "icon": "⏸️",
+          "title": "Le coup intermédiaire",
+          "summary": "Avant de reprendre, un coup plus fort qui change tout.",
+          "read": "intermezzo",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "intermezzo"
+            ],
+            "rating": [
+              1800,
+              2200
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "manoeuvre-de-reti",
+          "icon": "🧭",
+          "title": "La manœuvre de Réti",
+          "summary": "Un roi qui poursuit deux buts à la fois.",
+          "lesson": "finales:manoeuvre-de-reti",
+          "exercise": {
+            "kind": "endgame",
+            "id": "active-king-draw"
+          }
+        },
+        {
+          "id": "coup-tranquille",
+          "icon": "🤫",
+          "title": "Le coup tranquille",
+          "summary": "Ni échec ni prise, et pourtant décisif.",
+          "read": "quietMove",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "quietMove"
+            ],
+            "rating": [
+              1800,
+              2200
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "lucena",
+          "icon": "🌉",
+          "title": "La position de Lucena",
+          "summary": "Construire le pont pour faire promouvoir le pion.",
+          "lesson": "finales:lucena",
+          "exercise": {
+            "kind": "endgame",
+            "id": "lucena"
+          }
+        },
+        {
+          "id": "eliminer-le-defenseur",
+          "icon": "🗡️",
+          "title": "Éliminer le défenseur",
+          "summary": "Supprimer la pièce qui protège le roi adverse.",
+          "lesson": "roque:eliminer-le-defenseur"
+        },
+        {
+          "id": "philidor",
+          "icon": "🛡️",
+          "title": "La défense Philidor",
+          "summary": "Tenir la nulle en tour contre tour et pion.",
+          "lesson": "finales:philidor",
+          "exercise": {
+            "kind": "endgame",
+            "id": "philidor"
+          }
+        },
+        {
+          "id": "zugzwang",
+          "icon": "⏳",
+          "title": "Le zugzwang",
+          "summary": "Quand l'obligation de jouer devient une faiblesse.",
+          "read": "zugzwang",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "zugzwang"
+            ],
+            "rating": [
+              1800,
+              2200
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "defense",
+          "icon": "🧱",
+          "title": "Défendre avec précision",
+          "summary": "Trouver le seul coup qui tient quand tout semble perdu.",
+          "read": "defensiveMove",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "defensiveMove"
+            ],
+            "rating": [
+              1800,
+              2200
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        },
+        {
+          "id": "dame-contre-tour",
+          "icon": "♕",
+          "title": "Dame contre tour",
+          "summary": "Gagner la tour adverse avec la dame et le roi.",
+          "exercise": {
+            "kind": "endgame",
+            "id": "q-vs-r"
+          }
+        },
+        {
+          "id": "mat-en-trois",
+          "icon": "#3",
+          "title": "Le mat en trois coups",
+          "summary": "Calculer une suite forcée jusqu'au bout.",
+          "read": "mateIn3",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "mateIn3"
+            ],
+            "rating": [
+              1800,
+              2200
+            ],
+            "count": 5,
+            "pass": 3
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -45,6 +45,7 @@ Changer la forme du store `src/store/settings.ts` impose de mettre à jour `DEFA
 L'API chess.com est simulée par `e2e/fixtures/chesscom.json` (parties fictives) : tout nouvel appel réseau doit y être ajouté.
 Le gate n'utilise jamais `--live`.
 `test_revision.py` sème IndexedDB nativement (après `wait_schema`, l'app ayant créé le schéma de `src/lib/db.ts`), bloque le service worker et remplace `puzzles.json` par une route ; ses dates sont relatives aux jours civils locaux (midi J-n, ou minuit plus une minute pour « aujourd'hui »), jamais « il y a une heure ».
+`test_parcours.py` remplace `puzzles.json` par une fixture synthétique (un mat en un connu sous un id et un Elo propres à chaque série et à chaque bande du test de placement), sème `learnSessions` nativement après `wait_schema`, et bundle `scripts/learning-path-entry.ts` avec rolldown pour vérifier la logique pure sous Node.
 `test_pwa.py` ne tourne que sur le build local : sous-chemin, manifest, service worker, précache, puis redémarrage avec le serveur réellement tué (`set_offline` ne coupe pas le réseau du service worker).
 `test_upgrade.py` (prod uniquement) est le garde-fou de continuité des données : pour chaque ancien build déployé épinglé dans `OLD_BUILDS` (tags `deployed-2026-07-20`, `deployed-2026-10-06`, `deployed-2026-10-15` et `deployed-2026-10-16`, extraits de git ; `git fetch origin tag <tag>` s'il manque), il le sert, y crée de vraies données par l'interface dans un profil persistant, bascule sur le build courant sur le même port, vérifie IndexedDB, réglages et chiffres affichés à l'identique, puis restaure une sauvegarde de l'ancien build dans le nouveau ; `E2E_MUTATION=rename-db|clear-ratings|drop-table|clear-settings` sert une copie mutée du nouveau build pour prouver que la suite passe au rouge.
 Après un déploiement, ajouter le nouveau tag à `OLD_BUILDS` et retirer un build que plus aucun appareil ne porte.
@@ -59,7 +60,12 @@ Autres scripts :
   À lancer après toute modification du cours de finales : sans tampon à jour, `scripts/check-endgame-course.mjs` (suite `endgame_course`) échoue.
 - `python3 scripts/verify-attack-course.py` revérifie `src/data/attackCourse.json` (cours « Démolir le roque ») avec Stockfish 18 natif (`STOCKFISH` ou `stockfish` du PATH, mono-thread, profondeurs fixes, cache dans `~/.cache/chess-local/`) et réécrit `keeps`, `close`, `eval` et le tampon `scripts/attack-course.verified`.
   À lancer après toute modification de ce cours : sans tampon à jour, `scripts/check-attack-course.mjs` (suite `cours_roque`) échoue.
-  Les deux cours partagent le moteur `src/lib/lessonCourse.ts`, la page `src/pages/LessonCourse.tsx` et les règles `scripts/course-rules.mjs`.
+  Les cours partagent le moteur `src/lib/lessonCourse.ts`, la page `src/pages/LessonCourse.tsx` et les règles `scripts/course-rules.mjs`.
+- `python3 scripts/verify-basics-course.py` revérifie `src/data/basicsCourse.json` (cours « Les bases », `#/apprendre/bases`) avec le même vérificateur (`verify-attack-course.py <json> <tampon>`) et réécrit le tampon `scripts/basics-course.verified`.
+  À lancer après toute modification de ce cours : sans tampon à jour, `scripts/check-basics-course.mjs` (suite `parcours`) échoue.
+  Les deux tampons portent en second mot le sha de `verify-attack-course.py` : modifier ce vérificateur impose de relancer les deux cours.
+  Les règles de contrôle communes à ces deux cours vivent dans `scripts/check-stockfish-course.mjs` ; chaque point d'entrée ne porte que ses ids figés.
+- `node scripts/check-learning-path.mjs` contrôle `src/data/learningPath.json` (parcours d'apprentissage) : ids figés, ordre des niveaux, références et viviers de puzzles, avec la vraie logique de l'app bundlée par rolldown depuis `scripts/learning-path-entry.ts` (suite `parcours`).
 - `python3 scripts/prepare-mates.py` régénère `src/data/mateDrills.json` (positions « contre la montre » de /mats, vérifiées sur `tablebase.lichess.ovh`, réseau requis).
 - `node scripts/prepare-mates-index.mjs` régénère `src/data/mateIndex.json` (puzzles classés par géométrie de mat avec `src/lib/mateNet.ts`) : à relancer après `prepare-data.mjs` ; la suite `mats` vérifie qu'il est à jour (`--check`).
 - `python3 scripts/prepare-attacks.py` régénère `src/data/attacks.json` (banque de l'entraîneur d'attaque) : parties lichess des puzzles d'attaque (API publique, cache `data/lichess-puzzle-games.jsonl` non versionné), positions reculées avant la combinaison et triées par Stockfish natif (`STOCKFISH`, sinon celui du PATH).
@@ -145,6 +151,16 @@ La révision espacée (`/revision`, `src/lib/revision.ts`) n'a pas de table : l'
 Un résultat de révision s'écrit là où l'écran d'origine écrit (`scoreItem('mistakes')` + `mistakes.update`, `recordDrill`, ou le domaine `revision` pour les puzzles), jamais dans un Elo.
 Le compteur de l'accueil ne charge jamais `puzzles.json` ; seule la séance le fait.
 
+### Parcours d'apprentissage
+
+`#/apprendre/parcours` (`pages/LearningPath.tsx`) : carte verticale des étapes en quatre niveaux, entrée en tête d'Apprendre et tuile sur l'Accueil.
+Une étape réunit une leçon d'un cours (`lesson: '<slug>:<id>'`, ouverte avec `?parcours=<étape>` pour que ✕ et le bilan y ramènent), ou un cours détaillé de `courses.json` (`read`), puis un exercice : série de puzzles par thème, série de variantes complètes de l'entraîneur d'ouvertures (`OpeningDrill`, qui écrit aussi `opening-drill`), ou finale contre Stockfish jouée par la séance d'Apprendre (`state: { endgame, returnTo, returnLabel, pathStep }`).
+La logique est pure dans `lib/learningPath.ts` (`computePath` sur des faits lus par `lib/learningPathStore.ts`) : étape validée = leçon faite (ligne `course`, d'où qu'elle vienne) et exercice réussi (ligne `path` au seuil, ou ligne `endgame` réussie pour une finale).
+Une étape est jouable si la précédente est validée ou acquise ; le test de placement (`#/apprendre/parcours/placement`, 3 puzzles par niveau, 2 pour le valider, arrêt au premier niveau manqué) rend acquis les niveaux réussis, le meilleur test comptant.
+Domaine `learnSessions` `path` (sans Elo) : une ligne par série notée jouée jusqu'au bout (`score`, `success` au seuil), par finale réussie depuis l'étape, ou par test de placement (`itemId: 'placement'`, `score` = niveaux acquis).
+La série en cours survit au rechargement et à l'aller-retour vers l'analyseur dans `path-session-v1` ; un `pathStep` porté par la séance de finale d'Apprendre valide l'étape à toute réussite, même après Réessayer.
+Les finales de `#/finales/:id` (`endgame-play`) ne valident pas d'étape ; les puzzles ratés du parcours n'entrent pas dans la révision espacée, les variantes ratées si, comme dans l'entraîneur.
+
 ### Persistance
 
 Base Dexie `chess-local` (`src/lib/db.ts`), actuellement en `version(3)` (table `reviews` : cache des bilans d'Insights).
@@ -155,7 +171,7 @@ Les réglages sont dans Zustand persist (`localStorage['chess-local-settings']`)
 La migration persist des réglages (version 1) est partagée avec l’import des sauvegardes : une version 0 ou absente avec `pieceSet` absent ou `celtique` donne `wikimedia`, comme une montée de version locale.
 Un choix `celtique` enregistré en version 1 est conservé ; cette version persist est indépendante de la version du schéma de sauvegarde.
 L’import valide ensuite les types (dont `premoves`, booléen sinon défaut) et les valeurs contre les listes réelles de l’application.
-Les séances en cours d'Apprendre et de révision vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`) : `importBackup` et `resetApp` effacent ces deux clés, et seulement elles.
+Les séances en cours d'Apprendre, de révision et du parcours d'apprentissage vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`, `path-session-v1`) : `importBackup` et `resetApp` effacent ces trois clés, et seulement elles.
 `main.tsx` demande `navigator.storage.persist()` ; iOS peut purger IndexedDB, et le périmètre des sauvegardes de `backup.ts` est décrit dans [README.md, section Features](README.md#features).
 
 ### Chemins et PWA
@@ -199,8 +215,9 @@ La vidéo de référence et ses extractions ffmpeg restent exclusivement dans un
 ### Données
 
 `public/puzzles.json` : 120 000 puzzles lichess au format compact `[id, fen, moves, rating, themes]`, hors bundle, chargés une fois par `loadPuzzles()`.
-`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`), `attackCourse.json` (cours « Démolir le roque », `#/apprendre/roque`), `attacks.json` (généré, banque de l'entraîneur d'attaque, `#/attaque`), `defenses.json` (généré, banque de l'entraîneur de défense, `#/defense`), `visualisation.json` (généré, banque de « Calcul et visualisation », chargée par `import()`).
-Une leçon terminée est une ligne `learnSessions` `{ domain: 'course', itemId: '<slug>:<id>' }` (`finales:`, `roque:`) : les ids de leçons sont figés (`FROZEN_IDS` du contrôle).
+`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`), `attackCourse.json` (cours « Démolir le roque », `#/apprendre/roque`), `basicsCourse.json` (cours « Les bases », `#/apprendre/bases`), `learningPath.json` (parcours d'apprentissage), `defenses.json` (généré, banque de l’entraîneur de défense, `#/defense`), `attacks.json` (généré, banque de l'entraîneur d'attaque, `#/attaque`), `visualisation.json` (généré, banque de « Calcul et visualisation », chargée par `import()`).
+Une leçon terminée est une ligne `learnSessions` `{ domain: 'course', itemId: '<slug>:<id>' }` (`finales:`, `roque:`, `bases:`) : les ids de leçons sont figés (`FROZEN_IDS` du contrôle).
+`learningPath.json` (parcours d'apprentissage, `#/apprendre/parcours`) décrit quatre niveaux d'étapes ; ses ids d'étapes et de niveaux sont figés (`FROZEN_STEPS`, `FROZEN_LEVELS` de `check-learning-path.mjs`).
 Les noms d'ouvertures sont en anglais dans les données et traduits à l'affichage par `openingNames.ts`.
 
 ### UI

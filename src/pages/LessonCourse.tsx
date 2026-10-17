@@ -10,6 +10,7 @@ import { CoachBubble } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
 import { lineUci, type Course, type DiagramStep, type Lesson, type LineStep, type MarkColor } from '../lib/lessonCourse'
 import { ENDGAMES } from '../lib/learn'
+import { stepById } from '../lib/learningPath'
 import { figurine } from '../lib/review'
 import { playMoveSound, sounds } from '../lib/sounds'
 
@@ -119,6 +120,9 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
   // restaurée. Lu une fois : les changements d'étape (`setParams`) effacent le state.
   const [fromSession] = useState(() => Boolean((location.state as { fromSession?: boolean } | null)?.fromSession))
   const [params, setParams] = useSearchParams()
+  // Ouverte depuis une étape du parcours d'apprentissage (`?parcours=<étape>`, gardé dans l'URL :
+  // il survit aux changements d'étape et au rechargement) : ✕ et le bilan y ramènent.
+  const pathStep = stepById(params.get('parcours'))
   const total = lesson.steps.length + 1 // + bilan
   const raw = Number(params.get('etape'))
   const stepIdx = Number.isInteger(raw) && raw >= 1 && raw <= total ? raw - 1 : 0
@@ -134,11 +138,13 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
 
   function goTo(i: number) {
     setLineDone(false)
-    setParams(i === 0 ? {} : { etape: String(i + 1) }, { replace: true })
+    setParams({ ...(pathStep ? { parcours: pathStep.id } : {}), ...(i === 0 ? {} : { etape: String(i + 1) }) }, { replace: true })
   }
 
   const close = () =>
-    fromSession ? navigate('/apprendre', { replace: true, state: { restore: true } }) : navigate(course.path, { replace: true })
+    pathStep ? navigate(`/apprendre/parcours/${pathStep.id}`, { replace: true })
+    : fromSession ? navigate('/apprendre', { replace: true, state: { restore: true } })
+    : navigate(course.path, { replace: true })
   const goCourse = (path: string) => navigate(path, { replace: true, state: { fromSession } })
   const next = course.nextLessonId(id)
   const exercise = lesson.exercise ? ENDGAMES.find((e) => e.id === lesson.exercise) : undefined
@@ -181,7 +187,9 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
                   ))}
                 </ul>
               </div>
-              {fromSession ? (
+              {pathStep ? (
+                <Cta onClick={close}>Retour au parcours</Cta>
+              ) : fromSession ? (
                 <Cta onClick={close}>Retour à la séance</Cta>
               ) : (
                 exercise && (
@@ -194,14 +202,16 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
                   </Cta>
                 )
               )}
-              {next && (
+              {next && !pathStep && (
                 <Cta variant={fromSession || exercise ? 'secondary' : 'primary'} onClick={() => goCourse(`${course.path}/${next}`)}>
                   Leçon suivante
                 </Cta>
               )}
-              <Cta variant="secondary" onClick={() => goCourse(course.path)}>
-                Sommaire
-              </Cta>
+              {!pathStep && (
+                <Cta variant="secondary" onClick={() => goCourse(course.path)}>
+                  Sommaire
+                </Cta>
+              )}
             </div>
           )}
         </div>

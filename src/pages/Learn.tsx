@@ -12,6 +12,7 @@ import { puzzleContinuationStart, puzzlePlayerColor, useExerciseContinuation } f
 import { courseFor, type Course } from '../lib/courses'
 import { db } from '../lib/db'
 import { ROQUE } from '../lib/attackCourse'
+import { BASES } from '../lib/basicsCourse'
 import { FINALES, lessonForExercise } from '../lib/endgameCourse'
 import type { Course as LessonCourse } from '../lib/lessonCourse'
 import { Engine } from '../lib/engine'
@@ -22,6 +23,9 @@ import {
 } from '../lib/learn'
 import { openingDe, openingFamilyFr } from '../lib/openingNames'
 import { describeKinds, dueLabel, loadReviewQueue, type ReviewQueue } from '../lib/revision'
+import { LEVELS, stepById } from '../lib/learningPath'
+import { recordPathRun } from '../lib/learningPathStore'
+import { usePathState } from '../components/usePathState'
 import { figurine } from '../lib/review'
 import { sounds } from '../lib/sounds'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -38,6 +42,7 @@ interface StoredSession {
   scoredItems: number[]
   returnTo?: string // page à rouvrir en fin de séance : leçon du cours de finales, Insights
   returnLabel?: string
+  pathStep?: string // étape du parcours d'apprentissage qui a ouvert la séance de finale
 }
 
 export default function Learn() {
@@ -59,6 +64,11 @@ export default function Learn() {
   const [returnLabel, setReturnLabel] = useState('Retour au cours')
   const [lessonsDone, setLessonsDone] = useState<Record<string, number>>({})
   const [review, setReview] = useState<ReviewQueue | null>(null)
+  // Séance de finale ouverte par une étape du parcours : toute réussite (même après Réessayer)
+  // valide l'étape, une fois par séance (ligne `path`, sans Elo).
+  const [pathStep, setPathStep] = useState<string | null>(null)
+  const pathSaved = useRef(false)
+  const path = usePathState()
   const scoredItems = useRef(new Set<number>())
   const engineRef = useRef<Engine | null>(null)
 
@@ -69,7 +79,7 @@ export default function Learn() {
       Promise.all((['endgame', 'tactic', 'opening', 'strategy'] as LearnDomain[]).map(async (d) => [d, await domainRating(d)] as const)),
       db.mistakes.where('solved').equals(0).count(),
       Promise.all(
-        [FINALES, ROQUE].map(async (c) => {
+        [BASES, FINALES, ROQUE].map(async (c) => {
           const ids = await c.completedLessons()
           return [c.slug, c.lessonIds.filter((id) => ids.has(id)).length] as const
         }),
@@ -100,7 +110,7 @@ export default function Learn() {
   // Venue d'une leçon (« S'entraîner ») : séance sur l'exercice demandé, avec retour au cours.
   // Venue d'Insights (plan d'entraînement) : séance Tactiques sur le thème demandé, avec retour.
   useEffect(() => {
-    const state = location.state as { restore?: boolean; endgame?: string; tactic?: string; returnTo?: string; returnLabel?: string } | null
+    const state = location.state as { restore?: boolean; endgame?: string; tactic?: string; returnTo?: string; returnLabel?: string; pathStep?: string } | null
     if (state?.tactic) {
       const { tactic, returnTo: back, returnLabel: label } = state
       navigate('.', { replace: true, state: null })
@@ -116,6 +126,8 @@ export default function Learn() {
         setPhase('lesson')
         setReturnTo(state.returnTo ?? null)
         setReturnLabel(state.returnLabel ?? 'Retour au cours')
+        setPathStep(state.pathStep ?? null)
+        pathSaved.current = false
       }
       navigate('.', { replace: true, state: null })
     } else if (state?.restore) {
@@ -130,6 +142,7 @@ export default function Learn() {
           scoredItems.current = new Set(saved.scoredItems)
           setReturnTo(saved.returnTo ?? null)
           setReturnLabel(saved.returnLabel ?? 'Retour au cours')
+          setPathStep(saved.pathStep ?? null)
         } catch {}
       }
       navigate('.', { replace: true, state: null })
@@ -140,12 +153,14 @@ export default function Learn() {
   // Persiste la séance active pour pouvoir la restaurer après un aller-retour vers l'analyseur.
   useEffect(() => {
     if (session && session.items.length > 0) {
-      const stored: StoredSession = { session, itemIdx, phase, results, scoredItems: [...scoredItems.current], returnTo: returnTo ?? undefined, returnLabel }
+      const stored: StoredSession = {
+        session, itemIdx, phase, results, scoredItems: [...scoredItems.current], returnTo: returnTo ?? undefined, returnLabel, pathStep: pathStep ?? undefined,
+      }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
     } else {
       sessionStorage.removeItem(SESSION_KEY)
     }
-  }, [session, itemIdx, phase, results, returnTo, returnLabel])
+  }, [session, itemIdx, phase, results, returnTo, returnLabel, pathStep])
 
   function getEngine(): Engine {
     engineRef.current ??= new Engine()
@@ -168,6 +183,7 @@ export default function Learn() {
       setPhase('lesson')
       setReturnTo(back)
       setReturnLabel(label)
+      setPathStep(null)
     } catch (e) {
       // Puzzles injoignables (hors ligne avant le précache) : le bouton redevient actif.
       console.error('[apprendre] séance non construite', e)
@@ -181,6 +197,10 @@ export default function Learn() {
     const item = session.items[itemIdx]
     // Tactique et stratégie passent par PuzzlePlayer, qui a déjà joué le verdict.
     if (item.kind !== 'tactic' && item.kind !== 'strategy') (success ? sounds.success : sounds.fail)()
+    if (success && pathStep && item.kind === 'endgame' && !pathSaved.current) {
+      pathSaved.current = true
+      void recordPathRun(pathStep, 1, true).catch(() => {})
+    }
     // Un réessai ne re-score pas : seule la première tentative compte pour l'Elo.
     if (!scoredItems.current.has(itemIdx)) {
       scoredItems.current.add(itemIdx)
@@ -200,6 +220,20 @@ export default function Learn() {
       void refresh()
     }
     setPhase(success ? 'success' : 'fail')
+  }
+
+  // « Recommencer » d'une séance de finale ouverte par le parcours : même finale, même retour.
+  function restartEndgame() {
+    const ex = stepById(pathStep)?.exercise
+    const s = ex?.kind === 'endgame' ? buildEndgameSession(ex.id) : null
+    if (!s) return
+    setSession(s)
+    setItemIdx(0)
+    setResults([])
+    setRatingDelta(null)
+    scoredItems.current.clear()
+    pathSaved.current = false
+    setPhase('lesson')
   }
 
   function retryItem() {
@@ -281,13 +315,19 @@ export default function Learn() {
               {returnLabel}
             </Cta>
           )}
-          <Cta
-            variant={returnTo ? 'secondary' : 'primary'}
-            className="w-full"
-            onClick={() => void (session.theme ? start('tactic', session.theme, returnTo, returnLabel) : start())}
-          >
-            Encore une séance
-          </Cta>
+          {pathStep ? (
+            <Cta variant="secondary" className="w-full" onClick={restartEndgame}>
+              Recommencer
+            </Cta>
+          ) : (
+            <Cta
+              variant={returnTo ? 'secondary' : 'primary'}
+              className="w-full"
+              onClick={() => void (session.theme ? start('tactic', session.theme, returnTo, returnLabel) : start())}
+            >
+              Encore une séance
+            </Cta>
+          )}
           {!returnTo && (
             <Cta variant="secondary" className="w-full" onClick={closeSession}>
               Terminer
@@ -359,6 +399,8 @@ export default function Learn() {
       <p className="mb-4 text-sm text-neutral-400">
         Séances de 1 à 2 minutes, adaptées à ton niveau. Un bouton, zéro décision.
       </p>
+
+      <PathHero state={path.state} onOpen={() => navigate('/apprendre/parcours')} />
 
       <div className="mb-4 grid grid-cols-4 gap-2">
         {domains.map((d) => (
@@ -536,10 +578,50 @@ export default function Learn() {
 
       <p className="mt-5 mb-2 text-sm font-semibold text-neutral-400">Cours :</p>
       <div className="space-y-2">
+        <CourseCard course={BASES} done={lessonsDone[BASES.slug] ?? 0} testId="basics-card-progress" />
         <CourseCard course={FINALES} done={lessonsDone[FINALES.slug] ?? 0} testId="course-card-progress" />
         <CourseCard course={ROQUE} done={lessonsDone[ROQUE.slug] ?? 0} testId="attack-card-progress" />
       </div>
     </div>
+  )
+}
+
+// Entrée principale du parcours d'apprentissage, en tête de l'accueil d'Apprendre : niveau, étape
+// courante et progression, façon carte Problèmes de l'Accueil.
+function PathHero({ state, onOpen }: { state: ReturnType<typeof usePathState>['state']; onOpen: () => void }) {
+  const cur = state?.current ?? null
+  const level = cur ? LEVELS[cur.level] : null
+  const fresh = state !== null && state.done === 0 && state.placement === 0
+  return (
+    <button
+      onClick={onOpen}
+      data-testid="path-hero"
+      className="mb-4 block w-full cursor-pointer rounded-2xl bg-gradient-to-br from-[#4e7837] to-[#2e4a20] p-3 text-left shadow-lg transition hover:brightness-110 md:p-4"
+    >
+      <span className="flex items-center gap-3">
+        <span className="min-w-0 flex-1">
+          <span className="block text-xl font-black text-white">🗺️ Parcours d'apprentissage</span>
+          <span className="mt-0.5 block truncate text-sm text-white/80">
+            {state === null ? '…'
+              : cur && level ? `${level.title} · ${cur.step.title}`
+              : 'Parcours terminé : bravo !'}
+          </span>
+        </span>
+        <span className="shrink-0 rounded-xl bg-accent px-4 py-2 text-base font-black text-white shadow-[0_3px_0_#5d9948]">
+          {fresh ? 'Commencer' : cur ? 'Continuer' : 'Revoir'}
+        </span>
+      </span>
+      {state && (
+        <span className="mt-2.5 flex items-center gap-2">
+          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/30">
+            <span className="block h-full rounded-full bg-white/90" style={{ width: `${(state.done / state.total) * 100}%` }} />
+          </span>
+          <span data-testid="path-hero-progress" className="text-xs font-bold text-white/80">
+            {state.done}/{state.total} étapes
+          </span>
+        </span>
+      )}
+    </button>
   )
 }
 

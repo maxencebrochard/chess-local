@@ -191,6 +191,12 @@ def suite(p):
         if not tg:
             break
         click_square(page, tg); page.wait_for_timeout(800)
+        # Certains puzzles tirés au hasard atteignent une promotion : terminer le choix
+        # avant de demander l'indice suivant (la boîte bloque normalement l'échiquier).
+        promotion = page.get_by_role("button", name="Dame", exact=True)
+        if promotion.is_visible():
+            promotion.click()
+            page.wait_for_timeout(800)
     finished = page.locator("text=Raté").count() or page.locator("text=Résolu").count()
     check("[puzzles] terminé", bool(finished))
     if page.locator("button:has-text('Réessayer')").count():
