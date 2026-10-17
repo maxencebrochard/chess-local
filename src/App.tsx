@@ -23,6 +23,8 @@ import { FINALES } from './lib/endgameCourse'
 import { ROQUE } from './lib/attackCourse'
 import { BASES } from './lib/basicsCourse'
 import LearningPathMap, { PathStepRoute } from './pages/LearningPath'
+import { STRUCTURES_COURSE } from './lib/structuresCourse'
+import MyStructures, { MyStructuresCard } from './pages/MyStructures'
 import Revision from './pages/Revision'
 import Attack from './pages/Attack'
 import Defense from './pages/Defense'
@@ -34,7 +36,7 @@ const NAV = [
   { to: '/', icon: '♞', label: 'Accueil', match: [] as string[] },
   { to: '/jouer', icon: '♟', label: 'Jouer', match: [] as string[] },
   { to: '/puzzles', icon: '🧩', label: 'Puzzles', match: ['/rush'] },
-  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/repertoire', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque', '/defenses-ratees', '/defense', '/visualisation'] },
+  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/repertoire', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque', '/defenses-ratees', '/defense', '/visualisation', '/structures'] },
   { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import', '/analyse/jouer', '/moment-critique'] },
   { to: '/archive', icon: '📚', label: 'Archive', match: [] as string[] },
   { to: '/stats', icon: '📊', label: 'Stats', match: ['/insights'] },
@@ -147,6 +149,13 @@ function Shell() {
             <Route path="/apprendre/bases/:id" element={<CourseLesson course={BASES} />} />
             <Route path="/apprendre/parcours" element={<LearningPathMap />} />
             <Route path="/apprendre/parcours/:id" element={<PathStepRoute />} />
+            <Route
+              path="/apprendre/structures"
+              element={<CourseIndex key={STRUCTURES_COURSE.slug} course={STRUCTURES_COURSE} extra={<MyStructuresCard />} />}
+            />
+            <Route path="/apprendre/structures/:id" element={<CourseLesson course={STRUCTURES_COURSE} />} />
+            <Route path="/structures" element={<MyStructures />} />
+            <Route path="/structures/:key" element={<MyStructures />} />
             <Route path="/mats" element={<Mates />} />
             <Route path="/revision" element={<Revision />} />
             <Route path="/attaques-manquees" element={<MissedAttacks />} />

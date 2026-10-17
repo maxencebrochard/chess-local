@@ -1,8 +1,8 @@
-// Cours d'Apprendre (finales, « Démolir le roque »), façon chess.com Lessons : un sommaire par
+// Cours d'Apprendre (finales, « Démolir le roque », structures de pions), façon chess.com Lessons : un sommaire par
 // chapitres, puis des leçons en étapes (diagramme commenté, ligne à jouer coup par coup, bilan).
 // 100 % hors ligne : aucune analyse moteur dans l'app, chaque verdict vient du contenu vérifié hors
 // ligne (tables de finales ou Stockfish) et tamponné.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Chess } from 'chess.js'
 import { Board, type BoardArrow } from '../components/Board'
@@ -31,7 +31,8 @@ const WRONG_SHOW_MS = 700
 const LESSON_BOARD = 'w-[min(calc(100vw-1.5rem),calc(100dvh-21rem),34rem)]'
 
 // ---------- Sommaire ----------
-export default function CourseIndex({ course }: { course: Course }) {
+// `extra` : bloc propre au cours, sous la progression (structures : « Dans mes parties »).
+export default function CourseIndex({ course, extra }: { course: Course; extra?: ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
   // Venu d'une leçon ouverte depuis une séance d'Apprendre : la séance reste à restaurer.
@@ -65,6 +66,7 @@ export default function CourseIndex({ course }: { course: Course }) {
           {count}/{total}
         </span>
       </div>
+      {extra}
       {course.chapters.map((ch, ci) => (
         <section key={ch.id} className="mb-5">
           <h2 className="mb-2 text-sm font-bold tracking-wide text-neutral-400 uppercase">
