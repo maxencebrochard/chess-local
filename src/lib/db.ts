@@ -67,7 +67,9 @@ export interface LearnSession {
   // structure-play (partie depuis une structure de pions de mes parties),
   // critical-moment (moments critiques du bilan, hors Elo) ou path (parcours d’apprentissage).
   // course : itemId = `<slug>:<id>`, le slug désignant le cours (`finales:` pour le cours de finales,
-  // `roque:` pour « Démolir le roque », `bases:` pour « Les bases », `structures:` pour « Structures de pions »), ex. `finales:mat-dame`, `roque:grec-schema`.
+  // `roque:` pour « Démolir le roque », `bases:` pour « Les bases », `structures:` pour « Structures de pions »,
+  // `defense:` pour « Tenir sous l'attaque »), ex. `finales:mat-dame`, `roque:grec-schema`,
+  // `defense:contre-le-grec`.
   // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
   // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
   // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).

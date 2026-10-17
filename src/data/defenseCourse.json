@@ -1,0 +1,609 @@
+{
+  "chapters": [
+    {
+      "id": "echanger",
+      "title": "Échanger les attaquants",
+      "lessons": [
+        "echanger-le-cavalier-g5",
+        "echanger-le-cavalier-f5",
+        "echanger-les-dames"
+      ]
+    },
+    {
+      "id": "centre",
+      "title": "Contre-attaquer au centre",
+      "lessons": ["contre-attaque-au-centre"]
+    },
+    {
+      "id": "pions",
+      "title": "Les pions du roque",
+      "lessons": ["ne-pas-toucher-aux-pions", "g6-au-bon-moment"]
+    },
+    {
+      "id": "ramener",
+      "title": "Ramener des défenseurs",
+      "lessons": ["cavalier-en-f5", "cavalier-en-f8", "fou-en-f8"]
+    },
+    {
+      "id": "roi",
+      "title": "Le roi s'en va",
+      "lessons": ["fuite-du-roi"]
+    },
+    {
+      "id": "rendre",
+      "title": "Rendre du matériel",
+      "lessons": ["rendre-la-qualite"]
+    },
+    {
+      "id": "schemas",
+      "title": "Contre les attaques types",
+      "lessons": ["contre-le-grec", "contre-la-tempete"]
+    }
+  ],
+  "lessons": {
+    "echanger-le-cavalier-g5": {
+      "title": "Prendre le cavalier qui attaque",
+      "summary": "Le cavalier g5 mène l'attaque blanche : l'échanger tout de suite enlève la menace sur h7.",
+      "keyPoints": [
+        "Repère la pièce sans laquelle l'attaque s'arrête, souvent un cavalier en g5 ou en f5, et échange-la.",
+        "Un fou e7 qui peut prendre en g5 est précieux : garde-le pour ce moment.",
+        "Chaque échange enlève un attaquant : une attaque a besoin de plus de pièces que la défense."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r4rk1/1bq1bpp1/p3p1p1/2p1P1N1/2p2P2/4B2R/PPP3PP/R3Q2K b - - 1 19",
+          "text": "Position d'une partie lichess, les Noirs jouent. Le cavalier g5 vise h7, la tour h3 et la dame e1, qui peut venir en h4, le rejoignent. Dc6 ? perd : Th8+ ouvre la colonne h et la dame entre en h7. Selon Stockfish, les Noirs tiennent s'ils enlèvent le cavalier.",
+          "arrows": [["g5", "h7"], ["h3", "h7"], ["e1", "h4"], ["e7", "g5"]],
+          "marks": {
+            "h7": "red"
+          },
+          "claim": "hold-b",
+          "fails": "Qc6",
+          "eval": "-0.26",
+          "failsEval": "#-3",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "r4rk1/1bq1bpp1/p3p1p1/2p1P1N1/2p2P2/4B2R/PPP3PP/R3Q2K b - - 1 19",
+          "text": "À toi : enlève la pièce qui mène l'attaque, puis récupère le pion e5.",
+          "result": "hold",
+          "moves": [
+            {"san": "Bxg5", "text": "Le fou prend l'attaquant le plus dangereux : sans le cavalier, la tour et la dame ne suffisent plus contre h7.", "hint": "Cherche la pièce blanche qui vise h7 : un de tes fous peut la prendre.", "keeps": ["e7g5"]},
+            {"san": "fxg5"},
+            {"san": "Qxe5", "text": "La dame reprend le pion e5 et se place au centre, d'où elle surveille le roque.", "keeps": ["c7e5"]},
+            {"san": "Kg1"},
+            {"san": "Bc6", "text": "Le fou rejoint la grande diagonale et vise g2.", "keeps": ["a6a5", "a8b8", "a8c8", "a8e8", "b7c6", "b7d5", "b7e4", "c4c3", "e5d5", "e5d6", "e5e4", "f7f5", "f7f6"], "close": ["e5c7", "f8c8", "f8d8"]},
+            {"san": "Rc1"}
+          ],
+          "end": "Selon Stockfish, la position est équilibrée : l'attaque blanche s'est éteinte avec le cavalier."
+        }
+      ]
+    },
+    "echanger-le-cavalier-f5": {
+      "title": "Échanger le cavalier de f5",
+      "summary": "Un cavalier en f5 touche e7, g7 et h6 : le fou e6 l'échange avant qu'il ne frappe.",
+      "keyPoints": [
+        "Un cavalier en f5 (ou en f4 chez les Blancs) est souvent le meilleur attaquant : échange-le dès que possible.",
+        "Ne prends pas la mauvaise pièce : regarde ce que chaque prise ouvre, ici la diagonale du fou d3 vers h7.",
+        "Après l'échange, g6 chasse le dernier fou blanc et ferme la diagonale."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "rn1q1rk1/1p2bppp/p2pb3/3PpNB1/8/3B3Q/PPP2PPP/R3K2R b KQ - 0 12",
+          "text": "Position d'une partie lichess, les Noirs jouent. Le cavalier f5 et le fou g5 visent e7 et g7, la dame h3 vise h7. Fxg5 ? perd : Ce7+ Fxe7 et Dxh7 mat, car le fou d3 voit alors h7. Selon Stockfish, les Noirs tiennent s'ils échangent le cavalier.",
+          "arrows": [["f5", "e7"], ["f5", "g7"], ["h3", "h7"], ["e6", "f5"]],
+          "marks": {
+            "f5": "yellow"
+          },
+          "claim": "hold-b",
+          "fails": "Bxg5",
+          "eval": "-0.60",
+          "failsEval": "#-2",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "rn1q1rk1/1p2bppp/p2pb3/3PpNB1/8/3B3Q/PPP2PPP/R3K2R b KQ - 0 12",
+          "text": "À toi : échange la pièce qui menace le plus de cases autour de ton roi.",
+          "result": "hold",
+          "moves": [
+            {"san": "Bxf5", "text": "Le fou e6 prend le cavalier f5, qui touchait e7, g7 et h6.", "hint": "Un cavalier blanc touche e7, g7 et h6. Ton fou e6 peut le prendre.", "keeps": ["e6f5"]},
+            {"san": "Bxf5"},
+            {"san": "g6", "text": "Le pion chasse le fou f5 avec gain de temps : la diagonale vers h7 va se fermer.", "keeps": ["g7g6"]},
+            {"san": "Bh6"},
+            {"san": "Re8", "text": "La tour s'écarte du fou h6 et garde la colonne e.", "keeps": ["d8a5", "f8e8"]},
+            {"san": "Qe3"}
+          ],
+          "end": "Selon Stockfish, les Noirs tiennent et sont même un peu mieux : la plupart des attaquants ont disparu."
+        }
+      ]
+    },
+    "echanger-les-dames": {
+      "title": "Échanger les dames",
+      "summary": "Sans sa dame, l'attaquant n'a souvent plus de quoi mater : offre l'échange quand il est sans risque.",
+      "keyPoints": [
+        "La dame est presque toujours la pièce qui donne le mat : l'échanger éteint la plupart des attaques.",
+        "Vérifie la reprise : ici hxg5 laisse le pion f4 sans défense.",
+        "Après l'échange, la finale se joue au matériel et à la structure, plus au roi."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "3q2k1/2n2rpp/pn1b4/1p1p2Q1/3P1PNP/PPr2N2/8/R1B2RK1 b - - 0 21",
+          "text": "Position d'une partie lichess, les Noirs jouent. La dame g5 et le cavalier g4 visent h6, f6 et g7 : Ch6+ menace de chasser le roi. Dc8 ? laisse Ch6+ et Cxf7. La dame noire peut prendre la dame blanche, qui n'est défendue que par un pion.",
+          "arrows": [["g5", "g7"], ["g4", "h6"], ["d8", "g5"]],
+          "marks": {
+            "h6": "red"
+          },
+          "fails": "Qc8",
+          "eval": "-2.10",
+          "failsEval": "-2.35",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "3q2k1/2n2rpp/pn1b4/1p1p2Q1/3P1PNP/PPr2N2/8/R1B2RK1 b - - 0 21",
+          "text": "À toi : enlève la pièce la plus dangereuse de l'attaque, puis récupère un pion.",
+          "result": "edge",
+          "moves": [
+            {"san": "Qxg5", "text": "Les dames disparaissent : sans elle, les Blancs n'ont plus d'attaque.", "hint": "La dame blanche est à portée de la tienne.", "keeps": ["d8g5"]},
+            {"san": "hxg5"},
+            {"san": "Bxf4", "text": "Le pion f4 n'est plus protégé par la dame : le fou le prend.", "keeps": ["c3b3", "c7e6", "d6f4", "f7f8"], "close": ["b6d7", "f7f5"]},
+            {"san": "Bxf4"},
+            {"san": "Rxf4", "text": "La tour reprend : les Noirs ont un pion de plus.", "keeps": ["f7f4"]},
+            {"san": "Nfe5"}
+          ],
+          "end": "Selon Stockfish, les Noirs gardent une nette avance : un pion de plus et plus aucune attaque contre leur roi."
+        }
+      ]
+    },
+    "ne-pas-toucher-aux-pions": {
+      "title": "Ne pas affaiblir le roque",
+      "summary": "Contre Dxh7 mat, le réflexe g6 troue les cases noires : un pion f qui coupe la diagonale fait mieux.",
+      "keyPoints": [
+        "Chaque poussée de pion du roque crée des cases faibles que l'attaquant occupe.",
+        "Avant de jouer g6 ou h6, cherche un défenseur ou un pion qui coupe la ligne d'attaque.",
+        "Le pion f5 qui bouche une diagonale ne crée pas de trou devant le roi."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r1b2rk1/pp1p1ppp/2n1p3/q3P1N1/8/2PQ4/P3B1PP/R4RK1 b - - 2 15",
+          "text": "Position d'une partie lichess, les Noirs jouent. Les Blancs menacent Dxh7 mat. g6 ? perd : Dh3 puis h5 et Fxh5 ouvrent le roi, dont les cases noires sont trouées. Mieux vaut couper la diagonale de la dame d3 vers h7 avec un pion.",
+          "arrows": [["d3", "h7"], ["g5", "h7"], ["f7", "f5"]],
+          "marks": {
+            "h7": "red",
+            "g6": "yellow"
+          },
+          "threat": "Qxh7#",
+          "fails": "g6",
+          "eval": "-2.92",
+          "failsEval": "-6.73",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "r1b2rk1/pp1p1ppp/2n1p3/q3P1N1/8/2PQ4/P3B1PP/R4RK1 b - - 2 15",
+          "text": "À toi : pare la menace sans pousser le pion g ni le pion h.",
+          "result": "win",
+          "moves": [
+            {"san": "f5", "text": "Le pion f5 coupe la diagonale de la dame d3 : h7 n'est plus attaqué.", "hint": "Un pion peut se placer entre la dame d3 et h7.", "keeps": ["a5c5", "f7f5"]},
+            {"san": "exf6", "text": "Prise en passant : la diagonale se rouvre."},
+            {"san": "Qc5+", "text": "Échec : la dame gagne un temps et vise le cavalier g5.", "keeps": ["a5c5", "a5g5"]},
+            {"san": "Kh1"},
+            {"san": "Qxg5", "text": "Le cavalier g5 tombe, et avec lui la menace sur h7.", "keeps": ["c5g5"]},
+            {"san": "fxg7"}
+          ],
+          "end": "Selon Stockfish, les Noirs ont un avantage décisif : ils ont gagné une pièce."
+        }
+      ]
+    },
+    "g6-au-bon-moment": {
+      "title": "Quand g6 est la bonne réponse",
+      "summary": "Pousser un pion du roque se justifie quand il chasse un attaquant avec gain de temps.",
+      "keyPoints": [
+        "Un pion du roque peut avancer s'il chasse une pièce et qu'un défenseur garde les cases affaiblies.",
+        "Ici le fou f8 garde g7 et h6 après g6.",
+        "h6 au lieu de g6 laisse le cavalier sacrifier en h6 : une poussée mal choisie ouvre le roi."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r2q1bk1/5ppp/b2p1n2/p1p2N2/Pp3B2/1B4Q1/1PP2PPP/4R1K1 b - - 0 20",
+          "text": "Position d'une partie lichess, les Noirs jouent. Le cavalier f5 et la dame g3 visent g7, le fou b3 vise f7 et le fou f4 vise d6. Ici g6 chasse le cavalier avec gain de temps, et le fou f8 garde les cases noires. h6 ? perd : Cxh6+ ouvre le roi. Selon Stockfish, les Noirs tiennent après g6.",
+          "arrows": [["f5", "g7"], ["g3", "g7"], ["b3", "f7"], ["g7", "g6"]],
+          "marks": {
+            "g7": "red",
+            "f8": "green"
+          },
+          "claim": "hold-b",
+          "fails": "h6",
+          "eval": "-0.00",
+          "failsEval": "-6.81",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "r2q1bk1/5ppp/b2p1n2/p1p2N2/Pp3B2/1B4Q1/1PP2PPP/4R1K1 b - - 0 20",
+          "text": "À toi : chasse le cavalier f5 au bon moment.",
+          "result": "hold",
+          "moves": [
+            {"san": "g6", "text": "Le pion attaque le cavalier, qui doit agir tout de suite.", "hint": "Un pion du roque peut chasser le cavalier f5, et le fou f8 garde les cases noires.", "keeps": ["g7g6"]},
+            {"san": "Nh6+"},
+            {"san": "Bxh6", "text": "Le fou prend le cavalier : un attaquant de moins.", "keeps": ["f8h6"]},
+            {"san": "Bxh6"},
+            {"san": "Qd7", "text": "La dame se développe et garde f7 par la septième rangée.", "keeps": ["a8b8", "c5c4", "d6d5", "d8c7", "d8d7"], "close": ["a6b7", "a8c8"]},
+            {"san": "h3"}
+          ],
+          "end": "Selon Stockfish, la position est équilibrée : le pion g6 a chassé l'attaquant à temps."
+        }
+      ]
+    },
+    "cavalier-en-f5": {
+      "title": "Boucher la diagonale avec un cavalier",
+      "summary": "Contre la batterie dame et fou vers h7, un cavalier en f5 coupe la ligne et garde le roque.",
+      "keyPoints": [
+        "Une batterie dame et fou sur la diagonale de h7 se bloque en plaçant une pièce sur la diagonale.",
+        "Un cavalier en f5 garde h6, g7, e7 et d6 : il défend sans affaiblir le roque.",
+        "Pousser g6 ici crée des trous en f6 et h6, et ouvre la huitième rangée à la colonne d."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r5k1/1q2nppp/p3pb2/np5P/8/P2QBN2/1P3PP1/1B1R2K1 b - - 2 24",
+          "text": "Position d'une partie lichess, les Noirs jouent. La dame d3 et le fou b1 visent h7, la colonne d est ouverte. g6 ? perd : Dd8+ ! Txd8 Txd8+ Rg7 et h6 mat. Mieux vaut placer le cavalier sur la diagonale. Selon Stockfish, les Noirs tiennent avec le cavalier en f5.",
+          "arrows": [["b1", "h7"], ["d3", "h7"], ["d3", "d8"], ["e7", "f5"]],
+          "marks": {
+            "h7": "red",
+            "f5": "green"
+          },
+          "claim": "hold-b",
+          "fails": "g6",
+          "eval": "+0.31",
+          "failsEval": "#-3",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "r5k1/1q2nppp/p3pb2/np5P/8/P2QBN2/1P3PP1/1B1R2K1 b - - 2 24",
+          "text": "À toi : coupe la diagonale b1-h7 avec une pièce.",
+          "result": "hold",
+          "moves": [
+            {"san": "Nf5", "text": "Le cavalier se place en f5, entre le fou b1 et h7.", "hint": "Une pièce peut se placer sur la diagonale b1-h7.", "keeps": ["e7f5"]},
+            {"san": "Bg5", "text": "Les Blancs veulent échanger le fou f6, gardien du roque."},
+            {"san": "Bxg5", "text": "L'échange reste possible : le cavalier f5 garde h6 et e7.", "keeps": ["f6g5"]},
+            {"san": "Nxg5"},
+            {"san": "Nc6", "text": "Le second cavalier revient vers le centre et vise d4 et e5.", "keeps": ["a5c6", "b7e7"]},
+            {"san": "Nf3"}
+          ],
+          "end": "Selon Stockfish, la défense tient : le cavalier f5 garde la diagonale et les cases h6, g7 et e7."
+        }
+      ]
+    },
+    "cavalier-en-f8": {
+      "title": "Le cavalier revient en f8",
+      "summary": "Le cavalier d7 menacé ne fuit pas n'importe où : en f8, il garde g6, h7 et e6.",
+      "keyPoints": [
+        "Le cavalier en f8 est le défenseur classique du roque : il garde h7, g6 et e6.",
+        "Quand une pièce est attaquée, cherche d'abord une case qui défend aussi le roi.",
+        "Une fois le roque fermé, la pièce de plus finit par compter."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r1b1r1k1/pp1nqp2/4P1pp/2p5/2P3n1/3Q1N2/PPB2PPP/R3R1K1 b - - 0 18",
+          "text": "Position d'une partie lichess, les Noirs jouent. Le pion e6 attaque le cavalier d7 et le pion f7, la dame d3 et le fou c2 visent g6. Cb6 ? perd : exf7+ et la colonne e s'ouvre. En f8, le cavalier garde g6, h7 et e6.",
+          "arrows": [["e6", "f7"], ["d3", "g6"], ["c2", "g6"], ["d7", "f8"]],
+          "marks": {
+            "g6": "red",
+            "f8": "green"
+          },
+          "fails": "Nb6",
+          "eval": "-1.29",
+          "failsEval": "-3.53",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "r1b1r1k1/pp1nqp2/4P1pp/2p5/2P3n1/3Q1N2/PPB2PPP/R3R1K1 b - - 0 18",
+          "text": "À toi : sauve le cavalier d7 en le rapprochant de ton roi.",
+          "result": "edge",
+          "moves": [
+            {"san": "Nf8", "text": "Le cavalier rejoint le roque : g6 et h7 sont gardés.", "hint": "Cherche une case près du roi pour le cavalier d7.", "keeps": ["d7f8"]},
+            {"san": "exf7+"},
+            {"san": "Qxf7", "text": "La dame reprend : les Noirs gardent leur pièce de plus.", "keeps": ["e7f7"]},
+            {"san": "Rxe8"},
+            {"san": "Qxe8", "text": "La dame reprend et garde la huitième rangée.", "keeps": ["f7e8"]},
+            {"san": "h3"}
+          ],
+          "end": "Selon Stockfish, les Noirs gardent une nette avance : le cavalier f8 a fermé le roque."
+        }
+      ]
+    },
+    "fou-en-f8": {
+      "title": "Le fou revient garder g7",
+      "summary": "Quand les cases noires du roque sont visées, le fou e7 revient en f8 pour garder g7 et h6.",
+      "keyPoints": [
+        "Un fou qui garde g7 et h6 vaut souvent plus qu'un fou actif loin du roi.",
+        "Contre une dame et un cavalier sur les cases noires, ramène la pièce qui contrôle ces cases.",
+        "Le fou f8 peut ensuite revenir en e7 ou en g7 selon les besoins."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r2qr1k1/1b2bp1p/p5p1/2ppQ1Pn/1p3PN1/3P4/PPP3BP/R1B2RK1 b - - 0 17",
+          "text": "Position d'une partie lichess, les Noirs jouent. La dame e5 et le cavalier g4 visent f6, g7 et h6. Fd6 ? perd : Ch6+ et la dame entre en h8. Le fou e7 revient en f8 pour garder g7 et h6.",
+          "arrows": [["e5", "g7"], ["g4", "h6"], ["g4", "f6"], ["e7", "f8"]],
+          "marks": {
+            "g7": "red",
+            "h6": "red"
+          },
+          "fails": "Bd6",
+          "eval": "-2.76",
+          "failsEval": "-4.71",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "r2qr1k1/1b2bp1p/p5p1/2ppQ1Pn/1p3PN1/3P4/PPP3BP/R1B2RK1 b - - 0 17",
+          "text": "À toi : ramène une pièce pour garder les cases noires autour du roi.",
+          "result": "win",
+          "moves": [
+            {"san": "Bf8", "text": "Le fou revient en f8 : g7 et h6 sont gardés.", "hint": "Le fou e7 peut revenir près du roi pour garder g7.", "keeps": ["e7f8"]},
+            {"san": "Nf6+"},
+            {"san": "Nxf6", "text": "Le cavalier h5 prend : un attaquant de moins.", "keeps": ["h5f6"]},
+            {"san": "Qxf6"},
+            {"san": "Be7", "text": "Le fou attaque la dame, qui doit reculer.", "keeps": ["d8c7", "d8c8", "d8d7", "e8e7", "f8e7"], "close": ["c5c4", "d8b8", "f8g7"]},
+            {"san": "Qe5"}
+          ],
+          "end": "Selon Stockfish, les Noirs ont un avantage décisif : la dame blanche est repoussée et le roque a retrouvé ses gardiens."
+        }
+      ]
+    },
+    "fuite-du-roi": {
+      "title": "Le roi quitte l'aile attaquée",
+      "summary": "Quand le roque ne peut plus être défendu, le roi lui-même s'enfuit vers le centre.",
+      "keyPoints": [
+        "Si le roque est ouvert et que les défenseurs manquent, la meilleure défense est parfois la marche du roi.",
+        "Le roi cherche des cases gardées par ses pions et loin des pièces adverses.",
+        "Une pièce de plus compte double quand le roi s'est mis à l'abri."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "1rbq1rk1/p1p2p2/3p4/2b1p2Q/4B2p/3P4/PPP2PPP/R3K2R b KQ - 5 15",
+          "text": "Position d'une partie lichess, les Noirs jouent. Les Blancs menacent Dh7 mat. Le pion h a quitté le roque, alors le roi s'en va lui-même : par g7, f6 et e6, il rejoint le centre, où ses pions le couvrent. f5 ? perd : Dg6+ et le fou entre en d5.",
+          "arrows": [["h5", "h7"], ["e4", "h7"], ["g8", "g7"]],
+          "marks": {
+            "h7": "red",
+            "e6": "green"
+          },
+          "threat": "Qh7#",
+          "fails": "f5",
+          "eval": "-3.26",
+          "failsEval": "-4.36",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "1rbq1rk1/p1p2p2/3p4/2b1p2Q/4B2p/3P4/PPP2PPP/R3K2R b KQ - 5 15",
+          "text": "À toi : sauve le roi en le menant vers le centre.",
+          "result": "win",
+          "moves": [
+            {"san": "Kg7", "text": "Le roi monte en g7 et laisse h7 vide de sens.", "hint": "Le roi peut sortir lui-même du coin.", "keeps": ["g8g7"]},
+            {"san": "Qh7+"},
+            {"san": "Kf6", "text": "Le roi continue vers le centre.", "keeps": ["g7f6"]},
+            {"san": "Qxh4+"},
+            {"san": "Ke6", "text": "En e6, le roi est entouré de ses pions et de ses pièces.", "keeps": ["f6e6", "f6g7"]},
+            {"san": "Qh6+"}
+          ],
+          "end": "Selon Stockfish, les Noirs ont un avantage décisif : le roi est à l'abri au centre et la pièce de plus compte."
+        }
+      ]
+    },
+    "rendre-la-qualite": {
+      "title": "Rendre une qualité pour casser l'attaque",
+      "summary": "Avec du matériel en plus, rends-en une partie pour éliminer le meilleur attaquant.",
+      "keyPoints": [
+        "Quand tu as du matériel en plus, en rendre un peu pour éliminer le meilleur attaquant est souvent le plus sûr.",
+        "Une tour contre un fou qui assiège le roi : l'échange déplaît rarement au défenseur.",
+        "Compte ce qui reste après l'échange : ici deux pièces mineures contre une tour."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r5rk/1pqb1p1p/p2ppR2/2p1n1BP/P3P3/3P4/1PP2Q2/6RK b - - 6 25",
+          "text": "Position d'une partie lichess, les Noirs jouent. La tour f6 et le fou g5 visent f7 et h7, la dame f2 attend la colonne f. Les Noirs ont une pièce de plus : en rendant une qualité par Txg5 !, ils éliminent le fou. Taf8 ? perd : Txf7 et Ff6+.",
+          "arrows": [["f6", "f7"], ["g5", "f6"], ["f2", "f6"], ["g8", "g5"]],
+          "marks": {
+            "g5": "yellow",
+            "f7": "red"
+          },
+          "fails": "Raf8",
+          "eval": "-1.50",
+          "failsEval": "-6.70",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "r5rk/1pqb1p1p/p2ppR2/2p1n1BP/P3P3/3P4/1PP2Q2/6RK b - - 6 25",
+          "text": "À toi : rends une partie de ton matériel pour éliminer le meilleur attaquant.",
+          "result": "edge",
+          "moves": [
+            {"san": "Rxg5", "text": "La tour rend la qualité et supprime le fou g5.", "hint": "La tour g8 peut prendre une pièce blanche, même si elle vaut moins qu'elle.", "keeps": ["g8g5"]},
+            {"san": "Rxg5"},
+            {"san": "Rg8", "text": "La seconde tour conteste la colonne g.", "keeps": ["a8f8", "a8g8"]},
+            {"san": "Rxe6"},
+            {"san": "Qd8", "text": "La dame vise la tour g5 et garde la huitième rangée.", "keeps": ["c7d8"]},
+            {"san": "Rxg8+"}
+          ],
+          "end": "Selon Stockfish, les Noirs gardent une nette avance : les deux pièces mineures valent plus que la tour."
+        }
+      ]
+    },
+    "contre-le-grec": {
+      "title": "Contre le sacrifice grec",
+      "summary": "Après Fxh7+ et Cg5+, choisis la bonne case du roi, puis ramène un défenseur.",
+      "keyPoints": [
+        "Après Fxh7+ Rxh7 Cg5+, compare les trois cases du roi : g8 est souvent la seule qui tient.",
+        "En g6 ou h6, le roi s'expose aux échecs du cavalier et des pions.",
+        "Ramène un cavalier en f6 ou en g6 : il garde h7 ou h8 et bouche les lignes.",
+        "Fxg5 n'est pas toujours possible : vérifie la reprise par un pion qui ouvrirait la colonne h."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r2q1rk1/pbp1bppp/1p2p3/3n4/3P1B1P/3B1N2/PPP1QPP1/2KR3R w - - 1 12",
+          "text": "Position d'une partie lichess, les Blancs jouent. Fxh7+ ? ressemble au sacrifice grec, mais il échoue si le roi choisit bien : après Rxh7 Cg5+, les cases g6 et h6 l'exposent au cavalier et au pion h, seule g8 tient.",
+          "arrows": [["d3", "h7"], ["f3", "g5"], ["f4", "g5"]],
+          "marks": {
+            "h7": "red",
+            "g8": "green"
+          },
+          "fails": "Bxh7+",
+          "eval": "+1.78",
+          "failsEval": "-2.00",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "r2q1r2/pbp1bppk/1p2p3/3n2N1/3P1B1P/8/PPP1QPP1/2KR3R b - - 1 13",
+          "text": "Les Blancs ont joué Fxh7+ Rxh7 Cg5+. À toi : choisis la case du roi, puis défends h7.",
+          "result": "win",
+          "moves": [
+            {"san": "Kg8", "text": "Le roi revient en g8, loin du cavalier et du pion h.", "hint": "Choisis la case la plus éloignée du cavalier et des pions blancs.", "only": true, "keeps": ["h7g8"]},
+            {"san": "Qh5", "text": "La dame menace Dh7 mat, mais Stockfish préférait De4.", "weak": true, "threat": "Qh7#"},
+            {"san": "Nf6", "text": "Le cavalier garde h7 et attaque la dame. Fxg5 ? perdrait : hxg5 ouvre la colonne h.", "only": true, "keeps": ["d5f6"]},
+            {"san": "Qe2"},
+            {"san": "Qd5", "text": "La dame se centralise et vise a2 et g2.", "keeps": ["c7c5", "d8d5", "e7d6", "f6d5"], "close": ["a8c8", "b6b5", "b7g2", "d8e8", "f6e8", "f6h7", "f8e8", "g7g6"]},
+            {"san": "Be5"}
+          ],
+          "end": "Selon Stockfish, les Noirs ont un avantage décisif : le fou sacrifié manque aux Blancs."
+        },
+        {
+          "kind": "line",
+          "fen": "r3r3/pb2nppk/1q2p3/2p3N1/8/P1P5/1P3PPP/R2QR1K1 b - - 1 17",
+          "text": "Autre partie, même sacrifice : cette fois la dame arrive en h5. Trouve la case du roi, puis le défenseur qui couvre h8 et f8.",
+          "result": "win",
+          "moves": [
+            {"san": "Kg8", "text": "En g8, le roi évite les échecs du cavalier.", "hint": "Le roi doit s'éloigner du cavalier g5.", "keeps": ["h7g8"]},
+            {"san": "Qh5", "text": "La dame rejoint le cavalier et vise h7."},
+            {"san": "Ng6", "text": "Le cavalier e7 rejoint g6 : il garde h8 et f8.", "hint": "Le cavalier e7 peut couvrir h8 et f8.", "only": true, "keeps": ["e7g6"]},
+            {"san": "Re3"},
+            {"san": "Qc7", "text": "La dame garde f7 et vise h2.", "keeps": ["a8d8", "b6b2", "b6b3", "b6c7", "b6d6", "b6d8", "c5c4", "e6e5", "g8f8"], "close": ["a7a5", "a7a6", "a8b8", "a8c8", "b6a6", "b6b5", "b7c6", "b7d5"]},
+            {"san": "Rg3"}
+          ],
+          "end": "Selon Stockfish, les Noirs ont un avantage décisif : le roi a trouvé ses défenseurs et la pièce sacrifiée manque."
+        }
+      ]
+    },
+    "contre-la-tempete": {
+      "title": "Contre la tempête de pions",
+      "summary": "Roques opposés : élimine le pion arrivé au contact, puis ramène tes pièces autour du roi.",
+      "keyPoints": [
+        "Avant de prendre un pion de tête, vérifie quelles colonnes s'ouvrent et comment tes pièces protégeront le roi.",
+        "Pousser h6 ou g6 offre un levier à l'attaquant et lui ouvre une colonne.",
+        "Un pion qui coupe la diagonale d'un fou ferme la ligne sans créer de trou.",
+        "Une fois la tempête bloquée, contre-attaque vers le roi adverse."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "2r1r1k1/1b2b1pp/p2pp1P1/8/1q1NP3/2N1QP2/1PP5/2KR3R b - - 0 25",
+          "text": "Position d'une partie lichess, les Noirs jouent. Les Blancs ont roqué de l'autre côté et lancent leurs pions : le pion g6 attaque h7 et la tour h1 attend l'ouverture de la colonne h. h6 ? perd : Txh6 gxh6 Dxh6 et le roi est nu. Prendre le pion tient.",
+          "arrows": [["g6", "h7"], ["h1", "h7"], ["e3", "h6"]],
+          "marks": {
+            "h7": "red",
+            "g6": "yellow"
+          },
+          "fails": "h6",
+          "eval": "-0.00",
+          "failsEval": "-3.07",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "2r1r1k1/1b2b1pp/p2pp1P1/8/1q1NP3/2N1QP2/1PP5/2KR3R b - - 0 25",
+          "text": "À toi : élimine le pion g6, puis ramène tes défenseurs autour du roi.",
+          "result": "hold",
+          "moves": [
+            {"san": "hxg6", "text": "Le pion attaquant disparaît. La colonne h s'ouvre : il faut maintenant ramener les défenseurs près du roi.", "hint": "Ton pion h7 peut éliminer le pion g6.", "keeps": ["h7g6"]},
+            {"san": "Rhg1"},
+            {"san": "Bf6", "text": "Le fou garde g7 et la grande diagonale.", "keeps": ["e6e5", "e7f6"], "close": ["g8f7"]},
+            {"san": "Rxg6"},
+            {"san": "Kf7", "text": "Le roi attaque la tour et garde g6 et e6.", "keeps": ["g8f7"], "close": ["e8f8"]},
+            {"san": "Rg4"}
+          ],
+          "end": "Selon Stockfish, la position est équilibrée : la tempête s'est arrêtée sur le pion g6."
+        },
+        {
+          "kind": "diagram",
+          "fen": "r2q1rk1/2pbbpp1/2n1p3/p2n2PQ/2pP4/P1B1P2P/1PB5/2KR2NR b - - 2 17",
+          "text": "Autre partie, les Noirs jouent. Le pion g5, la dame h5 et le fou c2 visent h7, le fou c3 attend sur la grande diagonale. g6 ? perd : Fxg6 fxg6 Dxg6+ et le roi tombe. La riposte est f5 : le pion coupe la diagonale du fou c2.",
+          "arrows": [["c2", "h7"], ["h5", "h7"], ["c3", "g7"], ["f7", "f5"]],
+          "marks": {
+            "h7": "red",
+            "f5": "green"
+          },
+          "fails": "g6",
+          "eval": "-2.40",
+          "failsEval": "-4.15",
+          "orientation": "b"
+        },
+        {
+          "kind": "line",
+          "fen": "r2q1rk1/2pbbpp1/2n1p3/p2n2PQ/2pP4/P1B1P2P/1PB5/2KR2NR b - - 2 17",
+          "text": "À toi : coupe la diagonale du fou c2 sans affaiblir g6.",
+          "result": "win",
+          "moves": [
+            {"san": "f5", "text": "Le pion coupe la diagonale du fou c2 vers h7.", "hint": "Un pion peut se placer sur la diagonale du fou c2.", "keeps": ["f7f5"]},
+            {"san": "g6"},
+            {"san": "Nf6", "text": "Le cavalier revient garder h7 et h5.", "keeps": ["d5f6"]},
+            {"san": "Qh4"},
+            {"san": "Nb4", "text": "Le second cavalier part à l'assaut du roi blanc.", "keeps": ["c6b4", "d8e8", "e7b4"], "close": ["e7a3", "e7d6", "f8e8"]},
+            {"san": "Ne2"}
+          ],
+          "end": "Selon Stockfish, les Noirs ont un avantage décisif : la tempête est bloquée et c'est le roi blanc qui devient la cible."
+        }
+      ]
+    },
+    "contre-attaque-au-centre": {
+      "title": "Riposter par d5",
+      "summary": "Sous la pression sur f7, la poussée d5 ferme la diagonale du fou c4 et l'attaque avec gain de temps.",
+      "keyPoints": [
+        "Avant de subir sur l'aile, cherche une poussée au centre qui coupe une ligne d'attaque.",
+        "Ici d5 attaque le fou c4 tout en lui fermant la diagonale vers f7.",
+        "Après l'échange des dames, continue à chercher les prises centrales plutôt que de reculer."
+      ],
+      "steps": [
+        {
+          "kind": "diagram",
+          "fen": "r1b2rk1/pp1p2b1/2p4p/4q1N1/2B5/6Q1/PPP2PP1/2KR3R b - - 1 19",
+          "orientation": "b",
+          "claim": "b",
+          "arrows": [["c4", "f7"], ["g5", "f7"], ["d7", "d5"]],
+          "text": "Position d'une partie lichess, les Noirs jouent. Le fou c4 et le cavalier g5 visent f7. La poussée d5 coupe la diagonale du fou et l'attaque. Selon Stockfish, cette riposte centrale donne un avantage décisif aux Noirs.",
+          "eval": "-3.46"
+        },
+        {
+          "kind": "line",
+          "fen": "r1b2rk1/pp1p2b1/2p4p/4q1N1/2B5/6Q1/PPP2PP1/2KR3R b - - 1 19",
+          "result": "win",
+          "text": "À toi : contre-attaque au centre pour couper la diagonale du fou c4.",
+          "moves": [
+            {"san": "d5", "text": "Le pion d5 coupe la diagonale c4-f7 et attaque le fou c4.", "hint": "Ton pion d7 peut avancer de deux cases avec gain de temps sur le fou.", "keeps": ["d7d5"]},
+            {"san": "Qxe5"},
+            {"san": "Bxe5", "text": "Le fou reprend la dame. Sans les dames, la pression sur ton roi diminue.", "keeps": ["g7e5"]},
+            {"san": "Rxh6"},
+            {"san": "dxc4", "text": "Le pion prend le fou attaquant : la contre-attaque au centre rapporte du matériel.", "keeps": ["d5c4", "e5f4", "g8g7"], "close": ["c8f5"]},
+            {"san": "Kb1"}
+          ],
+          "end": "Selon Stockfish, les Noirs gardent un avantage décisif : la poussée centrale a permis d'échanger les dames et de prendre le fou c4."
+        }
+      ]
+    }
+  }
+}

@@ -1,5 +1,5 @@
 // Règles communes des contrôles hors ligne des cours d'Apprendre (check-endgame-course.mjs,
-// check-attack-course.mjs) : compteur de manquements, positions, flèches, coups cités, textes,
+// check-attack-course.mjs, check-defense-course.mjs) : compteur de manquements, positions, flèches, coups cités, textes,
 // tampon de vérification. Règles de texte reprises de scripts/check-learn-data.mjs (lot L4).
 import { createHash } from 'node:crypto'
 import { Chess } from 'chess.js'

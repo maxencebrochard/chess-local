@@ -15,6 +15,7 @@ import { puzzleContinuationStart, puzzlePlayerColor, useExerciseContinuation } f
 import { courseFor, type Course } from '../lib/courses'
 import { db } from '../lib/db'
 import { ROQUE } from '../lib/attackCourse'
+import { DEFENSE } from '../lib/defenseCourse'
 import { BASES } from '../lib/basicsCourse'
 import { STRUCTURES_COURSE } from '../lib/structuresCourse'
 import { FINALES, lessonForExercise } from '../lib/endgameCourse'
@@ -88,7 +89,7 @@ export default function Learn() {
       Promise.all((['endgame', 'tactic', 'opening', 'strategy'] as LearnDomain[]).map(async (d) => [d, await domainRating(d)] as const)),
       db.mistakes.where('solved').equals(0).count(),
       Promise.all(
-        [BASES, FINALES, ROQUE, STRUCTURES_COURSE].map(async (c) => {
+        [BASES, FINALES, ROQUE, DEFENSE, STRUCTURES_COURSE].map(async (c) => {
           const ids = await c.completedLessons()
           return [c.slug, c.lessonIds.filter((id) => ids.has(id)).length] as const
         }),
@@ -619,6 +620,7 @@ export default function Learn() {
         <CourseCard course={BASES} done={lessonsDone[BASES.slug] ?? 0} testId="basics-card-progress" />
         <CourseCard course={FINALES} done={lessonsDone[FINALES.slug] ?? 0} testId="course-card-progress" />
         <CourseCard course={ROQUE} done={lessonsDone[ROQUE.slug] ?? 0} testId="attack-card-progress" />
+        <CourseCard course={DEFENSE} done={lessonsDone[DEFENSE.slug] ?? 0} testId="defense-card-progress" />
         <CourseCard course={STRUCTURES_COURSE} done={lessonsDone[STRUCTURES_COURSE.slug] ?? 0} testId="structures-card-progress" />
       </div>
     </div>
