@@ -165,7 +165,8 @@ export default function Analysis() {
           setMoves(played)
           setViewIndex(Math.min(state.viewIndex ?? played.length - 1, played.length - 1))
         }
-        setOrientation(state.orientation ?? 'w')
+        setReviewColor(state.color ?? null)
+        setOrientation(state.orientation ?? state.color ?? 'w')
         if (state.label) setGameMeta(state.label)
       }
       navigate('.', { replace: true, state: null })

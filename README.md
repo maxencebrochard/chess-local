@@ -76,6 +76,10 @@ npm run preview
   Le dernier rapport se rouvre hors ligne ; si chess.com est injoignable lors d'une nouvelle série, seules ses parties déjà analysées pour ce pseudo et cette cadence sont disponibles.
   Le rapport propose un résumé du coach par règles, jusqu'à 3 forces et 3 faiblesses chiffrées selon les données disponibles, un plan d'entraînement vers les modules de l'app et des exemples ouverts dans l'Analyse.
   Il couvre la tendance de précision, la précision par phase hors théorie, les ouvertures par couleur, les résultats par couleur et Elo adverse, les erreurs typiques, les attaques sur le roi manquées, la conversion, la défense, les gaffes adverses punies et les résultats juste après une défaite.
+  Chaque faiblesse propose un entraînement adapté : attaque, défense, finales, ouvertures ou tactique.
+  « Tu t’effondres quand ton roi est attaqué » compte les fautes commises sous une attaque réelle du roi dans les bilans en cache, à partir de cinq parties analysées et de deux parties concernées.
+  Ses boutons ouvrent l’entraîneur de défense et « Mes défenses ratées » ; l’attaque renvoie aussi vers son entraîneur et « Mes attaques manquées ».
+  Les listes personnelles proviennent des bilans lancés dans Analyse, accessibles depuis les exemples ; leurs critères d’attaque diffèrent de ceux d’Insights.
   Les mesures de pendule utilisent les annotations `%clk` des PGN chess.com ; ChessLocal n'enregistre pas les temps par coup.
 - **Stats** : classements par cadence, bilan V/N/D, thèmes d'échiquier, réglages, sauvegarde et restauration des données IndexedDB et des réglages (fichier JSON), état du stockage, réinitialisation de l'app.
   Les bilans Insights en cache sont inclus dans la sauvegarde, mais pas la configuration ni la sélection du dernier rapport ; une restauration conserve la configuration locale et invalide ce rapport, sans supprimer les bilans restaurés.

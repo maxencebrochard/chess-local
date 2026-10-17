@@ -15,6 +15,7 @@ Trois volets :
 
 Fondée sur la fixture e2e/fixtures/chesscom.json : ignorée en --live.
 Usage : npm run test:e2e -- --suite insights
+INSIGHTS_CASE=trainers cible le parcours des entraîneurs et le bilan depuis un exemple.
 """
 import io
 import json
@@ -379,6 +380,63 @@ def motif_row(name, copy=0):
                        "gameRatingWhite": 1000, "gameRatingBlack": 1000, "winPctSeries": [50.0, 50.0, 50.0]}}
 
 
+# Trois pièces blanches visent le roi noir, contre deux défenseurs.
+DEFENSE_FEN = "r1bq1rk1/pp3pp1/2n1p2p/3pP1NQ/3P4/2NB4/PP3PPP/R3K2R b KQ - 0 1"
+
+
+def defense_row(copy=0, mirror=False, cls="blunder", opponent=False, best=None, fen=None):
+    board = chess.Board(fen or DEFENSE_FEN)
+    played, solution = "c6b4", "d8g5"
+    if mirror:
+        board = board.mirror()
+        played, solution = "c3b5", "d1g4"
+    if fen:
+        legal = list(board.legal_moves)
+        played, solution = legal[0].uci(), legal[-1].uci()
+    row = motif_row("missedFork", copy)
+    color = "w" if board.turn else "b"
+    start = board.fen()
+    san = board.san(chess.Move.from_uci(played))
+    row.update(key=f"defense:{copy}", playerColor=("b" if color == "w" else "w") if opponent else color)
+    row["review"].update(startFen=start, startTurn=color, moves=[{
+        "san": san, "uci": played, "class": cls, "evalAfterCp": 0, "mateAfter": None,
+        "bestMoveUci": best or solution, "winPctBefore": 50, "winPctAfter": 20,
+    }])
+    return row
+
+
+def defense_cases():
+    positive = [defense_row(i, mirror=i % 2 == 1) for i in range(5)]
+    quiet = [motif_row("missedFork", i) for i in range(5)]
+    repeated = defense_row()
+    board = chess.Board(DEFENSE_FEN)
+    moves = []
+    for i, uci in enumerate(("c6b4", "a2a3", "b4c6", "a3a4", "c6b4")):
+        move = dict(repeated["review"]["moves"][0], uci=uci, san=board.san(chess.Move.from_uci(uci)),
+                    **({"class": "best", "bestMoveUci": uci, "winPctAfter": 50} if i % 2 else {}))
+        board.push_uci(uci)
+        moves.append(move)
+    repeated["review"]["moves"] = moves
+    ordered = [defense_row(i) for i in range(5)]
+    for i, row in enumerate(ordered):
+        row["review"]["moves"][0]["winPctAfter"] = 20 - i
+    return {
+        "defense:positive": positive,
+        "defense:ordered": ordered,
+        "defense:single-game": [repeated] + quiet[:4],
+        "defense:four": positive[:4],
+        "defense:one": positive[:1] + quiet[:4],
+        "defense:two": positive[:2] + quiet[:3],
+        "defense:opponent": [defense_row(i, opponent=True) for i in range(5)],
+        **{f"defense:{cls}": [defense_row(i, cls=cls) for i in range(5)] for cls in ("book", "best", "miss", "missedWin", "inaccuracy", "mistake")},
+        "defense:illegal": [defense_row(i, best="a1a8") for i in range(5)],
+        "defense:quiet": quiet,
+        "defense:one-attacker": [defense_row(i, fen="r1bq1rk1/pp3pp1/2n1p2p/3pP3/3P4/2NB4/PP3PPP/R3K2R b KQ - 0 1") for i in range(5)],
+        "defense:centre": [defense_row(i, fen="r2qk3/pp3ppp/8/1B5Q/8/8/PPP2PPP/4R1K1 b q - 0 1") for i in range(5)],
+        "defense:ending": [defense_row(i, fen="6k1/8/8/8/8/8/5rr1/6K1 w - - 0 1") for i in range(5)],
+    }
+
+
 def clocked_pgn(moves, white, black, result, clock_of):
     """PGN chess.com avec une pendule par demi-coup (clock_of(i) en secondes), cadence 180."""
     game = chess.pgn.Game()
@@ -437,7 +495,7 @@ const { rows, clockPgn, cases } = JSON.parse(fs.readFileSync(process.argv[3], 'u
 const brief = (ins) => ({
   errors: Object.fromEntries(ins.errors.filter((e) => e.count).map((e) => [e.kind, e.count])),
   weak: ins.findings.candidates.weaknesses.map((f) => f.id), strong: ins.findings.candidates.strengths.map((f) => f.id),
-  skipped: ins.games.skipped, n: ins.games.n, plans: Object.fromEntries(ins.findings.candidates.weaknesses.map((f) => [f.id, f.plan])),
+  kingDefense: ins.kingDefense, findings: ins.findings.candidates.weaknesses, skipped: ins.games.skipped, n: ins.games.n, plans: Object.fromEntries(ins.findings.candidates.weaknesses.map((f) => [f.id, f.plan])),
 })
 const out = { insights: mod.computeInsights(rows), clocks: mod.parseClocks(clockPgn), cases: {} }
 for (const [name, rs] of Object.entries(cases)) out.cases[name] = brief(mod.computeInsights(rs))
@@ -450,6 +508,7 @@ def bench_cases():
     # Cinq parties portant le même motif : les verdicts de motifs passent leur seuil.
     for k in ("ignoredThreat", "missedFork", "missedMate", "missedKingAttack"):
         cases[f"x5:{k}"] = [motif_row(k, c) for c in range(5)]
+    cases.update(defense_cases())
     cases["verdicts"] = verdict_rows()
     # Ligne abîmée (sauvegarde trafiquée) : ignorée et comptée, jamais d'exception.
     broken = dict(motif_row("missedFork"), key="cas:abimee")
@@ -501,6 +560,27 @@ def case_checks(cases):
           "mats-manques" in x5["missedMate"] and any(p.get("to") == "/mats?d=mate-1" for p in cases["x5:missedMate"]["plans"].get("mats-manques", [])), f"({x5['missedMate']})")
     check(f"{tag} 5 attaques manquées : faiblesse « attaque » avec une séance Attaque à l'aile roi",
           "attaque" in x5["missedKingAttack"] and any(p.get("state", {}).get("tactic") == "kingsideAttack" for p in cases["x5:missedKingAttack"]["plans"].get("attaque", [])), f"({x5['missedKingAttack']})")
+    check(f"{tag} attaque reliée aux deux entraîneurs", {"/attaque", "/attaques-manquees"} <= {p.get("to") for p in cases["x5:missedKingAttack"]["plans"].get("attaque", [])})
+    for name, case in cases.items():
+        check(f"{tag} {name} : chaque faiblesse possède une destination", all(any(p.get("to") for p in plan) for plan in case["plans"].values()))
+    for name, case in cases.items():
+        if not name.startswith("defense:"):
+            continue
+        positive = name in ("defense:positive", "defense:two", "defense:mistake", "defense:centre", "defense:ordered")
+        check(f"{tag} {name} : seuil et exclusions", ("roi-attaque" in case["weak"]) == positive)
+        if name not in ("defense:positive", "defense:four", "defense:one", "defense:two", "defense:mistake", "defense:centre", "defense:ordered", "defense:single-game"):
+            check(f"{tag} {name} : aucun faux positif compté", case.get("kingDefense", {}).get("faults") == 0)
+    single = cases["defense:single-game"].get("kingDefense", {})
+    check(f"{tag} trois fautes dans une partie ne suffisent pas", (single.get("faults"), single.get("games"), single.get("drop")) == (3, 1, 90))
+    ordered = cases["defense:ordered"].get("kingDefense", {})
+    check(f"{tag} exemples les plus coûteux, cumul avant troncature", ordered.get("drop") == 160 and [e["drop"] for e in ordered.get("examples", [])] == [34, 33, 32])
+    check(f"{tag} le diagnostic attaque Insights ne confond pas les mats avec ses coups offensifs", "attaque" not in cases["x5:missedMate"]["weak"])
+    d = cases["defense:positive"].get("kingDefense", {})
+    check(f"{tag} défense blancs/noirs : 5 fautes, 5 parties, 150 points perdus", (d.get("faults"), d.get("games"), d.get("drop")) == (5, 5, 150))
+    check(f"{tag} défense : trois exemples corrects", len(d.get("examples", [])) == 3 and all(e["index"] == 0 and e["drop"] == 30 and e["bestSan"] for e in d.get("examples", [])))
+    f = next((f for f in cases["defense:positive"]["findings"] if f["id"] == "roi-attaque"), {})
+    check(f"{tag} défense : détail chiffré et sévérité exacte", f.get("severity") == 1 and "5 fautes" in f.get("detail", "") and "5 parties" in f.get("detail", ""))
+    check(f"{tag} défense : entraîneur et liste personnelle", {p.get("to") for p in f.get("plan", [])} >= {"/defense", "/defenses-ratees"})
     v = cases["verdicts"]
     want = {"gaffes", "temps-pression", "defaites-au-temps", "conversion", "opportunisme", "couleur", "tendance", "tilt", "ouverture-Sicilian Defense-b"}
     check(f"{tag} 24 parties : chaque verdict de résultats et de pendule se déclenche", v["n"] == 24 and want <= set(v["weak"]), f"(manquants : {sorted(want - set(v['weak']))})")
@@ -911,6 +991,54 @@ def seeded_report(p, browser, rows, ins):
 
 
 # ---------------------------------------------------------------- UI : série réelle
+def trainer_links(p, browser):
+    for kind, rows, finding, routes in (
+        ("defense", defense_cases()["defense:positive"], "roi-attaque", ("/defense", "/defenses-ratees")),
+        ("attaque", [motif_row("missedKingAttack", i) for i in range(5)], "attaque", ("/attaque", "/attaques-manquees")),
+    ):
+        ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block")
+        page = ctx.new_page()
+        page.goto(f"{BASE}/#/stats")
+        if not check(f"[F19] {kind} : base prête", wait_schema(page)):
+            ctx.close()
+            continue
+        seed_db(page, {"reviews": rows})
+        page.evaluate("([key, keys]) => localStorage.setItem(key, JSON.stringify({config: {timeClass: 'blitz', count: 10, sources: ['local']}, lastRun: {keys, at: Date.now()}}))", [INSIGHTS_KEY, [r["key"] for r in rows]])
+        page.goto(f"{BASE}/#/insights")
+        card = f"[data-testid=insights-weaknesses] [data-id={finding}]"
+        if ck.appears(f"[F19] {kind} : faiblesse depuis les reviews", page, card):
+            check(f"[F19] {kind} : aide pour les listes personnelles", "bilan dans Analyse" in page.locator(card).inner_text())
+            for width, height in ((393, 852), (393, 660), (1440, 900)):
+                page.set_viewport_size({"width": width, "height": height})
+                page.locator(card).scroll_into_view_if_needed()
+                check(f"[F19] {kind} {width}x{height} : aucun débordement", not overflow_x(page))
+                page.screenshot(path=f"{SHOTS}/insights_f19_{kind}_{width}x{height}.png")
+            for route in routes:
+                page.locator(f"{card} a[href='#{route}']").click()
+                ck.appears(f"[F19] destination {route}", page, "main h1")
+                check(f"[F19] route {route} ouverte", page.url.endswith(f"#{route}"))
+                check(f"[F19] {route} : contenu chargé", bool(page.locator("main h1").inner_text()))
+                page.goto(f"{BASE}/#/insights")
+                ck.appears(f"[F19] retour {kind}", page, card)
+            check(f"[F19] {kind} : aucune écriture dans mistakes", rows_of(page, "mistakes") == [])
+            if kind == "defense":
+                page.locator(f"{card} summary").click()
+                page.locator(f"{card} [data-testid=example]").first.click()
+                if ck.appears("[F19] exemple ouvert dans Analyse", page, "button:text('Bilan de partie')"):
+                    page.locator("button:text('Bilan de partie')").click()
+                    if ck.appears("[F19] bilan de l’exemple terminé", page, "h1:text('Bilan de la partie')", timeout=90000):
+                        faults = []
+                        for _ in range(40):
+                            faults = rows_of(page, "mistakes")
+                            if faults:
+                                break
+                            page.wait_for_timeout(100)
+                        check("[F19] bilan conserve le camp noir du joueur", bool(faults) and all(r.get("color") == "b" for r in faults), str(faults)[:300])
+                        page.goto(f"{BASE}/#/defenses-ratees")
+                        ck.appears("[F19] défense de l’exemple disponible personnellement", page, "[data-testid=missed-defense-item]")
+        ctx.close()
+
+
 def set_hidden(page, hidden):
     """Page masquée ou visible, comme quand l'utilisateur quitte la PWA puis y revient."""
     page.evaluate(
@@ -1189,12 +1317,16 @@ def local_run(p, browser):
 def suite(p):
     browser = p.chromium.launch(headless=True)
     try:
+        if os.environ.get("INSIGHTS_CASE") == "trainers":
+            trainer_links(p, browser)
+            return
         rows = build_rows()
         ins, clocks, cases = node_bench(rows)
         if ins is not None:
             bench_checks(ins, clocks, rows)
             case_checks(cases)
             seeded_report(p, browser, rows, ins)
+        trainer_links(p, browser)
         real_run(p, browser)
         offline_no_cache(p, browser)
         local_run(p, browser)

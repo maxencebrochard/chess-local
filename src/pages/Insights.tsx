@@ -284,6 +284,7 @@ export default function Insights() {
         uci: row.review.moves.map((m) => m.uci),
         viewIndex: e.index - 1,
         orientation: e.color,
+        color: e.color,
         label: e.label,
         ...BACK,
       },
