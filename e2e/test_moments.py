@@ -434,6 +434,28 @@ def ui_flow(p, browser):
     shot(page, "c2_moments_verdict_852")
     check("[ui] résumé sans débordement horizontal", not overflow_x(page))
 
+    for previous_key in ("position", "moment"):
+        previous = {
+            "key": previous_key, "startFen": chess.STARTING_FEN, "player": "w",
+            "label": "Partie précédente", "uci": ["e2e4", "e7e5"],
+            "end": None, "assisted": False, "recorded": False,
+        }
+        page.evaluate("g => localStorage.setItem('chess-local-position-game-v1', JSON.stringify(g))", previous)
+        first.locator("[data-testid=moment-replay]").click()
+        if not ck.appears(f"[ui] autre partie {previous_key} : moment ouvert", page, "text=Objectif : trouve le bon coup"):
+            ctx.close()
+            return
+        page.reload()
+        if not ck.appears(f"[ui] autre partie {previous_key} : moment conservé avant le premier coup", page, "text=Objectif : trouve le bon coup"):
+            ctx.close()
+            return
+        check(f"[ui] autre partie {previous_key} : sauvegarde intacte", page.evaluate("() => JSON.parse(localStorage.getItem('chess-local-position-game-v1'))") == previous)
+        page.locator("button[aria-label='Retour']").first.click()
+        if not ck.appears(f"[ui] autre partie {previous_key} : retour au bilan conservé", page, "[data-testid=critical-moments]"):
+            ctx.close()
+            return
+        check(f"[ui] autre partie {previous_key} : mêmes moments au bilan", card_facts(page) == cards)
+
     first.locator("[data-testid=moment-replay]").click()
     if not ck.appears("[ui] Rejouer ouvre /moment-critique", page, "text=Objectif : trouve le bon coup"):
         ctx.close()

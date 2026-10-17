@@ -314,5 +314,8 @@ export function resumedGame(key: string, startFen: string, restoreFinished: bool
 export function storeGame(g: StoredGame) {
   try {
     localStorage.setItem(POSITION_GAME_KEY, JSON.stringify(g))
-  } catch {}
+    return true
+  } catch {
+    return false
+  }
 }

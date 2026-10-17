@@ -82,6 +82,7 @@ export interface PositionGameProps {
   // Première action dans cette partie alors qu'une autre partie persistée était en cours : elle va
   // être écrasée (seul emplacement de persistance).
   onReplace?: (replaced: StoredGame) => void
+  onPersisted?: () => void
   back?: unknown // gardé avec la partie persistée (partie libre)
   showAttackers?: boolean // calque « Compte les attaquants » (cadres sur l'échiquier + légende)
   attackersPrinciple?: string // repère de la légende du calque ; absent : celui de l'attaquant
@@ -217,7 +218,7 @@ export function PositionGame(props: PositionGameProps) {
     const other = stored && (stored.key !== props.gameKey || stored.startFen !== startFen)
     if (history.length === 0 && !end && other) return
     if (other && !stored.end && !stored.recorded && stored.uci.length > 0) props.onReplace?.(stored)
-    storeGame({
+    const persisted = storeGame({
       key: props.gameKey,
       startFen,
       player,
@@ -231,6 +232,7 @@ export function PositionGame(props: PositionGameProps) {
       decisive: decisive ?? undefined,
       holdFall: hold ? holdFall : undefined,
     })
+    if (persisted) props.onPersisted?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history, end, assisted, decisive, holdFall])
 
