@@ -74,10 +74,10 @@ npm run preview
   Chaque partie reçoit un bilan Stockfish avec progression et estimation de durée ; la série se met en pause en arrière-plan et reprend au retour, et « Annuler » puis « Reprendre » conserve les bilans terminés.
   Le cache est réutilisé à profondeur et compte identiques ; changer le nombre demandé peut changer la profondeur et entraîner un nouveau calcul.
   Le dernier rapport se rouvre hors ligne ; si chess.com est injoignable lors d'une nouvelle série, seules ses parties déjà analysées pour ce pseudo et cette cadence sont disponibles.
-  Le rapport propose un résumé du coach par règles, jusqu'à 3 forces et 3 faiblesses chiffrées selon les données disponibles, un plan d'entraînement vers les modules de l'app et des exemples ouverts dans l'Analyse.
+  Le rapport propose un résumé du coach par règles, jusqu'à 3 forces et 3 faiblesses chiffrées selon les données disponibles, un plan d'entraînement vers les modules de l'app et des exemples ouverts dans l'Analyse en conservant ton camp pour le bilan.
   Il couvre la tendance de précision, la précision par phase hors théorie, les ouvertures par couleur, les résultats par couleur et Elo adverse, les erreurs typiques, les attaques sur le roi manquées, la conversion, la défense, les gaffes adverses punies et les résultats juste après une défaite.
   Chaque faiblesse propose un entraînement adapté : attaque, défense, finales, ouvertures ou tactique.
-  « Tu t’effondres quand ton roi est attaqué » compte les fautes commises sous une attaque réelle du roi dans les bilans en cache, à partir de cinq parties analysées et de deux parties concernées.
+  « Tu t’effondres quand ton roi est attaqué » compte tes erreurs et gaffes commises sous une attaque réelle du roi dans les bilans en cache, à partir de cinq parties analysées et de deux parties concernées.
   Ses boutons ouvrent l’entraîneur de défense et « Mes défenses ratées » ; l’attaque renvoie aussi vers son entraîneur et « Mes attaques manquées ».
   Les listes personnelles proviennent des bilans lancés dans Analyse, accessibles depuis les exemples ; leurs critères d’attaque diffèrent de ceux d’Insights.
   Les mesures de pendule utilisent les annotations `%clk` des PGN chess.com ; ChessLocal n'enregistre pas les temps par coup.
