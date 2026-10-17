@@ -221,8 +221,8 @@ export function pickQuestion(items: VisItem[], level: number, used: Set<string>,
   for (const kind of kinds) {
     if (kind === 'mate') {
       const wantYes = rng() < 0.5
-      for (const yes of [wantYes, !wantYes]) {
-        const it = order.find((i) => (mateMoves(finalPosition(i)).length > 0) === yes)
+      for (const candidates of [order, shuffle(items, rng)]) {
+        const it = candidates.find((i) => (mateMoves(finalPosition(i)).length > 0) === wantYes)
         if (it) return questionFor(it, level, 'mate', rng)
       }
       continue
