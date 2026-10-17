@@ -175,10 +175,11 @@ La révision espacée sait déjà prioriser le travail dû et l’analyse sait r
 Le menu latéral desktop et la navigation basse mobile sont des bases adaptées.
 Les états « position absente » et « rien à réviser » évitent une page blanche et indiquent une issue.
 
-## Carte réelle de navigation
+## Carte de navigation du premier audit
 
-Les chemins ci-dessous sont les routes de `src/App.tsx`, hors préfixe de déploiement et `#` du HashRouter.
-Il existe 28 routes explicites et une route de repli `*` vers Accueil.
+Les chemins ci-dessous étaient les routes de `src/App.tsx` à la référence du premier audit, hors préfixe de déploiement et `#` du HashRouter.
+Cet inventaire historique comptait 28 routes explicites et une route de repli `*` vers Accueil.
+Les ajouts fusionnés depuis sont décrits dans [l’actualisation après synchronisation](#actualisation-après-synchronisation-sur-main).
 L’arbre représente les entrées visibles et les relations de navigation, pas seulement la structure des URL.
 
 ```text
@@ -319,6 +320,9 @@ Les anciens liens de Stats vers les données continuent d’aboutir au bon conte
 
 ### Regroupement exhaustif des fonctions
 
+Les colonnes « présentes » et « annoncées » reflètent le premier audit.
+Pour leur statut après synchronisation, voir les [fonctions effectivement fusionnées](#fonctions-effectivement-fusionnées).
+
 | Groupe propriétaire | Fonctions présentes | Fonctions annoncées à accueillir | Noms proposés |
 |---|---|---|---|
 | Accueil | Révision due, accès Jouer et Puzzles | Séance du jour | « Ta séance du jour », « Reprendre » |
@@ -336,7 +340,7 @@ Les anciens liens de Stats vers les données continuent d’aboutir au bon conte
 | Plus / Préférences et données | Pièces, thème, sons, prémouvements, sauvegarde, restauration, réinitialisation | Réglages des nouvelles activités si nécessaires | « Réglages », « Mes données » |
 
 Ce regroupement couvre plus de 25 capacités si l’on compte séparément les modes internes ; le nombre varie selon que l’on compte routes, activités ou modalités.
-Les 28 routes actuelles ne doivent donc pas être présentées comme 28 fonctionnalités indépendantes.
+Une route ne doit donc pas être assimilée à une fonctionnalité indépendante.
 La séance automatique actuelle reste accessible comme « Séance rapide » tant que la séance du jour n’est pas fusionnée et que son contrat n’est pas confirmé.
 Après fusion, la séance du jour devient l’entrée recommandée ; aucun deuxième ordonnanceur ou calcul de priorité n’est créé par la refonte.
 Les révisions dues ne doivent pas être comptées deux fois si la séance du jour les intègre déjà.
@@ -514,14 +518,14 @@ Les tokens de `src/index.css` sont conservés comme base ; aucune seconde palett
 Le texte blanc sur l’accent actuel a un contraste calculé de 2,41:1, inférieur à 3:1 pour le grand texte et à 4,5:1 pour le texte normal selon WCAG AA.
 Le texte `surface` sur l’accent atteint 6,43:1 ; `neutral-400` sur `surface-2` atteint 5,35:1, contre 2,85:1 pour `neutral-500`.
 Ces rapports utilisent la formule de luminance relative sRGB sur couleurs opaques ; les états avec opacité demandent leur propre mesure composée.
-Privilégier un texte sombre sur le vert existant, ou assombrir le fond de bouton avec un token sémantique testé, sans changer silencieusement la couleur d’accent partout.
+Le choix livré pour les accents opaques est décrit dans le [socle visuel du lot 1](#lot-1--socle-visuel-réalisé).
 Ne pas utiliser le vert comme unique indice de réussite : ajouter un mot et un symbole.
 
 | Rôle | Tailwind proposé | Règle |
 |---|---|---|
 | Titre de page | `text-2xl font-bold` | Un seul h1, sans emoji indispensable |
 | Titre de section | `text-lg font-semibold` | Groupes d’intention |
-| Titre de carte | `text-base font-semibold` | Deux lignes maximum sans perte d’information |
+| Titre de carte | `text-base font-semibold` | Texte repliable sans troncature |
 | Corps | `text-base leading-6` | Explications lisibles |
 | Métadonnée | `text-sm text-neutral-400` | Jamais le seul porteur d’une action |
 | Navigation | 12 px, graisse 600 | Libellé complet, cinq éléments |
@@ -533,7 +537,7 @@ Les catalogues conservent `max-w-2xl` ; les écrans d’exercice utilisent la ha
 Sur desktop, l’échiquier et les actions forment deux colonnes ; les pages de lecture restent bornées pour éviter les lignes trop longues.
 Les zones sûres utilisent les helpers CSS existants et ne sont pas codées avec les valeurs simulées de l’audit.
 
-### Composants à consolider après fusion
+### Contrats des composants communs
 
 | Composant | Responsabilité et contrat | Réutilisation / exclusion |
 |---|---|---|
@@ -545,7 +549,8 @@ Les zones sûres utilisent les helpers CSS existants et ne sont pas codées avec
 | `Cta` existant | Action principale / secondaire, cible, contraste, focus et état occupé | Étendre le composant existant au lieu d’un second système de boutons |
 | En-tête et pied d’exercice | Quitter, progression, consigne, verdict et prochaine action | Composer autour des lecteurs actuels ; ne pas unifier les moteurs métier |
 
-Aucun composant n’est créé maintenant : les trois premiers usages concrets et le contrat des branches fusionnées doivent guider leur extraction.
+Les composants déjà livrés et leurs usages sont recensés dans le [socle visuel du lot 1](#lot-1--socle-visuel-réalisé).
+`LoadingState` et l’en-tête et pied d’exercice restent des propositions pour les lots suivants ; leurs usages concrets guideront leur extraction.
 Les styles de focus doivent être visibles sur fond sombre et ne pas dépendre du hover.
 Les listes déroulantes et feuilles doivent restituer le focus à leur déclencheur, offrir Échap sur desktop et ne pas laisser le focus derrière un calque modal.
 Les annonces de verdict ne doivent pas répéter chaque coup de l’échiquier à VoiceOver.
@@ -573,19 +578,21 @@ Le périmètre fonctionnel vient de la mission, et aucun fichier d’un autre wo
 | `feat/c1-alerte-menace` | Jouer / Coach | Alerte contextuelle, pas une tuile de plus |
 | `chore/q2-audit-ui`, `feat/ios-app`, `fix/pieces-sons-ios` | Socle partagé | Reprendre leurs corrections de layout et gestes avant de retoucher la coquille |
 
-Le premier lot de refonte doit recenser les routes et domaines réellement fusionnés et actualiser ce tableau.
+La réconciliation du lot 1 est consignée dans les [fonctions effectivement fusionnées](#fonctions-effectivement-fusionnées).
+Le lot 0 devra compléter cet inventaire après les fusions restantes, avant les changements de navigation.
 Un déplacement de menu ne justifie pas de renommer un domaine `learnSessions`, une clé de sauvegarde ou un identifiant de contenu.
 
 ## Plan de mise en œuvre
 
 Chaque lot porte un périmètre limité et peut être annulé sans migration de données.
 L’ordre indique les dépendances ; les lots 3 à 6 sont séparables une fois le socle et les contrats validés.
-Les checks listés sont des obligations futures, pas des tests déjà exécutés dans cette phase.
+Les checks listés sont les critères d’acceptation de chaque lot.
+Les résultats historiques du lot 1 sont consignés dans sa [vérification finale](#vérification-finale-du-lot-1) ; ceux des lots suivants restent à établir.
 
 | Lot | Périmètre et propriété | Dépendance | Acceptation E2E |
 |---|---|---|---|
 | 0. Réconcilier après fusion | Inventaire routes, états et domaines, mise à jour de cet audit | Toutes les features retenues fusionnées | Audit trois formats, aucune route oubliée, liste des écarts explicite |
-| 1. Socle visuel (fait) | `Cta`, en-tête, carte, progression, état vide sur trois usages réels | Lot 0 | Contraste, focus, 44 px, titres longs, état vide, chargement, captures trois formats |
+| 1. Socle visuel (fait) | `Cta`, en-tête, carte, progression, état vide sur trois usages réels | Réconciliation sur la base du lot 1 | Contraste, focus, 44 px, titres longs, état vide, chargement, captures trois formats |
 | 2. Navigation et Plus | `App.tsx`, nouveau hub Plus, rattachement des routes | Lot 1 | Cinq onglets, aria-current exact, anciens deep links, replace/push, aucun retour hors app, suites shell/all_buttons/edge_navigation |
 | 3. Réglages et données | Extraire la présentation de Stats vers Réglages et Mes données | Lot 2 | Mêmes valeurs persistées ; backup, upgrade, audio_settings, stats ; annulation des actions destructrices |
 | 4. Accueil quotidien | `Home.tsx`, adaptateur de lecture du service de séance existant | Lot 2 + séance du jour intégrée | Profil neuf, reprise, dû/non dû, données indisponibles, pas de double comptage, CTA accessible à 660 px |
@@ -612,7 +619,7 @@ L’audit ne mesure ni rétention, ni vitesse de progression, ni préférence r�
 Les états de chaque famille sont échantillonnés ; les milliers de positions, toutes les variantes de cours et toutes les pannes de stockage ne sont pas parcourus individuellement.
 Les suites métier existantes restent propriétaires de leur validation exhaustive.
 
-## Vérifications de cette phase
+## Vérifications historiques de la phase 1
 
 Environnement de validation : Node 22.21.1, Python 3.12 et Playwright 1.56 dans `.venv.local`, ignoré par Git.
 `npm ci --include=optional` sous Node 22 et l’installation de `e2e/requirements.txt` ont terminé avec code 0.
@@ -645,9 +652,9 @@ Deux passes développement intermédiaires se sont arrêtées sur un timeout de 
 La méthode finale attend les animations finies, le décodage des images et la position complète visible dans les retours d’analyse, au lieu de forcer la fin des animations pendant la capture.
 Les anciennes captures intermédiaires de l’analyse montraient des pièces résiduelles alors que le DOM attendu était déjà présent ; ce défaut de prise de vue ne se retrouve pas dans les captures finales relues.
 Les journaux finaux sont `e2e/shots/ux-audit/prod.log` et `e2e/shots/ux-audit/dev-final.log`.
-Aucun code produit ni helper partagé n’a changé : les suites métier non touchées n’ont pas été relancées.
+Lors de cette phase d’audit initiale, aucun code produit ni helper partagé n’avait changé : les suites métier non touchées n’avaient pas été relancées.
 Le succès des checks établit les parcours et la couverture, pas la conformité ergonomique des écrans audités.
-La refonte et sa validation sur iPhone physique restent à réaliser après fusion.
+La suite de la refonte et sa validation sur iPhone physique restent à réaliser après fusion.
 
 ## Lot 1 : socle visuel réalisé
 

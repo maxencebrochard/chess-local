@@ -63,8 +63,8 @@ def suite(p):
         ctx = desktop_context(browser, ck, service_workers="block") if fmt == "desktop" else mobile_context(p, browser, ck, standalone=True, viewport={"width":393,"height":height}, service_workers="block")
         page = ctx.new_page()
         for path, name, marker in [("/","accueil","h1"),("/apprendre","apprendre","h1"),
-                ("/apprendre/bases","bases","[data-lesson]"),("/apprendre/finales","finales","[data-lesson]"),
-                ("/apprendre/roque","roque","[data-lesson]"),("/archive","archive","text=Aucune partie enregistrée"),
+                ("/apprendre/bases","bases","h1:text('Les bases')"),("/apprendre/finales","finales","h1:text('Cours de finales')"),
+                ("/apprendre/roque","roque","h1:text('Démolir le roque')"),("/archive","archive","text=Aucune partie enregistrée"),
                 ("/attaques-manquees","attaques","[data-testid=attack-empty]"),("/defenses-ratees","defenses","[data-testid=defense-empty]")]:
             page.goto(f"{BASE}/#{path}")
             if not ck.appears(f"{fmt}/{name} : prêt", page, marker):
@@ -97,6 +97,8 @@ def suite(p):
                 back = page.get_by_role("button", name="Retour à Apprendre", exact=True)
                 if back.count():
                     back.click()
+                    page.wait_for_url("**/#/apprendre")
+                    ck.appears(f"{fmt}/{name} : hub restauré", page, "h1:has-text('Apprendre')")
                 ck.check(f"{fmt}/{name} : retour explicite", page.url.endswith("#/apprendre"))
             if name == "attaques":
                 title = page.locator("h1")
@@ -109,6 +111,7 @@ def suite(p):
                 if action.count():
                     target = action.get_attribute("href")
                     action.click()
+                    page.wait_for_url(f"**/{target}")
                     ck.check(f"{fmt}/{name} : destination état vide", page.url.endswith(target))
         page.goto(f"{BASE}/#/apprendre/parcours")
         if ck.appears(f"{fmt} : parcours prêt", page, "[data-current-step] button"):
