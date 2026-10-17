@@ -1,7 +1,7 @@
 """Régressions de sélection et de plans des structures."""
 import re
 
-from helpers import BASE, Checker, mobile_context
+from helpers import BASE, Checker, mobile_context, shot
 from test_structures import SEED_JS, GAME
 
 ck = Checker("structures_selection")
@@ -13,6 +13,8 @@ INVERSE = "1. e3 e5 2. d4 d5 3. Nf3 e4 4. Be2 Nf6 5. O-O Be7 6. b3 O-O 7. Bb2 *"
 def suite(p):
     browser = p.chromium.launch(headless=True)
     ctx = mobile_context(p, browser, ck, standalone=True)
+    chesscom_requests = []
+    ctx.on("request", lambda req: chesscom_requests.append(req.url) if "api.chess.com" in req.url else None)
     page = ctx.new_page()
     page.goto(f"{BASE}/#/structures")
     page.wait_for_selector("[data-testid='structures-summary']")
@@ -51,7 +53,10 @@ def suite(p):
             ck.check(f"{sid}/{game_id} camp, rechargement={refresh}", hint in page.locator(GAME).inner_text())
             page.get_by_role("button", name=re.compile(r"^Plan [▴▾]$")).click()
             ck.check(f"{sid}/{game_id} plan, rechargement={refresh}", plan in page.locator(GAME).inner_text())
+            if refresh:
+                shot(page, f"structures_selection_{sid}_{game_id}")
         ck.check(f"{sid}/{game_id} clé distingue la structure", key.endswith(f"@{sid}"))
+    ck.check("Parties déjà chargées : aucun appel chess.com", not chesscom_requests, str(chesscom_requests))
     ctx.close()
     browser.close()
 
