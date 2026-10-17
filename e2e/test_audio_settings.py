@@ -89,7 +89,9 @@ def first_move(p, browser):
             ck.check(f"[premier geste {label}] coup et son audible à la pose",
                      piece_on(page, dst) == code and len(entries) == 1
                      and entries[0]["audible"] and entries[0]["name"] == sound
-                     and 0 <= entries[0]['at'] - release <= limit, str(entries))
+                     and 0 <= entries[0]['at'] - release <= limit,
+                     str({'sounds': entries, 'release': release, 'limit': limit,
+                          'piece': piece_on(page, dst)}))
     ctx.close()
 
 

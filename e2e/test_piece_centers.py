@@ -39,9 +39,25 @@ CENTERS = """async () => {
 
 
 def measure(page, label):
-    page.wait_for_timeout(700)
+    # L'amorce des puzzles peut commencer après 700 ms. Mesurer au repos exige
+    # que les pièces ET leurs positions restent stables au-delà de cette amorce.
+    page.wait_for_function("""() => {
+      const now = performance.now();
+      const state = JSON.stringify([...document.querySelectorAll('[data-square] [data-piece]')].map(el => {
+        const r = el.getBoundingClientRect();
+        return [el.closest('[data-square]').dataset.square, el.dataset.piece, r.x, r.y, r.width, r.height];
+      }));
+      if (!window.__centerRest || window.__centerRest.state !== state) {
+        window.__centerRest = {state, since: now};
+        return false;
+      }
+      return now - window.__centerRest.since >= 1000;
+    }""", timeout=15000)
+    page.evaluate('delete window.__centerRest')
     values = page.evaluate(CENTERS)
     bad = [v for v in values if not v['painted'] or max(abs(v['dx']), abs(v['dy']), abs(v['boxDx']), abs(v['boxDy'])) > .02]
+    if bad:
+        shot(page, 'centrage_echec_' + label.replace('/', '_').replace(' ', '_'))
     ck.check(label + ' : pixels centrés à ±2 %', bool(values) and not bad, str(bad))
     return values
 
