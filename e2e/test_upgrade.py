@@ -350,7 +350,10 @@ def compare_settings(tag, before, after):
     expected = dict(before["settings"]["state"])
     if sa.get("version", 0) >= 1 and before["settings"].get("version", 0) < 1:
         if expected.get("pieceSet") in (None, "celtique"):
-            expected["pieceSet"] = "wikimedia"
+            expected["pieceSet"] = "atelier"
+    if sa.get("version", 0) >= 2 and before["settings"].get("version", 0) < 2:
+        if expected.get("pieceSet") in (None, "wikimedia"):
+            expected["pieceSet"] = "atelier"
     diff = {k: (v, sa["state"].get(k)) for k, v in expected.items() if not same(sa["state"].get(k), v)}
     verify(f"{tag} réglages : chaque valeur d'avant conservée", not diff, f"({diff})")
 

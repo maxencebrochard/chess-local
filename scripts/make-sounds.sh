@@ -42,7 +42,6 @@ render() {
 
 one='[0]anull[m]'
 mkdir -p "$OUT"
-rm -f "$OUT"/*.mp3
 # Les deux packs portent le même texte CC0, à leur nom et leur date près : les deux sont gardés.
 {
   tr -d '\r' < "$WORK/impact/License.txt" | sed 's/^\t*//'
@@ -50,8 +49,7 @@ rm -f "$OUT"/*.mp3
   tr -d '\r' < "$WORK/iface/License.txt" | sed 's/^\t*//'
 } > "$OUT/LICENSE-Kenney-CC0.txt"
 
-# Coups et refus : synthèse originale, sans fichier sonore d'entrée.
-python3 "$ROOT/scripts/synthesize-moves.py"
+# Les coups sont extraits séparément : voir scripts/extract-video-sounds.py.
 # Notifications, un cran sous les coups.
 render game-start -4 "$one" "$F/question_004.ogg"
 render game-end -4 "$one" "$F/confirmation_004.ogg"

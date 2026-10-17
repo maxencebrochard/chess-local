@@ -35,7 +35,7 @@ FINALES = re.compile(r"^\W*Finales$")
 
 DEFAULT_SETTINGS = {
     "themeId": "green",
-    "pieceSet": "wikimedia",
+    "pieceSet": "atelier",
     "showLegalMoves": True,
     "premoves": True,
     "showAttackers": False,
@@ -253,7 +253,7 @@ BASE = base_url()
 
 def settings_json(overrides=None):
     """Réglages au format Zustand persist (`{state, version}`), tels que l'app les relit."""
-    return json.dumps({"state": {**DEFAULT_SETTINGS, **(overrides or {})}, "version": 1})
+    return json.dumps({"state": {**DEFAULT_SETTINGS, **(overrides or {})}, "version": 2})
 
 
 class Checker:

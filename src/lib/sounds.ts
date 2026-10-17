@@ -1,4 +1,4 @@
-// Sons du jeu (public/sounds, CC0, voir LICENSES.md), joués via Web Audio pour une latence minimale.
+// Sons du jeu (public/sounds, provenance dans LICENSES.md), joués via Web Audio pour une latence minimale.
 //
 // iOS impose deux contraintes, cause du « pas de son » de la PWA :
 // - un AudioContext ne démarre (ou ne reprend) que pendant un geste de l'utilisateur (fin de
@@ -130,13 +130,14 @@ async function ready(c: AudioContext): Promise<boolean> {
   return stateOf(c) === 'running'
 }
 
-export function play(name: SoundName) {
+export function play(name: SoundName, maxAgeMs = Infinity) {
+  const requestedAt = performance.now()
   const { playSounds, soundVolume } = useSettings.getState()
   if (!playSounds || soundVolume <= 0) return
   const c = context()
   if (!c) return
   void Promise.all([load(name), ready(c)]).then(([buf, ok]) => {
-    if (!buf || !ok || c !== ctx || !gain) return
+    if (!buf || !ok || c !== ctx || !gain || performance.now() - requestedAt > maxAgeMs) return
     const { playSounds, soundVolume } = useSettings.getState()
     if (!playSounds || soundVolume <= 0) return
     gain.gain.setValueAtTime(soundVolume, c.currentTime)
@@ -150,7 +151,8 @@ export function play(name: SoundName) {
 // Son d'un coup, priorités de chess.com : échec, promotion, roque, prise, puis coup simple
 // (le mien ou celui de l'adversaire).
 export function playMoveSound(move: Pick<Move, 'san' | 'flags'>, opponent: boolean) {
-  play(moveSoundName(move, opponent))
+  // Un coup ancien après un téléchargement lent ne doit pas arriver en rafale avec les suivants.
+  play(moveSoundName(move, opponent), 300)
 }
 
 export function moveSoundName(move: Pick<Move, 'san' | 'flags'>, opponent: boolean): SoundName {

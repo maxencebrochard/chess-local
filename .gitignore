@@ -31,3 +31,6 @@ __pycache__/
 data/lichess-puzzle-games.jsonl
 data/attack-evals.jsonl
 data/defense-evals.jsonl
+
+# Environnement Python local des E2E
+.venv/

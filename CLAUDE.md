@@ -49,7 +49,7 @@ Le code de sortie est la vérité : non nul dès qu'un check échoue, qu'une pag
 Écrire une suite : tout passe par `e2e/helpers.py`.
 `Checker` porte les checks (`check`, `appears`) et le code de sortie, `mobile_context`/`desktop_context` créent des contextes surveillés (iPhone 14 Pro tactile, `standalone=True` pour le viewport de la PWA installée), `drag_piece` fait un vrai drag TACTILE via CDP.
 Un check doit pouvoir échouer : pas de `check(nom, True)`, pas d'attente nue dont l'échec interrompt la suite (utiliser `ck.appears`).
-Les contextes pré-remplissent `localStorage['chess-local-settings']` au format Zustand persist (`{state: {...}, version: 1}`) avec `reviewDepth: 'fast'` et les sons coupés.
+Les contextes pré-remplissent `localStorage['chess-local-settings']` au format Zustand persist (`{state: {...}, version: 2}`) avec `reviewDepth: 'fast'` et les sons coupés.
 Changer la forme du store `src/store/settings.ts` impose de mettre à jour `DEFAULT_SETTINGS` dans `e2e/helpers.py`.
 L'API chess.com est simulée par `e2e/fixtures/chesscom.json` (parties fictives) : tout nouvel appel réseau doit y être ajouté.
 Le gate n'utilise jamais `--live`.
@@ -185,7 +185,9 @@ Ajouter une table ou un index = nouveau bloc `db.version(n)` qui redéclare tous
 La table `ratings` est unique et indexée par clé texte : cadences (`bullet`, `blitz`, `rapid`, `unlimited`), `puzzle`, et domaines d'Apprendre (`learn-endgame`, `learn-tactic`, ...).
 Tous les Elo passent par `applyRating`/`eloUpdate`.
 Les réglages sont dans Zustand persist (`localStorage['chess-local-settings']`).
-La migration persist des réglages (version 1) est partagée avec l’import des sauvegardes : une version 0 ou absente avec `pieceSet` absent ou `celtique` donne `wikimedia`, comme une montée de version locale.
+La migration persist des réglages (version 2) est partagée avec l’import des sauvegardes : une version 0 ou absente avec `pieceSet` absent ou `celtique` donne `atelier`, comme une montée de version locale.
+Une version antérieure à 2 avec `wikimedia` ou sans jeu donne également `atelier`.
+Les choix explicites des versions 2 et suivantes sont conservés.
 Un choix `celtique` enregistré en version 1 est conservé ; cette version persist est indépendante de la version du schéma de sauvegarde.
 L’import valide ensuite les types (dont `premoves`, booléen sinon défaut) et les valeurs contre les listes réelles de l’application.
 Les séances en cours d'Apprendre, de révision et du parcours d'apprentissage vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`, `path-session-v1`) : `importBackup` et `resetApp` effacent ces trois clés, et seulement elles.
@@ -201,8 +203,8 @@ Un nouvel asset lourd ou une nouvelle extension doit être couvert par `globPatt
 
 ### Pièces et sons
 
-Les jeux de pièces sont des SVG libres dans `public/pieces/<jeu>/` (liste dans `src/lib/pieces.ts`, réglage `pieceSet`), rendus en `<img>` par `Board` via l'option `pieces` de react-chessboard ; `classique` = pièces intégrées à la lib.
-Les sons (`public/sounds/`, CC0, `scripts/make-sounds.sh` pour les notifications Kenney et `scripts/synthesize-moves.py` pour les impacts originaux sans entrée audio) passent tous par `src/lib/sounds.ts`, qui lit lui-même `playSounds` et `soundVolume` : pas de test du réglage aux appels.
+Les jeux de pièces sont des SVG documentés dans `public/pieces/<jeu>/` (liste dans `src/lib/pieces.ts`, réglage `pieceSet`), rendus en `<img>` par `Board` via l'option `pieces` de react-chessboard ; `classique` = pièces intégrées à la lib.
+Les sons (`public/sounds/`, `scripts/make-sounds.sh` pour les notifications Kenney CC0 et `scripts/extract-video-sounds.py` pour les impacts de la vidéo autorisée par Max) passent tous par `src/lib/sounds.ts`, qui lit lui-même `playSounds` et `soundVolume` : pas de test du réglage aux appels.
 `Board` porte le ressenti tactile partagé : clone à 1,7, dessin décalé de 0,85 case au-dessus du contact, disque de visée et retour animé des refus.
 Le décalage vit sur `.board-piece` via `--piece-lift`, car déplacer le rectangle du clone serait compensé par le recentrage de dnd-kit.
 La cible vient des callbacks de collision de react-chessboard, jamais de la position du dessin décalé.
@@ -210,7 +212,7 @@ La souris conserve son échelle 1,2 et son cadre de destination ; les animations
 `e2e/test_feeling.py` vérifie la géométrie pendant le geste CDP et l'audio horodaté à la pose ; les mesures sonores et limites sont dans `docs/f14-feeling.md`.
 Les conditions du son automatique de coup (`lastMove`, `silent` et anti-empilement partagé) sont documentées auprès de l'effet dans `src/components/Board.tsx`.
 Une page qui joue ses sons de coup elle-même (Jouer, finales jouées) ou affiche un saut de position (réessai de l'analyse) lui passe `silent`, comme les diagrammes ; la position qui suit un `silent` reste muette.
-Aucun asset de chess.com, et toute ressource ajoutée doit être sous licence libre documentée dans le `LICENSES.md` de son dossier : le dépôt est public.
+Aucun asset de chess.com, et toute ressource ajoutée doit avoir sa licence ou autorisation documentée dans le `LICENSES.md` de son dossier : le dépôt est public.
 
 ### Prémouvements
 
@@ -227,7 +229,11 @@ Les modes illimités n'ont aucun débit ; le temps réel de traitement reste sou
 Les sons existants restent propriétaires de l'exécution ; le son automatique du Board exempte le prémouvement de l'anti-empilement de 60 ms pour ne pas le perdre juste après la réponse moteur.
 `settings.premoves` vaut true par défaut, le merge Zustand conserve les anciens stockages sans clé et le nettoyage des sauvegardes récupère automatiquement ce défaut.
 `e2e/test_premove.py` contrôle les gestes iPhone, la file, le son, les refus, la promotion, la pendule, les réglages et l'exclusion des puzzles ; `PREMOVE_CASE` permet de cibler un scénario pour les preuves par mutation.
-La vidéo de référence et ses extractions ffmpeg restent exclusivement dans un dossier temporaire hors dépôt.
+La vidéo de référence et les extractions intermédiaires restent exclusivement dans un dossier temporaire hors dépôt.
+Les MP3 finaux et les SVG Atelier redessinés sont autorisés par Max (17 octobre 2026), provenance dans les LICENSES.md.
+`PieceIcon` centre les silhouettes via les marges mesurées par `scripts/center-pieces.py`, communes au plateau et aux aperçus.
+`Play` remet le contenu en haut à l’entrée en partie pour ne pas hériter du défilement de la configuration sur petit écran (`piece_viewport`).
+`e2e/test_piece_centers.py` contrôle les pixels peints à ±2 % de case ; ne pas compter deux fois le transform CSS lors de la rasterisation des SVG intégrés.
 
 ### Données
 

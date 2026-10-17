@@ -1,4 +1,4 @@
-from helpers import BASE, WEBKIT_AUDIO, Checker, mobile_context, sounds_heard
+from helpers import BASE, WEBKIT_AUDIO, Checker, mobile_context, sounds_heard, drag_piece, tap_move, piece_on
 
 ck = Checker("audio_settings")
 
@@ -68,9 +68,52 @@ def prefixed_context(p, browser):
     ctx.close()
 
 
+def first_move(p, browser):
+    ctx = mobile_context(p, browser, ck, standalone=True, settings={"playSounds": True})
+    ctx.add_init_script(WEBKIT_AUDIO)
+    ctx.add_init_script("window.__release = 0; addEventListener('pointerup', () => window.__release = performance.now(), true)")
+    page = ctx.new_page()
+    page.goto(f"{BASE}/#/analyse")
+    if ck.appears("[premier geste] plateau", page, "[data-square=e2] [data-piece]"):
+        for label, src, dst, code, sound, background, limit in [
+            ('froid', 'e2', 'e4', 'wP', 'move-self', None, 300),
+            ('chaud', 'e7', 'e5', 'bP', 'move-opponent', None, 80),
+            ('reprise', 'g1', 'f3', 'wN', 'move-self', 'interrupted', 300),
+        ]:
+            if background:
+                page.evaluate("mode => window.__background(mode)", background)
+            n = page.evaluate('window.__sounds.length')
+            drag_piece(page, src, dst)
+            entries = sounds_heard(page, n)
+            release = page.evaluate('window.__release')
+            ck.check(f"[premier geste {label}] coup et son audible à la pose",
+                     piece_on(page, dst) == code and len(entries) == 1
+                     and entries[0]["audible"] and entries[0]["name"] == sound
+                     and 0 <= entries[0]['at'] - release <= limit, str(entries))
+    ctx.close()
+
+
+def obsolete_moves(p, browser):
+    ctx = audio_context(p, browser)
+    ctx.add_init_script(HOLD_AUDIO)
+    page = ctx.new_page()
+    page.goto(f"{BASE}/#/analyse")
+    if ck.appears("[chargement lent] plateau", page, "[data-square=e2] [data-piece]"):
+        tap_move(page, "e2", "e4")
+        tap_move(page, "e7", "e5")
+        page.wait_for_timeout(400)
+        ck.check("[chargement lent] deux coups joués", piece_on(page, "e4") == "wP" and piece_on(page, "e5") == "bP")
+        page.evaluate("window.__releaseAudio()")
+        entries = sounds_heard(page, 0, settle=500)
+        ck.check("[chargement lent] aucun coup obsolète en rafale", entries == [], str(entries))
+    ctx.close()
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
     try:
+        first_move(p, browser)
+        obsolete_moves(p, browser)
         for setting in ["0", "35", "désactivé"]:
             delayed_settings(p, browser, setting)
         prefixed_context(p, browser)

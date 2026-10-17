@@ -146,6 +146,11 @@ export default function Play() {
   const [sans, setSans] = useState<string[]>([])
   const [viewIndex, setViewIndex] = useState(-1) // -1 = direct
   const [status, setStatus] = useState<GameStatus>('setup')
+  const gameViewRef = useRef<HTMLDivElement>(null)
+  // La configuration peut être défilée sur petit écran : une nouvelle partie commence en haut.
+  useLayoutEffect(() => {
+    if (status === 'playing') gameViewRef.current?.closest('main')?.scrollTo(0, 0)
+  }, [status])
   const statusRef = useRef<GameStatus>('setup') // miroir synchrone pour les minuteurs et les callbacks
   const [playerColor, setPlayerColor] = useState<'w' | 'b'>('w')
   const [clocks, setClocks] = useState<{ w: number; b: number }>({ w: 0, b: 0 })
@@ -865,7 +870,7 @@ export default function Play() {
   // --- Rendu mode entraîneur : éval bar, coach, board plein, barre d'actions ---
   if (mode === 'coach') {
     return (
-      <div className="mx-auto flex h-full max-w-2xl flex-col">
+      <div ref={gameViewRef} className="mx-auto flex h-full max-w-2xl flex-col">
         <div className="px-3 pt-2">
           <HEvalBar cp={liveCp} mate={liveMate} />
         </div>
@@ -933,7 +938,7 @@ export default function Play() {
 
   const noMoves = sans.length === 0
   return (
-    <div className="flex h-full flex-col items-center justify-start gap-2 p-2 md:flex-row md:justify-center md:gap-6 md:p-4">
+    <div ref={gameViewRef} className="flex h-full flex-col items-center justify-start gap-2 p-2 md:flex-row md:justify-center md:gap-6 md:p-4">
       <div className="flex flex-col gap-2">
         <div className="flex w-full items-center justify-between">
           <span className="font-semibold">{nameOf(topColor)}</span>

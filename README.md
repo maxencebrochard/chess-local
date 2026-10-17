@@ -74,7 +74,7 @@ Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bi
   Pour chaque structure repérée dans une partie, elle propose une position au trait du joueur dans sa première apparition stable retenue, à rejouer contre Stockfish bridé à l'Elo choisi, avec le plan de la structure en rappel.
 - **Révision espacée** : carte « À réviser aujourd'hui » sur l'accueil (et ligne dans Apprendre), séance mixte et enchaînée (`#/revision`) des puzzles ratés, des fautes de parties et des variantes d'ouverture à revoir ; calendrier de Leitner J+1, J+3, J+7, J+21 calculé depuis l'historique existant, une réussite espace le prochain passage, un échec ramène à J+1, quatre jours de réussite d'affilée classent l'item acquis ; sans incidence sur les Elo.
 - **Import chess.com** : page `/import` : pseudo chess.com (API publique, sans login) → liste des parties récentes → bilan en un tap ; ou coller un lien de partie ; ou Raccourci Apple pour partager depuis l'app chess.com (instructions dans la page).
-- **Pièces** : six jeux au choix (Stats → Réglages, avec aperçu), sur tous les échiquiers : Wikimedia par défaut, Celtique, Chessnut, Fantasy, Spatial et Classique.
+- **Pièces** : sept jeux au choix (Stats → Réglages, avec aperçu), sur tous les échiquiers : Atelier par défaut, Wikimedia, Celtique, Chessnut, Fantasy, Spatial et Classique.
 - **Déplacement tactile** : pièce soulevée à 1,7 fois sa taille et décalée au-dessus du doigt, disque translucide sur la case visée, destinations légales discrètes et retour animé des coups refusés sur tous les échiquiers interactifs.
   La souris conserve son glissé centré ; le clic-clic et la préférence de réduction des animations sont respectés.
 - **Prémouvements** : prépare un coup par glissé ou clic-clic pendant la réflexion du moteur, avec deux cases rouges et la pièce toujours au départ.
@@ -82,10 +82,10 @@ Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bi
   Un seul coup prévu, annulable par un toucher sur l'échiquier, promotion en dame et coût de 0,1 seconde dans les modes chronométrés.
   Disponibles contre les bots, dans les parties depuis une position, les continuations contre moteur et les mats contre la montre, hors historique et fin de partie.
   Activés par défaut dans Stats → Réglages → Prémouvements ; absents des puzzles et exercices à solution unique.
-- **Sons** : impacts originaux CC0 pour les coups, prises, roques, échecs, promotions et refus ; notifications libres Kenney pour le début et la fin de partie, le temps bas et les résultats d'exercice.
+- **Sons** : impacts extraits de la vidéo autorisée par Max pour les coups, prises, roques, échecs, promotions et refus ; notifications libres Kenney pour le début et la fin de partie, le temps bas et les résultats d'exercice.
   Ils accompagnent les parties, puzzles, Rush, Apprendre, Mats, finales, ouvertures et l'avance dans l'analyse, avec un volume réglable.
   L'audio est déverrouillé au premier geste et recréé après un passage en arrière-plan ; sur iPhone, le mode silencieux coupe les sons.
-  La synthèse reproductible et la comparaison mesurée sont décrites dans [l'étude F14](docs/f14-feeling.md).
+  L’extraction reproductible et la comparaison mesurée sont décrites dans [l'étude F14](docs/f14-feeling.md).
 - **Archive** : toutes les parties sauvegardées (IndexedDB), relecture, bilan en un clic, export PGN global.
 - **Insights** : page `/insights` (depuis Stats et l'accueil) : choix de la cadence et des 10, 25, 50 ou 100 dernières parties, issues de chess.com et/ou des parties ChessLocal contre les bots.
   Bullet, blitz et rapide sont disponibles pour les deux sources ; « Sans limite » exige ChessLocal, car chess.com ne fournit pas cette cadence.
@@ -107,10 +107,12 @@ Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bi
 ## Licences des ressources
 
 Rien ne vient de chess.com.
-Wikimedia (défaut) : [Chess_Pieces_Sprite.svg](https://commons.wikimedia.org/wiki/File:Chess_Pieces_Sprite.svg) de jurgenwesterhof d’après Cburnett, découpé en 12 SVG vectoriels, dérivés sous [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).
+Wikimedia : [Chess_Pieces_Sprite.svg](https://commons.wikimedia.org/wiki/File:Chess_Pieces_Sprite.svg) de jurgenwesterhof d’après Cburnett, découpé en 12 SVG vectoriels, dérivés sous [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).
 Pièces : jeux libres, Celtique, Fantasy et Spatial de Maurizio Monge (MIT, repris du dépôt de lichess, Celtique recoloré), Chessnut d'Alexis Luengas (Apache 2.0, « Copyright 2015 Alexis Luengas », repris du dépôt de l'auteur avec son `COPYRIGHT.txt`) ; détail et textes de licence dans `public/pieces/LICENSES.md`.
 Classique : pièces SVG standard de Wikimedia Commons dessinées par Cburnett (publiées sous GFDL, CC BY-SA 3.0, BSD 3 clauses et GPL au choix, reprises sous BSD 3 clauses), embarquées par `react-chessboard` (MIT), qui les cite sous CC BY-SA 3.0.
-Sons : les sept sons de coup et de refus sont des synthèses originales CC0 1.0 produites par `scripts/synthesize-moves.py`.
+Atelier et sons de coup : extrait d'une vidéo fournie par Max (2026-10-17), réutilisation autorisée par Max.
+Les pièces sont redessinées en SVG, les sons extraits par `scripts/extract-video-sounds.py`.
+Les anciens jeux restent sélectionnables ; la migration v2 remplace uniquement l’ancien défaut et conserve les autres réglages et les données.
 Les notifications dérivent des packs Kenney « Impact Sounds » et « Interface Sounds » (CC0 1.0), régénérés par `scripts/make-sounds.sh` ; détail dans `public/sounds/LICENSES.md`.
 
 ## Architecture

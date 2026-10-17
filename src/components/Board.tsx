@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Chess, type Move, type Square } from 'chess.js'
-import { Chessboard, defaultPieces, type PieceRenderObject } from 'react-chessboard'
+import { Chessboard, type PieceRenderObject } from 'react-chessboard'
 import { useSettings, currentTheme } from '../store/settings'
 import { ClassIcon } from './ClassIcon'
 import { ATTACK_RED } from './AttackLegend'
@@ -408,8 +408,7 @@ function piecesFor(set: string): PieceRenderObject {
   if (!pieces) {
     pieces = {}
     for (const code of PIECE_CODES) {
-      const Classic = defaultPieces[code]
-      pieces[code] = (props) => <div className="board-piece">{set === 'classique' ? <Classic {...props} /> : <PieceIcon set={set} code={code} />}</div>
+      pieces[code] = () => <div className="board-piece"><PieceIcon set={set} code={code} /></div>
     }
     piecesCache.set(set, pieces)
   }
