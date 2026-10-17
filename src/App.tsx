@@ -21,6 +21,8 @@ import MissedDefenses from './pages/MissedDefenses'
 import CourseIndex, { CourseLesson } from './pages/LessonCourse'
 import { FINALES } from './lib/endgameCourse'
 import { ROQUE } from './lib/attackCourse'
+import { BASES } from './lib/basicsCourse'
+import LearningPathMap, { PathStepRoute } from './pages/LearningPath'
 import Revision from './pages/Revision'
 import Attack from './pages/Attack'
 import Defense from './pages/Defense'
@@ -141,6 +143,10 @@ function Shell() {
             <Route path="/apprendre/finales/:id" element={<CourseLesson course={FINALES} />} />
             <Route path="/apprendre/roque" element={<CourseIndex key={ROQUE.slug} course={ROQUE} />} />
             <Route path="/apprendre/roque/:id" element={<CourseLesson course={ROQUE} />} />
+            <Route path="/apprendre/bases" element={<CourseIndex key={BASES.slug} course={BASES} />} />
+            <Route path="/apprendre/bases/:id" element={<CourseLesson course={BASES} />} />
+            <Route path="/apprendre/parcours" element={<LearningPathMap />} />
+            <Route path="/apprendre/parcours/:id" element={<PathStepRoute />} />
             <Route path="/mats" element={<Mates />} />
             <Route path="/revision" element={<Revision />} />
             <Route path="/attaques-manquees" element={<MissedAttacks />} />

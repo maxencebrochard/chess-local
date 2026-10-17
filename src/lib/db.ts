@@ -64,9 +64,9 @@ export interface LearnSession {
   // (entraîneur d'attaque : itemId = id de la position, une ligne par tentative), defense
   // (entraîneur de défense : itemId = id de la position `def-<puzzle>`, une ligne par tentative) ou
   // missed-defense (tentative sur une défense ratée, même contrat que missed-attack), ou
-  // critical-moment (moments critiques du bilan, hors Elo).
+  // critical-moment (moments critiques du bilan, hors Elo) ou path (parcours d’apprentissage).
   // course : itemId = `<slug>:<id>`, le slug désignant le cours (`finales:` pour le cours de finales,
-  // `roque:` pour « Démolir le roque »), ex. `finales:mat-dame`, `roque:grec-schema`.
+  // `roque:` pour « Démolir le roque », `bases:` pour « Les bases »), ex. `finales:mat-dame`, `roque:grec-schema`.
   // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
   // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
   // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).
@@ -88,6 +88,10 @@ export interface LearnSession {
   // visualisation (« Calcul et visualisation », hors Elo) : itemId = `q:<N>:<type>:<id puzzle>` pour
   // une question répondue (fen = position montrée), ou `serie:<N>:<visible|flash>` pour une série
   // (score = bonnes réponses), N étant la longueur de la ligne en demi-coups.
+  // path : parcours d'apprentissage (#/apprendre/parcours), sans Elo. itemId = id d'étape de
+  // src/data/learningPath.json : une ligne par série notée jouée jusqu'au bout (score = réussites,
+  // success = seuil atteint) ou par finale réussie depuis l'étape ; itemId = `placement` : un test
+  // de placement (score = niveaux acquis, le meilleur test compte).
   domain: string
   itemId: string
   success: 0 | 1

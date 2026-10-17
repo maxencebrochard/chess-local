@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Cta } from '../components/Cta'
 import { db, DEFAULT_RATING } from '../lib/db'
 import { describeKinds, loadReviewQueue, type ReviewItem } from '../lib/revision'
+import { usePathState } from '../components/usePathState'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -10,6 +11,7 @@ export default function Home() {
   const [solved, setSolved] = useState(0)
   const [nbGames, setNbGames] = useState(0)
   const [due, setDue] = useState<ReviewItem[] | null>(null) // null : compte pas encore connu
+  const path = usePathState()
 
   useEffect(() => {
     void db.ratings.toArray().then((rs) => setRatings(Object.fromEntries(rs.map((r) => [r.key, r.value]))))
@@ -105,13 +107,24 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Insights : descente (empilée), hors des cartes Elo qui mènent à Stats. */}
-      <Link to="/insights" className="mb-2 md:mb-4 flex min-h-11 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 transition hover:bg-surface-3">
-        <span className="text-xl" aria-hidden="true">🧠</span>
-        <span className="font-bold">Insights</span>
-        <span className="min-w-0 flex-1 truncate text-xs text-neutral-400">où tu pèches, quoi travailler</span>
-        <span className="text-lg text-neutral-500" aria-hidden="true">›</span>
-      </Link>
+      {/* Parcours d'apprentissage et Insights : descentes (empilées), côte à côte pour que l'Accueil
+          tienne sans défiler à 393x660. */}
+      <div className="mb-2 md:mb-4 grid grid-cols-2 gap-2">
+        <Link to="/apprendre/parcours" data-testid="home-path" className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 transition hover:bg-surface-3">
+          <span className="text-xl" aria-hidden="true">🗺️</span>
+          <span className="font-bold">Parcours</span>
+          <span data-testid="home-path-progress" className="min-w-0 flex-1 truncate text-xs text-neutral-400">
+            {path.state ? (path.state.current ? `${path.state.done}/${path.state.total}` : 'terminé') : ''}
+          </span>
+          <span className="text-lg text-neutral-500" aria-hidden="true">›</span>
+        </Link>
+        {/* Insights : hors des cartes Elo qui mènent à Stats. */}
+        <Link to="/insights" className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 transition hover:bg-surface-3">
+          <span className="text-xl" aria-hidden="true">🧠</span>
+          <span className="min-w-0 flex-1 truncate font-bold">Insights</span>
+          <span className="text-lg text-neutral-500" aria-hidden="true">›</span>
+        </Link>
+      </div>
 
       {/* CTA Jouer géant, collé en bas */}
       <div className="mt-auto md:mt-4">
