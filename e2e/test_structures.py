@@ -97,7 +97,8 @@ const meta = Object.fromEntries(mod.STRUCTURE_IDS.map((id) => [id, mod.STRUCTURE
 const stats = mod.structureStats(games.map(([pgn, color, result], i) => ({ game: { key: `g${i}`, playerColor: color, result }, sightings: mod.structuresInGame(pgn, color) })))
   .map((s) => [s.id, s.games, s.wins, s.draws, s.losses, s.owner])
 const mirrored = mod.squaresFor('Cd5, b4-b5 et Fxh7', 'b')
-console.log(JSON.stringify({ ids: mod.STRUCTURE_IDS, detect, scans, meta, stats, mirrored }))
+const bishopPlans = ['francaise', 'caro-slave'].map(id => ['w', 'b'].map(side => mod.squaresFor(id === 'francaise' ? meta[id].planOpponent : meta[id].planOwner, side)))
+console.log(JSON.stringify({ bishopPlans, ids: mod.STRUCTURE_IDS, detect, scans, meta, stats, mirrored }))
 """
 
 
@@ -231,6 +232,9 @@ def oracle_section():
     check(f"{tag} fiches : une par structure, plans des deux camps non vides",
           all(out["meta"].get(sid, {}).get("planOwner") and out["meta"][sid].get("planOpponent") and out["meta"][sid].get("name") for sid in STRUCTURE_IDS))
     check(f"{tag} fiche retournée pour un porteur noir", out["mirrored"] == "Cd4, b5-b4 et Fxh2", f"({out['mirrored']})")
+    for texts, colors, squares in zip(out["bishopPlans"], [("blanches", "noires"), ("noires", "blanches")], [("e6", "e3"), ("e3", "e6")]):
+        for text, color, square in zip(texts, colors, squares):
+            check(f"{tag} plan adapté : fou de cases {color}, pion {square}", f"cases {color}" in text and square in text, text)
     lessons = set(COURSE["lessons"])
     check(f"{tag} chaque fiche renvoie à une leçon du cours", all(out["meta"][sid]["lesson"] in lessons for sid in STRUCTURE_IDS),
           f"({[out['meta'][s]['lesson'] for s in STRUCTURE_IDS if out['meta'][s]['lesson'] not in lessons]})")
@@ -523,14 +527,15 @@ def course_ui(p, browser):
     # Toutes les leçons se jouent jusqu'au bilan.
     for l2 in LESSONS:
         page.goto(f"{BASE}/#/apprendre/structures/{l2}")
-        page.wait_for_selector("[data-testid='lesson-step']", timeout=10000)
+        page.wait_for_selector("[data-testid='lesson-step']:has-text('1/')", timeout=10000)
         ok = True
-        for s in COURSE["lessons"][l2]["steps"]:
+        for si, s in enumerate(COURSE["lessons"][l2]["steps"]):
+            page.wait_for_selector(f"[data-testid='lesson-step']:has-text('{si + 1}/')", timeout=10000)
             if s["kind"] == "line":
                 finish_line(page)
                 ok = ok and continue_btn(page).is_enabled()
             continue_btn(page).click()
-            page.wait_for_timeout(150)
+        page.wait_for_selector("text=À retenir", timeout=10000)
         ok = ok and page.locator("text=À retenir").is_visible()
         check(f"[toutes] {l2} jouée jusqu'au bilan", ok)
     page.goto(f"{BASE}/#/apprendre")
@@ -545,6 +550,7 @@ def course_ui(p, browser):
                   key=lambda x: len(COURSE["lessons"][x[0]]["steps"][x[1]]["text"]))
     for l2, si in [("carlsbad", 0), ("carlsbad", lines_of("carlsbad")[0][0]), longest]:
         page.goto(f"{BASE}/#/apprendre/structures/{l2}?etape={si + 1}")
+        page.wait_for_selector(f"[data-testid='lesson-step']:has-text('{si + 1}/')", timeout=10000)
         page.wait_for_selector("[id^='chessboard-']", timeout=10000)
         page.wait_for_timeout(500)
         board = page.locator("[id^='chessboard-']").first
@@ -602,7 +608,7 @@ def expected_stats():
             e["games"] += 1
             e[r[0]] += 1
             e["owner"] += side == color
-            e["pos"].append((f"{key}@{ply}", fen))
+            e["pos"].append((f"{key}@{ply}@{sid}", fen))
     return st
 
 
@@ -659,7 +665,7 @@ def my_structures(p, browser):
         sides = card.locator("[data-testid='structure-sides']").inner_text()
         check(f"{tag} {sid} : avec / contre", sides.endswith(f": {e['owner']} · contre : {e['games'] - e['owner']}"), f"({sides})")
         keys = [card.locator("[data-testid='structure-position']").nth(i).get_attribute("data-key") for i in range(card.locator("[data-testid='structure-position']").count())]
-        check(f"{tag} {sid} : positions de mes parties (clé partie@demi-coup)", sorted(keys) == sorted(k for k, _ in e["pos"]), f"({keys})")
+        check(f"{tag} {sid} : positions de mes parties (clé partie@demi-coup@structure)", sorted(keys) == sorted(k for k, _ in e["pos"]), f"({keys})")
     check(f"{tag} structures absentes listées à part", page.locator("[data-testid='structure-unseen']").count() == len(STRUCTURE_IDS) - len(exp))
     check(f"{tag} pas de débordement horizontal (852)", overflow_x(page) == 0, f"({overflow_x(page)} px)")
     shot(page, "structures_mine", full_page=True)
@@ -709,7 +715,7 @@ def my_structures(p, browser):
           len(replaced) == 2 and all(r["outcome"] == "abandon" and r["success"] == 0 for r in replaced), f"({replaced})")
 
     # Clé inconnue.
-    page.goto(f"{BASE}/#/structures/local%3A99%4012")
+    page.goto(f"{BASE}/#/structures/local%3A99%4012%40carlsbad")
     ck.appears(f"{tag} position inconnue : message", page, "[data-testid='structure-missing']")
     ctx.close()
 

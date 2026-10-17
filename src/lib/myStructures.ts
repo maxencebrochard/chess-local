@@ -18,8 +18,8 @@ export interface MyGame extends StructureGame {
 
 export const STRUCTURE_PLAY_DOMAIN = 'structure-play'
 
-// Position proposée : `<clé de partie>@<demi-coup>`, ex. `local:12@14`, `chesscom:1234@21`.
-export const positionKey = (game: Pick<MyGame, 'key'>, s: Pick<Sighting, 'ply'>) => `${game.key}@${s.ply}`
+// Position proposée : `<clé de partie>@<demi-coup>@<structure>`, ex. `local:12@14@iqp`, `chesscom:1234@21@carlsbad`.
+export const positionKey = (game: Pick<MyGame, 'key'>, s: Pick<Sighting, 'ply' | 'id'>) => `${game.key}@${s.ply}@${s.id}`
 export const playKey = (key: string) => `structure:${key}`
 export const structurePath = (key: string) => `/structures/${encodeURIComponent(key)}`
 
@@ -80,14 +80,13 @@ export async function loadMyStructures(): Promise<MyStructures> {
   return { games: games.length, stats: structureStats(scanned) }
 }
 
-// Position d'une clé `<partie>@<demi-coup>` : la partie est relue et la structure recalculée (une
+// Position d'une clé `<partie>@<demi-coup>@<structure>` : la partie est relue et la structure recalculée (une
 // partie supprimée, ou une règle de structure changée, ne rouvre rien).
 export async function sightingByKey(key: string): Promise<{ game: MyGame; sighting: Sighting } | null> {
-  const at = key.lastIndexOf('@')
-  if (at <= 0) return null
-  const game = await gameByKey(key.slice(0, at))
-  const ply = Number(key.slice(at + 1))
-  const sighting = game ? structuresInGame(game.pgn, game.playerColor).find((s) => s.ply === ply) : undefined
+  const match = /^(.+)@\d+@[^@]+$/.exec(key)
+  if (!match) return null
+  const game = await gameByKey(match[1])
+  const sighting = game ? structuresInGame(game.pgn, game.playerColor).find((s) => positionKey(game, s) === key) : undefined
   return game && sighting ? { game, sighting } : null
 }
 

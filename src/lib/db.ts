@@ -94,8 +94,8 @@ export interface LearnSession {
   // success = seuil atteint) ou par finale réussie depuis l'étape ; itemId = `placement` : un test
   // de placement (score = niveaux acquis, le meilleur test compte).
   // structure-play : partie contre Stockfish depuis une position de mes parties où une structure de
-  // pions est apparue (/structures), une ligne par tentative, sans Elo ; itemId = `<partie>@<demi-coup>`
-  // (`local:<id>@14`, `chesscom:<id>@21`), fen = position de départ : le couple identifie la position
+  // pions est apparue (/structures), une ligne par tentative, sans Elo ; itemId = `<partie>@<demi-coup>@<structure>`
+  // (`local:<id>@14@iqp`, `chesscom:<id>@21@carlsbad`), fen = position de départ : le couple identifie la position
   // (une restauration peut réattribuer les ids `local:`) ; success = gain sans aide, outcome et
   // defenderElo comme l'entraîneur d'attaque.
   domain: string

@@ -269,7 +269,7 @@ export const STRUCTURES: Record<StructureId, StructureMeta> = {
     owner: 'la chaîne avancée',
     lesson: 'francaise',
     planOwner: "La chaîne d4-e5 te donne de l'espace à l'aile roi : attaque là où elle pointe (f4-f5, Fd3, Dg4) et défends sa base d4.",
-    planOpponent: "Attaque la base de la chaîne : c5 contre d4, puis f6 contre e5. Ton fou de cases blanches est souvent ton mauvais fou.",
+    planOpponent: "Attaque la base de la chaîne : c5 contre d4, puis f6 contre e5. Ton fou de cases blanches est souvent gêné par ton pion e6.",
   },
   'est-indienne': {
     name: 'Chaîne est-indienne',
@@ -292,7 +292,7 @@ export const STRUCTURES: Record<StructureId, StructureMeta> = {
     emoji: '🛡️',
     owner: 'le triangle c3-e3',
     lesson: 'caro-slave',
-    planOwner: "Le triangle c3-e3 est solide : développe le fou de cases blanches avant e3, puis libère le jeu par c4 ou e4.",
+    planOwner: "Le triangle c3-e3 est solide : développe le fou de cases noires avant e3, puis libère le jeu par c4 ou e4.",
     planOpponent: "Contre ce bloc solide, prends de l'espace : avance à l'aile roi ou installe un cavalier en e4, et empêche la libération c4 ou e4.",
   },
   majorite: {
@@ -307,5 +307,7 @@ export const STRUCTURES: Record<StructureId, StructureMeta> = {
 
 // Texte d'une fiche pour un porteur `side` : cases retournées (rang r -> 9 - r) pour un porteur noir.
 export function squaresFor(text: string, side: Color): string {
-  return side === 'w' ? text : text.replace(/([a-h])([1-8])/g, (_, f: string, r: string) => f + String(9 - Number(r)))
+  return side === 'w' ? text : text
+    .replace(/([a-h])([1-8])/g, (_, f: string, r: string) => f + String(9 - Number(r)))
+    .replace(/cases (blanches|noires)/g, (_, color: string) => `cases ${color === 'blanches' ? 'noires' : 'blanches'}`)
 }
