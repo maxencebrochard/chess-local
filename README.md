@@ -51,7 +51,8 @@ npm run preview
   La défense est réussie si tu tiens 12 coups sans que l'éval passe sous -3, ou si la partie finit en nulle ou en gain ; elle cède si l'éval reste sous -3 deux tours de suite, ou au mat ; un compteur « Coup 5/12 » suit la tentative.
   « Mes défenses ratées » (`#/defenses-ratees`) reprend les erreurs de tes bilans jouées pendant que l'adversaire attaquait ton roi, avec le coup de défense de Stockfish à retrouver.
 - **Calcul et visualisation** (`#/visualisation`, depuis Apprendre) : une position figée, une ligne de 2, 4, 6 ou 8 demi-coups annoncée en notation sans bouger les pièces (visible, ou coup par coup puis cachée), puis une question sur la position d'arrivée imaginée : où est passée une pièce, quelle pièce est en prise, quel est le meilleur coup (confirmé par Stockfish), mat en un ou pas.
-  On répond en touchant l'échiquier de départ, puis la position finale et la correction s'affichent ; trois erreurs terminent la série, avec un record par longueur et par affichage.
+  On répond en touchant l'échiquier de départ, ou avec Oui/Non pour le mat en un, puis la position finale et la correction s'affichent ; trois erreurs terminent la série, avec un record par longueur et par affichage.
+  Le module est hors Elo, sans limite de temps pour répondre ni révision espacée.
 - **Révision espacée** : carte « À réviser aujourd'hui » sur l'accueil (et ligne dans Apprendre), séance mixte et enchaînée (`#/revision`) des puzzles ratés, des fautes de parties et des variantes d'ouverture à revoir ; calendrier de Leitner J+1, J+3, J+7, J+21 calculé depuis l'historique existant, une réussite espace le prochain passage, un échec ramène à J+1, quatre jours de réussite d'affilée classent l'item acquis ; sans incidence sur les Elo.
 - **Import chess.com** : page `/import` : pseudo chess.com (API publique, sans login) → liste des parties récentes → bilan en un tap ; ou coller un lien de partie ; ou Raccourci Apple pour partager depuis l'app chess.com (instructions dans la page).
 - **Pièces** : six jeux au choix (Stats → Réglages, avec aperçu), sur tous les échiquiers : Wikimedia par défaut, Celtique, Chessnut, Fantasy, Spatial et Classique.
@@ -78,6 +79,7 @@ npm run preview
   Les mesures de pendule utilisent les annotations `%clk` des PGN chess.com ; ChessLocal n'enregistre pas les temps par coup.
 - **Stats** : classements par cadence, bilan V/N/D, thèmes d'échiquier, réglages, sauvegarde et restauration des données IndexedDB et des réglages (fichier JSON), état du stockage, réinitialisation de l'app.
   Les bilans Insights en cache sont inclus dans la sauvegarde, mais pas la configuration ni la sélection du dernier rapport ; une restauration conserve la configuration locale et invalide ce rapport, sans supprimer les bilans restaurés.
+  Les résultats et records de Calcul et visualisation sont inclus dans la sauvegarde ; ses préférences de longueur et d'affichage restent sur l'appareil, hors sauvegarde, et sont effacées par la réinitialisation de l'app.
 
 ## Licences des ressources
 

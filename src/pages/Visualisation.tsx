@@ -1,8 +1,6 @@
 // « Calcul et visualisation » (/visualisation) : entraîneur de calcul pour le blitz.
-// Accueil (longueur de ligne, affichage, records) → série : position figée, ligne annoncée en
-// notation sans bouger les pièces, question sur la position finale imaginée, réponse en touchant
-// l'échiquier de départ, puis révélation de la position finale et correction. Trois erreurs et la
-// série s'arrête. Logique pure et persistance dans src/lib/visualisation.ts.
+// Usage : README.md, rubrique « Calcul et visualisation ».
+// Logique pure et persistance dans src/lib/visualisation.ts.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Board, type BoardArrow } from '../components/Board'
 import { FigText } from '../components/CoachBubble'
