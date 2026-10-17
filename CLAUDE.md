@@ -61,6 +61,8 @@ Le gate n'utilise jamais `--live`.
 Après un déploiement, ajouter le nouveau tag à `OLD_BUILDS` et retirer un build que plus aucun appareil ne porte.
 Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` : deux lancements simultanés ne se gênent pas.
 Les captures vont dans `e2e/shots/` (gitignoré).
+La suite `ux_audit` photographie les familles de routes et leurs états principaux aux trois formats de référence, avec inventaire DOM dans `e2e/shots/ux-audit/{prod,dev}/`.
+Le diagnostic et le plan de refonte différée sont dans [docs/ux-refonte.md](docs/ux-refonte.md), sans changement des routes ni des domaines `learnSessions` dans cette phase.
 
 Autres scripts :
 
@@ -240,6 +242,16 @@ Les noms d'ouvertures sont en anglais dans les données et traduits à l'afficha
 Mobile d'abord : la cible principale est la PWA iPhone en mode standalone (nav basse, `pt-safe`/`pb-safe`, hauteurs en `dvh`), avec une nav latérale à partir de `md`.
 Les E2E tournent sur le device `iPhone 14 Pro` et en 1440x900.
 Couleurs via les tokens Tailwind `@theme` de `src/index.css` : `surface`, `surface-2`, `surface-3`, `accent`.
+Le lot 1 du [plan UX](docs/ux-refonte.md) ajoute `on-accent` (texte sombre sur un fond `accent` opaque, contraste 6,43:1) et `muted` (descriptions lisibles sur les surfaces).
+Ne pas remettre `text-white` sur un `bg-accent` opaque ; les variantes translucides conservent leur couleur métier.
+`Cta` conserve les variantes primaire/secondaire, avec cible minimale 44 px, type bouton par défaut et focus clavier visible.
+`PageHeader` porte titre 24 px, description et retour de 44 px : la page lui passe son callback pour conserver destination, state et replace/push.
+`ActivityCard` fournit une racine lien ou bouton, un titre de 16 px et une description de 14 px, sans interaction imbriquée ni troncature.
+`ProgressBar` reçoit les valeurs métier réelles et un nom accessible ; ne pas afficher une progression de zéro pendant une lecture inconnue.
+`EmptyState` distingue absence de données et chargement, avec une explication et un lien d’action.
+Ces composants sont appliqués aux tuiles Accueil/Apprendre, aux sommaires communs de cours, à la progression du parcours et aux états vides Archive/attaques/défenses personnelles.
+La suite `ux_foundation` vérifie contraste rendu, focus, dimensions, titres longs, retours, états vides et chargement aux trois formats ; ses captures restent dans `e2e/shots/ux-lot1/`.
+La navigation à cinq onglets et la réorganisation d’Apprendre restent différées aux lots suivants.
 `.boardbox` fixe la taille de la plupart des échiquiers ; les cours utilisent leur propre conteneur.
 `main.tsx` annule le `touchstart` natif dans les 25 px des bords du viewport sur les cases `[data-board] [data-square]`, pour empêcher les gestes précédent/suivant de WebKit depuis tout échiquier sans couper les événements de react-chessboard.
 `Board` porte toujours `data-board`, indépendamment de sa propriété `interactive` et des classes de mise en page : la protection couvre aussi la réflexion du moteur et les diagrammes.

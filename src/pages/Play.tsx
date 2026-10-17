@@ -983,7 +983,7 @@ export default function Play() {
             🏳 Abandonner
           </button>
         ) : (
-          <button onClick={goSetup} className="cursor-pointer rounded bg-accent py-2 font-bold text-white hover:bg-accent-hover">
+          <button onClick={goSetup} className="cursor-pointer rounded bg-accent py-2 font-bold text-on-accent hover:bg-accent-hover">
             Nouvelle partie
           </button>
         )}

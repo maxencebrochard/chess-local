@@ -430,7 +430,7 @@ export default function Stats() {
             data-testid="export-btn"
             onClick={() => void onExport()}
             disabled={working !== null}
-            className="cursor-pointer rounded bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
+            className="cursor-pointer rounded bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
           >
             {working === 'export' ? '⏳ Export…' : '⬇ Exporter tout'}
           </button>

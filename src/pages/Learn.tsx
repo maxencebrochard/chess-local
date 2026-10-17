@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
+import { ActivityCard } from '../components/ActivityCard'
+import { PageHeader } from '../components/PageHeader'
+import { ProgressBar } from '../components/ProgressBar'
 import { Board, type BoardArrow } from '../components/Board'
 import { CoachBubble } from '../components/CoachBubble'
 import { EngineContinuation, GoFurtherRow } from '../components/EngineContinuation'
@@ -428,10 +431,7 @@ export default function Learn() {
   const domains: LearnDomain[] = ['endgame', 'tactic', 'opening', 'strategy']
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <h1 className="mb-1 text-2xl font-black">🎓 Apprendre</h1>
-      <p className="mb-4 text-sm text-neutral-400">
-        Séances de 1 à 2 minutes, adaptées à ton niveau. Un bouton, zéro décision.
-      </p>
+      <PageHeader title="🎓 Apprendre" description="Séances de 1 à 2 minutes, adaptées à ton niveau. Un bouton, zéro décision." />
 
       <PathHero state={path.state} onOpen={() => navigate('/apprendre/parcours')} />
 
@@ -452,14 +452,7 @@ export default function Learn() {
       <p className="mb-2 text-sm font-semibold text-neutral-400">Ou cible un domaine :</p>
       <div className="grid grid-cols-2 gap-2">
         {domains.map((d) => (
-          <button
-            key={d}
-            onClick={() => void start(d)}
-            className="flex cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
-          >
-            <span className="text-2xl">{DOMAIN_META[d].emoji}</span>
-            <span className="font-bold">{DOMAIN_META[d].label}</span>
-          </button>
+          <ActivityCard key={d} onClick={() => void start(d)} icon={DOMAIN_META[d].emoji} title={DOMAIN_META[d].label} />
         ))}
         <button
           onClick={() => navigate('/finales')}
@@ -653,7 +646,7 @@ function PathHero({ state, onOpen }: { state: ReturnType<typeof usePathState>['s
               : 'Parcours terminé : bravo !'}
           </span>
         </span>
-        <span className="shrink-0 rounded-xl bg-accent px-4 py-2 text-base font-black text-white shadow-[0_3px_0_#5d9948]">
+        <span className="shrink-0 rounded-xl bg-accent px-4 py-2 text-base font-black text-on-accent shadow-[0_3px_0_#5d9948]">
           {fresh ? 'Commencer' : cur ? 'Continuer' : 'Revoir'}
         </span>
       </span>
@@ -676,24 +669,9 @@ function CourseCard({ course, done, testId }: { course: LessonCourse; done: numb
   const navigate = useNavigate()
   const total = course.lessonIds.length
   return (
-    <button
-      onClick={() => navigate(course.path)}
-      className="flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
-    >
-      <span className="text-2xl">{course.emoji}</span>
-      <span className="min-w-0 flex-1">
-        <span className="block font-bold">{course.title}</span>
-        <span className="mt-1 flex items-center gap-2">
-          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
-            <span className="block h-full rounded-full bg-accent" style={{ width: `${(done / total) * 100}%` }} />
-          </span>
-          <span data-testid={testId} className="text-xs font-semibold text-neutral-400">
-            {done}/{total} leçons
-          </span>
-        </span>
-      </span>
-      <span className="text-xl text-neutral-500">›</span>
-    </button>
+    <ActivityCard onClick={() => navigate(course.path)} className="w-full" icon={course.emoji} title={course.title}>
+      <ProgressBar value={done} total={total} label={`Leçons terminées : ${course.title}`} testId={testId} unit="leçons" />
+    </ActivityCard>
   )
 }
 

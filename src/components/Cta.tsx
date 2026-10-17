@@ -7,12 +7,13 @@ interface CtaProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export function Cta({ variant = 'primary', className = '', children, ...rest }: CtaProps) {
   const base =
     variant === 'primary'
-      ? 'bg-accent text-white shadow-[0_4px_0_#5d9948] hover:bg-accent-hover active:translate-y-0.5 active:shadow-[0_2px_0_#5d9948]'
+      ? 'bg-accent text-on-accent shadow-[0_4px_0_#5d9948] hover:bg-accent-hover active:translate-y-0.5 active:shadow-[0_2px_0_#5d9948]'
       : 'bg-surface-3 text-neutral-200 shadow-[0_4px_0_rgba(0,0,0,0.35)] hover:bg-surface-3/80 active:translate-y-0.5 active:shadow-[0_2px_0_rgba(0,0,0,0.35)]'
   return (
     <button
+      type="button"
       {...rest}
-      className={`cursor-pointer rounded-xl px-5 py-3 text-lg font-black transition disabled:cursor-default disabled:opacity-40 ${base} ${className}`}
+      className={`ui-cta min-h-11 min-w-11 cursor-pointer rounded-xl px-5 py-3 text-lg font-bold transition disabled:cursor-default disabled:opacity-40 ${base} ${className}`}
     >
       {children}
     </button>

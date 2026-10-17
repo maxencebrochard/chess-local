@@ -72,8 +72,8 @@ export function ConfirmSheet({
             data-testid={`${testId}-confirm`}
             onClick={onConfirm}
             disabled={busy}
-            className={`flex-1 cursor-pointer rounded-lg py-3 font-bold text-white disabled:cursor-default disabled:opacity-40 ${
-              danger ? 'bg-red-600 hover:bg-red-500' : 'bg-accent hover:bg-accent-hover'
+            className={`flex-1 cursor-pointer rounded-lg py-3 font-bold disabled:cursor-default disabled:opacity-40 ${
+              danger ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-accent text-on-accent hover:bg-accent-hover'
             }`}
           >
             {confirmLabel}

@@ -345,7 +345,7 @@ export default function Insights() {
             data-testid="insights-resume"
             onClick={() => void run(resumeCfg)}
             disabled={!canRunFor(resumeCfg)}
-            className="shrink-0 cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            className="shrink-0 cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-bold text-on-accent disabled:opacity-40"
           >
             Reprendre
           </button>

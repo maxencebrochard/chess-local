@@ -17,7 +17,7 @@ export function LevelPicker({ value, onChange, label }: { value: Level; onChange
             data-level={l ?? 'max'}
             onClick={() => onChange(l)}
             className={`min-h-10 cursor-pointer rounded-lg px-1 text-sm font-bold tabular-nums ${
-              on ? 'bg-accent text-white' : 'bg-surface-3 text-neutral-300 hover:bg-surface-3/70'
+              on ? 'bg-accent text-on-accent' : 'bg-surface-3 text-neutral-300 hover:bg-surface-3/70'
             }`}
           >
             {l ?? 'Max'}

@@ -381,7 +381,7 @@ export default function MyRepertoire() {
                 type="submit"
                 data-load
                 disabled={loading || !userInput.trim()}
-                className="shrink-0 cursor-pointer rounded-lg bg-accent px-3 py-2 text-sm font-bold text-white hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
+                className="shrink-0 cursor-pointer rounded-lg bg-accent px-3 py-2 text-sm font-bold text-on-accent hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
               >
                 {loading ? 'Chargement…' : 'Charger'}
               </button>

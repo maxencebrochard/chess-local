@@ -23,6 +23,10 @@ npm run preview
 
 ## Features
 
+L’[audit UX et le plan de refonte](docs/ux-refonte.md) décrivent la navigation cible et les lots à intégrer après fusion des fonctionnalités en cours.
+La suite `npm run test:e2e -- --suite ux_audit` régénère les captures locales et l’inventaire de l’expérience actuelle.
+Le lot 1 améliore le contraste des actions vertes et harmonise en-têtes, tuiles, progressions et états vides ; `ux_foundation` en vérifie le rendu aux trois formats, sans changer la navigation.
+
 Les parcours sont couverts par les suites E2E de production et de développement : `npm run test:e2e` et `npm run test:e2e:dev`.
 Les options du lanceur et les prérequis sont décrits dans [les commandes E2E](CLAUDE.md#commandes).
 Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bilan Q1](docs/q1-e2e.md).

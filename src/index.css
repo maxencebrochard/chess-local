@@ -6,7 +6,15 @@
   --color-surface-3: #3c3936;
   --color-accent: #81b64c;
   --color-accent-hover: #8fc45c;
+  --color-on-accent: #262421;
+  --color-muted: #b5b2ae;
   --font-sans: 'Segoe UI', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Focus commun visible au clavier, sans dépendre du survol. */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
 }
 
 /* Le document ne défile JAMAIS : seule la zone de contenu (`<main>`, les calques plein écran)
