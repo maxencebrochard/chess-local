@@ -136,7 +136,7 @@ export function play(name: SoundName, maxAgeMs = Infinity) {
   if (!playSounds || soundVolume <= 0) return
   const c = context()
   if (!c) return
-  void Promise.all([load(name), ready(c)]).then(([buf, ok]) => {
+  const start = (buf: AudioBuffer | null, ok: boolean) => {
     if (!buf || !ok || c !== ctx || !gain || performance.now() - requestedAt > maxAgeMs) return
     const { playSounds, soundVolume } = useSettings.getState()
     if (!playSounds || soundVolume <= 0) return
@@ -145,7 +145,11 @@ export function play(name: SoundName, maxAgeMs = Infinity) {
     src.buffer = buf
     src.connect(gain)
     src.start()
-  })
+  }
+  // Un son déjà décodé sur un contexte actif part sans attendre les microtâches du rendu.
+  const buf = buffers.get(name)
+  if (buf && stateOf(c) === 'running') start(buf, true)
+  else void Promise.all([load(name), ready(c)]).then(([loaded, ok]) => start(loaded, ok))
 }
 
 // Son d'un coup, priorités de chess.com : échec, promotion, roque, prise, puis coup simple
