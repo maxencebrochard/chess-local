@@ -26,6 +26,11 @@ def data(name):
     return json.loads((ROOT / "src/data" / name).read_text())
 
 
+def evidence_path(path):
+    """Conserver les destinations SHOTS externes dans l'inventaire exporté."""
+    return str(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path.resolve())
+
+
 # Mat en un après le coup d'amorce, repris du scénario de révision existant.
 PUZZLE = [["ux-mate", "6k1/5ppp/8/8/4n3/8/5PPP/R5K1 b - - 0 1", "e4c3 a1a8", 800,
            "backRankMate mate mateIn1 short"]]
@@ -69,14 +74,14 @@ def capture(page, fmt, name, marker, selector=False):
         if i == 0:
             path = OUT / f"{fmt}-{name}.png"
             page.screenshot(path=str(path), scale="css")
-            metrics["screenshots"].append(str(path.relative_to(ROOT)))
+            metrics["screenshots"].append(evidence_path(path))
         if dimensions["total"] > dimensions["h"] + 2:
             for n, top in enumerate(range(int(dimensions["h"] * .8), dimensions["total"], max(1, int(dimensions["h"] * .8))), 1):
                 el.evaluate("(e,y) => e.scrollTop = y", top)
                 path = OUT / f"{fmt}-{name}-scroll{i}-{n}.png"
                 page.screenshot(path=str(path), scale="css")
-                metrics["screenshots"].append(str(path.relative_to(ROOT)))
-                metrics["scrolls"].append({"path": str(path.relative_to(ROOT)), "scroller": i,
+                metrics["screenshots"].append(evidence_path(path))
+                metrics["scrolls"].append({"path": evidence_path(path), "scroller": i,
                                           "top": el.evaluate("e => e.scrollTop")})
             el.evaluate("e => e.scrollTop = 0")
     ROWS.append(metrics)
@@ -87,14 +92,16 @@ def wait_position(page, label, fen):
     """Attendre toutes les pièces, y compris le retrait des pièces de la position initiale."""
     expected = {chess.square_name(sq): ("w" if piece.color else "b") + piece.symbol().upper()
                 for sq, piece in chess.Board(fen).piece_map().items()}
-    page.wait_for_function("""expected => {
+    matched = page.wait_for_function("""expected => {
       const board = [...document.querySelectorAll('[data-board]')].find(e => e.getBoundingClientRect().width > 0);
       if (!board) return false;
       const pieces = [...board.querySelectorAll('[data-square] [data-piece]')];
       return pieces.length === Object.keys(expected).length && pieces.every(e =>
         expected[e.closest('[data-square]').dataset.square] === e.dataset.piece);
     }""", arg=expected, timeout=15000)
-    ck.check(label, page.locator('[data-board]:visible').first.locator('[data-square] [data-piece]').count() == len(expected))
+    # Le même instantané prouve le nombre ET l'emplacement de toutes les pièces.
+    # Une seconde lecture peut tomber pendant une animation du plateau.
+    ck.check(label, matched.json_value())
 
 
 def visit(page, fmt, path, name, marker):
@@ -176,6 +183,7 @@ def suite(p):
         page.goto(f"{BASE}/")
         for label, path in [("Apprendre", "/apprendre"), ("Jouer", "/jouer"), ("Accueil", "/")]:
             page.locator("nav a:visible").filter(has_text=label).click()
+            page.wait_for_url(f"**/#{path}")
             ck.check(f"{fmt} : onglet {label}", page.url.endswith("#"+path))
         page.locator("nav a:visible").filter(has_text="Apprendre").click()
         page.get_by_text("Cours de finales", exact=True).click()
