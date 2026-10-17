@@ -258,7 +258,6 @@ def suite(p):
     if os.environ.get("PREMOVE_CASE", "promotion") == "promotion":
         # Promotion prévue depuis une position importée, via le composant PositionGame.
         ctx = mobile_context(p, browser, ck, standalone=True, settings={"playSounds": True})
-        ctx.add_init_script(HOLD_BESTMOVE)
         ctx.add_init_script(WEBKIT_AUDIO)
         page = ctx.new_page()
         page.goto(f"{BASE}/#/analyse")
@@ -269,6 +268,10 @@ def suite(p):
         page.locator("main button", has_text="Options").tap()
         page.locator("button", has_text="Jouer contre le moteur").locator("visible=true").tap()
         ck.appears("PositionGame chargé", page, "[data-testid=position-game]")
+        # Armer uniquement les workers créés dans la partie (au premier coup).
+        # Sinon un bestmove tardif de l'analyse quittée satisfait l'attente avant la
+        # réponse de PositionGame : release libère le mauvais moteur, puis perd la vraie réponse.
+        page.evaluate(HOLD_BESTMOVE)
         page.evaluate("window.__heldUci = []")
         tap_move(page, "e1", "d1")
         ck.check("PositionGame : moteur retenu", wait(page, "window.__heldUci.length > 0"))
