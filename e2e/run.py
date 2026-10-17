@@ -50,7 +50,7 @@ PROD_ONLY = {"pwa", "upgrade"}  # suites qui n'ont de sens que sur le build loca
 # nettoyages de disque, et toutes les suites tombaient d'un coup.
 BROWSERS_DIR = os.path.expanduser("~/.local/share/chess-local/ms-playwright")
 
-# Durées par suite du dernier lancement réussi, pour l'ordonnancement parallèle (dossier gitignoré).
+# Dernière durée réussie par suite et par mode, pour l'ordonnancement parallèle (dossier gitignoré).
 DURATIONS_PATH = os.path.join(E2E_DIR, "shots", ".durations.json")
 
 READY_TIMEOUT_S = 60
@@ -357,7 +357,7 @@ TYPICAL_S = {
 
 
 def load_durations():
-    """Durées du dernier lancement réussi (fichier local, gitignoré), pour lancer les plus longues
+    """Dernière durée réussie par suite et par mode (fichier local, gitignoré), pour lancer les plus longues
     d'abord : une suite de 3 min démarrée en dernier allongerait tout le lancement d'autant."""
     try:
         with open(DURATIONS_PATH, encoding="utf-8") as f:

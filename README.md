@@ -24,7 +24,7 @@ npm run preview
 ## Features
 
 Les parcours sont couverts par les suites E2E de production et de développement : `npm run test:e2e` et `npm run test:e2e:dev`.
-Le lanceur utilise deux workers par défaut (`--jobs 1` pour la série), isole les processus et affiche les durées de chaque suite.
+Les options du lanceur et les prérequis sont décrits dans [les commandes E2E](CLAUDE.md#commandes).
 Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bilan Q1](docs/q1-e2e.md).
 
 - **Accueil** : carte Problèmes (résolus et classement puzzles, bouton « Résolvez ! »), quatre cartes Elo (rapide, blitz, bullet, puzzles) vers les stats, tuiles Analyse, Puzzle Rush, Archive (nombre de parties) et chess.com, tuiles Parcours (progression) et Insights, grand bouton Jouer.
