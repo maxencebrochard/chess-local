@@ -143,7 +143,7 @@ export default function Revision() {
     if (!items) return
     const item = items[idx]
     // Puzzles et variantes passent par PuzzlePlayer et OpeningDrill, qui ont déjà joué le verdict.
-    if (item.kind === 'mistake') (success ? sounds.success : sounds.fail)()
+    if (item.kind !== 'puzzle' && item.kind !== 'variant') (success ? sounds.success : sounds.fail)()
     setPhase(success ? 'success' : 'fail')
     if (recorded.current.has(idx)) return
     recorded.current.add(idx)
@@ -185,7 +185,7 @@ export default function Revision() {
       navigate('/analyse', {
         state: { fen: p.fen, uci: p.moves, viewIndex: 0, orientation: p.fen.split(' ')[1] === 'w' ? 'b' : 'w', label: `Puzzle ${p.id} (${p.rating})`, ...back },
       })
-    } else if (item.kind === 'mistake') {
+    } else if (item.kind !== 'variant') {
       navigate('/analyse', { state: { fen: item.mistake.fenBefore, orientation: new Chess(item.mistake.fenBefore).turn(), label: item.mistake.gameLabel, ...back } })
     } else {
       navigate('/analyse', { state: { fen: DEFAULT_POSITION, uci: moves ?? item.uci.split(' '), orientation: item.color, label: item.label, ...back } })
@@ -210,7 +210,7 @@ export default function Revision() {
           <p className="text-neutral-400">Impossible de charger les puzzles. Vérifie ta connexion, puis réessaie.</p>
         ) : missing > 0 ? (
           <p data-review-missing className="text-neutral-400">
-            {missing > 1 ? `${missing} éléments à réviser sont introuvables` : '1 élément à réviser est introuvable'} (puzzle retiré de la base ou variante
+            {missing > 1 ? `${missing} éléments à réviser sont introuvables` : '1 élément à réviser est introuvable'} (position supprimée, puzzle retiré de la base ou variante
             disparue) : {missing > 1 ? 'ils sont ignorés' : 'il est ignoré'}.
           </p>
         ) : soonest ? (
@@ -218,7 +218,7 @@ export default function Revision() {
             Prochaine révision {dueLabel(soonest.due)} : {soon.length} {soon.length > 1 ? 'éléments' : 'élément'} ({describeKinds(soon)}).
           </p>
         ) : (
-          <p className="text-neutral-400">Les puzzles, erreurs de parties et variantes d'ouverture que tu rates reviendront ici.</p>
+          <p className="text-neutral-400">Les puzzles, erreurs de parties, variantes d'ouverture, attaques manquées et défenses ratées reviendront ici.</p>
         )}
         <p className="text-sm text-neutral-500">
           Calendrier : {LADDER_DAYS.map((d) => `J+${d}`).join(', ')}. Une réussite espace le prochain passage, un échec ramène à J+1.
@@ -307,7 +307,7 @@ export default function Revision() {
   // Les thèmes (« Mat en 1 », « Fourchette ») livreraient la solution : après le verdict seulement.
   const banner = item.kind === 'puzzle'
     ? `Puzzle ${item.puzzle.id} · ${item.puzzle.rating}${phase !== 'play' ? ` · ${displayThemes(item.puzzle.themes).join(', ')}` : ''}`
-    : null
+    : item.kind === 'missed-attack' ? 'Attaque manquée' : item.kind === 'missed-defense' ? 'Défense ratée' : null
 
   return (
     <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
@@ -385,6 +385,9 @@ function SaveAlert() {
 // Libellé court d'un item pour le récapitulatif.
 function itemLabel(item: ReviewPayload): string {
   if (item.kind === 'puzzle') return `Puzzle ${item.puzzle.id} (${item.puzzle.rating})`
-  if (item.kind === 'mistake') return `${item.mistake.gameLabel} : ${item.mistake.playedSan}`
+  if (item.kind !== 'variant') {
+    const prefix = item.kind === 'missed-attack' ? 'Attaque manquée · ' : item.kind === 'missed-defense' ? 'Défense ratée · ' : ''
+    return `${prefix}${item.mistake.gameLabel} : ${item.mistake.playedSan}`
+  }
   return item.label
 }
