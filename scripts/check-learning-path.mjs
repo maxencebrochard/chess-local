@@ -97,7 +97,9 @@ for (const level of levels) {
     checkText(check, step.summary, `${S} résumé`, 110)
     check(typeof step.icon === 'string' && step.icon.length > 0 && step.icon.length <= 6, `${S} : icône absente ou trop longue`)
     const ex = step.exercise
-    check(Boolean(step.lesson || ex), `${S} : ni leçon ni exercice`)
+    check(Boolean(step.lesson || step.read), `${S} : leçon absente`)
+    check(Boolean(ex), `${S} : exercice absent`)
+    check(!(step.lesson && step.read), `${S} : deux leçons pour une étape`)
     if (step.lesson !== undefined) {
       const ref = app.lessonRef(step.lesson)
       check(ref !== null, `${S} : leçon inconnue ${step.lesson}`)
@@ -111,7 +113,6 @@ for (const level of levels) {
     }
     if (step.read !== undefined) {
       check(app.courseFor(step.read) !== null, `${S} : cours détaillé inconnu ${step.read}`)
-      check(ex?.kind === 'puzzles' || ex?.kind === 'opening', `${S} : read sans série notée à la suite`)
     }
     if (!ex) continue
     if (ex.kind === 'puzzles' || ex.kind === 'opening') {

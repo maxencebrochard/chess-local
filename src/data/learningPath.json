@@ -18,7 +18,19 @@
           "icon": "♟",
           "title": "La valeur des pièces",
           "summary": "Pion 1, cavalier 3, fou 3, tour 5, dame 9 : de quoi juger chaque prise.",
-          "lesson": "bases:valeur-des-pieces"
+          "lesson": "bases:valeur-des-pieces",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "hangingPiece"
+            ],
+            "rating": [
+              600,
+              950
+            ],
+            "count": 5,
+            "pass": 3
+          }
         },
         {
           "id": "pieces-en-prise",
@@ -44,7 +56,19 @@
           "icon": "👀",
           "title": "Voir la menace adverse",
           "summary": "Après chaque coup adverse : que veut-il faire ?",
-          "lesson": "bases:menaces"
+          "lesson": "bases:menaces",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "mateIn1"
+            ],
+            "rating": [
+              600,
+              950
+            ],
+            "count": 5,
+            "pass": 3
+          }
         },
         {
           "id": "mat-en-un",
@@ -70,7 +94,19 @@
           "icon": "🚀",
           "title": "Développer avant d'attaquer",
           "summary": "Sortir ses pièces, et punir l'adversaire qui oublie de le faire.",
-          "lesson": "bases:developpement"
+          "lesson": "bases:developpement",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "opening"
+            ],
+            "rating": [
+              600,
+              950
+            ],
+            "count": 5,
+            "pass": 3
+          }
         },
         {
           "id": "partie-italienne",
@@ -91,7 +127,11 @@
           "icon": "♜",
           "title": "Le mat des deux tours",
           "summary": "L'escalier : une tour coupe, l'autre donne l'échec.",
-          "lesson": "finales:mat-deux-tours"
+          "lesson": "finales:mat-deux-tours",
+          "exercise": {
+            "kind": "endgame",
+            "id": "rr-mate"
+          }
         },
         {
           "id": "mat-dame",
@@ -233,7 +273,19 @@
           "icon": "🛤️",
           "title": "Les tours sur la septième",
           "summary": "Prendre la colonne ouverte, puis entrer sur la septième rangée.",
-          "lesson": "bases:tours-septieme"
+          "lesson": "bases:tours-septieme",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "rookEndgame"
+            ],
+            "rating": [
+              1000,
+              1350
+            ],
+            "count": 5,
+            "pass": 3
+          }
         },
         {
           "id": "mat-en-deux",
@@ -265,7 +317,8 @@
             "color": "w",
             "count": 3,
             "pass": 2
-          }
+          },
+          "read": "opening-principles"
         }
       ]
     },
@@ -325,7 +378,19 @@
           "icon": "🔥",
           "title": "Le sacrifice grec",
           "summary": "Fxh7+, Cg5+, Dh5 : le schéma d'attaque le plus célèbre.",
-          "lesson": "roque:grec-schema"
+          "lesson": "roque:grec-schema",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "sacrifice"
+            ],
+            "rating": [
+              1400,
+              1750
+            ],
+            "count": 5,
+            "pass": 3
+          }
         },
         {
           "id": "cases-cles",
@@ -398,14 +463,27 @@
             "color": "b",
             "count": 3,
             "pass": 2
-          }
+          },
+          "read": "opening-principles"
         },
         {
           "id": "compter-les-pieces",
           "icon": "⚖️",
           "title": "Compter attaquants et défenseurs",
           "summary": "Avant de sacrifier, compter les pièces près du roi.",
-          "lesson": "roque:compter-les-pieces"
+          "lesson": "roque:compter-les-pieces",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "kingsideAttack"
+            ],
+            "rating": [
+              1400,
+              1750
+            ],
+            "count": 5,
+            "pass": 3
+          }
         }
       ]
     },
@@ -487,7 +565,19 @@
           "icon": "🗡️",
           "title": "Éliminer le défenseur",
           "summary": "Supprimer la pièce qui protège le roi adverse.",
-          "lesson": "roque:eliminer-le-defenseur"
+          "lesson": "roque:eliminer-le-defenseur",
+          "exercise": {
+            "kind": "puzzles",
+            "themes": [
+              "capturingDefender"
+            ],
+            "rating": [
+              1800,
+              2200
+            ],
+            "count": 5,
+            "pass": 3
+          }
         },
         {
           "id": "philidor",
@@ -546,7 +636,8 @@
           "exercise": {
             "kind": "endgame",
             "id": "q-vs-r"
-          }
+          },
+          "read": "q-vs-r"
         },
         {
           "id": "mat-en-trois",

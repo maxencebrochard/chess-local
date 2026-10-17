@@ -32,15 +32,13 @@ export interface EndgameExercise {
 
 export type PathExercise = PuzzleExercise | OpeningExercise | EndgameExercise
 
-export interface PathStep {
+export type PathStep = {
   id: string // figé : la progression des élèves y est rattachée
   icon: string
   title: string
   summary: string
-  lesson?: string // `<slug>:<id>` d'une leçon d'un cours d'Apprendre
-  read?: string // id d'un cours détaillé de src/data/courses.json, lu avant l'exercice
-  exercise?: PathExercise
-}
+  exercise: PathExercise
+} & ({ lesson: string; read?: never } | { lesson?: never; read: string })
 
 export interface PathLevel {
   id: string
@@ -106,7 +104,7 @@ export interface StepState {
   index: number // index global, tous niveaux confondus
   level: number
   lessonDone: boolean | null // null : pas de leçon
-  exerciseDone: boolean | null // null : pas d'exercice
+  exerciseDone: boolean
   done: boolean
   acquired: boolean // niveau acquis par le test de placement
   unlocked: boolean
@@ -131,7 +129,7 @@ export function computePath(facts: PathFacts, levels: PathLevel[] = LEVELS): Pat
     for (const step of level.steps) {
       const lessonDone = step.lesson ? facts.lessons.has(step.lesson) : null
       const ex = step.exercise
-      const exerciseDone = !ex ? null : ex.kind === 'endgame' ? facts.endgames.has(ex.id) || facts.passed.has(step.id) : facts.passed.has(step.id)
+      const exerciseDone = !ex ? false : ex.kind === 'endgame' ? facts.endgames.has(ex.id) || facts.passed.has(step.id) : facts.passed.has(step.id)
       const best = isScored(ex) ? (facts.best.get(step.id) ?? null) : null
       steps.push({
         step,
@@ -139,7 +137,7 @@ export function computePath(facts: PathFacts, levels: PathLevel[] = LEVELS): Pat
         level: li,
         lessonDone,
         exerciseDone,
-        done: lessonDone !== false && exerciseDone !== false,
+        done: (lessonDone === true || Boolean(step.read)) && exerciseDone === true,
         acquired: li < placement,
         unlocked: false,
         current: false,
