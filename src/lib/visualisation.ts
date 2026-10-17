@@ -211,8 +211,9 @@ export function questionFor(item: VisItem, level: number, kind: QuestionKind, rn
   return { ...base, mate: mateMoves(final), text: `Les ${SIDE_NAME[side]} peuvent-ils mater en un coup ?` }
 }
 
-// Tirage d'une question : type d'abord (uniforme), puis une position du niveau qui s'y prête et pas
-// encore servie. Pour « mat en un », Oui et Non à 50 % : sinon « Non » serait juste neuf fois sur dix.
+// Tirage d'une question : type d'abord (uniforme), puis priorité aux positions pas encore servies.
+// Pour « mat en un », Oui et Non à 50 % : réutiliser une position si nécessaire pour préserver
+// la réponse tirée, sinon « Non » serait juste neuf fois sur dix.
 export function pickQuestion(items: VisItem[], level: number, used: Set<string>, rng: () => number = Math.random): Question | null {
   const fresh = items.filter((it) => !used.has(it.id))
   const pool = fresh.length > 0 ? fresh : items
