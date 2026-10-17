@@ -1,12 +1,12 @@
 // « Mon répertoire » (/repertoire) : dans les parties chess.com du joueur, le demi-coup où la partie
 // sort de la théorie d'openings.json, qui en sort le premier, les coups théoriques attendus et ce
-// que la sortie coûte (bilan Stockfish d'Insights s'il existe, sinon fréquence et résultats).
+// que la sortie coûte (bilan Stockfish d'Insights s'il existe ; sinon priorité par fréquence et résultats).
 // Calcul pur, sans Dexie ni React : testé sous Node par e2e/test_repertoire.py.
 //
-// La théorie est un ensemble de POSITIONS (placement, trait, roques ; la prise en passant est
-// ignorée), pas un arbre de coups : un ordre de coups différent vers une position théorique reste
-// dans la théorie (1.d4 d5 2.Bf4 Nf6 rejoint 1.d4 Nf6 2.Bf4 d5). La séance d'entraînement rejoue les
-// lignes lichess depuis les coups réels de la partie (`drillLines`).
+// La théorie est un ensemble de POSITIONS, pas un arbre de coups : un ordre de coups différent
+// vers une position théorique reste dans la théorie (1.d4 d5 2.Bf4 Nf6 rejoint 1.d4 Nf6 2.Bf4 d5).
+// La clé normalisée sert uniquement à chercher dans l'index ; `bookMovesAt` définit les
+// continuations communes au rapport et aux séances (`drillLines`).
 import { Chess } from 'chess.js'
 import openingsData from '../data/openings.json'
 import type { GameReview } from './review'
@@ -43,7 +43,7 @@ export type Verdict = 'costly' | 'unknown' | 'ok'
 export interface ExpectedMove {
   uci: string
   san: string
-  lines: number // lignes lichess qui passent par la position et continuent par ce coup
+  lines: number // occurrences de la position obtenue dans les lignes lichess indexées
   name: string // nom de la plus courte de ces lignes
 }
 
@@ -177,7 +177,9 @@ export function bookIndex(): BookIndex {
   return index
 }
 
-// Coups théoriques d'une position : nombre de lignes qui continuent par chacun, et la plus courte.
+// Le FEN réel complet est indispensable aux coups légaux, notamment à la prise en passant.
+// Est théorique tout coup légal rejoignant l'index, même absent des chemins de la position initiale.
+// Régressions Amsterdam et Boehnke : e2e/test_repertoire.py.
 export function bookMovesAt(fen: string): { uci: string; lines: number; line: OpeningLine }[] {
   const out: { uci: string; lines: number; line: OpeningLine }[] = []
   const c = new Chess(fen)
@@ -248,9 +250,9 @@ export function gameExit(moves: string[], color: Color): GameExit {
   return { ...base, kind: isPlayerMove(d, color) ? 'mine' : 'theirs', ply: d, position: keys[d] }
 }
 
-// Lignes lichess d'une séance « Prochain coup » sur la position atteinte par `prefix` : chaque ligne
-// qui passe par cette position est réécrite depuis les coups réels (`prefix` + sa suite), et la
-// ligne nommée de la position devient `prefix` lui-même (nom affiché par l'entraîneur).
+// Famille synthétique : après chaque continuation de `bookMovesAt`, greffer les suites lichess
+// de la position obtenue sur les coups réels de la partie, pour accepter aussi les transpositions.
+// Le préfixe seul porte le nom de la position, ou à défaut celui de l'ouverture de la partie.
 export function drillLines(prefix: string[], opening: string): OpeningLine[] {
   const fen = positionsOf(prefix, prefix.length)[prefix.length]
   const key = positionKey(fen)
