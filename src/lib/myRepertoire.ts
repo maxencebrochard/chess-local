@@ -179,18 +179,17 @@ export function bookIndex(): BookIndex {
 
 // Coups théoriques d'une position : nombre de lignes qui continuent par chacun, et la plus courte.
 export function bookMovesAt(key: string): { uci: string; lines: number; line: OpeningLine }[] {
-  const out = new Map<string, { uci: string; lines: number; line: OpeningLine }>()
-  for (const { line, at } of bookIndex().through.get(key) ?? []) {
-    const mv = line.uci.split(' ')[at]
-    if (!mv) continue
-    const cur = out.get(mv)
-    if (!cur) out.set(mv, { uci: mv, lines: 1, line })
-    else {
-      cur.lines++
-      if (line.uci.length < cur.line.uci.length) cur.line = line
-    }
+  const out: { uci: string; lines: number; line: OpeningLine }[] = []
+  const c = new Chess(`${key} - 0 1`)
+  for (const move of c.moves({ verbose: true })) {
+    play(c, move.lan)
+    const entries = bookIndex().through.get(positionKey(c.fen())) ?? []
+    c.undo()
+    if (!entries.length) continue
+    const line = entries.reduce((best, entry) => entry.line.uci.length < best.uci.length ? entry.line : best, entries[0].line)
+    out.push({ uci: move.lan, lines: entries.length, line })
   }
-  return [...out.values()].sort((a, b) => b.lines - a.lines || (a.uci < b.uci ? -1 : 1))
+  return out.sort((a, b) => b.lines - a.lines || (a.uci < b.uci ? -1 : 1))
 }
 
 // Coups UCI d'un PGN de partie standard, ou null (illisible, départ non standard, aucun coup).
@@ -258,11 +257,15 @@ export function drillLines(prefix: string[], opening: string): OpeningLine[] {
   const out = new Map<string, OpeningLine>()
   const name = bookIndex().named.get(key) ?? ALL.find((l) => l.name === opening) ?? null
   if (name) out.set(head, { ...name, uci: head })
-  for (const { line, at } of bookIndex().through.get(key) ?? []) {
-    const tail = line.uci.split(' ').slice(at)
-    if (!tail.length) continue
-    const uci = [head, ...tail].filter(Boolean).join(' ')
-    if (!out.has(uci)) out.set(uci, { ...line, uci })
+  const c = new Chess(`${key} - 0 1`)
+  for (const move of bookMovesAt(key)) {
+    play(c, move.uci)
+    for (const { line, at } of bookIndex().through.get(positionKey(c.fen())) ?? []) {
+      const tail = line.uci.split(' ').slice(at)
+      const uci = [...prefix, move.uci, ...tail].join(' ')
+      if (!out.has(uci)) out.set(uci, { ...line, uci })
+    }
+    c.undo()
   }
   return [...out.values()].filter((l) => l.uci !== '')
 }
