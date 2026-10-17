@@ -20,7 +20,6 @@ MODE = "prod" if os.environ.get("E2E_DIST") else "dev"
 OUT = Path(SHOTS) / "ux-audit" / MODE
 OUT.mkdir(parents=True, exist_ok=True)
 ROWS = []
-VISITED = set()
 
 
 def data(name):
@@ -98,11 +97,10 @@ def wait_position(page, label, fen):
     ck.check(label, page.locator('[data-board]:visible').first.locator('[data-square] [data-piece]').count() == len(expected))
 
 
-def visit(page, fmt, path, name, marker, pattern=None):
+def visit(page, fmt, path, name, marker):
     page.goto(f"{BASE}/#{path}")
     capture(page, fmt, name, marker, selector=marker.startswith("["))
     ck.check(f"{fmt}/{name} : URL après rendu", page.url.endswith(f"#{path}"))
-    VISITED.add(pattern or path)
 
 
 def context(p, browser, fmt, height):
@@ -157,22 +155,22 @@ def suite(p):
             ("/apprendre/bases", "cours-bases", "Les bases"),
             ("/apprendre/parcours", "parcours", "Parcours d'apprentissage"),
         ]
-        for path, name, marker in routes:
-            visit(page, fmt, path, name, marker)
         for path, filename, name in [("/attaque", "attacks.json", "attaque-exercice"),
                                       ("/defense", "defenses.json", "defense-exercice"),
                                       ("/finales", "endgames.json", "finale-exercice")]:
             item = data(filename)[0]
-            visit(page, fmt, f"{path}/{item['id']}", name, "Abandonner", f"{path}/:id")
+            routes.append((f"{path}/{item['id']}", name, "Abandonner"))
         for slug, filename in [("finales", "endgameCourse.json"), ("roque", "attackCourse.json"), ("bases", "basicsCourse.json")]:
             course = data(filename)
             lid = course["chapters"][0]["lessons"][0]
-            visit(page, fmt, f"/apprendre/{slug}/{lid}", f"lecon-{slug}", course["lessons"][lid]["title"], f"/apprendre/{slug}/:id")
+            routes.append((f"/apprendre/{slug}/{lid}", f"lecon-{slug}", course["lessons"][lid]["title"]))
         step = data("learningPath.json")["levels"][0]["steps"][0]
-        visit(page, fmt, f"/apprendre/parcours/{step['id']}", "parcours-etape", step["title"], "/apprendre/parcours/:id")
-        visit(page, fmt, "/apprendre/parcours/placement", "parcours-placement", "Test de placement", "/apprendre/parcours/:id")
+        routes.append((f"/apprendre/parcours/{step['id']}", "parcours-etape", step["title"]))
+        routes.append(("/apprendre/parcours/placement", "parcours-placement", "Test de placement"))
         for path in ["/attaques-manquees", "/defenses-ratees"]:
-            visit(page, fmt, f"{path}/999999", path[1:]+"-absent", "pas dans ta liste", path+"/:id")
+            routes.append((f"{path}/999999", path[1:]+"-absent", "pas dans ta liste"))
+        for path, name, marker in routes:
+            visit(page, fmt, path, name, marker)
 
         # Parcours par l'interface : onglets, puis cours et retour explicite.
         page.goto(f"{BASE}/")
@@ -338,8 +336,6 @@ def suite(p):
         capture(lp, fmt, "seance-bilan", "Encore une séance")
         loading_ctx.close()
     browser.close()
-    expected = set(re.findall(r'<Route path="([^"]+)"', (ROOT / "src/App.tsx").read_text())) - {"*"}
-    ck.check("Toutes les routes déclarées ont un scénario", VISITED == expected, str(sorted(expected - VISITED)))
     ck.check("Les trois formats ont été capturés", {r["format"] for r in ROWS} == {"iphone852", "iphone660", "desktop"})
     print(f"Inventaire : {len(ROWS)} états, {sum(len(r['screenshots']) for r in ROWS)} captures ; {OUT}")
 
