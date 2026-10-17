@@ -86,7 +86,7 @@ Stack : React 19, Vite 8, TypeScript, Tailwind 4, Zustand (réglages), Dexie (In
 ### Moteur (`src/lib/engine.ts`)
 
 Un `Engine` = un worker Stockfish (`public/engine/`, build `lite-single` mono-thread, donc pas de COOP/COEP).
-Toutes les méthodes publiques passent par un mutex (chaîne de promesses) : deux `go` sans `stop` intermédiaire font trap le WASM (`unreachable`).
+Les commandes UCI passent par un mutex (chaîne de promesses) : deux `go` sans `stop` intermédiaire font trap le WASM (`unreachable`).
 Ne jamais envoyer de commande UCI en dehors de `exclusive()`.
 `searchId` invalide les callbacks `onLines` d'une recherche remplacée : toute nouvelle méthode de recherche doit passer par `attachInfoListener()`.
 Les scores sont du point de vue du trait ; les convertir explicitement avant de les afficher côté blanc.
@@ -122,7 +122,7 @@ Le résumé du bilan se termine par « Moments critiques » (`components/Critica
 La réponse à « Plan, menace ou coup forcé ? » se déduit de l'échiquier : coup forcé si un seul coup tient ou si le meilleur coup mate, sinon menace (échec, ou coup nul : mat en 1, prise gagnant au moins 2 points par `see`, promotion libre), sinon plan.
 Rejouer ouvre `/moment-critique` (`pages/CriticalMoment.tsx`, PositionGame avec `keyMove`) ; la sortie rouvre l'analyse avec `state.bilan`, que `restorableBilan` n'accepte que s'il correspond coup pour coup au PGN, et le résumé revient sans recalcul ni réécriture des fautes.
 Les résultats vont dans `learnSessions` (domaine `critical-moment`, format d'`itemId` documenté dans `db.ts`), hors Elo ; `pickNextDomain` les ignore.
-« Pourquoi ? » (`components/RefutationPlayer.tsx`, ouvert depuis le bilan guidé, la carte du coach et `MistakeExercise` après le verdict) déroule la réfutation : un `Engine` dédié cherche la ligne après le coup fautif puis l'éval après le bon coup (profondeur du bilan, plancher 12), sans jamais chercher une position finie, et `quit({ immediate: true })` détruit le worker au démontage.
+« Pourquoi ? » (`components/RefutationPlayer.tsx`, ouvert depuis le bilan guidé, la carte du coach et `MistakeExercise` après le verdict) déroule la réfutation : un `Engine` dédié cherche la ligne après le coup fautif puis l'éval après le bon coup (réglage décrit dans le [README](README.md#features)), sans jamais chercher une position finie, et `quit({ immediate: true })` détruit le worker au démontage.
 `lib/refutation.ts`, pur, en tire les faits de chaque demi-coup (motifs.ts, bilan matériel cumulé sur la ligne réelle, jamais d'estimation d'échange) et une phrase par fait ; seules les fautes `EXPLAINED_CLASSES` du camp du joueur (les deux si inconnu) ont le bouton, et rien n'est écrit en base.
 La suite `refutation` revérifie chaque fait et chaque phrase sur environ 2 000 puzzles lichess (coup fautif puis réfutation réelle) contre un oracle python-chess.
 `kingAttack.ts` (chess.js seul) relit ces fautes pour « Mes attaques manquées » (`/attaques-manquees`) : le type d'attaque (mat, sacrifice près du roi, pion contre le roque, pièce vers le roi) est recalculé sur l'échiquier depuis `fenBefore` et `bestUci`, jamais stocké ; seules les lignes avec `color` (camp du joueur connu du bilan) comptent, `gameKey` identifie la partie.
