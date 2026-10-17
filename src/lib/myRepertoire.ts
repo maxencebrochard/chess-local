@@ -178,9 +178,9 @@ export function bookIndex(): BookIndex {
 }
 
 // Coups théoriques d'une position : nombre de lignes qui continuent par chacun, et la plus courte.
-export function bookMovesAt(key: string): { uci: string; lines: number; line: OpeningLine }[] {
+export function bookMovesAt(fen: string): { uci: string; lines: number; line: OpeningLine }[] {
   const out: { uci: string; lines: number; line: OpeningLine }[] = []
-  const c = new Chess(`${key} - 0 1`)
+  const c = new Chess(fen)
   for (const move of c.moves({ verbose: true })) {
     play(c, move.lan)
     const entries = bookIndex().through.get(positionKey(c.fen())) ?? []
@@ -220,22 +220,22 @@ function parseMoves(pgn: string): string[] | null {
 
 const isPlayerMove = (ply: number, color: Color) => (ply % 2 === 0) === (color === 'w')
 
-// Clés de position de la partie : index 0 = départ, index n = après n demi-coups.
 function positionsOf(moves: string[], upTo: number): string[] {
   const c = new Chess()
-  const keys = [positionKey(c.fen())]
+  const fens = [c.fen()]
   for (let i = 0; i < Math.min(upTo, moves.length); i++) {
     play(c, moves[i])
-    keys.push(positionKey(c.fen()))
+    fens.push(c.fen())
   }
-  return keys
+  return fens
 }
 
 // Sortie de théorie : premier demi-coup qui mène à une position absente d'openings.json. Une
 // position théorique sans coup théorique ensuite est la fin de la théorie connue : aucune sortie.
 export function gameExit(moves: string[], color: Color): GameExit {
   const { through, named } = bookIndex()
-  const keys = positionsOf(moves, 40)
+  const fens = positionsOf(moves, 40)
+  const keys = fens.map(positionKey)
   let d = 0
   while (d < moves.length && d + 1 < keys.length && through.has(keys[d + 1])) d++
   // Ouverture : la plus profonde position de la partie (jusqu'à la sortie) qui termine une ligne nommée.
@@ -244,7 +244,7 @@ export function gameExit(moves: string[], color: Color): GameExit {
   const name = opening?.name ?? '?'
   const base = { family: opening ? familyOfLine(name) : '?', opening: name }
   if (d >= moves.length || d + 1 >= keys.length) return { ...base, kind: 'inBook', ply: null, position: null }
-  if (bookMovesAt(keys[d]).length === 0) return { ...base, kind: 'end', ply: null, position: null }
+  if (bookMovesAt(fens[d]).length === 0) return { ...base, kind: 'end', ply: null, position: null }
   return { ...base, kind: isPlayerMove(d, color) ? 'mine' : 'theirs', ply: d, position: keys[d] }
 }
 
@@ -252,13 +252,14 @@ export function gameExit(moves: string[], color: Color): GameExit {
 // qui passe par cette position est réécrite depuis les coups réels (`prefix` + sa suite), et la
 // ligne nommée de la position devient `prefix` lui-même (nom affiché par l'entraîneur).
 export function drillLines(prefix: string[], opening: string): OpeningLine[] {
-  const key = positionsOf(prefix, prefix.length)[prefix.length]
+  const fen = positionsOf(prefix, prefix.length)[prefix.length]
+  const key = positionKey(fen)
   const head = prefix.join(' ')
   const out = new Map<string, OpeningLine>()
   const name = bookIndex().named.get(key) ?? ALL.find((l) => l.name === opening) ?? null
   if (name) out.set(head, { ...name, uci: head })
-  const c = new Chess(`${key} - 0 1`)
-  for (const move of bookMovesAt(key)) {
+  const c = new Chess(fen)
+  for (const move of bookMovesAt(fen)) {
     play(c, move.uci)
     for (const { line, at } of bookIndex().through.get(positionKey(c.fen())) ?? []) {
       const tail = line.uci.split(' ').slice(at)
@@ -363,7 +364,7 @@ export function computeRepertoire(input: RepGame[], timeClass = 'all'): Repertoi
       d = {
         id, color, family: exit.family, opening: exit.opening, prefix, prefixes: [], played: [],
         ply, moveNumber: Math.floor(ply / 2) + 1,
-        expected: bookMovesAt(exit.position!).slice(0, EXPECTED_MAX).map((m) => ({ uci: m.uci, san: '', lines: m.lines, name: m.line.name })),
+        expected: [],
         games: 0, wins: 0, draws: 0, losses: 0, reviewed: 0, avgDrop: null, verdict: 'unknown',
         last, drops: [], moves: [], families: new Set(),
       }
@@ -375,7 +376,7 @@ export function computeRepertoire(input: RepGame[], timeClass = 'all'): Repertoi
     if (!d.prefixes.includes(prefix.join(' '))) d.prefixes.push(prefix.join(' '))
     const pm = d.played.find((m) => m.uci === played)
     if (pm) pm.games++
-    else d.played.push({ uci: played, san: '', games: 1 })
+    else d.played.push({ uci: played, san: sanAt(prefix, played), games: 1 })
     d.games++
     tally(d, g.result)
     d.moves.push(Math.floor(ply / 2) + 1)
@@ -393,9 +394,9 @@ export function computeRepertoire(input: RepGame[], timeClass = 'all'): Repertoi
     d.reviewed = drops.length
     d.avgDrop = drops.length ? drops.reduce((a, b) => a + b, 0) / drops.length : null
     d.verdict = d.avgDrop === null ? 'unknown' : d.avgDrop >= COSTLY_DROP ? 'costly' : 'ok'
-    // SAN dans la position de la partie la plus récente (même position, donc mêmes coups légaux).
-    d.played = d.played.map((m) => ({ ...m, san: sanAt(d.prefix, m.uci) })).sort((a, b) => b.games - a.games || (a.uci < b.uci ? -1 : 1))
-    d.expected = d.expected.map((e) => ({ ...e, san: sanAt(d.prefix, e.uci) }))
+    d.played = d.played.sort((a, b) => b.games - a.games || (a.uci < b.uci ? -1 : 1))
+    const fen = positionsOf(d.prefix, d.prefix.length)[d.prefix.length]
+    d.expected = bookMovesAt(fen).slice(0, EXPECTED_MAX).map((m) => ({ uci: m.uci, san: sanAt(d.prefix, m.uci), lines: m.lines, name: m.line.name }))
     exitMoves[d.color].push(...moves)
     familiesOf.set(d.id, families)
     all.push(d)
