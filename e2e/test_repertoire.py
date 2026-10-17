@@ -811,6 +811,10 @@ def seeded_page(p, browser):
                 ck.appears(f"{tag} retour au répertoire", page, "[data-opening]", timeout=10000)
                 check(f"{tag} retour : parties chargées conservées (13)", attr(page, "[data-games-count]", "data-games-count") == "13")
                 check(f"{tag} retour : aucune requête de plus", calls["n"] == 4, f"({calls['n']})")
+    page.reload()
+    ck.appears(f"{tag} rechargement : cache disponible", page, "[data-opening]", timeout=15000)
+    check(f"{tag} rechargement : seules les 4 parties en cache persistent",
+          attr(page, "[data-games-count]", "data-games-count") == "4" and calls["n"] == 4)
     ctx.close()
 
 
@@ -860,6 +864,7 @@ def no_username(p, browser):
     page.fill("#rep-user", "  Repertoire_QA ")
     page.locator("[data-load]").click()
     ck.appears(f"{tag} pseudo valide : parties chargées", page, "[data-opening]", timeout=20000)
+    page.screenshot(path=f"{SHOTS}/repertoire_first_load.png", full_page=True)
     stored = page.evaluate("() => JSON.parse(localStorage.getItem('chess-local-settings')).state.chesscomUsername")
     check(f"{tag} pseudo normalisé mémorisé après le chargement", stored == USER, f"({stored!r})")
     check(f"{tag} 12 parties chargées (variante écartée, aucun bilan en cache)", attr(page, "[data-games-count]", "data-games-count") == "12",
@@ -884,9 +889,67 @@ def transposed_drill(p, browser):
             return
         tap_move(page, "e2", "e3")
         ck.appears("[transposition] 3.e3 accepté", page, "[data-result='ok']", timeout=5000)
+        page.screenshot(path=f"{SHOTS}/repertoire_amsterdam_ok.png")
         rows = wait_rows(page, 1)
         check("[transposition] réussite enregistrée sans pénalité Elo",
               [(r["itemId"], r["success"], r["ratingAfter"]) for r in rows] == [("next:w:c2c4 e7e5 b1c3 d7d6", 1, None)], f"({rows})")
+    finally:
+        ctx.close()
+
+
+def en_passant_drill(p, browser):
+    ctx = mobile_context(p, browser, ck, settings={"chesscomUsername": USER}, standalone=True, service_workers="block")
+    try:
+        page = ctx.new_page()
+        page.goto(f"{BASE}/#/apprendre")
+        if not check("[Boehnke] base prête", wait_schema(page)):
+            return
+        games = [dict(rep_game(301), pgn=san_pgn(sans, USER, "QaEp", "1-0"))
+                 for sans in ("e4 d5 exd5 e5 dxe6", "e4 d5 exd5 e5 h3")]
+        seed_db(page, {"reviews": [review_row(game, 401 + i) for i, game in enumerate(games)]})
+        page.locator("main a", has_text="Mon répertoire").click()
+        if not ck.appears("[Boehnke] sortie affichée", page, "[data-deviation]", timeout=15000):
+            return
+        check("[Boehnke] dxe6 reste théorique, seule h3 est une sortie",
+              page.locator("[data-deviation]").count() == 1
+              and "h3" in page.locator("[data-played]").inner_text()
+              and "dans 1" in page.locator("[data-summary]").inner_text()
+              and attr(page, "[data-games-count]", "data-games-count") == "2")
+        page.screenshot(path=f"{SHOTS}/repertoire_boehnke_report.png", full_page=True)
+        page.locator("[data-start]").click()
+        if not ck.appears("[Boehnke] séance ouverte", page, "[data-drill]", timeout=8000):
+            return
+        check("[Boehnke] séance au coup 3", attr(page, "[data-drill]", "data-uci") == "e2e4 d7d5 e4d5 e7e5")
+        tap_move(page, "d5", "e6")
+        ck.appears("[Boehnke] prise en passant acceptée", page, "[data-result='ok']", timeout=5000)
+        rows = wait_rows(page, 1)
+        check("[Boehnke] réussite enregistrée hors Elo",
+              [(r["itemId"], r["success"], r["ratingAfter"]) for r in rows]
+              == [("next:w:e2e4 d7d5 e4d5 e7e5", 1, None)], f"({rows})")
+        page.screenshot(path=f"{SHOTS}/repertoire_boehnke_ok.png")
+    finally:
+        ctx.close()
+
+
+def shared_family_exit(p, browser):
+    ctx = mobile_context(p, browser, ck, settings={"chesscomUsername": USER}, standalone=True, service_workers="block")
+    try:
+        page = ctx.new_page()
+        page.goto(f"{BASE}/#/apprendre")
+        if not check("[familles] base prête", wait_schema(page)):
+            return
+        games = bench_cases()["transposition"]["games"]
+        seed_db(page, {"reviews": [review_row(game, 410 + i) for i, game in enumerate(games)]})
+        page.locator("main a", has_text="Mon répertoire").click()
+        ck.appears("[familles] rapport prêt", page, "[data-games-count='2']", timeout=15000)
+        pick(page, "Camp", "Noirs")
+        cards = page.locator("[data-opening]")
+        devs = ui_devs(page)
+        check("[familles] même sortie dans les deux familles, coup typique 2",
+              cards.count() == 2 and len(devs) == 2 and devs[0][0] == devs[1][0]
+              and all("tu sors au coup 2" in text for text in cards.all_inner_texts()))
+        check("[familles] une seule sortie à travailler", "(1)" in page.locator("[data-start]").inner_text())
+        page.screenshot(path=f"{SHOTS}/repertoire_shared_families.png", full_page=True)
     finally:
         ctx.close()
 
@@ -898,6 +961,8 @@ def suite(p):
         bench_checks(out, cases)
     browser = p.chromium.launch(headless=True)
     try:
+        shared_family_exit(p, browser)
+        en_passant_drill(p, browser)
         transposed_drill(p, browser)
         seeded_page(p, browser)
         layouts(p, browser)
@@ -906,4 +971,5 @@ def suite(p):
         browser.close()
 
 
-ck.run(suite)
+if __name__ == "__main__":
+    ck.run(suite)
