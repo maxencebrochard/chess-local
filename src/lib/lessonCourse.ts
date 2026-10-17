@@ -1,4 +1,4 @@
-// Moteur commun des cours d'Apprendre (cours de finales, « Démolir le roque ») : chapitres,
+// Moteur commun des cours d'Apprendre (cours de finales, « Démolir le roque », « Tenir sous l'attaque ») : chapitres,
 // leçons faites de diagrammes commentés et de lignes jouables, progression.
 // Chaque cours est une instance de `makeCourse` sur son JSON, vérifié hors ligne par son script
 // (tables de finales ou Stockfish) et contrôlé par les E2E (tampon du JSON vérifié).
@@ -19,12 +19,16 @@ export interface DiagramStep {
   marks?: Record<string, MarkColor>
   // Verdict vérifié, quand le texte en affirme un : qui gagne (ou garde un avantage décisif),
   // nulle (tables de finales) ou équilibre (Stockfish).
-  claim?: 'w' | 'b' | 'draw' | 'equal'
+  // `hold-w` / `hold-b` (cours de défense) : ce camp tient, à un demi-pion au plus de l'équilibre.
+  claim?: 'w' | 'b' | 'draw' | 'equal' | 'hold-w' | 'hold-b'
   fails?: string // coup (notation anglaise) dont l'échec est vérifié par Stockfish
   eval?: string // évaluation vérifiée, écrite par le script de vérification (« +4.2 », « #5 »)
+  failsEval?: string // évaluation du coup fautif, du point de vue du camp qui le joue
+  threat?: string // coup (notation anglaise) de l'attaquant qui serait mat s'il avait le trait (vérifié)
 }
 
 export interface LineMove {
+  threat?: string // menace de mat de l'attaquant après ce coup, vérifiée hors ligne
   san: string // notation anglaise (chess.js), affichée en figurines
   text?: string
   hint?: string // indice affiché au premier mauvais coup
@@ -35,9 +39,10 @@ export interface LineMove {
 }
 
 // Résultat d'une ligne, du point de vue de l'élève : gain ou nulle (tables de finales), avantage
-// décisif (`win`, Stockfish), nette avance (`edge`, Stockfish) ou plan de structure (`plan`,
-// Stockfish : chaque coup de l'élève parmi les meilleurs, la position restant jouable).
-export type LineResult = 'win' | 'draw' | 'edge' | 'plan'
+// décisif (`win`, Stockfish), nette avance (`edge`, Stockfish), plan de structure (`plan`,
+// Stockfish : chaque coup de l'élève parmi les meilleurs, la position restant jouable) ou défense
+// qui tient (`hold`, Stockfish : l'élève reste à un demi-pion au plus de l'équilibre).
+export type LineResult = 'win' | 'draw' | 'edge' | 'plan' | 'hold'
 
 // Ligne jouable : l'élève joue le camp qui a le trait dans `fen`, l'app joue l'autre.
 export interface LineStep {

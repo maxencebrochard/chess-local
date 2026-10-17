@@ -1,4 +1,4 @@
-// Cours d'Apprendre (finales, « Démolir le roque », structures de pions), façon chess.com Lessons : un sommaire par
+// Cours d'Apprendre (finales, « Démolir le roque », « Tenir sous l'attaque », structures de pions), façon chess.com Lessons : un sommaire par
 // chapitres, puis des leçons en étapes (diagramme commenté, ligne à jouer coup par coup, bilan).
 // 100 % hors ligne : aucune analyse moteur dans l'app, chaque verdict vient du contenu vérifié hors
 // ligne (tables de finales ou Stockfish) et tamponné.

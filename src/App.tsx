@@ -21,6 +21,7 @@ import MissedDefenses from './pages/MissedDefenses'
 import CourseIndex, { CourseLesson } from './pages/LessonCourse'
 import { FINALES } from './lib/endgameCourse'
 import { ROQUE } from './lib/attackCourse'
+import { DEFENSE } from './lib/defenseCourse'
 import { BASES } from './lib/basicsCourse'
 import LearningPathMap, { PathStepRoute } from './pages/LearningPath'
 import { STRUCTURES_COURSE } from './lib/structuresCourse'
@@ -156,6 +157,8 @@ function Shell() {
             <Route path="/apprendre/structures/:id" element={<CourseLesson course={STRUCTURES_COURSE} />} />
             <Route path="/structures" element={<MyStructures />} />
             <Route path="/structures/:key" element={<MyStructures />} />
+            <Route path="/apprendre/defense" element={<CourseIndex key={DEFENSE.slug} course={DEFENSE} />} />
+            <Route path="/apprendre/defense/:id" element={<CourseLesson course={DEFENSE} />} />
             <Route path="/mats" element={<Mates />} />
             <Route path="/revision" element={<Revision />} />
             <Route path="/attaques-manquees" element={<MissedAttacks />} />
