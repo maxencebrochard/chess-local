@@ -65,7 +65,7 @@
         {
           "kind": "diagram",
           "fen": "r1bq1rk1/pp2npp1/4pb1p/3n4/3P4/P1NB1N2/1PQ2PPP/R1BR2K1 w - - 2 13",
-          "text": "Les Blancs ont un pion isolé en d4 : aucun pion voisin ne peut le défendre, mais il contrôle e5 et c5, et les colonnes c et e sont ouvertes pour les tours. Le cavalier noir en d5 est le bloqueur idéal.",
+          "text": "Les Blancs ont un pion isolé en d4 : aucun pion voisin ne peut le défendre, mais il contrôle e5 et c5. La colonne c est ouverte et la colonne e semi-ouverte pour les Blancs, avec un pion noir en e6. Le cavalier noir d5 bloque d4.",
           "arrows": [["f3", "e5"], ["d3", "h7"]],
           "marks": {
             "d4": "yellow",
@@ -96,7 +96,7 @@
             {"san": "Bd7"},
             {"san": "Nxd5", "text": "Le cavalier e5 reste en place et l'autre cavalier élimine le bloqueur d5.", "hint": "La pièce qui bloque ton pion isolé peut disparaître.", "keeps": ["c2e2", "c3d5", "d3h7"], "close": ["a1a2", "a1b1", "a3a4", "c1d2", "c2b1", "c2b3", "c2d2", "c3e2", "c3e4", "d1e1", "d3e4", "d3f1", "e5d7", "e5f3", "e5g4", "g1f1", "g1h1", "g2g3", "h2h3"]}
           ],
-          "end": "Le bloqueur a disparu : après la reprise, la poussée d4-d5 redevient possible et les pièces blanches restent actives."
+          "end": "Le bloqueur noir a disparu, mais le cavalier blanc occupe d5. Une reprise noire y maintiendrait un obstacle : d4-d5 n'est pas encore possible. Le cavalier e5 reste soutenu par d4."
         }
       ]
     },
@@ -112,7 +112,7 @@
         {
           "kind": "diagram",
           "fen": "r1bq1rk1/p3bppp/1pn1pn2/8/2BP4/P1N2N2/1P3PPP/R1BQR1K1 b - - 0 11",
-          "text": "Les Noirs jouent contre le pion isolé d4. La case d5 devant lui est parfaite : aucun pion blanc ne peut la contester. Les Noirs veulent y mettre une pièce, puis viser d4 avec la dame et les tours.",
+          "text": "Les Noirs jouent contre le pion isolé d4. La case d5 devant lui est une case de blocus : aucun pion blanc ne la contrôle. Les Noirs veulent y mettre une pièce, puis viser d4 avec la dame et les tours.",
           "orientation": "b",
           "arrows": [["f6", "d5"], ["c6", "d4"]],
           "marks": {
@@ -154,14 +154,14 @@
       "summary": "Deux pions côte à côte sans voisins : forts tant qu'ils restent sur la même rangée.",
       "keyPoints": [
         "Côte à côte, les pions pendants contrôlent quatre cases centrales.",
-        "Si l'un avance, l'autre devient faible et une case s'ouvre devant lui.",
+        "Si l'un avance, l'autre reste en arrière : la case devant lui n'est plus contrôlée par son voisin.",
         "Garde tes tours derrière eux, sur les colonnes c et d."
       ],
       "steps": [
         {
           "kind": "diagram",
           "fen": "r1r3k1/p2nqpp1/4b2p/2pp4/8/Q3PN2/PP2BPPP/2R2RK1 b - - 1 16",
-          "text": "Les Noirs ont des pions pendants en c5 et d5 : ni pion b, ni pion e pour les défendre. Ils contrôlent b4, c4, d4 et e4. Les Blancs les visent par les colonnes c et d.",
+          "text": "Les Noirs ont des pions pendants en c5 et d5 : ni pion b, ni pion e pour les défendre. Ils contrôlent b4, c4, d4 et e4. La tour blanche c1 attaque c5 ; les Blancs peuvent chercher à faire pression sur d5 également.",
           "orientation": "b",
           "arrows": [["c1", "c5"], ["a3", "c5"]],
           "marks": {
@@ -175,7 +175,7 @@
         {
           "kind": "diagram",
           "fen": "r1r3k1/p2nqpp1/4b2p/2pp4/8/Q3PN2/PP2BPPP/2R2RK1 b - - 1 16",
-          "text": "Le plan blanc : forcer un des pions à avancer. Après c4, le pion d5 n'a plus de soutien et la case d4 devient un trou pour un cavalier ; après d4, c'est c5 qui devient faible.",
+          "text": "Le plan blanc : provoquer l'avance d'un pion. Après c4, d5 reste en arrière et aucun pion noir ne contrôle d4 ; après d4, c'est c5 qui reste en arrière. Le pion resté en arrière peut devenir une cible.",
           "orientation": "b",
           "arrows": [["c5", "c4"], ["f3", "d4"]],
           "marks": {
@@ -236,7 +236,7 @@
           "moves": [
             {"san": "Rab1", "text": "La tour se place derrière le pion b : b4 et b5 suivront.", "hint": "Mets une tour derrière le pion qui va avancer.", "keeps": ["a1b1", "a1c1", "a1e1", "a2a3", "a2a4", "b2b3", "c2a4", "c2b1", "c2b3", "c3e2", "f1b1", "f1c1", "f1e1", "f3d2", "f3e1", "f3e5", "g1h1", "g5f4", "g5f6", "g5h4", "h2h3"], "close": ["a1d1", "c2c1", "c2d1", "c2d2", "c2e2", "c3a4", "c3b1", "c3d1", "d3e2", "d3f5", "f1d1", "f3h4", "g2g3", "h2h4"]},
             {"san": "Ne4"},
-            {"san": "Bf4", "text": "Le fou évite l'échange contre le cavalier e4 et garde le contrôle de b8 et de e5.", "hint": "Ton fou g5 est attaqué : garde-le, sans l'échanger.", "keeps": ["d3e4", "g5e7", "g5f4"]}
+            {"san": "Bf4", "text": "Le fou se retire en f4 sans s'échanger contre le cavalier e4. Depuis f4, il contrôle e5 et b8.", "hint": "Ton fou g5 est attaqué : garde-le, sans l'échanger.", "keeps": ["d3e4", "g5e7", "g5f4"]}
           ],
           "end": "Les Blancs ont tout préparé : la tour b1 soutient la poussée b4-b5, qui viendra au bon moment."
         }
@@ -244,7 +244,7 @@
     },
     "maroczy": {
       "title": "L'étau de Maroczy",
-      "summary": "Les pions c4 et e4 empêchent la rupture d5 : l'adversaire étouffe s'il ne trouve pas de levier.",
+      "summary": "Les pions c4 et e4 contrôlent d5 : l'adversaire cherche des leviers pour se libérer.",
       "keyPoints": [
         "Les pions c4 et e4 contrôlent d5 : la rupture libératrice d5 est difficile.",
         "Le camp à l'étroit cherche les échanges : évite-les si tu as l'espace.",
@@ -254,7 +254,7 @@
         {
           "kind": "diagram",
           "fen": "r2q1rk1/pp1bppbp/2np1np1/8/2PNP3/2N1B3/PP2BPPP/R2Q1RK1 w - - 2 10",
-          "text": "L'étau de Maroczy : pions blancs en c4 et e4, sans pion d. La case d5 est contrôlée deux fois : les Noirs ont du mal à jouer d5, leur rupture naturelle.",
+          "text": "L'étau de Maroczy : pions blancs en c4 et e4, sans pion d. Les deux pions et le cavalier c3 contrôlent d5 : les Noirs doivent préparer cette rupture centrale.",
           "arrows": [["c4", "c5"], ["e4", "e5"]],
           "marks": {
             "d5": "green",
@@ -266,7 +266,7 @@
         {
           "kind": "diagram",
           "fen": "r2q1rk1/pp1bppbp/2np1np1/8/2PNP3/2N1B3/PP2BPPP/R2Q1RK1 w - - 2 10",
-          "text": "Les Noirs manquent d'espace : ils veulent échanger des pièces, surtout le cavalier d4, puis préparer b5 ou f5. Les Blancs gardent leurs pièces et renforcent c4.",
+          "text": "Les Noirs manquent d'espace : ils cherchent les échanges, notamment celui du cavalier d4, et préparent leurs ruptures. Les Blancs peuvent retirer ce cavalier en c2 et placer une tour en c1 pour préparer son activité.",
           "arrows": [["c6", "d4"]],
           "marks": {
             "d4": "red",
@@ -282,9 +282,9 @@
           "moves": [
             {"san": "Nc2", "text": "Le cavalier évite l'échange en d4 et protège e3 et b4.", "hint": "Le camp à l'étroit veut échanger : ne lui laisse pas ton cavalier d4.", "keeps": ["a1b1", "a2a3", "b2b3", "d1d2", "d1d3", "d4b3", "d4b5", "d4c2", "d4c6", "d4f3", "e2f3", "f1e1", "f2f3", "f2f4", "g1h1", "h2h3"], "close": ["a1c1", "a2a4", "d1b1", "d1c2", "g2g3", "h2h4"]},
             {"san": "Qa5"},
-            {"san": "Rc1", "text": "La tour soutient le pion c4, pilier de l'étau.", "hint": "Renforce le pion c4.", "keeps": ["a1b1", "a1c1", "a2a3", "a2a4", "c2a3", "c2d4", "d1c1", "d1d2", "d1e1", "e3c1", "e3d2", "f1e1", "f2f3", "f2f4", "g1h1", "h2h3"], "close": ["c2e1", "d1b1", "d1d3", "e2d3", "e2f3", "g2g4", "h2h4"]}
+            {"san": "Rc1", "text": "La tour se place en c1 derrière les cavaliers c2 et c3. Ils bloquent encore la colonne : la tour ne défend pas directement le pion c4.", "hint": "Place la tour a1 sur la colonne c pour préparer son activité après le déplacement des cavaliers.", "keeps": ["a1b1", "a1c1", "a2a3", "a2a4", "c2a3", "c2d4", "d1c1", "d1d2", "d1e1", "e3c1", "e3d2", "f1e1", "f2f3", "f2f4", "g1h1", "h2h3"], "close": ["c2e1", "d1b1", "d1d3", "e2d3", "e2f3", "g2g4", "h2h4"]}
           ],
-          "end": "L'étau reste en place : les Noirs n'ont toujours ni d5 ni b5, et les pièces blanches sont prêtes."
+          "end": "Les pions c4 et e4 maintiennent le contrôle de d5. Les Noirs peuvent encore préparer leurs ruptures ; la tour c1 attend que les cavaliers dégagent sa colonne."
         }
       ]
     },
@@ -301,7 +301,7 @@
         {
           "kind": "diagram",
           "fen": "rnbqkbnr/ppp2ppp/4p3/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3",
-          "text": "Française, variante d'avance : la chaîne blanche d4-e5 fait face à d5-e6. Les Blancs ont de l'espace à l'aile roi. Les Noirs attaquent la base de la chaîne, le pion d4, avec c5 et leurs pièces.",
+          "text": "Française, variante d'avance : la chaîne blanche d4-e5 fait face à d5-e6. Les Blancs ont de l'espace à l'aile roi. Le plan noir est d'attaquer la base de la chaîne, le pion d4, par c5 puis le développement des pièces.",
           "orientation": "b",
           "arrows": [["c7", "c5"], ["b8", "c6"]],
           "marks": {
@@ -313,7 +313,7 @@
         {
           "kind": "diagram",
           "fen": "rnbqkbnr/ppp2ppp/4p3/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3",
-          "text": "Le second levier noir est f6, contre la tête de la chaîne. Le fou c8 est enfermé derrière e6 : c'est le mauvais fou des Noirs, à activer ou à échanger.",
+          "text": "Le second levier noir est f6, contre la tête de la chaîne. Le pion e6 limite la diagonale du fou c8 : ce fou de cases blanches est à activer ou à échanger.",
           "orientation": "b",
           "arrows": [["f7", "f6"]],
           "marks": {
@@ -332,7 +332,7 @@
             {"san": "c3"},
             {"san": "Nc6", "text": "Le cavalier ajoute une deuxième attaque sur d4.", "hint": "Ajoute une pièce contre d4.", "keeps": ["a7a5", "a7a6", "b8c6", "b8d7", "c5c4", "c5d4", "c8d7", "d8a5", "d8b6", "d8c7", "d8d7", "f8e7", "g8e7", "g8h6", "h7h6"], "close": ["b7b6", "b8a6", "d8e7", "f7f6", "g7g6"]},
             {"san": "Nf3"},
-            {"san": "Qb6", "text": "La dame vise d4 et b2 : trois pièces noires contre la base.", "hint": "Ta dame peut aussi viser d4.", "keeps": ["a7a5", "a7a6", "c5c4", "c5d4", "c8d7", "d8b6", "d8c7", "d8d7", "f7f6", "f8e7", "g8e7", "g8h6", "h7h6"], "close": ["a8b8", "d8a5", "d8e7", "g7g6", "h7h5"]}
+            {"san": "Qb6", "text": "La dame attaque b2. Son pion c5 bloque encore la diagonale vers d4 : seuls le pion c5 et le cavalier c6 attaquent directement cette base.", "hint": "Place ta dame en b6 pour attaquer b2 et préparer une pression sur d4 après le départ du pion c5.", "keeps": ["a7a5", "a7a6", "c5c4", "c5d4", "c8d7", "d8b6", "d8c7", "d8d7", "f7f6", "f8e7", "g8e7", "g8h6", "h7h6"], "close": ["a8b8", "d8a5", "d8e7", "g7g6", "h7h5"]}
           ],
           "end": "La base d4 est sous pression : les Blancs doivent la défendre, et les Noirs ont un jeu clair."
         }
@@ -363,7 +363,7 @@
         {
           "kind": "diagram",
           "fen": "r1bq1rk1/pppnnpbp/3p2p1/3Pp3/2P1P3/2N2P2/PP2B1PP/R1BQNRK1 b - - 0 10",
-          "text": "Le plan noir : f5 pour attaquer e4, puis f4 et g5 pour lancer les pions vers le roi blanc. Le plan blanc : c5 pour ouvrir la colonne c contre d6.",
+          "text": "Le plan noir : préparer f5 contre e4, puis envisager f4 et g5 vers le roi blanc. Le plan blanc : préparer c5 pour attaquer d6 et chercher à ouvrir des lignes à l'aile dame par les échanges.",
           "orientation": "b",
           "arrows": [["f7", "f5"], ["g6", "g5"]],
           "marks": {
@@ -378,7 +378,7 @@
           "text": "À toi, avec les Noirs : lance le levier qui attaque la chaîne blanche.",
           "result": "plan",
           "moves": [
-            {"san": "f5", "text": "Le pion f attaque e4, la base de la chaîne blanche, et ouvre la colonne f.", "hint": "Le pion f peut attaquer la chaîne blanche.", "keeps": ["a7a5", "b7b6", "f7f5", "f7f6", "g8h8", "h7h5", "h7h6"]}
+            {"san": "f5", "text": "Le pion arrivé en f5 attaque e4, la base de la chaîne blanche. La colonne f reste fermée par les pions f5 et f3 ; des échanges seraient nécessaires pour l'ouvrir.", "hint": "Le pion f peut attaquer la chaîne blanche.", "keeps": ["a7a5", "b7b6", "f7f5", "f7f6", "g8h8", "h7h5", "h7h6"]}
           ],
           "end": "Le levier f5 est lancé : les Noirs préparent f4 et g5 vers le roi, pendant que les Blancs jouent à l'aile dame."
         }
@@ -436,7 +436,7 @@
       "title": "Le bloc Caro-Kann et slave",
       "summary": "Triangle c6-e6 sans pion d : solide, il se libère par c5 ou e5.",
       "keyPoints": [
-        "Le bloc c6-e6 n'a pas de faiblesse : il se défend bien.",
+        "Les pions c6 et e6 contrôlent d5, mais donnent moins d'espace qu'un centre avancé.",
         "Développe le fou de cases blanches avant de fermer avec e6.",
         "Libère le jeu par c5 ou e5, ou par une dame centralisée."
       ],
@@ -444,7 +444,7 @@
         {
           "kind": "diagram",
           "fen": "r2q1rk1/pp2bpp1/2p1pn1p/7P/3P4/5N2/PPPBQPP1/1K1R3R b - - 2 16",
-          "text": "Caro-Kann : les Noirs ont un bloc c6-e6 sans pion d, face au pion d4. Pas de faiblesse, mais moins d'espace. Leur fou de cases blanches est sorti avant e6.",
+          "text": "Caro-Kann : les Noirs ont un bloc c6-e6 sans pion d, face au pion d4. Les deux pions contrôlent d5. Le fou noir de cases blanches n'est plus sur l'échiquier ; celui de cases noires est en e7.",
           "orientation": "b",
           "arrows": [["d8", "d5"], ["c6", "c5"]],
           "marks": {
@@ -459,14 +459,14 @@
           "text": "À toi, avec les Noirs : centralise une pièce sur la case forte du bloc.",
           "result": "plan",
           "moves": [
-            {"san": "Qd5", "text": "La dame se centralise en d5, protégée par c6 et e6, et propose l'échange.", "hint": "La case d5 est protégée par deux pions noirs.", "keeps": ["d8d5"]}
+            {"san": "Qd5", "text": "La dame se centralise en d5, protégée par c6 et e6. Elle attaque le pion d4 ; la dame blanche e2 n'est pas sur sa ligne de tir.", "hint": "La case d5 est protégée par deux pions noirs.", "keeps": ["d8d5"]}
           ],
           "end": "La dame d5 domine le centre : les Noirs sont bien placés, prêts à jouer c5 plus tard."
         },
         {
           "kind": "diagram",
           "fen": "r2qk2r/pp1n1ppp/2p1pn2/5b2/PbBP4/2N1PN2/1P2QPPP/R1B2RK1 b kq - 4 9",
-          "text": "Même bloc dans la slave : pions c6 et e6 face à d4 et e3. Le fou f5 est sorti avant e6, et le roi va se mettre à l'abri.",
+          "text": "Même bloc dans la slave : pions c6 et e6 face à d4 et e3. Le fou de cases blanches est développé en f5, devant ses pions ; les Noirs peuvent maintenant roquer.",
           "orientation": "b",
           "arrows": [["f5", "g6"]],
           "marks": {
@@ -501,7 +501,7 @@
         {
           "kind": "diagram",
           "fen": "1qr1rbk1/1b1n1ppp/pp1ppn2/8/2P1P3/1PN3PP/PB1NQPB1/2RR2K1 b - - 2 17",
-          "text": "Le hérisson noir : pions en a6, b6, d6 et e6, sans pion c, face à l'étau blanc c4-e4. Les Noirs ont moins d'espace, mais aucune faiblesse, et leurs pièces sont prêtes derrière les pions.",
+          "text": "Le hérisson noir : pions a6, b6, d6, e6, sans pion c, face à l'étau c4-e4. Les Noirs ont moins d'espace et doivent surveiller d6. Leurs pièces se regroupent derrière les pions pour préparer une rupture.",
           "orientation": "b",
           "arrows": [["d6", "d5"], ["b6", "b5"]],
           "marks": {
@@ -530,27 +530,27 @@
           "text": "À toi, avec les Noirs : tes pièces sont prêtes. Lance la rupture centrale du hérisson.",
           "result": "plan",
           "moves": [
-            {"san": "d5", "text": "La rupture centrale : le pion d6 frappe c4 et e4, et les fous noirs s'ouvrent.", "hint": "Un pion de ta 6e rangée peut frapper au centre.", "keeps": ["b7a8", "b7c6", "b8a7", "b8a8", "b8c7", "c8c5", "c8c6", "c8c7", "c8d8", "d6d5", "d7c5", "d7e5", "e8d8", "e8e7", "f8e7", "g7g6", "g8h8", "h7h5", "h7h6"], "close": ["a6a5"]},
+            {"san": "d5", "text": "Le pion arrivé en d5 attaque c4 et e4. Son départ de d6 ouvre la diagonale du fou f8 ; en d5, il bloque en revanche la diagonale du fou b7.", "hint": "Un pion de ta 6e rangée peut frapper au centre.", "keeps": ["b7a8", "b7c6", "b8a7", "b8a8", "b8c7", "c8c5", "c8c6", "c8c7", "c8d8", "d6d5", "d7c5", "d7e5", "e8d8", "e8e7", "f8e7", "g7g6", "g8h8", "h7h5", "h7h6"], "close": ["a6a5"]},
             {"san": "exd5"},
             {"san": "exd5", "text": "Le pion reprend vers le centre : la colonne e s'ouvre pour la tour e8.", "hint": "Reprends en gardant un pion au centre.", "keeps": ["e6d5"]}
           ],
-          "end": "Le hérisson s'est déployé : les fous et les tours noirs sont actifs, et le centre est ouvert."
+          "end": "Les échanges ont ouvert la colonne e pour la tour e8. Le fou f8 dispose de la diagonale e7-d6-c5, mais le pion d5 bloque toujours celle du fou b7."
         }
       ]
     },
     "majorite": {
       "title": "La majorité à l'aile dame",
-      "summary": "Trois pions contre deux à l'aile dame : en finale, la majorité fabrique un pion passé.",
+      "summary": "Trois pions contre deux à l'aile dame : en finale, la majorité peut créer un pion passé.",
       "keyPoints": [
         "Une majorité de pions sur une aile peut créer un pion passé.",
-        "En finale, avance la majorité sans attendre : chaque pion avancé compte.",
+        "En finale, prépare l'avance de la majorité en calculant les échanges et la course des pions passés.",
         "Fixe aussi les pions adverses de l'autre aile pour freiner leur propre majorité."
       ],
       "steps": [
         {
           "kind": "diagram",
           "fen": "8/pp4pp/3k4/2p5/4P3/3K2PP/PP6/8 b - - 0 40",
-          "text": "Les Noirs ont trois pions contre deux à l'aile dame (a, b et c contre a et b), les Blancs trois contre deux de l'autre côté. Selon Stockfish, les Noirs gagnent : leur majorité est plus avancée et leur roi est actif.",
+          "text": "Trois pions noirs contre deux à l'aile dame (a, b, c contre a, b), et trois blancs contre deux de l'autre côté. Selon Stockfish, les Noirs gagnent cette position. Leur roi d6 soutient c5 ; ils peuvent avancer leur majorité.",
           "orientation": "b",
           "arrows": [["b7", "b5"], ["c5", "c4"]],
           "marks": {
@@ -566,9 +566,9 @@
           "text": "À toi, avec les Noirs : mets ta majorité en mouvement, sans attendre.",
           "result": "plan",
           "moves": [
-            {"san": "b5", "text": "Le pion b avance : b4 et c4 suivront pour fabriquer un pion passé.", "hint": "Ta majorité est à l'aile dame : pousse un de ses pions.", "keeps": ["b7b5", "h7h5"], "close": ["g7g5"]}
+            {"san": "b5", "text": "Le pion b avance en b5 et soutient c4. Les Noirs pourront préparer b4 ou c4 pour chercher à créer un pion passé.", "hint": "Ta majorité est à l'aile dame : pousse un de ses pions.", "keeps": ["b7b5", "h7h5"], "close": ["g7g5"]}
           ],
-          "end": "La majorité noire est en route : ensuite, un pion g en g5 freinera la majorité blanche, et le roi noir soutiendra ses pions."
+          "end": "La majorité noire est en route : le roi d6 soutient c5. Les Noirs peuvent aussi envisager g5 pour contrôler f4 et h4, en tenant compte de la réponse blanche."
         }
       ]
     }
