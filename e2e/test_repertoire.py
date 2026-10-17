@@ -75,9 +75,9 @@ def family_of(name):
     return k
 
 
-def book_moves(key):
+def book_moves(fen):
     out = {}
-    board = chess.Board(key + " - 0 1")
+    board = chess.Board(fen)
     for move in list(board.legal_moves):
         board.push(move)
         lines = [line for line, _ in THROUGH.get(pkey(board), [])]
@@ -106,9 +106,11 @@ def parse(pgn):
 def exit_of(moves, color):
     b = chess.Board()
     keys = [pkey(b)]
+    fens = [b.fen()]
     for u in moves[:40]:
         b.push_uci(u)
         keys.append(pkey(b))
+        fens.append(b.fen())
     d = 0
     while d < len(moves) and d + 1 < len(keys) and keys[d + 1] in THROUGH:
         d += 1
@@ -121,7 +123,7 @@ def exit_of(moves, color):
     fam = family_of(name) if opening else "?"
     if d >= len(moves) or d + 1 >= len(keys):
         return "inBook", None, None, fam, name
-    if not book_moves(keys[d]):
+    if not book_moves(fens[d]):
         return "end", None, None, fam, name
     mine = (d % 2 == 0) == (color == "w")
     return ("mine" if mine else "theirs"), d, keys[d], fam, name
@@ -190,7 +192,7 @@ def oracle(games, time_class="all"):
         d = cr["devs"].get(did)
         if d is None:
             d = cr["devs"][did] = {"id": did, "family": fam, "opening": name, "games": 0, "wins": 0, "draws": 0, "losses": 0,
-                                    "played": {}, "drops": [], "moves": [], "families": set(), "last": None, "lastDate": -1, "expected": [m["uci"] for m in book_moves(key)[:3]]}
+                                    "played": {}, "drops": [], "moves": [], "families": set(), "last": None, "lastDate": -1, "expected": []}
         d["games"] += 1
         d[{"win": "wins", "draw": "draws", "loss": "losses"}[g["result"]]] += 1
         d["played"][moves[ply]] = d["played"].get(moves[ply], 0) + 1
@@ -206,6 +208,10 @@ def oracle(games, time_class="all"):
         cr = out["byColor"][c]
         devs = []
         for d in cr["devs"].values():
+            board = chess.Board()
+            for u in d["prefix"]:
+                board.push_uci(u)
+            d["expected"] = [m["uci"] for m in book_moves(board.fen())[:3]]
             d["avgDrop"] = sum(d["drops"]) / len(d["drops"]) if d["drops"] else None
             d["verdict"] = "unknown" if d["avgDrop"] is None else ("costly" if d["avgDrop"] >= COSTLY else "ok")
             devs.append(d)
@@ -335,11 +341,30 @@ def bench_cases():
 
 BENCH_JS = r"""
 import { readFileSync } from 'node:fs'
+import assert from 'node:assert/strict'
 const mod = await import(process.argv[2])
 const data = JSON.parse(readFileSync(process.argv[3], 'utf8'))
 const t0 = performance.now()
 mod.bookIndex()
 const indexMs = performance.now() - t0
+const boehnke = mod.pgnMoves('1. e4 d5 2. exd5 e5 3. dxe6 *')
+assert.equal(mod.gameExit(boehnke, 'w').kind, 'inBook')
+const offBook = mod.pgnMoves('1. e4 d5 2. exd5 e5 3. h3 *')
+assert.equal(mod.gameExit(offBook, 'w').kind, 'mine')
+assert.equal(mod.gameExit(offBook, 'b').kind, 'theirs')
+assert.equal(mod.gameExit(offBook, 'w').ply, 4)
+const prefix = boehnke.slice(0, 4)
+const fen = 'rnbqkbnr/ppp2ppp/8/3Pp3/8/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 3'
+assert.ok(mod.bookMovesAt(fen).some(move => move.uci === 'd5e6'))
+assert.ok(!mod.bookMovesAt(fen.replace(' e6 ', ' - ')).some(move => move.uci === 'd5e6'))
+const lines = mod.drillLines(prefix, 'Scandinavian Defense')
+assert.ok(lines.some(line => line.uci.split(' ')[4] === 'd5e6'))
+const report = mod.computeRepertoire([{key: 'boehnke', pgn: '1. e4 d5 2. exd5 e5 3. h3 *',
+  playerColor: 'w', result: 'loss', timeClass: 'blitz', date: 1, opponent: 'QA', review: null}])
+assert.equal(report.byColor.w.deviations.length, 1)
+assert.deepEqual(report.byColor.w.deviations[0].prefix, prefix)
+assert.ok(mod.drillLines(report.byColor.w.deviations[0].prefix, report.byColor.w.deviations[0].opening)
+  .some(line => line.uci.split(' ')[4] === 'd5e6'))
 const out = { indexMs, cases: {}, drill: {} }
 for (const [name, c] of Object.entries(data.cases)) out.cases[name] = mod.computeRepertoire(c.games, c.tc)
 for (const [name, d] of Object.entries(data.drill)) out.drill[name] = mod.drillLines(d.prefix, d.opening)
@@ -347,6 +372,7 @@ console.log(JSON.stringify(out))
 """
 
 DRILL_CASES = {
+    "boehnke": {"prefix": ["e2e4", "d7d5", "e4d5", "e7e5"], "opening": "Scandinavian Defense"},
     "amsterdam": {"prefix": ["c2c4", "e7e5", "b1c3", "d7d6"], "opening": "English Opening"},
     # 302 : Italienne atteinte par 2. Fc4 puis 3. Cf3 (transposition).
     "transpose": {"prefix": parse(REP[302]["pgn"])[:6], "opening": "Italian Game"},
@@ -478,7 +504,7 @@ def bench_checks(out, cases):
         for u in d["prefix"]:
             b.push_uci(u)
         nexts = {l["uci"].split(" ")[len(d["prefix"])] for l in lines if len(l["uci"].split(" ")) > len(d["prefix"])}
-        exp_moves = {m["uci"] for m in book_moves(pkey(b))}
+        exp_moves = {m["uci"] for m in book_moves(b.fen())}
         legal = True
         for l in lines:
             bb = chess.Board()
@@ -491,6 +517,8 @@ def bench_checks(out, cases):
         check(f"[banc séance {name}] lignes réécrites depuis la partie : toutes partent de ses coups, sont légales, ligne nommée de la position présente",
               all(l["uci"] == head or l["uci"].startswith(head + " ") for l in lines) and legal and any(l["uci"] == head for l in lines), f"({len(lines)} lignes)")
         check(f"[banc séance {name}] coups suivants = coups théoriques de la position (transpositions comprises)", nexts == exp_moves, f"({sorted(nexts)} contre {sorted(exp_moves)})")
+        if name == "boehnke":
+            check("[banc séance boehnke] 3.dxe6 en passant rejoint la théorie", "d5e6" in nexts)
         if name == "amsterdam":
             check("[banc séance amsterdam] 3.e3 rejoint la théorie", "e2e3" in nexts)
 
@@ -641,7 +669,7 @@ def legal_off_book(prefix):
     b = chess.Board()
     for u in prefix:
         b.push_uci(u)
-    book = {m["uci"] for m in book_moves(pkey(b))}
+    book = {m["uci"] for m in book_moves(b.fen())}
     prefixes = set()
     for line in OPENINGS:
         mv = line["uci"].split(" ")
