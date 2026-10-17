@@ -103,7 +103,7 @@ export interface StepState {
   step: PathStep
   index: number // index global, tous niveaux confondus
   level: number
-  lessonDone: boolean | null // null : pas de leçon
+  lessonDone: boolean | null // null : cours détaillé `read`, sans complétion distincte
   exerciseDone: boolean
   done: boolean
   acquired: boolean // niveau acquis par le test de placement
