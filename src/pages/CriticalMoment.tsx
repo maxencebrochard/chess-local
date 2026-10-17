@@ -1,7 +1,7 @@
 // Un moment critique du bilan rejoué contre Stockfish à pleine force (`/moment-critique`) :
 // retrouver le coup du bilan (keyMove, noté dans `learnSessions` domaine 'critical-moment'), puis
 // jouer la suite. La sortie rouvre l'analyse sur le même bilan, sans le recalculer.
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import type { BilanBack, MomentTarget } from '../components/CriticalMoments'
 import { PositionGame } from '../components/PositionGame'
@@ -43,12 +43,6 @@ export default function CriticalMoment() {
     return null
   })
 
-  // State consommé : un rechargement reprend la partie persistée au lieu d'en recommencer une.
-  useEffect(() => {
-    if (location.state) navigate('.', { replace: true, state: null })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   if (!source || source === 'invalid') {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-3 p-6 text-center">
@@ -85,6 +79,9 @@ export default function CriticalMoment() {
       back={source.back}
       showAttackers={showAttackers}
       onReplace={recordReplaced}
+      onPersisted={() => {
+        if (location.state) navigate('.', { replace: true, state: null })
+      }}
       keyMove={{ uci: moment.bestUci, san: moment.bestSan, followUp: 'Joue la suite', onJudged: (found) => void recordMomentMove(moment.fen, moment.answer, found) }}
       otherLabel="Retour au bilan"
       onExit={exit}
