@@ -548,8 +548,178 @@ def part_layouts(p, browser):
         ctx.close()
 
 
+
+# F18 : diagnostics réels, historiques indépendants et FEN périmée.
+ATTACK_FEN = "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1"
+DEFENSE_FEN = "r1bq1rk1/pp3pp1/2n1p2p/3pP1NQ/3P4/2NB4/PP3PPP/R3K2R b KQ - 0 1"
+
+
+def expanded_seed():
+    rows, history = [], []
+    for i, days, defense in ((101, 5, False), (102, 10, True), (103, 10, False),
+                              (104, 10, True), (105, 45, False), (106, 5, False)):
+        row = {**mistake(i, days, 0, 0), "fenBefore": DEFENSE_FEN if defense else ATTACK_FEN,
+               "bestUci": "d8g5" if defense else "a1a8", "playedSan": "Nb4" if defense else "Kf1",
+               "color": "b" if defense else "w", "gameKey": f"game:{i}"}
+        if i == 106:
+            del row["color"]
+        rows.append(row)
+        history.append(ls(len(history) + 1, "mistakes", str(i), 1, True))
+    def event(i, domain, days, ok, fen):
+        history.append({**ls(len(history) + 1, domain, str(i), days, ok), "fen": fen})
+    event(101, "missed-attack", 1, True, DEFENSE_FEN)  # FEN étrangère ignorée
+    event(102, "missed-defense", 3, True, DEFENSE_FEN)  # boîte 1, due aujourd’hui
+    event(103, "missed-attack", 0, False, ATTACK_FEN)  # demain
+    for day in (9, 8, 7, 6):
+        event(104, "missed-defense", day, True, DEFENSE_FEN)  # acquis
+    event(106, "missed-attack", 4, False, ATTACK_FEN)  # inéligible
+    event(999, "missed-defense", 4, False, DEFENSE_FEN)  # supprimé
+    return {"mistakes": rows, "learnSessions": history}
+
+
+def part_shared_position(p, browser):
+    """Une même faute peut avoir trois calendriers ; aucun domaine n’efface les autres."""
+    row = {**mistake(201, 5, 0, 0), "fenBefore": DEFENSE_FEN, "bestUci": "d8f6",
+           "playedSan": "Nb4", "color": "b", "gameKey": "game:201"}
+    ctx, page = seeded(p, browser, seed={"mistakes": [row]})
+    page.goto(f"{BASE}/#/")
+    if ck.appears("[F18 commun] compteur prêt", page, "[data-review-ready]"):
+        badge = page.locator("[data-review-count]")
+        check("[F18 commun] trois révisions pour une faute", badge.count() == 1 and badge.inner_text() == "3")
+    page.goto(f"{BASE}/#/revision")
+    if ck.appears("[F18 commun] erreur classique", page, '[data-review-item="mistake"]'):
+        tap_move(page, "d8", "f6")
+        ck.appears("[F18 commun] erreur réussie", page, "text=✓ Réussi")
+        click_next(page)
+    if ck.appears("[F18 commun] attaque distincte", page, '[data-review-item="missed-attack"]'):
+        tap_move(page, "d8", "f6")
+        ck.appears("[F18 commun] attaque réussie", page, "text=✓ Réussi")
+        click_next(page)
+    if ck.appears("[F18 commun] défense distincte", page, '[data-review-item="missed-defense"]'):
+        page.get_by_role("button", name="Quitter la révision").click()
+        page.goto(f"{BASE}/#/")
+        if ck.appears("[F18 commun] compteur recalculé", page, "[data-review-ready]"):
+            badge = page.locator("[data-review-count]")
+            check("[F18 commun] seule la défense reste due", badge.count() == 1 and badge.inner_text() == "1"
+                  and "1 défense ratée" in page.locator("main").inner_text())
+        check("[F18 commun] seule l’erreur classique modifie la faute", mistake_row(page, 201)["attempts"] == 1)
+        check("[F18 commun] quitter ne note pas la défense", sessions(page, "missed-defense") == [])
+    ctx.close()
+
+
+def part_stale_position(p, browser):
+    """Une séance restaurée ne peut pas noter une faute supprimée pendant l’analyse."""
+    ctx, page = seeded(p, browser, seed=expanded_seed())
+    page.goto(f"{BASE}/#/revision")
+    if ck.appears("[F18 périmée] attaque", page, '[data-review-item="missed-attack"]'):
+        tap_move(page, "a1", "a8")
+        ck.appears("[F18 périmée] résultat enregistré", page, "text=✓ Réussi")
+        page.get_by_role("button", name=re.compile(r"Analyser$")).click()
+        if ck.appears("[F18 périmée] analyse", page, "button:has-text('Retour à la révision')"):
+            # L’item suivant est encore non jugé et sa faute disparaît dans un autre écran.
+            page.evaluate("async () => {" + f"const db = await ({OPEN_DB})()" + ";" + """
+                const tx = db.transaction('mistakes', 'readwrite'); tx.objectStore('mistakes').delete(102);
+                await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error) }); db.close();
+            }""")
+            page.get_by_role("button", name="Retour à la révision").click()
+            ck.appears("[F18 périmée] restauration", page, "text=✓ Réussi")
+            click_next(page)
+            if ck.appears("[F18 périmée] défense restaurée", page, '[data-review-item="missed-defense"]'):
+                tap_move(page, "d8", "g5")
+                ck.appears("[F18 périmée] écriture refusée et signalée", page, '[role="alert"]')
+                check("[F18 périmée] aucune tentative orpheline", sessions(page, "missed-defense").count(("102", 1)) == 1)
+    ctx.close()
+
+
+def part_defense_success(p, browser):
+    seed = expanded_seed()
+    seed["mistakes"] = [r for r in seed["mistakes"] if r["id"] == 102]
+    seed["learnSessions"] = [r for r in seed["learnSessions"] if r["itemId"] == "102"]
+    ctx, page = seeded(p, browser, seed=seed)
+    page.goto(f"{BASE}/#/revision")
+    if ck.appears("[F18 réussite défense] item dû", page, '[data-review-item="missed-defense"]'):
+        tap_move(page, "d8", "g5")
+        ck.appears("[F18 réussite défense] verdict", page, "text=✓ Réussi")
+        check("[F18 réussite défense] boîte 1 vers J+7", next_label(page) == "Revient dans une semaine")
+        click_next(page)
+        if ck.appears("[F18 réussite défense] fin", page, "[data-review-end]"):
+            page.get_by_role("button", name="Terminer", exact=True).click()
+        page.goto(f"{BASE}/#/defenses-ratees")
+        ck.appears("[F18 réussite défense] progression à l’origine", page, '[data-testid="missed-defense-item"][data-id="102"] >> text=Retrouvée')
+        results = [r for r in db_rows(page, "learnSessions") if r["domain"] == "missed-defense"]
+        check("[F18 réussite défense] une seule nouvelle réussite avec FEN", len(results) == 2
+              and results[-1]["success"] == 1 and results[-1]["fen"] == DEFENSE_FEN)
+        page.goto(f"{BASE}/#/revision")
+        ck.appears("[F18 réussite défense] plus rien de dû", page, "text=Rien à réviser aujourd'hui")
+    ctx.close()
+
+
+def part_expanded(p, browser):
+    for tag, kw in (("852", {}), ("660", {"standalone": False}), ("desktop", {"desktop": True})):
+        seed = expanded_seed()
+        ctx, page = seeded(p, browser, seed=seed, **kw)
+        def play_move(frm, to):
+            if kw.get("desktop"):
+                page.locator(f'[data-board] [data-square="{frm}"]').click()
+                page.locator(f'[data-board] [data-square="{to}"]').click()
+            else:
+                tap_move(page, frm, to)
+
+        requests = []
+        page.on("request", lambda req: requests.append(req.url) if "puzzles.json" in req.url else None)
+        page.goto(f"{BASE}/#/")
+        if ck.appears(f"[F18 {tag}] compteur prêt", page, "[data-review-ready]"):
+            badge = page.locator("[data-review-count]")
+            check(f"[F18 {tag}] deux items dus, historiques filtrés", badge.count() == 1 and badge.inner_text() == "2")
+            check(f"[F18 {tag}] libellés attaque et défense", "1 attaque manquée · 1 défense ratée" in page.locator("main").inner_text())
+            check(f"[F18 {tag}] accueil sans puzzles.json", not requests, str(requests))
+            shot(page, f"revision_expanded_home_{tag}")
+        page.goto(f"{BASE}/#/revision")
+        if not ck.appears(f"[F18 {tag}] attaque en séance", page, '[data-review-item="missed-attack"]'):
+            ctx.close()
+            continue
+        shot(page, f"revision_attack_{tag}")
+        play_move("a1", "a8")
+        ck.appears(f"[F18 {tag}] attaque réussie", page, "text=✓ Réussi")
+        check(f"[F18 {tag}] attaque revient à J+3", next_label(page) == "Revient dans 3 jours")
+        page.get_by_role("button", name=re.compile(r"Analyser$")).click()
+        if ck.appears(f"[F18 {tag}] retour analyse", page, "button:has-text('Retour à la révision')"):
+            page.get_by_role("button", name="Retour à la révision").click()
+            ck.appears(f"[F18 {tag}] verdict restauré", page, "text=✓ Réussi")
+        click_next(page)
+        if ck.appears(f"[F18 {tag}] défense en séance", page, '[data-review-item="missed-defense"]'):
+            shot(page, f"revision_defense_{tag}")
+            check(f"[F18 {tag}] pas de débordement", overflow_x(page) == 0)
+            # ...hxg5 perd sur Dh7# ; le bilan attend ...Dxg5.
+            play_move("h6", "g5")
+            ck.appears(f"[F18 {tag}] défense ratée", page, "text=✗ Raté", timeout=60000)
+            check(f"[F18 {tag}] échec revient demain", next_label(page) == "Revient demain")
+            page.get_by_role("button", name=re.compile(r"Réessayer$")).click()
+            play_move("d8", "g5")
+            ck.appears(f"[F18 {tag}] défense retrouvée au réessai", page, "text=✓ Réussi")
+            check(f"[F18 {tag}] première échéance conservée", next_label(page) == "Revient demain")
+            shot(page, f"revision_defense_result_{tag}")
+            click_next(page)
+        if ck.appears(f"[F18 {tag}] fin", page, "[data-review-end]"):
+            page.get_by_role("button", name="Terminer", exact=True).click()
+        page.goto(f"{BASE}/#/attaques-manquees")
+        ck.appears(f"[F18 {tag}] progression visible à l’origine", page, '[data-testid="attack-item"][data-id="101"] >> text=Retrouvée')
+        added = db_rows(page, "learnSessions")[len(seed["learnSessions"]):]
+        check(f"[F18 {tag}] exactement deux écritures dans les domaines d’origine",
+              [(r["domain"], r["itemId"], r["success"], r.get("fen")) for r in added] ==
+              [("missed-attack", "101", 1, ATTACK_FEN), ("missed-defense", "102", 0, DEFENSE_FEN)], str(added))
+        check(f"[F18 {tag}] fautes inchangées", db_rows(page, "mistakes") == seed["mistakes"])
+        check(f"[F18 {tag}] aucun Elo ni tentative classée", not db_rows(page, "ratings") and not db_rows(page, "puzzleAttempts"))
+        check(f"[F18 {tag}] séance sans puzzles.json", not requests, str(requests))
+        ctx.close()
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
+    part_shared_position(p, browser)
+    part_stale_position(p, browser)
+    part_defense_success(p, browser)
+    part_expanded(p, browser)
     part_home_and_session(p, browser)
     part_orphan(p, browser)
     part_layouts(p, browser)

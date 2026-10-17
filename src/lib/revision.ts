@@ -1,9 +1,10 @@
-// Révision espacée commune : ce qui a été raté (puzzles, fautes de parties, variantes
-// d'ouverture) revient selon une échelle de Leitner à intervalles fixes. Sans React, et sans
+// Révision espacée commune : puzzles, fautes, variantes, attaques manquées et défenses ratées
+// reviennent selon une échelle de Leitner à intervalles fixes. Sans React, et sans
 // table dédiée : l'échéance de chaque item se calcule depuis son historique daté dans les tables
 // existantes, et un résultat de révision s'écrit là où l'écran d'origine écrit déjà.
 import { db, type LearnSession, type Mistake } from './db'
 import { scoreItem } from './learn'
+import { diagnoseMissedAttacks, diagnoseMissedDefenses, recordMissedAttack, recordMissedDefense } from './kingAttack'
 import {
   DRILL_DOMAIN, families, getFamily, popularFamilies, recordDrill, type Color, type Family, type Variant,
 } from './openingTrainer'
@@ -13,7 +14,7 @@ import { loadPuzzles } from './puzzles'
 import openingsData from '../data/openings.json'
 import type { PuzzleData } from '../components/PuzzlePlayer'
 
-export type ReviewKind = 'puzzle' | 'mistake' | 'variant'
+export type ReviewKind = 'puzzle' | 'mistake' | 'variant' | 'missed-attack' | 'missed-defense'
 
 // Lignes `learnSessions` propres à la révision : les puzzles revus (`puzzle:<id>`), seuls items
 // sans journal de tentatives hors Elo (puzzleAttempts est celui des puzzles classés).
@@ -37,7 +38,7 @@ export interface ReviewEvent {
 
 export interface ReviewItem {
   kind: ReviewKind
-  // puzzle : id lichess ; mistake : id de la ligne `mistakes` ; variant : `<w|b>:<UCI>`.
+  // puzzle : id lichess ; faute, attaque ou défense : id `mistakes` ; variante : `<w|b>:<UCI>`.
   key: string
   box: number
   due: number // minuit local du jour d'échéance
@@ -142,15 +143,18 @@ function push<K>(map: Map<K, ReviewEvent[]>, key: K, event: ReviewEvent) {
 // - puzzles : `puzzleAttempts` (« Passer » y vaut échec : le puzzle n'a pas été résolu), séances
 //   Apprendre Tactiques (`itemId` = id) et Stratégie (`<carte>:<id>`), lignes `revision` (`puzzle:<id>`) ;
 // - fautes : création de la ligne `mistakes` (échec initial) + lignes `mistakes` d'Apprendre ;
+// - attaques et défenses : leurs journaux avec la FEN courante et la faute initiale ;
 // - variantes : lignes `opening-drill` du mode `full` (comme l'état « Maîtrisée / À revoir »).
 function collectEvents(
   attempts: { puzzleId: string; date: number; success: boolean }[],
   sessions: LearnSession[],
   mistakes: Mistake[],
-): { puzzles: Map<string, ReviewEvent[]>; mistakes: Map<number, ReviewEvent[]>; variants: Map<string, ReviewEvent[]> } {
+): { puzzles: Map<string, ReviewEvent[]>; mistakes: Map<number, ReviewEvent[]>; variants: Map<string, ReviewEvent[]>; attacks: Map<string, ReviewEvent[]>; defenses: Map<string, ReviewEvent[]> } {
   const puzzles = new Map<string, ReviewEvent[]>()
   const byMistake = new Map<number, ReviewEvent[]>()
   const variants = new Map<string, ReviewEvent[]>()
+  const attacks = new Map<string, ReviewEvent[]>()
+  const defenses = new Map<string, ReviewEvent[]>()
   for (const a of attempts) push(puzzles, a.puzzleId, { date: a.date, success: a.success })
   for (const s of sessions) {
     const event = { date: s.date, success: s.success === 1 }
@@ -158,6 +162,8 @@ function collectEvents(
     else if (s.domain === 'strategy') push(puzzles, s.itemId.slice(s.itemId.lastIndexOf(':') + 1), event)
     else if (s.domain === REVISION_DOMAIN && s.itemId.startsWith('puzzle:')) push(puzzles, s.itemId.slice('puzzle:'.length), event)
     else if (s.domain === 'mistakes' && /^\d+$/.test(s.itemId)) push(byMistake, Number(s.itemId), event)
+    else if (s.domain === 'missed-attack') push(attacks, `${s.itemId}|${s.fen}`, event)
+    else if (s.domain === 'missed-defense') push(defenses, `${s.itemId}|${s.fen}`, event)
     else if (s.domain === DRILL_DOMAIN && s.itemId.startsWith('full:')) push(variants, s.itemId.slice('full:'.length), event)
   }
   const out = new Map<number, ReviewEvent[]>()
@@ -165,7 +171,11 @@ function collectEvents(
     if (m.id === undefined) continue
     out.set(m.id, [{ date: m.date, success: false }, ...(byMistake.get(m.id) ?? [])])
   }
-  return { puzzles, mistakes: out, variants }
+  return { puzzles, mistakes: out, variants, attacks, defenses }
+}
+
+function diagnose(kind: 'missed-attack' | 'missed-defense', rows: Mistake[]) {
+  return kind === 'missed-attack' ? diagnoseMissedAttacks(rows) : diagnoseMissedDefenses(rows)
 }
 
 const byUrgency = (a: ReviewItem, b: ReviewItem) => a.due - b.due || a.last - b.last
@@ -185,6 +195,15 @@ export async function loadReviewQueue(now = Date.now()): Promise<ReviewQueue> {
   for (const [id, list] of events.puzzles) add('puzzle', id, list)
   for (const [id, list] of events.mistakes) add('mistake', String(id), list)
   for (const [key, list] of events.variants) add('variant', key, list, () => resolveVariant(key) !== null)
+  // Même faute, mais exercices et journaux distincts : ne pas mélanger leur progression.
+  for (const kind of ['missed-attack', 'missed-defense'] as const) {
+    const history = kind === 'missed-attack' ? events.attacks : events.defenses
+    for (const { mistake: m } of diagnose(kind, mistakes).items) {
+      if (m.id !== undefined) add(kind, String(m.id), [
+        { date: m.date, success: false }, ...(history.get(`${m.id}|${m.fenBefore}`) ?? []),
+      ])
+    }
+  }
   const today = startOfDay(now)
   const horizon = addDays(today, -MAX_OVERDUE_DAYS)
   return {
@@ -215,6 +234,8 @@ export function buildReviewSession(due: ReviewItem[], max = SESSION_MAX): Review
 export type ReviewPayload =
   | { kind: 'puzzle'; item: ReviewItem; puzzle: PuzzleData }
   | { kind: 'mistake'; item: ReviewItem; mistake: Mistake }
+  | { kind: 'missed-attack'; item: ReviewItem; mistake: Mistake }
+  | { kind: 'missed-defense'; item: ReviewItem; mistake: Mistake }
   | { kind: 'variant'; item: ReviewItem; color: Color; uci: string; label: string }
 
 // Charge le contenu des items (puzzles.json seulement s'il y a des puzzles). À appeler sur toute
@@ -239,10 +260,11 @@ export async function resolveSession(items: ReviewItem[]): Promise<{ payloads: R
       const puzzle = puzzles?.get(item.key)
       if (puzzle) payloads.push({ kind: 'puzzle', item, puzzle })
       else if (!puzzlesUnavailable) missing++
-    } else if (item.kind === 'mistake') {
+    } else if (item.kind !== 'variant') {
       const mistake = await db.mistakes.get(Number(item.key))
-      if (mistake) payloads.push({ kind: 'mistake', item, mistake })
-      else missing++
+      if (mistake && (item.kind === 'mistake' || diagnose(item.kind, [mistake]).items.length > 0)) {
+        payloads.push({ kind: item.kind, item, mistake })
+      } else missing++
     } else {
       const resolved = resolveVariant(item.key)
       if (resolved) payloads.push({ kind: 'variant', item, color: resolved.color, uci: resolved.variant.line.uci, label: openingFr(resolved.variant.line.name) })
@@ -263,6 +285,16 @@ export async function recordReview(p: ReviewPayload, success: boolean): Promise<
     // Même écriture que `finishItem` de Learn.tsx (ratingKey nul : aucun Elo).
     await scoreItem('mistakes', String(p.mistake.id), success, 0)
     await db.mistakes.update(p.mistake.id!, { attempts: p.mistake.attempts + 1, solved: success ? 1 : 0 })
+  } else if (p.kind === 'missed-attack' || p.kind === 'missed-defense') {
+    // Une autre page peut supprimer ou refaire le bilan pendant la séance ou l'analyse.
+    // Lecture et écriture atomiques : ne jamais noter un ancien contenu ou une faute supprimée.
+    await db.transaction('rw', db.mistakes, db.learnSessions, async () => {
+      const current = await db.mistakes.get(Number(p.item.key))
+      if (!current || current.fenBefore !== p.mistake.fenBefore || current.bestUci !== p.mistake.bestUci
+        || diagnose(p.kind, [current]).items.length === 0) throw new Error('Cette position a changé depuis le début de la révision.')
+      const record = p.kind === 'missed-attack' ? recordMissedAttack : recordMissedDefense
+      await record(current.id!, current.fenBefore, success)
+    })
   } else {
     await recordDrill('full', p.color, p.uci.split(' '), success)
   }
@@ -274,11 +306,13 @@ const KIND_LABEL: Record<ReviewKind, [string, string]> = {
   puzzle: ['puzzle', 'puzzles'],
   mistake: ['erreur', 'erreurs'],
   variant: ['variante', 'variantes'],
+  'missed-attack': ['attaque manquée', 'attaques manquées'],
+  'missed-defense': ['défense ratée', 'défenses ratées'],
 }
 
 // « 3 puzzles · 1 erreur · 1 variante » (types présents seulement).
 export function describeKinds(items: ReviewItem[]): string {
-  return (['puzzle', 'mistake', 'variant'] as ReviewKind[])
+  return (['puzzle', 'mistake', 'variant', 'missed-attack', 'missed-defense'] as ReviewKind[])
     .map((k) => [k, items.filter((i) => i.kind === k).length] as const)
     .filter(([, n]) => n > 0)
     .map(([k, n]) => `${n} ${KIND_LABEL[k][n > 1 ? 1 : 0]}`)

@@ -167,8 +167,12 @@ L'entraîneur d'ouvertures (`/ouvertures`, `src/lib/openingTrainer.ts`) enregist
 La théorie y est un ensemble de positions d'`openings.json` (placement, trait, roques) : une transposition reste théorique, contrairement à l'arbre préfixe de l'entraîneur et à la classe `book` de `review.ts`.
 Une sortie est une position théorique (camp + position) où le joueur a joué hors théorie ; son coût est la chute de win% du coup de sortie dans les bilans cohérents (coûteuse à partir de 7, seuil de l'imprécision).
 Chaque sortie se travaille dans `OpeningDrill` en mode `next` sur une famille synthétique (construction documentée dans `drillLines`, `src/lib/myRepertoire.ts`) ; les tentatives s'écrivent avec `recordDrill`, domaine `opening-drill`, format d'itemId dans `db.ts`, sans Elo ; `modeStats` ne rattache une position `next` qu'à une famille dans laquelle elle est déjà entrée, et la révision espacée ne reprend pas ces positions (seulement `full:`).
-La révision espacée (`/revision`, `src/lib/revision.ts`) n'a pas de table : l'échéance de chaque item raté (puzzle, faute, variante `full`) se calcule depuis son historique daté (`puzzleAttempts`, `learnSessions`, `mistakes`), agrégé par jour civil local, avec une échelle de Leitner `[1, 3, 7, 21]` jours ; un item en retard de plus de 30 jours sort de la file.
+La révision espacée (`/revision`, `src/lib/revision.ts`) n'a pas de table : l'échéance de chaque item raté (puzzle, faute, variante `full`, attaque manquée, défense ratée) se calcule depuis son historique daté (`puzzleAttempts`, `learnSessions`, `mistakes`), agrégé par jour civil local, avec une échelle de Leitner `[1, 3, 7, 21]` jours ; un item en retard de plus de 30 jours sort de la file.
 Un résultat de révision s'écrit là où l'écran d'origine écrit (`scoreItem('mistakes')` + `mistakes.update`, `recordDrill`, ou le domaine `revision` pour les puzzles), jamais dans un Elo.
+Les attaques manquées et défenses ratées utilisent les diagnostics de `kingAttack.ts` et leurs domaines `missed-attack` et `missed-defense`, avec une échéance indépendante par domaine et faute.
+L’échec initial est la date de la faute ; seules les tentatives dont `itemId` et `fen` correspondent à la faute courante alimentent ensuite ce calendrier.
+La séance réutilise `MistakeExercise` (meilleur coup, mat ou alternative suffisamment bonne), puis `recordMissedAttack` ou `recordMissedDefense`, sans modifier la faute ni son calendrier classique.
+Une faute supprimée ou modifiée pendant une séance ne peut pas recevoir de nouveau résultat spécialisé.
 Le compteur de l'accueil ne charge jamais `puzzles.json` ; seule la séance le fait.
 
 ### Parcours d'apprentissage
