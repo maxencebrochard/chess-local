@@ -178,7 +178,7 @@ function StructureCard({ stat, plays, inProgress }: { stat: StructureStat<MyGame
         <div className="h-full rounded-full bg-accent" style={{ width: `${stat.score * 100}%` }} />
       </div>
       <p data-testid="structure-sides" className="mt-2 text-xs text-neutral-400">
-        Avec {meta.owner} : {stat.owner} · contre : {against}
+        Avec la structure : {stat.owner} · contre : {against}
       </p>
       <div className="mt-2 flex flex-col gap-1.5">
         {shown.map(({ game, sighting, owner }) => (
@@ -306,7 +306,7 @@ function StructureGame({ posKey, game, sighting }: { posKey: string; game: MyGam
         title={meta.name}
         objective={null}
         objectiveLabel="Objectif : joue le plan de la structure"
-        goalHint={`${owner ? 'Avec' : 'Contre'} ${meta.owner} · ta partie, coup ${moveNumber(sighting)}`}
+        goalHint={`${owner ? 'Avec' : 'Contre'} ${squaresFor(meta.owner, sighting.side)} · ta partie, coup ${moveNumber(sighting)}`}
         lesson={lesson}
         lessonLabel="Plan"
         resume={attempt === 0}
