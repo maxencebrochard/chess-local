@@ -191,7 +191,7 @@ def suite(p):
         page.get_by_role("button", name=exit_label).click()
         if exit_label == "Sommaire":
             ck.appears("[séance → Sommaire] sommaire", page, "h1:has-text('Cours de finales')")
-            page.get_by_role("button", name="← Apprendre").click()
+            page.get_by_role("button", name="Retour à Apprendre", exact=True).click()
         elif exit_label == "Leçon suivante":
             ck.appears("[séance → Leçon suivante] leçon suivante", page, "[data-testid='lesson-step']:has-text('1/')")
             page.click("header button[aria-label='Fermer la leçon']")

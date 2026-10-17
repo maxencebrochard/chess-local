@@ -7,6 +7,7 @@ import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { CourseBody } from '../components/CourseSheet'
 import { usePathState } from '../components/usePathState'
 import { Cta } from '../components/Cta'
+import { ProgressBar } from '../components/ProgressBar'
 import { OpeningDrill } from '../components/OpeningDrill'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
 import { courseFor } from '../lib/courses'
@@ -77,13 +78,8 @@ export default function LearningPathMap() {
       <p className="mb-3 text-sm text-neutral-400">
         Du premier coup au niveau 2000, étape par étape. Chaque étape, c'est une courte leçon puis des exercices à réussir pour débloquer la suivante.
       </p>
-      <div className="mb-4 flex items-center gap-3">
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-3">
-          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(state.done / state.total) * 100}%` }} />
-        </div>
-        <span data-testid="path-progress" className="text-sm font-bold text-neutral-300">
-          {state.done}/{state.total}
-        </span>
+      <div className="mb-4">
+        <ProgressBar value={state.done} total={state.total} label="Étapes terminées du parcours" testId="path-progress" />
       </div>
 
       {cur ? (
@@ -99,7 +95,7 @@ export default function LearningPathMap() {
             </span>
             <span className="block font-bold leading-tight">{cur.step.title}</span>
           </span>
-          <span className="shrink-0 rounded-xl bg-accent px-3.5 py-2 text-[15px] font-black text-white shadow-[0_3px_0_#5d9948]">{fresh ? 'Commencer' : 'Continuer'}</span>
+          <span className="shrink-0 rounded-xl bg-accent px-3.5 py-2 text-[15px] font-black text-on-accent shadow-[0_3px_0_#5d9948]">{fresh ? 'Commencer' : 'Continuer'}</span>
         </button>
       ) : (
         <div data-testid="path-finished" className="mb-3 rounded-2xl bg-surface-2 p-4 text-center">
@@ -220,7 +216,7 @@ function StepRow({ s, color, n, first, onOpen }: { s: StepState; color: string; 
           }`}
           style={{
             backgroundColor: s.done ? color : s.current ? color : 'var(--color-surface-2)',
-            color: s.done || s.current ? '#fff' : s.unlocked ? '#d4d4d4' : '#737373',
+            color: s.done || s.current ? 'var(--color-on-accent)' : s.unlocked ? '#d4d4d4' : '#737373',
             boxShadow: !s.done && !s.current && lit ? `inset 0 0 0 2px ${color}` : s.done || s.current ? '0 3px 0 rgba(0,0,0,0.35)' : undefined,
           }}
         >
@@ -244,7 +240,7 @@ function StepRow({ s, color, n, first, onOpen }: { s: StepState; color: string; 
             </span>
           )}
         </span>
-        {s.current && <span className="shrink-0 rounded-full bg-accent px-2.5 py-1 text-xs font-black text-white">À toi</span>}
+        {s.current && <span className="shrink-0 rounded-full bg-accent px-2.5 py-1 text-xs font-black text-on-accent">À toi</span>}
       </button>
     </li>
   )
@@ -540,7 +536,7 @@ function PartCard({ n, done, title, text, testId, extra, children }: {
 function PartNumber({ n, done }: { n: number; done: boolean }) {
   return (
     <span
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black ${done ? 'bg-accent text-white' : 'bg-surface-3 text-neutral-300'}`}
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black ${done ? 'bg-accent text-on-accent' : 'bg-surface-3 text-neutral-300'}`}
       aria-label={done ? 'Fait' : undefined}
     >
       {done ? '✓' : n}

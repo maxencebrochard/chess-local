@@ -1065,7 +1065,7 @@ export default function Analysis() {
           <button
             onClick={() => (review ? setReviewStage('summary') : void runReview(undefined, { color: reviewColor, label: gameMeta, gameKey: gameKeyRef.current ?? undefined }))}
             disabled={reviewProgress !== null || moves.length === 0}
-            className="flex-1 cursor-pointer rounded bg-accent py-2 text-sm font-bold text-white hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
+            className="flex-1 cursor-pointer rounded bg-accent py-2 text-sm font-bold text-on-accent hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
           >
             {reviewProgress !== null ? `Analyse… ${reviewProgress}%` : '🔍 Bilan de partie'}
           </button>
@@ -1186,7 +1186,7 @@ export default function Analysis() {
                 else setImportError('Format non reconnu : ni PGN avec des coups, ni FEN valide.')
               }}
               disabled={!importText.trim()}
-              className="w-full cursor-pointer rounded bg-accent py-2 font-bold text-white hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
+              className="w-full cursor-pointer rounded bg-accent py-2 font-bold text-on-accent hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
             >
               Charger
             </button>

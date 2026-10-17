@@ -167,7 +167,7 @@ export default function Import() {
         <button
           type="submit"
           disabled={loading || !hasUser}
-          className="shrink-0 cursor-pointer whitespace-nowrap rounded bg-accent px-4 py-2 font-bold text-white hover:bg-accent-hover disabled:opacity-40"
+          className="shrink-0 cursor-pointer whitespace-nowrap rounded bg-accent px-4 py-2 font-bold text-on-accent hover:bg-accent-hover disabled:opacity-40"
         >
           {games ? 'Actualiser' : 'Voir mes parties'}
         </button>
@@ -186,7 +186,7 @@ export default function Import() {
                 type="button"
                 onClick={() => submitLink(sharedUrl)}
                 disabled={loading || !hasUser}
-                className="mt-2 cursor-pointer rounded bg-accent px-4 py-2 font-bold text-white hover:bg-accent-hover disabled:opacity-40"
+                className="mt-2 cursor-pointer rounded bg-accent px-4 py-2 font-bold text-on-accent hover:bg-accent-hover disabled:opacity-40"
               >
                 Chercher cette partie sur chess.com
               </button>

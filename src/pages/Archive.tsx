@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { EmptyState } from '../components/EmptyState'
 import { db, type SavedGame } from '../lib/db'
 import { botById } from '../lib/bots'
 
@@ -229,7 +230,8 @@ export default function Archive() {
         )}
       </div>
 
-      {total === 0 && <p className="text-neutral-400">Aucune partie enregistrée. Va jouer !</p>}
+      {total === 0 && <EmptyState title="Aucune partie enregistrée." to="/jouer" replace action="Jouer une partie">Tes parties terminées apparaîtront ici pour les rejouer et les analyser.</EmptyState>}
+      {total === null && <p role="status" className="text-muted">Chargement des parties…</p>}
 
       <ul className="space-y-1">
         {games.map((g) => {

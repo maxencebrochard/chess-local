@@ -91,7 +91,7 @@ function Hub({ prefs, stats, ready, loadError, onRetry, onChange, onStart }: {
               aria-checked={n === prefs.level}
               data-level={n}
               onClick={() => onChange({ ...prefs, level: n })}
-              className={`cursor-pointer rounded-lg py-2 text-center ${n === prefs.level ? 'bg-accent text-white' : 'bg-surface-2 text-neutral-300 hover:bg-surface-3'}`}
+              className={`cursor-pointer rounded-lg py-2 text-center ${n === prefs.level ? 'bg-accent text-on-accent' : 'bg-surface-2 text-neutral-300 hover:bg-surface-3'}`}
             >
               <span className="block text-xl leading-tight font-black">{n}</span>
               <span className={`block text-[11px] ${n === prefs.level ? 'text-white/85' : 'text-neutral-400'}`}>demi-coups</span>
@@ -110,7 +110,7 @@ function Hub({ prefs, stats, ready, loadError, onRetry, onChange, onStart }: {
             aria-checked={m === prefs.mode}
             data-mode={m}
             onClick={() => onChange({ ...prefs, mode: m })}
-            className={`flex-1 cursor-pointer rounded-lg py-2 text-sm font-bold ${m === prefs.mode ? 'bg-accent text-white' : 'bg-surface-2 text-neutral-300 hover:bg-surface-3'}`}
+            className={`flex-1 cursor-pointer rounded-lg py-2 text-sm font-bold ${m === prefs.mode ? 'bg-accent text-on-accent' : 'bg-surface-2 text-neutral-300 hover:bg-surface-3'}`}
           >
             {DISPLAY_LABEL[m]}
           </button>

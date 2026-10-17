@@ -5,6 +5,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Chess } from 'chess.js'
+import { ActivityCard } from '../components/ActivityCard'
+import { PageHeader } from '../components/PageHeader'
+import { ProgressBar } from '../components/ProgressBar'
 import { Board, type BoardArrow } from '../components/Board'
 import { CoachBubble } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
@@ -48,28 +51,16 @@ export default function CourseIndex({ course, extra }: { course: Course; extra?:
   let n = 0
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <button
-        onClick={() => navigate('/apprendre', { replace: true, state: fromSession ? { restore: true } : null })}
-        className="mb-2 cursor-pointer text-sm font-semibold text-neutral-400 hover:text-white"
-      >
-        ← Apprendre
-      </button>
-      <h1 className="mb-1 text-2xl font-black">
-        {course.emoji} {course.title}
-      </h1>
-      <p className="mb-3 text-sm text-neutral-400">{course.intro}</p>
-      <div className="mb-5 flex items-center gap-3">
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-3">
-          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(count / total) * 100}%` }} />
-        </div>
-        <span data-testid="course-progress" className="text-sm font-bold text-neutral-300">
-          {count}/{total}
-        </span>
+      <PageHeader title={`${course.emoji} ${course.title}`} description={course.intro}
+        back={{ label: 'Apprendre', onClick: () => navigate('/apprendre', { replace: true, state: fromSession ? { restore: true } : null }) }} />
+      <div className="mb-6">
+        {done === null ? <p role="status" className="text-sm text-muted">Chargement de la progression…</p>
+          : <ProgressBar value={count} total={total} label={`Leçons terminées : ${course.title}`} testId="course-progress" />}
       </div>
       {extra}
       {course.chapters.map((ch, ci) => (
         <section key={ch.id} className="mb-5">
-          <h2 className="mb-2 text-sm font-bold tracking-wide text-neutral-400 uppercase">
+          <h2 className="mb-2 text-lg font-semibold">
             {ci + 1}. {ch.title}
           </h2>
           <div className="space-y-2">
@@ -78,25 +69,17 @@ export default function CourseIndex({ course, extra }: { course: Course; extra?:
               const finished = done?.has(id) ?? false
               n++
               return (
-                <button
+                <ActivityCard
                   key={id}
                   data-lesson={id}
                   onClick={() => navigate(`${course.path}/${id}`, { state: { fromSession } })}
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
+                  className="w-full"
+                  title={lesson.title}
+                  description={lesson.summary}
+                  icon={<span className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${finished ? 'bg-accent text-on-accent' : 'bg-surface-3 text-neutral-300'}`}>{finished ? '✓' : n}</span>}
                 >
-                  <span
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black ${
-                      finished ? 'bg-accent text-white' : 'bg-surface-3 text-neutral-300'
-                    }`}
-                    aria-label={finished ? 'Terminée' : undefined}
-                  >
-                    {finished ? '✓' : n}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-bold">{lesson.title}</span>
-                    <span className="block text-sm leading-snug text-neutral-400">{lesson.summary}</span>
-                  </span>
-                </button>
+                  {finished && <span className="block text-sm text-accent">Terminée</span>}
+                </ActivityCard>
               )
             })}
           </div>

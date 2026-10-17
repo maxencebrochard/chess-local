@@ -229,7 +229,7 @@ function DrillSheet({ drill, stats, puzzles, loadError, onRetry, onBack, onStart
                 aria-checked={c === cadence}
                 onClick={() => update({ ...prefs, cadence: { ...prefs.cadence, [drill.id]: c } })}
                 className={`flex-1 cursor-pointer rounded-lg py-2 text-sm font-bold ${
-                  c === cadence ? 'bg-accent text-white' : 'bg-surface-2 text-neutral-300 hover:bg-surface-3'
+                  c === cadence ? 'bg-accent text-on-accent' : 'bg-surface-2 text-neutral-300 hover:bg-surface-3'
                 }`}
               >
                 {CADENCE_LABEL[c]}

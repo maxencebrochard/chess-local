@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { ActivityCard } from '../components/ActivityCard'
 import { Cta } from '../components/Cta'
 import { db, DEFAULT_RATING } from '../lib/db'
 import { describeKinds, loadReviewQueue, type ReviewItem } from '../lib/revision'
@@ -58,7 +59,7 @@ export default function Home() {
               {solved} résolus · classement {r('puzzle')}
             </div>
           </div>
-          <span className="shrink-0 rounded-xl bg-accent px-5 py-2.5 text-lg font-black text-white shadow-[0_3px_0_#5d9948]">
+          <span className="shrink-0 rounded-xl bg-accent px-5 py-2.5 text-lg font-black text-on-accent shadow-[0_3px_0_#5d9948]">
             Résolvez !
           </span>
         </div>
@@ -97,13 +98,7 @@ export default function Home() {
       {/* Tuiles secondaires */}
       <div className="mb-2 md:mb-4 grid grid-cols-2 gap-2">
         {tiles.map((t) => (
-          <Link key={t.to} to={t.to} replace={t.tab} className="flex items-center gap-3 rounded-xl bg-surface-2 p-3 transition hover:bg-surface-3">
-            <span className="text-2xl">{t.icon}</span>
-            <span>
-              <span className="block font-bold">{t.title}</span>
-              <span className="block text-xs text-neutral-400">{t.desc}</span>
-            </span>
-          </Link>
+          <ActivityCard key={t.to} to={t.to} replace={t.tab} icon={t.icon} title={t.title} description={t.desc} className="py-2" />
         ))}
       </div>
 
