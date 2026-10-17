@@ -35,8 +35,9 @@ export interface LineMove {
 }
 
 // Résultat d'une ligne, du point de vue de l'élève : gain ou nulle (tables de finales), avantage
-// décisif (`win`, Stockfish) ou nette avance (`edge`, Stockfish).
-export type LineResult = 'win' | 'draw' | 'edge'
+// décisif (`win`, Stockfish), nette avance (`edge`, Stockfish) ou plan de structure (`plan`,
+// Stockfish : chaque coup de l'élève parmi les meilleurs, la position restant jouable).
+export type LineResult = 'win' | 'draw' | 'edge' | 'plan'
 
 // Ligne jouable : l'élève joue le camp qui a le trait dans `fen`, l'app joue l'autre.
 export interface LineStep {

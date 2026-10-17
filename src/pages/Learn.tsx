@@ -13,6 +13,7 @@ import { courseFor, type Course } from '../lib/courses'
 import { db } from '../lib/db'
 import { ROQUE } from '../lib/attackCourse'
 import { BASES } from '../lib/basicsCourse'
+import { STRUCTURES_COURSE } from '../lib/structuresCourse'
 import { FINALES, lessonForExercise } from '../lib/endgameCourse'
 import type { Course as LessonCourse } from '../lib/lessonCourse'
 import { Engine } from '../lib/engine'
@@ -84,7 +85,7 @@ export default function Learn() {
       Promise.all((['endgame', 'tactic', 'opening', 'strategy'] as LearnDomain[]).map(async (d) => [d, await domainRating(d)] as const)),
       db.mistakes.where('solved').equals(0).count(),
       Promise.all(
-        [BASES, FINALES, ROQUE].map(async (c) => {
+        [BASES, FINALES, ROQUE, STRUCTURES_COURSE].map(async (c) => {
           const ids = await c.completedLessons()
           return [c.slug, c.lessonIds.filter((id) => ids.has(id)).length] as const
         }),
@@ -607,12 +608,25 @@ export default function Learn() {
         </span>
         <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
       </Link>
+      <Link
+        to="/structures"
+        data-testid="my-structures-tile"
+        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
+      >
+        <span className="text-2xl">🔎</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Mes structures de pions</span>
+          <span className="block text-xs text-neutral-400">Pion isolé, Carlsbad, chaînes… dans tes parties : résultats et positions à rejouer</span>
+        </span>
+        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
+      </Link>
 
       <p className="mt-5 mb-2 text-sm font-semibold text-neutral-400">Cours :</p>
       <div className="space-y-2">
         <CourseCard course={BASES} done={lessonsDone[BASES.slug] ?? 0} testId="basics-card-progress" />
         <CourseCard course={FINALES} done={lessonsDone[FINALES.slug] ?? 0} testId="course-card-progress" />
         <CourseCard course={ROQUE} done={lessonsDone[ROQUE.slug] ?? 0} testId="attack-card-progress" />
+        <CourseCard course={STRUCTURES_COURSE} done={lessonsDone[STRUCTURES_COURSE.slug] ?? 0} testId="structures-card-progress" />
       </div>
     </div>
   )

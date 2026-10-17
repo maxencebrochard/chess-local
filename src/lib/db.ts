@@ -64,9 +64,10 @@ export interface LearnSession {
   // (entraîneur d'attaque : itemId = id de la position, une ligne par tentative), defense
   // (entraîneur de défense : itemId = id de la position `def-<puzzle>`, une ligne par tentative) ou
   // missed-defense (tentative sur une défense ratée, même contrat que missed-attack), ou
+  // structure-play (partie depuis une structure de pions de mes parties),
   // critical-moment (moments critiques du bilan, hors Elo) ou path (parcours d’apprentissage).
   // course : itemId = `<slug>:<id>`, le slug désignant le cours (`finales:` pour le cours de finales,
-  // `roque:` pour « Démolir le roque », `bases:` pour « Les bases »), ex. `finales:mat-dame`, `roque:grec-schema`.
+  // `roque:` pour « Démolir le roque », `bases:` pour « Les bases », `structures:` pour « Structures de pions »), ex. `finales:mat-dame`, `roque:grec-schema`.
   // opening-drill : itemId = `<next|suite|full>:<w|b>:<UCI>`, l'UCI étant la ligne lichess de la
   // variante (suite, full) ou la position (next). L'état d'une variante s'y rattache par égalité
   // d'UCI : régénérer openings.json peut laisser des tentatives orphelines (jamais perdues).
@@ -92,11 +93,16 @@ export interface LearnSession {
   // src/data/learningPath.json : une ligne par série notée jouée jusqu'au bout (score = réussites,
   // success = seuil atteint) ou par finale réussie depuis l'étape ; itemId = `placement` : un test
   // de placement (score = niveaux acquis, le meilleur test compte).
+  // structure-play : partie contre Stockfish depuis une position de mes parties où une structure de
+  // pions est apparue (/structures), une ligne par tentative, sans Elo ; itemId = `<partie>@<demi-coup>`
+  // (`local:<id>@14`, `chesscom:<id>@21`), fen = position de départ : le couple identifie la position
+  // (une restauration peut réattribuer les ids `local:`) ; success = gain sans aide, outcome et
+  // defenderElo comme l'entraîneur d'attaque.
   domain: string
   itemId: string
   success: 0 | 1
   ratingAfter: number | null
-  fen?: string // finales jouées jusqu'au bout, attaques manquées, défenses ratées, entraîneurs d'attaque et de défense, moments critiques : position de départ (champ non indexé)
+  fen?: string // finales jouées jusqu'au bout, attaques manquées, défenses ratées, entraîneurs d'attaque et de défense, moments critiques et structures : position de départ (champ non indexé)
   score?: number // mats : mats réussis dans la série (champ non indexé)
   // Entraîneurs d'attaque et de défense (champs non indexés) : issue de la tentative (union des
   // issues des deux domaines, `draw` et `resign` et `abandon` communs), Elo du défenseur bridé
