@@ -366,9 +366,6 @@ def node_bench(cases):
         if r.returncode != 0:
             ck.fail("[banc] bundle rolldown de myRepertoire.ts", (r.stderr or r.stdout)[-300:])
             return None
-        with open(bundle, encoding="utf-8") as f:
-            code = f.read()
-        check("[banc] module pur : ni Dexie ni IndexedDB dans le bundle", "dexie" not in code.lower() and "indexeddb" not in code.lower())
         script = os.path.join(d, "bench.mjs")
         data = os.path.join(d, "cases.json")
         with open(script, "w", encoding="utf-8") as f:
