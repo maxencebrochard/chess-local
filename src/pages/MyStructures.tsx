@@ -1,6 +1,7 @@
 // « Mes structures de pions » (/structures) : structures repérées dans mes parties, résultats par
 // structure, puis partie contre Stockfish bridé depuis le moment où la structure est apparue
-// (/structures/:key). Rien n'est calculé par le réseau ni stocké : tout se relit des parties.
+// (/structures/:key). Les structures sont recalculées depuis les parties, sans réseau ;
+// les tentatives sont persistées selon le contrat `structure-play` de db.ts.
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ConfirmSheet } from '../components/ConfirmSheet'
