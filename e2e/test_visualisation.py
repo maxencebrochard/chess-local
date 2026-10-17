@@ -621,4 +621,5 @@ def suite(p):
     browser.close()
 
 
-ck.run(suite)
+if __name__ == "__main__":
+    ck.run(suite)

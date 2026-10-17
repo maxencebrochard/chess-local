@@ -64,7 +64,7 @@ body {
 /* « Calcul et visualisation » : sur un écran bas (Safari 393x660), l'échiquier laisse la place à la
    ligne, à la question et à la correction sous lui, sans défilement. */
 .boardbox.vis-board {
-  width: min(100vw - 0.75rem, 100dvh - 19.5rem, 640px);
+  width: min(100vw - 0.75rem, 100dvh - 20.5rem, 640px);
 }
 @media (min-width: 768px) {
   .boardbox.vis-board {
