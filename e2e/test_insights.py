@@ -16,6 +16,7 @@ Trois volets :
 Fondée sur la fixture e2e/fixtures/chesscom.json : ignorée en --live.
 Usage : npm run test:e2e -- --suite insights
 INSIGHTS_CASE=trainers cible le parcours des entraîneurs et le bilan depuis un exemple.
+INSIGHTS_CASE=f19 ajoute les seuils et exclusions dans le navigateur et le banc Node.
 """
 import io
 import json
@@ -991,10 +992,39 @@ def seeded_report(p, browser, rows, ins):
 
 
 # ---------------------------------------------------------------- UI : série réelle
+def defense_guards(p, browser):
+    """Le rapport réel applique les seuils et exclusions aux bilans en cache."""
+    positives = {"positive", "ordered", "two", "mistake", "centre"}
+    for name, rows in defense_cases().items():
+        ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block")
+        try:
+            page = ctx.new_page()
+            page.goto(f"{BASE}/#/stats")
+            if not check(f"[F19 seuils] {name} : base prête", wait_schema(page)):
+                continue
+            seed_db(page, {"reviews": rows})
+            page.evaluate("([key, keys]) => localStorage.setItem(key, JSON.stringify({config: {timeClass: 'blitz', count: 10, sources: ['local']}, lastRun: {keys, at: Date.now()}}))", [INSIGHTS_KEY, [r["key"] for r in rows]])
+            before = page.evaluate("() => Object.keys(localStorage).sort()")
+            page.goto(f"{BASE}/#/insights")
+            if ck.appears(f"[F19 seuils] {name} : rapport", page, "[data-testid=insights-report]"):
+                card = page.locator("[data-testid=insights-weaknesses] [data-id=roi-attaque]")
+                check(f"[F19 seuils] {name} : diagnostic attendu", (card.count() == 1) == (name.split(":")[1] in positives))
+                check(f"[F19 seuils] {name} : cache inchangé", rows_of(page, "reviews") == sorted(rows, key=lambda r: r["key"]))
+                check(f"[F19 seuils] {name} : aucune nouvelle persistance", rows_of(page, "mistakes") == [] and page.evaluate("() => Object.keys(localStorage).sort()") == before)
+                if name in ("defense:two", "defense:four", "defense:single-game"):
+                    if card.count():
+                        card.scroll_into_view_if_needed()
+                    page.screenshot(path=f"{SHOTS}/insights_f19_{name.replace(':', '_')}.png")
+        finally:
+            ctx.close()
+
+
 def trainer_links(p, browser):
     for kind, rows, finding, routes in (
         ("defense", defense_cases()["defense:positive"], "roi-attaque", ("/defense", "/defenses-ratees")),
+        ("defense-blancs", [defense_row(i, mirror=True) for i in range(5)], "roi-attaque", ("/defense", "/defenses-ratees")),
         ("attaque", [motif_row("missedKingAttack", i) for i in range(5)], "attaque", ("/attaque", "/attaques-manquees")),
+        ("positions-perdues", build_rows(), "defense", ("/defense",)),
     ):
         ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block")
         page = ctx.new_page()
@@ -1007,7 +1037,8 @@ def trainer_links(p, browser):
         page.goto(f"{BASE}/#/insights")
         card = f"[data-testid=insights-weaknesses] [data-id={finding}]"
         if ck.appears(f"[F19] {kind} : faiblesse depuis les reviews", page, card):
-            check(f"[F19] {kind} : aide pour les listes personnelles", "bilan dans Analyse" in page.locator(card).inner_text())
+            if finding != "defense":
+                check(f"[F19] {kind} : aide pour les listes personnelles", "bilan dans Analyse" in page.locator(card).inner_text())
             for width, height in ((393, 852), (393, 660), (1440, 900)):
                 page.set_viewport_size({"width": width, "height": height})
                 page.locator(card).scroll_into_view_if_needed()
@@ -1021,7 +1052,7 @@ def trainer_links(p, browser):
                 page.goto(f"{BASE}/#/insights")
                 ck.appears(f"[F19] retour {kind}", page, card)
             check(f"[F19] {kind} : aucune écriture dans mistakes", rows_of(page, "mistakes") == [])
-            if kind == "defense":
+            if finding == "roi-attaque":
                 page.locator(f"{card} summary").click()
                 page.locator(f"{card} [data-testid=example]").first.click()
                 if ck.appears("[F19] exemple ouvert dans Analyse", page, "button:text('Bilan de partie')"):
@@ -1033,7 +1064,9 @@ def trainer_links(p, browser):
                             if faults:
                                 break
                             page.wait_for_timeout(100)
-                        check("[F19] bilan conserve le camp noir du joueur", bool(faults) and all(r.get("color") == "b" for r in faults), str(faults)[:300])
+                        color = "w" if kind == "defense-blancs" else "b"
+                        check(f"[F19] bilan conserve le camp {color} du joueur", bool(faults) and all(r.get("color") == color for r in faults), str(faults)[:300])
+                        page.screenshot(path=f"{SHOTS}/insights_f19_bilan_{color}.png")
                         page.goto(f"{BASE}/#/defenses-ratees")
                         ck.appears("[F19] défense de l’exemple disponible personnellement", page, "[data-testid=missed-defense-item]")
         ctx.close()
@@ -1317,6 +1350,13 @@ def local_run(p, browser):
 def suite(p):
     browser = p.chromium.launch(headless=True)
     try:
+        if os.environ.get("INSIGHTS_CASE") == "f19":
+            _, _, cases = node_bench(build_rows())
+            if cases is not None:
+                case_checks(cases)
+            defense_guards(p, browser)
+            trainer_links(p, browser)
+            return
         if os.environ.get("INSIGHTS_CASE") == "trainers":
             trainer_links(p, browser)
             return

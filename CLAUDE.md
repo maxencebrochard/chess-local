@@ -19,7 +19,7 @@ npm run check          # lint (oxlint) + typecheck (tsc -b) : à lancer avant to
 npm run preview        # sert dist/
 ```
 
-Il n'y a pas de tests unitaires.
+Les suites incluent des vérifications unitaires sous Node, notamment du calcul pur d'Insights dans `e2e/test_insights.py`.
 Les tests sont des suites E2E Playwright en Python (`e2e/test_*.py`), lancées par `e2e/run.py` :
 
 ```bash
