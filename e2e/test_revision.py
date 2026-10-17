@@ -390,6 +390,8 @@ def part_home_and_session(p, browser):
     if ck.appears("[apprendre] ligne « Révision espacée » (items dus)", page, "main a:has-text('Révision espacée')", timeout=10000):
         row = page.locator("main a", has_text="Révision espacée")
         badge = row.locator("[data-review-count]")
+        ck.appears("[apprendre] compteur chargé", page,
+                   f"main a:has-text('Révision espacée') [data-review-count]:text-is('{EXPECTED_DUE}')", timeout=10000)
         check(f"[apprendre] pastille {EXPECTED_DUE} et détail par type", badge.count() == 1 and badge.inner_text().strip() == str(EXPECTED_DUE)
               and EXPECTED_DETAIL in row.inner_text(), f"({row.inner_text()!r})")
         row.scroll_into_view_if_needed()
