@@ -1,5 +1,9 @@
 # Commandes canoniques du gate no-mistakes pour ce repo.
 # Lue depuis la branche de confiance (main) : une modification ici ne prend effet qu'après merge.
+
+# Agent du gate pour ce repo (review, tests, corrections) : Codex, modèle par défaut de ~/.codex/config.toml.
+# Remplace l'agent de la config globale pour ce repo seulement.
+agent: codex
 commands:
   # Python + Playwright (e2e/requirements.txt) sont des prérequis de la machine : le gate ne
   # touche pas à l'environnement Python de l'utilisateur. e2e/run.py le signale s'ils manquent.
