@@ -23,9 +23,10 @@ interface BoardProps {
   interactive: boolean
   // Opt-in du propriétaire : partie active au direct, avec un camp joueur explicite.
   allowPremove?: boolean
-  // Retourne true si le coup est accepté. promotion en minuscule ('q','r','b','n').
+  // Retourne le coup validé pour un son immédiat, ou un booléen pour une position observée.
+  // promotion en minuscule ('q','r','b','n').
   // Le dernier argument signale l'exécution d'un prémouvement aux propriétaires de pendule.
-  onMove?: (from: string, to: string, promotion?: string, premove?: boolean) => boolean
+  onMove?: (from: string, to: string, promotion?: string, premove?: boolean) => boolean | Move
   lastMove?: { from: string; to: string } | null
   arrows?: BoardArrow[]
   // Le joueur ne peut bouger que cette couleur (undefined = les deux).
@@ -96,13 +97,29 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
     const move = oneMoveBetween(prev, fen)
     if (!move) return
     if (lastMoveGiven && (move.from !== lastFrom || move.to !== lastTo)) return
+    soundMove(move, executedPremove)
+    // Fen et `silent` seuls déclenchent : un changement de surlignage seul n'est pas un coup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fen, silent])
+
+  function soundMove(move: Move, executedPremove: boolean) {
     const now = performance.now()
     if (!executedPremove && now - lastBoardSoundAt < 60) return
     lastBoardSoundAt = now
     playMoveSound(move, move.color !== me)
-    // Fen et `silent` seuls déclenchent : un changement de surlignage seul n'est pas un coup.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fen, silent])
+  }
+
+  function submitMove(from: string, to: string, promotion?: string, isPremove = false): boolean {
+    const result = onMove?.(from, to, promotion, isPremove) ?? false
+    if (typeof result !== 'boolean' && !silent) {
+      // Le propriétaire confirme le coup et son son avant le rendu coûteux du plateau.
+      // La position observée ensuite ne doit pas rejouer ce même coup.
+      prevFen.current = result.after
+      premoveSound.current = false
+      soundMove(result, isPremove)
+    }
+    return !!result
+  }
 
   function clearPremove() {
     queued.current = null
@@ -129,7 +146,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
       .find((m) => m.to === planned.to && (!m.promotion || m.promotion === 'q'))
     if (move) {
       premoveSound.current = !silent
-      if (!onMove?.(move.from, move.to, move.promotion, true)) premoveSound.current = false
+      if (!submitMove(move.from, move.to, move.promotion, true)) premoveSound.current = false
     }
   }, [fen, chess, premove, premoveEnabled, movableColor, interactive, onMove, silent])
 
@@ -188,7 +205,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
       return true
     }
     setSelected(null)
-    return onMove?.(from, to) ?? false
+    return submitMove(from, to)
   }
 
   function legalMove(from: string, to: string): boolean {
@@ -383,7 +400,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
                 onClick={() => {
                   const { from, to } = pendingPromotion
                   setPendingPromotion(null)
-                  onMove?.(from, to, p)
+                  submitMove(from, to, p)
                 }}
               >
                 <PieceIcon set={pieceSet} code={`${promoColor}${p.toUpperCase()}`} />

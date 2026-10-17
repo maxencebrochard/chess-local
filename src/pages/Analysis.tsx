@@ -367,7 +367,7 @@ export default function Analysis() {
     }
   }
 
-  function handleMove(from: string, to: string, promotion?: string): boolean {
+  function handleMove(from: string, to: string, promotion?: string): Move | false {
     try {
       const c = new Chess(viewFen)
       const move = c.move({ from, to, promotion: promotion ?? 'q' })
@@ -376,7 +376,7 @@ export default function Analysis() {
       const nextExisting = moves[viewIndex + 1]
       if (nextExisting && nextExisting.lan === move.lan) {
         setViewIndex(viewIndex + 1)
-        return true
+        return move
       }
       setMoves([...kept, move])
       setViewIndex(kept.length)
@@ -385,7 +385,7 @@ export default function Analysis() {
       setReview(null)
       setReviewStage(null)
       clearRetry()
-      return true
+      return move
     } catch {
       return false
     }
