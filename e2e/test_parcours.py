@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 
 import chess
+from playwright.sync_api import expect
 
 from helpers import BASE, Checker, desktop_context, mobile_context, overflow_x, shot, tap_move
 
@@ -125,6 +126,7 @@ def context(p, browser, desktop=False, standalone=True):
     page.goto(f"{BASE}/#/apprendre")
     ck.appears("[contexte] Apprendre chargé", page, "[data-testid=path-hero]", timeout=20000)
     check("[contexte] schéma de la base créé par l'app", wait_schema(page))
+    expect(page.locator("[data-testid=path-hero-progress]")).to_be_visible()
     return ctx, page
 
 
@@ -324,7 +326,10 @@ def play_lesson(page, label, max_clicks=60):
             return True
         page.wait_for_timeout(150)
         if continue_btn(page).count() and continue_btn(page).is_enabled():
+            step = page.locator("[data-testid=lesson-step]")
+            previous = step.inner_text()
             continue_btn(page).click()
+            expect(step).not_to_have_text(previous)
             continue
         sol = page.get_by_role("button", name="💡 Solution")
         if sol.count() and sol.is_enabled():
@@ -385,6 +390,7 @@ def part_fresh_and_lesson(p, browser):
     ctx, page = context(p, browser)
     hero = page.locator("[data-testid=path-hero]")
     check("[apprendre] carte héro « Commencer » en tête d'Apprendre", "Commencer" in hero.inner_text() and f"0/{TOTAL}" in hero.inner_text(), f"({hero.inner_text()!r})")
+    check("[apprendre] parcours avant les autres cartes", hero.evaluate("el => el.parentElement.querySelector('button, a') === el"))
     box = hero.bounding_box()
     check("[apprendre] carte héro visible sans défiler (393x852)", box is not None and box["y"] + box["height"] <= 852)
     shot(page, "parcours_apprendre_852")

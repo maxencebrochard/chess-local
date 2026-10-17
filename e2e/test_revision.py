@@ -201,14 +201,15 @@ def mistake_row(page, i):
 
 # ---------- contexte semé ----------
 
-def seeded(p, browser, seed=SEED, standalone=True, desktop=False, sounds=False):
+def seeded(p, browser, seed=SEED, standalone=True, desktop=False, sounds=False, timezone_id=None):
     """Contexte surveillé, base semée (après création du schéma par l'app), puzzles.json réduit.
     `sounds` : sons allumés et espionnés, pour compter les verdicts joués."""
     settings = {"playSounds": True} if sounds else None
+    options = {"timezone_id": timezone_id} if timezone_id else {}
     if desktop:
-        ctx = desktop_context(browser, ck, settings=settings, service_workers="block")
+        ctx = desktop_context(browser, ck, settings=settings, service_workers="block", **options)
     else:
-        ctx = mobile_context(p, browser, ck, settings=settings, standalone=standalone, service_workers="block")
+        ctx = mobile_context(p, browser, ck, settings=settings, standalone=standalone, service_workers="block", **options)
     if sounds:
         ctx.add_init_script(WEBKIT_AUDIO)
     body = json.dumps(PUZZLES)
@@ -484,9 +485,10 @@ def part_home_and_session(p, browser):
     if ck.appears("[accueil] compte connu", page, "[data-review-ready]", timeout=10000):
         check("[accueil] carte masquée quand rien n'est dû", page.locator("main a", has_text="À réviser aujourd'hui").count() == 0)
     page.goto(f"{BASE}/#/apprendre")
-    if ck.appears("[apprendre] ligne « Révision espacée »", page, "main a:has-text('Révision espacée')", timeout=10000):
+    if ck.appears("[apprendre] échéances chargées", page, "main a:has-text('Révision espacée'):has-text('Rien à réviser')", timeout=10000):
         row = page.locator("main a", has_text="Révision espacée")
-        check("[apprendre] « Rien à réviser aujourd'hui », prochaine demain", "Rien à réviser aujourd'hui" in row.inner_text() and "demain" in row.inner_text(), f"({row.inner_text()!r})")
+        text = row.inner_text()
+        check("[apprendre] « Rien à réviser aujourd'hui », prochaine demain", "Rien à réviser aujourd'hui" in text and "demain" in text, f"({text!r})")
         row.scroll_into_view_if_needed()
         shot(page, "revision_learn_row_852")
         row.click()
@@ -714,8 +716,71 @@ def part_expanded(p, browser):
         ctx.close()
 
 
+def part_expanded_alternatives(p, browser):
+    """Stockfish accepte un autre bon coup dans chacun des deux nouveaux domaines."""
+    row = {**mistake(301, 10, 0, 0), "fenBefore": DEFENSE_FEN, "bestUci": "d8f6",
+           "playedSan": "Nb4", "color": "b", "gameKey": "game:301"}
+    history = [ls(i, "mistakes", "301", day, True) for i, day in enumerate((8, 7, 6, 5), 1)]
+    ctx, page = seeded(p, browser, seed={"mistakes": [row], "learnSessions": history})
+    page.goto(f"{BASE}/#/revision")
+    for domain in ("missed-attack", "missed-defense"):
+        if ck.appears(f"[F18 alternative {domain}] exercice", page, f'[data-review-item="{domain}"]'):
+            tap_move(page, "d8", "g5")
+            ck.appears(f"[F18 alternative {domain}] autre coup accepté par Stockfish", page, "text=✓ Réussi", timeout=60000)
+            check(f"[F18 alternative {domain}] réussite enregistrée", sessions(page, domain) == [("301", 1)])
+            shot(page, f"revision_alternative_{domain}")
+            click_next(page)
+    ctx.close()
+
+
+def part_expanded_calendar(p, browser):
+    """Bornes des calendriers à minuit après le passage à l'heure d'hiver parisienne."""
+    for domain, fen, best, color in (("missed-attack", ATTACK_FEN, "a1a8", "w"),
+                                     ("missed-defense", DEFENSE_FEN, "d8g5", "b")):
+        ctx, page = seeded(p, browser, seed={"mistakes": []}, timezone_id="Europe/Paris")
+        page.clock.set_fixed_time(datetime.fromisoformat("2026-10-26T00:01:00+01:00"))
+        dates = page.evaluate("""() => Array.from({length: 81}, (_, days) => {
+            const date = new Date(); date.setDate(date.getDate() - days);
+            date.setHours(days ? 12 : 0, days ? 0 : 1, 0, 0); return date.getTime();
+        })""")
+        rows, history = [], []
+        # Boîtes 2 et 3 dues, retard exactement 30 jours, retard 31 jours,
+        # réussite hier (demain + 1), échec hier (dû dès minuit malgré la nuit de 25 h).
+        events = [((20, False), (14, True), (7, True)),
+                  ((70, False), (60, True), (50, True), (21, True)),
+                  ((31, False),), ((32, False),), ((5, False), (1, True)), ((1, False),)]
+        for index, attempts in enumerate(events, 401):
+            rows.append({**mistake(index, 80, 0, 0), "date": dates[80], "fenBefore": fen,
+                         "bestUci": best, "playedSan": "Nb4" if color == "b" else "Kf1",
+                         "color": color, "gameKey": f"game:{index}"})
+            for day in (4, 3, 2, 1):
+                history.append({**ls(len(history) + 1, "mistakes", str(index), day, True), "date": dates[day]})
+            for day, success in attempts:
+                history.append({**ls(len(history) + 1, domain, str(index), day, success), "date": dates[day], "fen": fen})
+        seed_db(page, {"mistakes": rows, "learnSessions": history})
+        page.goto(f"{BASE}/#/")
+        if ck.appears(f"[F18 calendrier {domain}] compteur", page, "[data-review-ready]"):
+            check(f"[F18 calendrier {domain}] quatre dus à minuit local, bornes 30/31 jours", page.locator("[data-review-count]").inner_text() == "4")
+        page.goto(f"{BASE}/#/revision")
+        for index, label in ((403, "Revient dans 3 jours"), (402, "Acquis : ne reviendra plus"),
+                             (401, "Revient dans trois semaines"), (406, "Revient dans 3 jours")):
+            if ck.appears(f"[F18 calendrier {domain}] partie {index}", page, f"text=Partie {index}"):
+                tap_move(page, best[:2], best[2:])
+                ck.appears(f"[F18 calendrier {domain}] réussite {index}", page, "text=✓ Réussi")
+                check(f"[F18 calendrier {domain}] échéance {index}", next_label(page) == label, next_label(page))
+                click_next(page)
+        if ck.appears(f"[F18 calendrier {domain}] bilan", page, "[data-review-end]"):
+            shot(page, f"revision_calendar_{domain}")
+        added = db_rows(page, "learnSessions")[len(history):]
+        check(f"[F18 calendrier {domain}] seules les quatre positions dues sont notées",
+              [(r["domain"], r["itemId"], r["success"]) for r in added] == [(domain, str(i), 1) for i in (403, 402, 401, 406)])
+        ctx.close()
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
+    part_expanded_alternatives(p, browser)
+    part_expanded_calendar(p, browser)
     part_shared_position(p, browser)
     part_stale_position(p, browser)
     part_defense_success(p, browser)
