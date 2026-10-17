@@ -563,6 +563,8 @@ def pieces_suite(p, browser):
     page = ctx.new_page()
     if goto_play(page) and start_game(page, "Blancs"):
         check("[pièces] desktop : pièces « atelier »", all_from(piece_srcs(page), "atelier"))
+        served = images_served(page)
+        check("[pièces] desktop : douze dessins chargés et décodés", len(served) == 12 and all(s["status"] == 200 and s["decoded"] for s in served))
         shot(page, "f10_jouer_atelier_1440")
     ctx.close()
 
