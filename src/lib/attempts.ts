@@ -1,7 +1,7 @@
 // Partie persistée d'une tentative écrasée par une autre partie (un seul emplacement de
 // persistance, `POSITION_GAME_KEY`) : aiguillage par préfixe de clé vers l'entraîneur concerné.
 // - `attaque:<id de la banque>` : tentative d'attaque notée abandonnée ;
-// - `structure:<partie>@<demi-coup>` : partie de structure notée abandonnée ;
+// - `structure:<partie>@<demi-coup>@<structure>` : partie de structure notée abandonnée ;
 // - `defense:<id>` : tentative de défense notée abandonnée ;
 // - `attaque:<id de mistakes>` (attaques manquées), `defense-ratee:<id>` (défenses ratées),
 //   `finale:<id>`, `position` : rien à noter (le premier coup est jugé dès qu'il est joué, les

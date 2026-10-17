@@ -92,7 +92,7 @@
           "text": "À toi, avec les Blancs : occupe la case forte que t'offre le pion d4.",
           "result": "plan",
           "moves": [
-            {"san": "Ne5", "text": "Le cavalier s'installe en e5 : aucun pion noir ne peut le chasser.", "hint": "Le pion d4 protège une case avancée pour ton cavalier.", "keeps": ["a1b1", "c2e2", "c3d5", "c3e4", "d1e1", "d3e4", "d3h7", "f3e5", "h2h3"], "close": ["a3a4", "b2b3", "b2b4", "c1d2", "c1e3", "c2a4", "c2b1", "c2b3", "c2d2", "c3a2", "c3a4", "c3b5", "c3e2", "d1d2", "d1f1", "d3b5", "d3c4", "d3e2", "d3f1", "f3e1", "g1f1", "g1h1", "g2g3", "g2g4", "h2h4"]},
+            {"san": "Ne5", "text": "Le cavalier s'installe en e5, soutenu par d4. Le fou noir en f6 bloque pour l'instant le pion f7 ; après son départ, f7-f6 pourra chasser le cavalier.", "hint": "Le pion d4 protège une case avancée pour ton cavalier.", "keeps": ["a1b1", "c2e2", "c3d5", "c3e4", "d1e1", "d3e4", "d3h7", "f3e5", "h2h3"], "close": ["a3a4", "b2b3", "b2b4", "c1d2", "c1e3", "c2a4", "c2b1", "c2b3", "c2d2", "c3a2", "c3a4", "c3b5", "c3e2", "d1d2", "d1f1", "d3b5", "d3c4", "d3e2", "d3f1", "f3e1", "g1f1", "g1h1", "g2g3", "g2g4", "h2h4"]},
             {"san": "Bd7"},
             {"san": "Nxd5", "text": "Le cavalier e5 reste en place et l'autre cavalier élimine le bloqueur d5.", "hint": "La pièce qui bloque ton pion isolé peut disparaître.", "keeps": ["c2e2", "c3d5", "d3h7"], "close": ["a1a2", "a1b1", "a3a4", "c1d2", "c2b1", "c2b3", "c2d2", "c3e2", "c3e4", "d1e1", "d3e4", "d3f1", "e5d7", "e5f3", "e5g4", "g1f1", "g1h1", "g2g3", "h2h3"]}
           ],
@@ -124,7 +124,7 @@
         {
           "kind": "diagram",
           "fen": "r1bq1rk1/p3bppp/1pn1pn2/8/2BP4/P1N2N2/1P3PPP/R1BQR1K1 b - - 0 11",
-          "text": "Le fou c8 a une belle diagonale en b7 : il contrôle d5 et vise le roque blanc. Ensuite, une dame en c7 et une tour en d8 mettent la pression sur le pion isolé.",
+          "text": "Le fou c8 peut se développer en b7, mais le cavalier c6 y bloque sa diagonale : il ne contrôle pas encore d5. Une dame en c7 libère d8 pour une tour qui attaquera le pion isolé.",
           "orientation": "b",
           "arrows": [["c8", "b7"], ["d8", "c7"]],
           "marks": {
@@ -139,13 +139,13 @@
           "text": "À toi, avec les Noirs : mets tes pièces au service du blocus et de la pression sur d4.",
           "result": "plan",
           "moves": [
-            {"san": "Bb7", "text": "Le fou contrôle d5 depuis b7, sur la grande diagonale.", "hint": "Ton fou c8 peut trouver une longue diagonale.", "keeps": ["a7a6", "c6a5", "c8b7", "d8c7", "d8d6", "f8e8", "h7h6"], "close": ["a7a5", "a8b8", "e7d6", "f6d5", "g8h8"]},
+            {"san": "Bb7", "text": "Le fou se développe en b7. Le cavalier c6 bloque encore sa diagonale vers d5.", "hint": "Développe le fou c8 en b7, derrière le cavalier c6.", "keeps": ["a7a6", "c6a5", "c8b7", "d8c7", "d8d6", "f8e8", "h7h6"], "close": ["a7a5", "a8b8", "e7d6", "f6d5", "g8h8"]},
             {"san": "Ba2"},
             {"san": "Qc7", "text": "La dame quitte la colonne d et relie les tours.", "hint": "Dégage la case d8 pour une tour.", "keeps": ["a7a5", "a7a6", "a8c8", "b6b5", "c6a5", "d8c7", "d8c8", "d8d6", "d8d7", "d8e8", "f8e8", "g8h8", "h7h6"], "close": ["a8b8", "b7a6", "c6b8", "d8b8", "e7d6", "f6e8", "f6h5"]},
             {"san": "Be3"},
             {"san": "Rad8", "text": "La tour vise d4 : le pion isolé est attaqué.", "hint": "Une tour sur la colonne d attaque le pion isolé.", "keeps": ["a7a6", "a8b8", "a8c8", "a8d8", "a8e8", "f8d8", "f8e8", "h7h6"], "close": ["a7a5", "c6a5", "c7b8", "c7c8", "c7d6", "c7d7", "c7d8", "e7d6", "e7d8", "f8b8", "f8c8", "g8h8"]}
           ],
-          "end": "Les Noirs sont bien placés : le fou b7 contrôle d5, la tour d8 vise d4, et chaque échange les rapproche d'une finale confortable."
+          "end": "La tour d8 attaque le pion isolé d4. Le fou b7 reste bloqué par le cavalier c6 : il ne contrôle toujours pas d5. Les Noirs pourront préparer le blocus et les échanges."
         }
       ]
     },
