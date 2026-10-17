@@ -554,6 +554,57 @@ def layouts(p, browser):
         ctx.close()
 
 
+def ui_boundaries(browser):
+    """Bilans jetables restaurés par l'interface de navigation, rendus par la vraie app."""
+    cases = [
+        ("seuils", QGD, {
+            2: {"cls": "inaccuracy", "wb": 50, "wa": 40.1, "best": "*"},
+            4: {"cls": "mistake", "wb": 50, "wa": 40, "best": "*"},
+            6: {"cls": "blunder", "wb": 15, "wa": 0, "best": "*"},
+            8: {"cls": "mistake", "wb": 99, "wa": 85, "best": "*"},
+            10: {"wb": 60, "ws": 40},
+            12: {"wb": 60, "ws": 39.9},
+        }, "w", [(4, "plan"), (12, "forced")]),
+        ("max3", QGD, {
+            i: {"cls": "blunder", "wb": 60, "wa": 60 - drop, "best": "*"}
+            for i, drop in [(10, 30), (12, 40), (16, 20), (20, 25), (24, 15)]
+        }, "w", [(10, "plan"), (12, "threat"), (20, "plan")]),
+        ("menace", SCHOLAR, {5: {"cls": "blunder", "wb": 48, "wa": 0, "ws": 46, "best": "g6"}}, "b", [(5, "threat")]),
+        ("priorite", SCHOLAR, {5: {"cls": "blunder", "wb": 48, "wa": 0, "ws": 10, "best": "g6"}}, "b", [(5, "forced")]),
+        ("mat_rate", SCHOLAR[:6] + ["d3"], {6: {"cls": "missedWin", "wb": 100, "wa": 50, "ws": 92, "best": "Qxf7#"}}, "w", [(6, "forced")]),
+        ("sans_bascule", QGD, {4: {"cls": "mistake", "wb": 50, "wa": 30}, 6: {"wb": 60, "ws": 30, "best": "*"}}, "w", []),
+    ]
+    for name, sans, annotations, color, expected in cases:
+        ctx = desktop_context(browser, ck)
+        page = ctx.new_page()
+        page.goto(f"{BASE}/#/")
+        page.wait_for_selector("main")
+        review = mk_review(sans, annotations)
+        state = {"pgn": pgn_of(sans), "color": color, "bilan": {"review": review, "gameKey": None}}
+        page.evaluate("state => history.replaceState({usr: state, key: 'boundary', idx: 0}, '', '#/analyse')", state)
+        page.reload()
+        page.wait_for_selector("[data-testid=critical-moments]")
+        facts = card_facts(page)
+        check(f"[ui limites] {name} : moments affichés", [(c["index"], c["answer"]) for c in facts] == expected, str(facts))
+        for card in facts:
+            box = page.locator(f"[data-testid=critical-moment][data-index='{card['index']}']")
+            board = chess.Board(card["fen"])
+            san = board.san(chess.Move.from_uci(card["best"]))
+            figurines = dict(zip("KQRBN", "♔♕♖♗♘" if board.turn else "♚♛♜♝♞"))
+            visible_san = "".join(figurines.get(c, c) for c in san)
+            check(f"[ui limites] {name}/{card['index']} : solution masquée avant réponse", visible_san not in box.inner_text())
+            box.locator(f"[data-choice={card['answer']}]").click()
+            box.locator("[data-testid=moment-verdict]").wait_for()
+            check(f"[ui limites] {name}/{card['index']} : solution masquée après réponse", visible_san not in box.inner_text())
+        page.locator("[data-testid=critical-moments]").scroll_into_view_if_needed()
+        shot(page, f"c2_boundary_{name}")
+        if facts:
+            page.locator("[data-testid=moment-replay]").last.click()
+            page.get_by_text("Objectif : trouve le bon coup", exact=True).wait_for()
+            check(f"[ui limites] {name} : solution masquée avant le premier coup", visible_san not in page.locator("main").inner_text())
+        ctx.close()
+
+
 def main(p):
     unit_node()
     if LIVE:
@@ -563,6 +614,7 @@ def main(p):
     try:
         ui_flow(p, browser)
         layouts(p, browser)
+        ui_boundaries(browser)
     finally:
         browser.close()
 

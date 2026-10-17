@@ -1,6 +1,6 @@
-// « Moments critiques » du bilan : les 2 ou 3 positions où la partie a basculé, à rejouer contre
-// Stockfish après une question « Plan, menace ou coup forcé ? ». Logique pure (chess.js et
-// motifs.ts, aucun moteur) : tout se déduit du bilan (`GameReview`) et de l'échiquier.
+// « Moments critiques » : parcours utilisateur décrit dans README.md, section Features → Analyse.
+// La sélection et les réponses se déduisent du bilan (`GameReview`) et de l'échiquier
+// (chess.js et motifs.ts), sans nouvelle recherche moteur.
 // Testée sous Node par la suite `moments` (e2e/test_moments.py).
 import { Chess, type Color, type PieceSymbol, type Square } from 'chess.js'
 import { db } from './db'
