@@ -77,16 +77,14 @@ def family_of(name):
 
 def book_moves(key):
     out = {}
-    for line, at in THROUGH.get(key, []):
-        mv = line["uci"].split(" ")
-        if at < len(mv):
-            cur = out.get(mv[at])
-            if cur is None:
-                out[mv[at]] = {"uci": mv[at], "lines": 1, "name": line["name"], "len": len(line["uci"])}
-            else:
-                cur["lines"] += 1
-                if len(line["uci"]) < cur["len"]:
-                    cur["name"], cur["len"] = line["name"], len(line["uci"])
+    board = chess.Board(key + " - 0 1")
+    for move in list(board.legal_moves):
+        board.push(move)
+        lines = [line for line, _ in THROUGH.get(pkey(board), [])]
+        board.pop()
+        if lines:
+            shortest = min(lines, key=lambda line: len(line["uci"]))
+            out[move.uci()] = {"uci": move.uci(), "lines": len(lines), "name": shortest["name"], "len": len(shortest["uci"])}
     return sorted(out.values(), key=lambda m: (-m["lines"], m["uci"]))
 
 
@@ -349,6 +347,7 @@ console.log(JSON.stringify(out))
 """
 
 DRILL_CASES = {
+    "amsterdam": {"prefix": ["c2c4", "e7e5", "b1c3", "d7d6"], "opening": "English Opening"},
     # 302 : Italienne atteinte par 2. Fc4 puis 3. Cf3 (transposition).
     "transpose": {"prefix": parse(REP[302]["pgn"])[:6], "opening": "Italian Game"},
     "sicilienne": {"prefix": parse(REP[308]["pgn"])[:9], "opening": "Sicilian Defense"},
@@ -492,6 +491,8 @@ def bench_checks(out, cases):
         check(f"[banc séance {name}] lignes réécrites depuis la partie : toutes partent de ses coups, sont légales, ligne nommée de la position présente",
               all(l["uci"] == head or l["uci"].startswith(head + " ") for l in lines) and legal and any(l["uci"] == head for l in lines), f"({len(lines)} lignes)")
         check(f"[banc séance {name}] coups suivants = coups théoriques de la position (transpositions comprises)", nexts == exp_moves, f"({sorted(nexts)} contre {sorted(exp_moves)})")
+        if name == "amsterdam":
+            check("[banc séance amsterdam] 3.e3 rejoint la théorie", "e2e3" in nexts)
 
 
 # ---------------------------------------------------------------- UI
@@ -838,6 +839,30 @@ def no_username(p, browser):
     ctx.close()
 
 
+def transposed_drill(p, browser):
+    ctx = mobile_context(p, browser, ck, settings={"chesscomUsername": USER}, standalone=True, service_workers="block")
+    try:
+        page = ctx.new_page()
+        page.goto(f"{BASE}/#/apprendre")
+        if not check("[transposition] base prête", wait_schema(page)):
+            return
+        game = dict(rep_game(301), pgn=san_pgn("c4 e5 Nc3 d6 h4", USER, "QaTr", "1-0"))
+        seed_db(page, {"reviews": [review_row(game, 301)]})
+        page.locator("main a", has_text="Mon répertoire").click()
+        if not ck.appears("[transposition] sortie affichée", page, "[data-deviation]", timeout=15000):
+            return
+        page.locator("[data-start]").click()
+        if not ck.appears("[transposition] séance ouverte", page, "[data-drill]", timeout=8000):
+            return
+        tap_move(page, "e2", "e3")
+        ck.appears("[transposition] 3.e3 accepté", page, "[data-result='ok']", timeout=5000)
+        rows = wait_rows(page, 1)
+        check("[transposition] réussite enregistrée sans pénalité Elo",
+              [(r["itemId"], r["success"], r["ratingAfter"]) for r in rows] == [("next:w:c2c4 e7e5 b1c3 d7d6", 1, None)], f"({rows})")
+    finally:
+        ctx.close()
+
+
 def suite(p):
     cases = bench_cases()
     out = node_bench(cases)
@@ -845,6 +870,7 @@ def suite(p):
         bench_checks(out, cases)
     browser = p.chromium.launch(headless=True)
     try:
+        transposed_drill(p, browser)
         seeded_page(p, browser)
         layouts(p, browser)
         no_username(p, browser)
