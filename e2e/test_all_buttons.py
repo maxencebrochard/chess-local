@@ -1,7 +1,14 @@
 """QA exhaustive : tous les boutons de l'app, un assert d'effet par bouton.
 
 Usage : npm run test:e2e -- --suite all_buttons
+        E2E_ALL_BUTTONS_PROMOTION=1 npm run test:e2e -- --suite all_buttons
 """
+import json
+import os
+from pathlib import Path
+
+import chess
+
 from helpers import BASE, LIVE, PLIES_AT_LEAST, Checker, click_square, desktop_context, mobile_context, wait_js
 
 # Pseudo de la fixture e2e/fixtures/chesscom.json (API chess.com simulée, sauf E2E_LIVE=1).
@@ -36,6 +43,28 @@ def resign(page):
     page.get_by_role("button", name="Oui, abandonner", exact=True).click()
 
 
+def promotion_piece(page, fr, tg):
+    """Retrouve la promotion lichess par position ; dame pour un autre coup tenté."""
+    # Board garde la position avant le coup tant que le sélecteur est ouvert.
+    pieces = page.locator("main [data-square] [data-piece]").evaluate_all("""els =>
+        Object.fromEntries(els.map(el => [el.closest('[data-square]').dataset.square,
+                                        el.dataset.piece]))""")
+    puzzles = json.loads((Path(__file__).resolve().parents[1] / "public/puzzles.json").read_text())
+    for _, fen, moves, *_ in puzzles:
+        moves = moves.split()
+        if not any(len(u) == 5 and u[:4] == fr + tg for u in moves[1::2]):
+            continue
+        board = chess.Board(fen)
+        for step, uci in enumerate(moves):
+            if step % 2 == 1 and len(uci) == 5 and uci[:4] == fr + tg:
+                expected = {chess.square_name(sq): ("w" if pc.color else "b") + pc.symbol().upper()
+                            for sq, pc in board.piece_map().items()}
+                if pieces == expected:
+                    return uci[4]
+            board.push_uci(uci)
+    return "q"
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
 
@@ -51,7 +80,16 @@ def suite(p):
     ctx.close()
 
     # ---------- DESKTOP : le reste ----------
-    ctx = desktop_context(browser, ck, SETTINGS, permissions=["clipboard-read", "clipboard-write"])
+    ctx = desktop_context(browser, ck, SETTINGS, permissions=["clipboard-read", "clipboard-write"],
+                          **({"service_workers": "block"} if os.environ.get("E2E_ALL_BUTTONS_PROMOTION") == "1" else {}))
+    # Reproduction : limiter le tirage à deux positions distinctes avec d7d8q.
+    # Deux puzzles préservent le contrôle « Passer change de puzzle ».
+    if os.environ.get("E2E_ALL_BUTTONS_PROMOTION") == "1":
+        puzzles = json.loads((Path(__file__).resolve().parents[1] / "public/puzzles.json").read_text())
+        forced = [pz for pz in puzzles if pz[0] in ("3kxGz", "43col")]
+        assert len(forced) == 2
+        ctx.route("**/puzzles.json", lambda route: route.fulfill(json=forced))
+        print("[puzzles] tirage forcé : 3kxGz / 43col (d7d8q)", flush=True)
     page = ctx.new_page()
     page.goto(f"{BASE}/")
     page.wait_for_timeout(1500)
@@ -170,6 +208,7 @@ def suite(p):
     page.wait_for_timeout(1500)
     body_after = page.locator("[id^='chessboard-']").first.inner_html()
     check("[puzzles] Passer change de puzzle", body_before != body_after)
+    promotions = 0
     for _ in range(10):
         if page.locator("text=Raté").count() or page.locator("text=Résolu").count():
             break
@@ -191,14 +230,21 @@ def suite(p):
         if not tg:
             break
         click_square(page, tg); page.wait_for_timeout(800)
-        # Certains puzzles tirés au hasard atteignent une promotion : terminer le choix
-        # avant de demander l'indice suivant (la boîte bloque normalement l'échiquier).
-        promotion = page.get_by_role("button", name="Dame", exact=True)
-        if promotion.is_visible():
-            promotion.click()
+        queen = page.get_by_role("button", name="Dame", exact=True)
+        if queen.is_visible():
+            piece = promotion_piece(page, fr, tg)
+            label = {"q": "Dame", "r": "Tour", "b": "Fou", "n": "Cavalier"}[piece]
+            page.get_by_role("button", name=label, exact=True).click()
+            queen.wait_for(state="hidden")
+            check(f"[puzzles] promotion {fr}{tg}{piece} ferme le sélecteur", not queen.is_visible())
+            promotions += 1
+            # Même délai de réponse adverse que pour un coup sans promotion.
             page.wait_for_timeout(800)
     finished = page.locator("text=Raté").count() or page.locator("text=Résolu").count()
     check("[puzzles] terminé", bool(finished))
+    if os.environ.get("E2E_ALL_BUTTONS_PROMOTION") == "1":
+        check("[puzzles] promotion forcée jouée et puzzle résolu",
+              promotions > 0 and page.locator("text=Résolu").is_visible())
     if page.locator("button:has-text('Réessayer')").count():
         page.click("button:has-text('Réessayer')")
         page.wait_for_timeout(600)
