@@ -2,7 +2,7 @@
 
 Usage : npm run test:e2e -- --suite all_buttons
 """
-from helpers import BASE, LIVE, Checker, click_square, desktop_context, mobile_context
+from helpers import BASE, LIVE, PLIES_AT_LEAST, Checker, click_square, desktop_context, mobile_context, wait_js
 
 # Pseudo de la fixture e2e/fixtures/chesscom.json (API chess.com simulée, sauf E2E_LIVE=1).
 SETTINGS = {"chesscomUsername": "popeye232"}
@@ -103,8 +103,7 @@ def suite(p):
     page.get_by_role("button", name="Jouer", exact=True).click()
     page.wait_for_timeout(900)
     click_square(page, "e2"); page.wait_for_timeout(200); click_square(page, "e4")
-    page.wait_for_timeout(3500)
-    check("[partie] coup + réponse bot", page.locator("main [data-current]").count() >= 2)
+    check("[partie] coup + réponse bot", wait_js(page, PLIES_AT_LEAST, arg=2))
     page.click("main button:has-text('◀')"); page.wait_for_timeout(250)
     check("[partie] ◀", page.locator("main [data-current='true']").count() == 1)
     page.click("main button:has-text('⏮')"); page.wait_for_timeout(250)
@@ -129,7 +128,8 @@ def suite(p):
     page.get_by_role("button", name="Jouer", exact=True).click()
     page.wait_for_timeout(900)
     click_square(page, "d2"); page.wait_for_timeout(200); click_square(page, "d4")
-    page.wait_for_timeout(3500)
+    # Deux demi-coups au moins : en deçà, l'abandon annule la partie au lieu de la finir.
+    check("[partie 2] coup + réponse bot avant l'abandon", wait_js(page, PLIES_AT_LEAST, arg=2))
     resign(page)
     page.wait_for_timeout(1200)
     page.locator("div.fixed button", has_text="Bilan de la partie").click()
@@ -275,8 +275,7 @@ def suite(p):
     check("[import] details Raccourci s'ouvre", page.locator("text=Raccourcis").is_visible())
     page.fill("input[placeholder*='colle un lien']", "https://www.chess.com/game/live/999999999999")
     page.get_by_role("button", name="Bilan", exact=True).click()
-    page.wait_for_timeout(8000)
-    check("[import] lien introuvable → erreur propre", page.locator("text=introuvable").count() > 0)
+    ck.appears("[import] lien introuvable → erreur propre", page, "text=introuvable", timeout=30000, state="attached")
 
     # ---------- ARCHIVE ----------
     page.locator("nav a", has_text="Archive").first.click()

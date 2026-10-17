@@ -81,12 +81,15 @@ La synthèse demeure donc une approximation documentée, pas une copie ni une pr
 | Refus | Pièce ramenée avec un son grave | Retour instantané, son plus aigu | Retour de 120 ms et impact synthétique grave, position inchangée |
 | Clic-clic | Déplacement court vers la cible | Animé en 80 ms | Animé en 120 ms ; réduction des animations respectée |
 | Réponse adverse automatique | Non observable dans cette vidéo d'analyse | Animée en 80 ms | Même animation partagée de 120 ms ; déclenchement sonore existant conservé |
-| Son à la pose | Pas de décalage visible à la précision de l'enregistrement | Déjà à la pose dans la reproduction E2E | Aucun délai ajouté ; tests du bon type, de l'unicité et d'un départ inférieur à 80 ms |
+| Son à la pose | Pas de décalage visible à la précision de l'enregistrement | Déjà à la pose dans la reproduction E2E | Aucun délai ajouté ; tests du bon type, de l'unicité et d'un départ pendant l'événement de pose |
 | Timbre et volumes | Impacts secs, prise plus brillante, refus plus grave | Impacts bois Kenney nettement plus graves pour les coups légaux | Sept synthèses originales mesurées ci-dessus ; notifications Kenney conservées |
 | Souris | Hors référence | Clone centré à 1,2, cadre blanc | Géométrie souris conservée et vérifiée à 1440 × 900 |
 
-Le seuil E2E de 80 ms protège contre un retard logiciel manifeste sur une machine chargée ; il ne garantit pas une latence acoustique de 80 ms sur iPhone.
-L'espion Web Audio inclut le temps futur éventuellement passé à `start()`, afin qu'une programmation retardée ne passe pas le test.
+Le check E2E exige que le son démarre pendant la diffusion de l'événement de fin de geste qui joue le coup (`window.event` relevé par l'espion audio), une fois tous les sons décodés.
+Ce critère ne dépend pas de la charge de la machine : un son repoussé à une tâche ultérieure (setTimeout, image suivante, fin d'animation) échoue, même quelques millisecondes plus tard.
+Un budget de 250 ms après l'horodatage navigateur de l'événement reste un filet contre un long travail synchrone ajouté avant le son.
+Il ne garantit pas une latence acoustique sur iPhone.
+L'espion Web Audio mesure séparément le délai futur passé à `start()` et exige moins de 80 ms, afin qu'une programmation retardée ne profite pas du budget de 250 ms.
 Aucun appel haptique n'est ajouté : `navigator.vibrate` n'est pas disponible dans Safari iOS et aucune technique fiable vérifiée sur cet appareil n'est disponible ici.
 La vérification navigateur utilise Chromium avec contexte iPhone 14 Pro standalone et émulation des restrictions audio WebKit ; une validation tactile et acoustique sur iPhone physique reste nécessaire.
 

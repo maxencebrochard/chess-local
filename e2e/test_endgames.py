@@ -9,6 +9,9 @@
 
 Le joueur est piloté par un second worker Stockfish créé dans la page (le même WASM que l'app),
 sur une FEN reconstruite depuis le DOM : aucune dépendance à python-chess ni à un Stockfish natif.
+Il reçoit toute la partie (`position fen <départ> moves ...`, réponses du bot déduites de l'échiquier) :
+sur la seule position courante, il ne voit pas les répétitions, et sa navette de roi gagnante finissait
+par une nulle par répétition quand le bot, à durée fixe, répondait autrement sous charge.
 
 Usage : npm run test:e2e -- --suite endgames
 """
@@ -36,7 +39,7 @@ Math.random = () => (window.__rndQ && window.__rndQ.length) ? window.__rndQ.shif
 
 # Second moteur dans la page : même worker que l'app, protocole UCI minimal, un appel à la fois.
 QA_ENGINE = """
-async ([url, fen, depth]) => {
+async ([url, position, depth]) => {
   if (!window.__qaWorker) {
     const w = new Worker(url)
     window.__qaLines = []
@@ -47,7 +50,7 @@ async ([url, fen, depth]) => {
   }
   const w = window.__qaWorker
   window.__qaLines.length = 0
-  w.postMessage('position fen ' + fen)
+  w.postMessage(position)
   w.postMessage('go depth ' + depth)
   const bm = await window.__qaWait((l) => l.startsWith('bestmove'))
   return bm.split(' ')[1]
@@ -128,8 +131,20 @@ def fen_from(pcs, turn):
     return f"{'/'.join(rows)} {turn} - - 0 1"
 
 
-def best_move(page, fen, depth):
-    return page.evaluate(QA_ENGINE, [f"{BASE}/engine/stockfish-18-lite-single.js", fen, depth])
+def best_move(page, fen, depth, moves=()):
+    position = f"position fen {fen}" + (f" moves {' '.join(moves)}" if moves else "")
+    return page.evaluate(QA_ENGINE, [f"{BASE}/engine/stockfish-18-lite-single.js", position, depth])
+
+
+def move_between(before, after, color):
+    """Coup UCI de `color` qui mène de `before` à `after` (cases -> pièces), ou None. Ces finales
+    n'ont ni roque ni prise en passant : une case quittée, une case atteinte, promotion comprise."""
+    left = [sq for sq, pc in before.items() if pc[0] == color and after.get(sq) != pc]
+    reached = [sq for sq, pc in after.items() if pc[0] == color and before.get(sq) != pc]
+    if len(left) != 1 or len(reached) != 1:
+        return None
+    promo = after[reached[0]][1].lower() if before[left[0]][1] == "P" and after[reached[0]][1] != "P" else ""
+    return left[0] + reached[0] + promo
 
 
 def verdict(page):
@@ -223,9 +238,12 @@ def drive(page, eg, depth, max_moves, tag):
                 print(f"[diagnostic {tag}] écran final illisible : {e}", flush=True)
         return v, labels
 
+    start = pieces(page)
+    start_fen = fen_from(start, color)
+    moves = []
     for n in range(max_moves):
         before = pieces(page)
-        uci = best_move(page, fen_from(before, color), depth)
+        uci = best_move(page, start_fen, depth, moves)
         # Garder le parcours exact : les réponses du bot à durée fixe varient sous charge.
         trace.append({"avant": fen_from(before, color), "proposé": uci})
         if not uci or len(uci) < 4 or not before.get(uci[:2], "").startswith(color):
@@ -244,6 +262,15 @@ def drive(page, eg, depth, max_moves, tag):
         if outcome == "verdict":
             page.wait_for_timeout(600)
             return result()
+        mine = dict(before)
+        mine.pop(uci[:2], None)
+        mine[uci[2:4]] = f"{color}{uci[4].upper()}" if len(uci) == 5 else before[uci[:2]]
+        reply = move_between(mine, pieces(page), "b" if color == "w" else "w")
+        if not reply:
+            ck.fail(f"[{tag}] coup {n + 1} : réponse du bot illisible sur l'échiquier")
+            return result()
+        moves += [uci, reply]
+        trace[-1]["bot"] = reply
     return result()
 
 

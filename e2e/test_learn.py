@@ -239,9 +239,8 @@ def suite(p):
                 break
         if played:
             break
-    page.wait_for_timeout(12000)  # vérification moteur éventuelle
-    verdict = page.locator("text=Réussi").count() > 0 or page.locator("text=Raté").count() > 0
-    check("[learn] verdict après coup", verdict)
+    # Vérification moteur éventuelle : attente du verdict plutôt qu'un délai fixe de 12 s.
+    ck.appears("[learn] verdict après coup", page, "text=/Réussi|Raté/", timeout=30000)
     check("[learn] bouton Réessayer", page.locator("button", has_text="Réessayer").is_visible())
     check("[learn] bouton Analyser", page.locator("button", has_text="Analyser").is_visible())
     page.locator("button", has_text="Réessayer").click()

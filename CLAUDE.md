@@ -28,12 +28,21 @@ npm run test:e2e -- --suite learn         # une seule suite, nommée d'après so
 npm run test:e2e:dev                      # serveur de dev : StrictMode double les updaters et révèle les effets de bord mal placés
 BASE=https://maxencebrochard.github.io/chess-local npm run test:e2e   # contre la prod déployée, sans serveur local
 npm run test:e2e -- --suite all_buttons --live                        # API chess.com réelle au lieu de la fixture, hors gate
+npm run test:e2e -- --jobs 1              # une suite à la fois, sortie en direct (défaut : E2E_JOBS, sinon 2, ou 1 sur un seul cœur)
 ```
 
 Prérequis hors `npm ci` : `pip install -r e2e/requirements.txt`.
 Chromium vit dans `~/.local/share/chess-local/ms-playwright`, hors de `~/Library/Caches` que les nettoyages de disque vident : `e2e/run.py` y fixe `PLAYWRIGHT_BROWSERS_PATH` pour les suites et l'installe tout seul s'il manque (`PLAYWRIGHT_SKIP_BROWSER_GC=1`, environ 150 Mo, une fois).
 Un `PLAYWRIGHT_BROWSERS_PATH` déjà exporté est respecté.
 `e2e/run.py` démarre son propre serveur sur un port libre, vérifie que c'est bien cette app qui répond, surveille le serveur pendant les suites et l'arrête toujours.
+Les suites tournent en parallèle sur `--jobs N` workers (ou `E2E_JOBS=N`), avec deux workers par défaut (un sur un seul cœur).
+Chacune a son groupe de process et son `TMPDIR` (Chromium compris, tué et nettoyé à la fin) ; en parallèle, sa sortie est imprimée d'un bloc à sa fin, avec un point d'avancement par minute.
+En mode dev, `e2e/vite.config.ts` reprend la configuration de l’app et désactive seulement la surveillance des fichiers et HMR : une documentation ou un test modifié ne doit pas recharger la page pendant un geste.
+StrictMode reste actif ; `npm run dev` conserve sa configuration habituelle.
+Les plus longues partent d'abord, d'après `e2e/shots/.durations.json` (durées du dernier lancement réussi, local) ou à défaut `TYPICAL_S` de `run.py`.
+Le bilan donne la durée de chaque suite et la durée totale.
+Une suite ne doit donc rien partager avec une autre : port libre pour tout serveur propre, fichiers dans `tempfile`, captures aux noms préfixés par la suite.
+Un check de durée mesure du temps CPU ou un ordre d'événements dans le navigateur, jamais le temps réel d'une machine que les autres suites chargent.
 Ne jamais lancer une suite contre un serveur démarré à la main sur un port fixe : un serveur mort ou fantôme a déjà fait chercher un bug qui n'existait pas.
 Le code de sortie est la vérité : non nul dès qu'un check échoue, qu'une page lève une exception (`pageerror`) ou qu'un appel chess.com sort de la fixture.
 
@@ -48,6 +57,7 @@ Le gate n'utilise jamais `--live`.
 `test_parcours.py` remplace `puzzles.json` par une fixture synthétique (un mat en un connu sous un id et un Elo propres à chaque série et à chaque bande du test de placement), sème `learnSessions` nativement après `wait_schema`, et bundle `scripts/learning-path-entry.ts` avec rolldown pour vérifier la logique pure sous Node.
 `test_pwa.py` ne tourne que sur le build local : sous-chemin, manifest, service worker, précache, puis redémarrage avec le serveur réellement tué (`set_offline` ne coupe pas le réseau du service worker).
 `test_upgrade.py` (prod uniquement) est le garde-fou de continuité des données : pour chaque ancien build déployé épinglé dans `OLD_BUILDS` (tags `deployed-2026-07-20`, `deployed-2026-10-06`, `deployed-2026-10-15` et `deployed-2026-10-16`, extraits de git ; `git fetch origin tag <tag>` s'il manque), il le sert, y crée de vraies données par l'interface dans un profil persistant, bascule sur le build courant sur le même port, vérifie IndexedDB, réglages et chiffres affichés à l'identique, puis restaure une sauvegarde de l'ancien build dans le nouveau ; `E2E_MUTATION=rename-db|clear-ratings|drop-table|clear-settings` sert une copie mutée du nouveau build pour prouver que la suite passe au rouge.
+`E2E_MUTATION=truncate-old-precache` fait couper par l'ancien serveur le corps de `puzzles.json` : l'installation du service worker de l'ancien build échoue à chaque fois, et les réessais bornés de `wait_sw_active` (contre les « Cache.put() encountered a network error » ponctuels sous charge) doivent finir en rouge.
 Après un déploiement, ajouter le nouveau tag à `OLD_BUILDS` et retirer un build que plus aucun appareil ne porte.
 Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` : deux lancements simultanés ne se gênent pas.
 Les captures vont dans `e2e/shots/` (gitignoré).

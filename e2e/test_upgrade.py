@@ -26,6 +26,8 @@ nouveau build à la place de E2E_DIST :
   E2E_MUTATION=clear-ratings   npm run test:e2e -- --suite upgrade   # `ratings` vidée à chaque ouverture
   E2E_MUTATION=drop-table      npm run test:e2e -- --suite upgrade   # version(4) qui supprime `learnSessions`
   E2E_MUTATION=clear-settings  npm run test:e2e -- --suite upgrade   # réglages effacés au démarrage
+  E2E_MUTATION=truncate-old-precache npm run test:e2e -- --suite upgrade  # corps de puzzles.json coupé par
+                               # l'ancien serveur : précache toujours raté, les réessais bornés finissent en rouge
 
 Usage : npm run test:e2e -- --suite upgrade   (prod uniquement : il faut E2E_DIST)
 """
@@ -155,11 +157,36 @@ class SubpathHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *_args):
         pass
 
+    def log_error(self, fmt, *args):
+        # Journal des seules erreurs (connexion coupée, corps tronqué) : `log_message` muet les
+        # avalait aussi, et un « Cache.put() encountered a network error » du précache ne
+        # permettait pas de savoir si le serveur avait coupé le corps ou si le client avait abandonné.
+        print(f"[upgrade] [serveur {self.directory[-40:]}] {fmt % args}", flush=True)
+
+    # Mutation `truncate-old-precache` : fichier dont le corps est coupé à mi-chemin, comme le
+    # « Cache.put() encountered a network error » vu sous charge, mais à chaque fois.
+    truncate = None
+
+    def copyfile(self, source, outputfile):
+        if self.truncate and self.path.split("?", 1)[0].endswith(self.truncate):
+            outputfile.write(source.read(os.fstat(source.fileno()).st_size // 2))
+            self.close_connection = True
+            return
+        super().copyfile(source, outputfile)
+
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except (BrokenPipeError, ConnectionResetError) as e:
+            self.log_error("corps interrompu (%s) pendant %s", type(e).__name__, getattr(self, "path", "?"))
+            self.close_connection = True
+
 
 class StaticServer:
-    def __init__(self, directory, port):
+    def __init__(self, directory, port, truncate=None):
         self.directory = directory
         self.port = port
+        self.truncate = truncate
         self.srv = None
 
     @property
@@ -167,10 +194,10 @@ class StaticServer:
         return f"http://{HOST}:{self.port}{SUBPATH.rstrip('/')}"
 
     def start(self):
-        directory = self.directory
+        directory, truncate = self.directory, self.truncate
         # Le port est celui de l'origine du profil (IndexedDB et service worker y sont attachés) :
         # s'il n'est pas disponible, on échoue, on n'en choisit jamais un autre.
-        self.srv = http.server.ThreadingHTTPServer((HOST, self.port), lambda *a, **k: SubpathHandler(*a, directory=directory, **k))
+        self.srv = http.server.ThreadingHTTPServer((HOST, self.port), lambda *a, **k: type("H", (SubpathHandler,), {"truncate": truncate})(*a, directory=directory, **k))
         self.srv.daemon_threads = True
         self.srv.block_on_close = False  # ne pas attendre un gros fetch en cours (puzzles.json) pour rendre le port
         threading.Thread(target=self.srv.serve_forever, daemon=True).start()
@@ -898,7 +925,9 @@ def suite(p):
     work = tempfile.mkdtemp(prefix="chesslocal-upgrade-")
     try:
         new_dir = dist
-        if MUTATION:
+        if MUTATION == "truncate-old-precache":
+            print("!" * 60 + "\n[upgrade] MUTATION truncate-old-precache : le précache de l'ancien build échoue toujours, la suite DOIT être rouge\n" + "!" * 60, flush=True)
+        elif MUTATION:
             print("!" * 60 + f"\n[upgrade] MUTATION {MUTATION} : le nouveau build perd des données, la suite DOIT être rouge\n" + "!" * 60, flush=True)
             new_dir = os.path.join(work, "mutated")
             mutate_build(dist, new_dir, MUTATION)
@@ -942,14 +971,16 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
         new_assets = sorted(os.listdir(os.path.join(dist, "assets")))
 
         port = free_port()
-        server = StaticServer(old_dir, port)
+        server = StaticServer(old_dir, port, truncate="puzzles.json" if MUTATION == "truncate-old-precache" else None)
         server.start()
         base = server.base
         t_start = time.time()
 
         # ---------- Volet 1a : l'ancien build, de vraies données par l'interface ----------
         ctx, page = open_profile(p, profile, seed=True)
-        seen = displayed_build(page, base)
+        # Profil neuf : goto charge déjà un document. Le recharger aussitôt peut couper le
+        # précache démarré par ce document (Cache.put : corps réseau interrompu).
+        seen = displayed_build(page, base, reload=False)
         check("[ancien] /#/import affiche le build de l'ancien déploiement", seen == old_label, f"({seen})")
         # Le service worker doit être ACTIF avant de quitter ce profil : Chromium ne stocke un
         # enregistrement qu'une fois sa première installation finie, sinon la réouverture n'a plus

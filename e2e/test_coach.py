@@ -268,8 +268,8 @@ def motifs_part(data):
     check("[phases] partie de 14 demi-coups : pas de récit par phases", narrative.search(ref_w["summary"]) is None, f"({ref_w['summary'][:120]})")
     long_ = next(s for s in data["scenarios"] if s["label"] == "long")
     check("[phases] partie de 120 demi-coups : récit par phases", narrative.search(long_["summary"]) is not None, f"({long_['summary'][:120]})")
-    # Garde-fou de régression (secondes de gel), large : la machine de test peut être chargée.
-    check("[motifs] coach rapide : 120 demi-coups commentés en moins de 800 ms (Node)", long_.get("ms", 1e9) < 800, f"({long_.get('ms', 0):.0f} ms)")
+    # Garde-fou de régression (secondes de gel), en temps CPU de Node : insensible à la charge.
+    check("[motifs] coach rapide : 120 demi-coups commentés en moins de 800 ms de CPU (Node)", long_.get("ms", 1e9) < 800, f"({long_.get('ms', 0):.0f} ms)")
     guided = [c["body"] for s in data["scenarios"] for c in s["comments"]] + [c["body"] for c in data.get("puzzleComments") or []] \
         + [r["text"] or "" for r in (data.get("puzzleLive") or []) + data["live"]]
     too_long = sorted({b for b in guided if len(b) > 135}, key=len, reverse=True)
