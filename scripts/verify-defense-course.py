@@ -27,28 +27,21 @@ Paliers d'une ligne (`result`, point de vue de l'élève) :
 
 Ce que le script prouve :
 - chaque FEN est légale (python-chess), chaque coup est jouable et en SAN canonique ;
-- avant chaque coup de l'élève, le meilleur coup atteint le palier ; tous les coups sont triés par
-  une recherche multipv à profondeur SCAN, et tout coup à moins de WINDOW sous le palier est
-  recherché seul à profondeur DEEP (même profondeur pour tous, coup de la leçon compris) ;
-  horizon : en `hold`, un sacrifice gagnant de l'attaquant se cache souvent au-delà de DEEP ; tout
-  coup qui atteint la zone grise à DEEP est recherché aussi à CONFIRM et vaut le minimum des deux :
-  un coup n'entre dans `keeps` (« tient aussi ») qu'au palier aux deux profondeurs ;
+- avant chaque coup de l'élève, tous les coups légaux sont recherchés séparément à profondeur 24 ;
   `keeps` = coups au palier, `close` = coups dans la zone grise [palier - GREY ; palier[ ;
   le coup de la leçon est au palier et à 1 pion au plus du meilleur (valeurs plafonnées) ;
   `only` <=> un seul coup au palier et tous les autres au moins 1,5 dessous ;
-  Limite assumée : un coup à plus de WINDOW sous le palier au tri garde sa valeur de tri.
 - réponse de l'attaquant : l'élève reste au palier après elle ; sans `weak`, elle est à
   REPLY_MARGIN au plus de la meilleure attaque (une attaque molle rendrait le « tient » trop
   facile) ; au-delà, elle doit porter `weak` (affichée « ? » : l'app montre une attaque moins forte) ;
 - fin de ligne : jamais le mat de l'élève ; mat de l'attaquant accepté ; pat ou matériel
-  insuffisant accepté en `hold` seulement ; sinon l'élève au palier à profondeur FINAL (CONFIRM
-  en `hold`). Pas de détection de répétition (positions isolées, sans historique) : un échec
-  perpétuel passe par l'éval finale ;
-- diagramme : `eval` (côté blanc, à profondeur DEEP) écrite pour chaque diagramme ; `claim` w/b =
-  ce camp à +2 au moins, `equal` = |éval| <= 0,5, `hold-w`/`hold-b` = ce camp à -0,5 au moins
-  (`equal` et `hold-*` vérifiés aussi à CONFIRM) ; `fails` = coup jouable, après lequel son camp
-  est à FAILS_MAX au plus et FAILS_GAP sous le meilleur coup, aux deux profondeurs ; `failsEval`
-  (point de vue du camp qui joue `fails`, à DEEP) est écrite pour le contrôle (« perd » exige -2) ;
+  insuffisant accepté en `hold` seulement ; sinon l'élève au palier à profondeur DEPTH.
+  Pas de détection de répétition (positions isolées, sans historique) : un échec perpétuel passe par l'éval finale ;
+- diagramme : `eval` (côté blanc, à profondeur DEPTH) écrite pour chaque diagramme ; `claim` w/b =
+  ce camp à +2 au moins, `equal` = |éval| <= 0,5, `hold-w`/`hold-b` = ce camp à -0,5 au moins ;
+  `fails` = coup jouable, après lequel son camp
+  est à FAILS_MAX au plus et FAILS_GAP sous le meilleur coup, à profondeur 24 ; `failsEval`
+  (point de vue du camp qui joue `fails`, à DEPTH) est écrite pour le contrôle (« perd » exige -2) ;
 - menace (`threat`, diagramme ou coup de ligne) : coup de l'attaquant qui serait mat immédiat s'il
   avait le trait (position du diagramme, ou position après le coup de ligne) ; trait inversé
   refusé si le camp au trait est en échec. Vérifié sans moteur, ici et dans le contrôle hors ligne.
@@ -72,13 +65,9 @@ DATA = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "src", "data", "
 STAMP = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "scripts", "defense-course.verified")
 CACHE = os.path.join(os.path.expanduser("~"), ".cache", "chess-local", "defense-eval.json")
 
-SCAN = 12  # tri multipv de tous les coups
-DEEP = 18  # recherche coup par coup, réponses, diagrammes
-CONFIRM = 24  # confirmation des « tient » (horizon des sacrifices)
-FINAL = 20  # position finale d'une ligne edge/win (hold : CONFIRM)
+DEPTH = 24
 HASH_MB = 64
 TIERS = {"hold": -0.5, "edge": 1.0, "win": 2.0}  # en pions, point de vue de l'élève
-WINDOW = {"hold": 3.0, "edge": 2.0, "win": 2.0}  # coups recherchés à fond : à moins de WINDOW sous le palier au tri
 GREY = {"hold": 0.5, "edge": 0.7, "win": 0.7}  # zone grise sous le palier
 ONLY_MARGIN = 1.5
 BEST_MARGIN = 1.0  # coup de la leçon : écart toléré au meilleur
@@ -130,14 +119,14 @@ def cap(v):
     return max(-CAP, min(CAP, v))
 
 
-def search(fen, depth, move=None, multipv=1):
+def search(fen, depth, move=None):
     """Recherche neuve (hachage vidé). Retourne [(uci, valeur, texte)] du point de vue du trait."""
     board = chess.Board(fen)
     limit = chess.engine.Limit(depth=depth)
     kw = {"game": object()}  # nouvelle « partie » : python-chess envoie ucinewgame
     if move:
         kw["root_moves"] = [chess.Move.from_uci(move)]
-    infos = engine().analyse(board, limit, multipv=multipv, **kw)
+    infos = engine().analyse(board, limit, multipv=1, **kw)
     if isinstance(infos, dict):
         infos = [infos]
     out = []
@@ -150,9 +139,6 @@ def search(fen, depth, move=None, multipv=1):
 # Tâches (une recherche chacune) : job -> résultat sérialisable.
 def task(job):
     kind, fen, arg, depth = job
-    if kind == "scan":
-        n = chess.Board(fen).legal_moves.count()
-        return job, search(fen, depth, multipv=n)
     if kind == "move":
         return job, search(fen, depth, move=arg)[0]
     if kind == "best":
@@ -311,76 +297,44 @@ def main():
         data = json.load(f)
     diagrams, students, replies, finals = walk(data)
 
-    # 1. Diagrammes, réponses, fins de ligne, tri multipv des positions de l'élève.
     jobs = []
     for _, step, fen, fails in diagrams:
-        jobs.append(("best", fen, None, DEEP))
-        if step.get("claim") in ("equal", "hold-w", "hold-b"):
-            jobs.append(("best", fen, None, CONFIRM))
+        jobs.append(("best", fen, None, DEPTH))
         if fails:
-            jobs += [("move", fen, fails, DEEP), ("move", fen, fails, CONFIRM), ("best", fen, None, CONFIRM)]
+            jobs.append(("move", fen, fails, DEPTH))
     for _, _, _, fen, uci in replies:
-        jobs += [("best", fen, None, DEEP), ("move", fen, uci, DEEP)]
+        jobs += [("best", fen, None, DEPTH), ("move", fen, uci, DEPTH)]
     for _, step, b, _ in finals:
         if not b.is_game_over():
-            jobs.append(("best", b.fen(), None, CONFIRM if step["result"] == "hold" else FINAL))
+            jobs.append(("best", b.fen(), None, DEPTH))
     for _, _, _, fen, _ in students:
-        jobs.append(("scan", fen, None, SCAN))
+        jobs += [("move", fen, m.uci(), DEPTH) for m in chess.Board(fen).legal_moves]
     res = ev.run(jobs)
-
-    # 2. Recherche coup par coup des candidats de chaque position de l'élève.
-    jobs2 = []
-    for _, step, m, fen, uci in students:
-        r = step["result"]
-        scan = res[("scan", fen, None, SCAN)]
-        cands = {u for u, v, _ in scan if v >= TIERS[r] - WINDOW[r]} | {uci}
-        jobs2 += [("move", fen, u, DEEP) for u in sorted(cands)]
-    res.update(ev.run(jobs2))
-
-    # 3. Confirmation à CONFIRM, en hold, des coups qui atteignent la zone grise à DEEP.
-    jobs3 = []
-    for _, step, m, fen, uci in students:
-        r = step["result"]
-        if r != "hold":
-            continue
-        for u, v, _ in res[("scan", fen, None, SCAN)]:
-            key = ("move", fen, u, DEEP)
-            if key in res and res[key][1] >= TIERS[r] - GREY[r]:
-                jobs3.append(("move", fen, u, CONFIRM))
-        jobs3.append(("move", fen, uci, CONFIRM))
-    res.update(ev.run(jobs3))
 
     # ---------- Verdicts ----------
     for label, step, fen, fails in diagrams:
         turn = chess.Board(fen).turn
-        u, v, t = res[("best", fen, None, DEEP)]
+        u, v, t = res[("best", fen, None, DEPTH)]
         white = v if turn == chess.WHITE else -v
         wtxt = white_text(v, t, turn)
         step["eval"] = wtxt
         claim = step.get("claim")
-        whites = [white]
-        if claim in ("equal", "hold-w", "hold-b"):
-            _, cv, ct = res[("best", fen, None, CONFIRM)]
-            whites.append(cv if turn == chess.WHITE else -cv)
-            wtxt += f" (profondeur {CONFIRM} : {white_text(cv, ct, turn)})"
         if claim == "w" and white < CLAIM:
             fail(label, f"claim w mais éval {wtxt}")
         elif claim == "b" and white > -CLAIM:
             fail(label, f"claim b mais éval {wtxt}")
-        elif claim == "equal" and any(abs(w) > EQUAL for w in whites):
+        elif claim == "equal" and abs(white) > EQUAL:
             fail(label, f"claim equal mais éval {wtxt}")
-        elif claim == "hold-w" and any(w < HOLD for w in whites):
+        elif claim == "hold-w" and white < HOLD:
             fail(label, f"claim hold-w mais éval {wtxt}")
-        elif claim == "hold-b" and any(-w < HOLD for w in whites):
+        elif claim == "hold-b" and -white < HOLD:
             fail(label, f"claim hold-b mais éval {wtxt}")
         elif claim is not None and claim not in ("w", "b", "equal", "hold-w", "hold-b"):
             fail(label, f"claim {claim} inconnu (w, b, equal, hold-w ou hold-b)")
         if fails:
-            _, fv, ft = res[("move", fen, fails, DEEP)]
-            _, fv2, ft2 = res[("move", fen, fails, CONFIRM)]
-            _, bv2, _ = res[("best", fen, None, CONFIRM)]
-            if max(fv, fv2) > FAILS_MAX or min(v - fv, bv2 - fv2) < FAILS_GAP:
-                fail(label, f"fails {step['fails']} : {ft} / {ft2} pour son camp, meilleur coup {t} : l'échec n'est pas établi")
+            _, fv, ft = res[("move", fen, fails, DEPTH)]
+            if fv > FAILS_MAX or v - fv < FAILS_GAP:
+                fail(label, f"fails {step['fails']} : {ft} pour son camp, meilleur coup {t} : l'échec n'est pas établi")
             step["failsEval"] = ft
         else:
             step.pop("failsEval", None)
@@ -388,17 +342,9 @@ def main():
     for ml, step, m, fen, uci in students:
         r = step["result"]
         tier = TIERS[r]
-        scan = res[("scan", fen, None, SCAN)]
-        vals = {u: v for u, v, _ in scan}
-        txt = {u: t for u, _, t in scan}
-        for u in list(vals) + [uci]:
-            key = ("move", fen, u, DEEP)
-            if key in res:
-                _, vals[u], txt[u] = res[key]
-            key2 = ("move", fen, u, CONFIRM)
-            if key2 in res and res[key2][1] < vals[u]:
-                _, vals[u], txt[u] = res[key2]
-                txt[u] += f" (profondeur {CONFIRM})"
+        moves = [res[("move", fen, mv.uci(), DEPTH)] for mv in chess.Board(fen).legal_moves]
+        vals = {u: v for u, v, _ in moves}
+        txt = {u: t for u, _, t in moves}
         best_u = max(vals, key=lambda u: vals[u])
         keeps = sorted(u for u, v in vals.items() if v >= tier)
         close = sorted(u for u, v in vals.items() if tier - GREY[r] <= v < tier)
@@ -419,8 +365,8 @@ def main():
 
     for ml, step, m, fen, uci in replies:
         tier = TIERS[step["result"]]
-        best_uci, bv, bt = res[("best", fen, None, DEEP)]
-        _, rv, rt = res[("move", fen, uci, DEEP)]
+        best_uci, bv, bt = res[("best", fen, None, DEPTH)]
+        _, rv, rt = res[("move", fen, uci, DEPTH)]
         # Du point de vue de l'élève (le défenseur).
         def_best, def_reply = -bv, -rv
         if def_best < tier:
@@ -435,7 +381,7 @@ def main():
             if gap <= REPLY_MARGIN:
                 fail(ml, f"marquée weak mais à {gap:.2f} seulement de la meilleure attaque ({bt})")
         elif gap > REPLY_MARGIN:
-            best_san = chess.Board(fen).san(chess.Move.from_uci(res[("best", fen, None, DEEP)][0]))
+            best_san = chess.Board(fen).san(chess.Move.from_uci(res[("best", fen, None, DEPTH)][0]))
             fail(ml, f"réponse à {gap:.2f} de la meilleure attaque {best_san} ({bt}) : marquer weak et le dire, ou suivre la meilleure attaque")
 
     for label, step, b, player in finals:
@@ -447,11 +393,10 @@ def main():
             if step["result"] != "hold":
                 fail(label, "la ligne finit par une nulle sur l'échiquier")
             continue
-        depth = CONFIRM if step["result"] == "hold" else FINAL
-        _, v, t = res[("best", b.fen(), None, depth)]
+        _, v, t = res[("best", b.fen(), None, DEPTH)]
         mine = v if b.turn == player else -v
         if mine < TIERS[step["result"]]:
-            fail(label, f"position finale {t} (trait {'blanc' if b.turn else 'noir'}, profondeur {depth}) : sous le palier {step['result']}")
+            fail(label, f"position finale {t} (trait {'blanc' if b.turn else 'noir'}, profondeur {DEPTH}) : sous le palier {step['result']}")
 
     for e in errors:
         print(e)
@@ -470,7 +415,7 @@ def main():
     lines = sum(1 for l in data["lessons"].values() for s in l["steps"] if s["kind"] == "line")
     print(
         f"OK : {len(data['lessons'])} leçons, {lines} lignes, {len(students)} coups de l'élève, {len(replies)} réponses, "
-        f"{len(diagrams)} diagrammes vérifiés par {ev.engine} ({SETTINGS}, profondeurs {SCAN}/{DEEP}/{CONFIRM}/{FINAL}). Tampon {digest[:12]}."
+        f"{len(diagrams)} diagrammes vérifiés par {ev.engine} ({SETTINGS}, profondeur {DEPTH}). Tampon {digest[:12]}."
     )
 
 

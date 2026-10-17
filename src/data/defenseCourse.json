@@ -190,7 +190,7 @@
           "text": "À toi : pare la menace sans pousser le pion g ni le pion h.",
           "result": "win",
           "moves": [
-            {"san": "f5", "text": "Le pion f5 coupe la diagonale de la dame d3 : h7 n'est plus attaqué.", "hint": "Un pion peut se placer entre la dame d3 et h7.", "keeps": ["a5c5", "f7f5"]},
+            {"san": "f5", "text": "Le pion f5 coupe l'attaque de la dame d3 et pare la menace immédiate Dxh7. Le cavalier g5 contrôle toujours h7.", "hint": "Un pion peut se placer entre la dame d3 et h7.", "keeps": ["a5c5", "f7f5"]},
             {"san": "exf6", "text": "Prise en passant : la diagonale se rouvre."},
             {"san": "Qc5+", "text": "Échec : la dame gagne un temps et vise le cavalier g5.", "keeps": ["a5c5", "a5g5"]},
             {"san": "Kh1"},
