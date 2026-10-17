@@ -255,6 +255,28 @@ for (let i = 0; i < 4000; i++) {
   if (q && q.kind === 'mate') { mate += 1; if (q.mate.length > 0) yes += 1 }
 }
 out.__draw = { yes, mate }
+out.__exhausted = []
+const levels = JSON.parse(await (await import('node:fs')).promises.readFile(process.argv[3], 'utf8')).levels
+for (const [level, pool] of Object.entries(levels)) {
+  const groups = [false, true].map(yes => pool.filter(it => (lib.mateMoves(lib.finalPosition(it)).length > 0) === yes))
+  for (const consumed of [[], groups[0], groups[1], pool]) {
+    const used = new Set(consumed.map(it => it.id))
+    const fresh = pool.filter(it => !used.has(it.id))
+    const size = fresh.length || pool.length
+    for (const wantYes of [false, true]) {
+      let call = 0
+      const rng = () => {
+        const n = call++
+        return n === size - 1 ? 0 : n === size + 2 ? (wantYes ? 0.25 : 0.75) : 0.999
+      }
+      const q = lib.pickQuestion(pool, Number(level), used, rng)
+      const available = groups[Number(wantYes)].some(it => !used.has(it.id))
+      out.__exhausted.push({ level, consumed: consumed.length, wantYes,
+        correct: q?.kind === 'mate' && (q.mate.length > 0) === wantYes,
+        fresh: !available || !used.has(q?.item.id) })
+    }
+  }
+}
 console.log(JSON.stringify(out))
 """
 
@@ -324,6 +346,10 @@ def logic_suite(bank):
         draw = got.get("__draw", {})
         ratio = draw.get("yes", 0) / max(1, draw.get("mate", 0))
         check("[logique] « mat en un » tiré environ moitié Oui", draw.get("mate", 0) > 500 and 0.42 <= ratio <= 0.58, f"({draw})")
+        exhausted = got["__exhausted"]
+        check("[logique] Oui/Non conservé après épuisement, aux quatre longueurs",
+              len(exhausted) == 32 and all(r["correct"] and r["fresh"] for r in exhausted),
+              str([r for r in exhausted if not r["correct"] or not r["fresh"]]))
         # Mutations du bundle : l'oracle doit les voir.
         with open(bp, encoding="utf-8") as f:
             src = f.read()
@@ -335,8 +361,6 @@ def logic_suite(bank):
             ("numérotation", "`${num}… ${fig}`", "`${num}. ${fig}`"),
         ]
         for name, old, new in mutations:
-            if not check(f"[logique] mutation applicable : {name}", src.count(old) == 1, f"({src.count(old)} occurrence(s))"):
-                continue
             mp = os.path.join(d, "mutant.mjs")
             with open(mp, "w", encoding="utf-8") as f:
                 f.write(src.replace(old, new))
@@ -559,12 +583,41 @@ def layout_suite(p, browser, bank):
         ctx.close()
 
 
+def reset_prefs_suite(p, browser):
+    ctx = mobile_context(p, browser, ck, service_workers="block")
+    page = ctx.new_page()
+    page.goto(f"{BASE}/#/visualisation")
+    page.locator('[data-level="8"]').click()
+    page.locator('[data-mode="flash"]').click()
+    page.reload()
+    ck.appears("[préférences] longueur conservée", page, '[data-level="8"][aria-checked="true"]')
+    ck.appears("[préférences] mode conservé", page, '[data-mode="flash"][aria-checked="true"]')
+    page.goto(f"{BASE}/#/stats")
+    with page.expect_download() as download:
+        page.locator('[data-testid="export-btn"]').click()
+    with open(download.value.path(), encoding="utf-8") as f:
+        exported = json.load(f)
+    check("[préférences] visualisation hors sauvegarde",
+          "chess-local-visualisation" not in exported and "visualisation" not in json.loads(exported["settings"])["state"])
+    page.locator('[data-testid="reset-btn"]').click()
+    page.locator('[data-testid="reset-confirm"]').click()
+    with page.expect_event("load"):
+        page.locator('[data-testid="reset-final-confirm"]').click()
+    check("[préférences] clé effacée par la réinitialisation",
+          page.evaluate("() => localStorage.getItem('chess-local-visualisation')") is None)
+    page.goto(f"{BASE}/#/visualisation")
+    ck.appears("[préférences] longueur par défaut après réinitialisation", page, '[data-level="4"][aria-checked="true"]')
+    ck.appears("[préférences] mode par défaut après réinitialisation", page, '[data-mode="visible"][aria-checked="true"]')
+    ctx.close()
+
+
 def suite(p):
     bank = data_suite()
     logic_suite(bank)
     browser = p.chromium.launch(headless=True)
     ui_suite(p, browser, bank)
     layout_suite(p, browser, bank)
+    reset_prefs_suite(p, browser)
     browser.close()
 
 

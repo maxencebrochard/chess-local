@@ -23,7 +23,7 @@ const LAST_EXPORT_KEY = 'chess-local-last-export'
 // le moteur en cours, le niveau du défenseur de l'entraîneur d'attaque, la configuration et le
 // dernier rapport d'Insights) et clés des séances d'Apprendre et de révision dans sessionStorage :
 // les seules que la réinitialisation a le droit de toucher.
-const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, DEFENSE_PREFS_KEY, INSIGHTS_KEY]
+const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, DEFENSE_PREFS_KEY, INSIGHTS_KEY, 'chess-local-visualisation']
 const SESSION_KEYS = ['learn-session-v1', 'revision-session-v1']
 
 export const TABLES = ['games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions', 'reviews'] as const
