@@ -106,6 +106,7 @@ WEBKIT_AUDIO = r"""(() => {
   const emu = new WeakMap()
   const zombies = new WeakSet()
   const all = []
+  window.__audioRunning = () => all.some((c) => emu.get(c) === 'running' && !zombies.has(c))
   class WebKitLike extends Native {
     constructor(...a) {
       super(...a)
@@ -143,6 +144,7 @@ WEBKIT_AUDIO = r"""(() => {
   }
   // Fichier d'origine de chaque AudioBuffer.
   const abUrl = new WeakMap()
+  window.__decoded = new Set()
   const bufUrl = new WeakMap()
   const origAb = Response.prototype.arrayBuffer
   Response.prototype.arrayBuffer = async function () {
@@ -154,7 +156,7 @@ WEBKIT_AUDIO = r"""(() => {
   BaseAudioContext.prototype.decodeAudioData = function (ab, ...rest) {
     const url = abUrl.get(ab)
     const p = origDecode.call(this, ab, ...rest)
-    if (p && p.then) p.then((buf) => { if (url) bufUrl.set(buf, url) }, () => {})
+    if (p && p.then) p.then((buf) => { if (url) { bufUrl.set(buf, url); window.__decoded.add(url.split('/').pop()) } }, () => {})
     return p
   }
   // Volume : dernière valeur posée sur un gain.
@@ -169,11 +171,57 @@ WEBKIT_AUDIO = r"""(() => {
     const url = this.buffer ? bufUrl.get(this.buffer) : undefined
     const name = url ? url.split('/').pop().replace(/\.mp3.*$/, '') : '(muet)'
     const st = this.context.state
-    const at = performance.now() + Math.max(0, (a[0] ?? this.context.currentTime) - this.context.currentTime) * 1000
-    window.__sounds.push({ name, at, state: st, audible: st === 'running' && !zombies.has(this.context) })
+    const scheduledMs = Math.max(0, (a[0] ?? this.context.currentTime) - this.context.currentTime) * 1000
+    const at = performance.now() + scheduledMs
+    // Événement en cours de diffusion (microtâches comprises) : null si le son part d'une tâche
+    // ultérieure (setTimeout, requestAnimationFrame, fin d'animation, réponse réseau).
+    const ev = window.event
+    window.__sounds.push({ name, at, state: st, audible: st === 'running' && !zombies.has(this.context),
+      scheduledMs, event: ev ? ev.type : null, trusted: ev ? ev.isTrusted : null, eventAt: ev ? ev.timeStamp : null })
     return origStart.apply(this, a)
   }
 })()"""
+
+
+# Fichiers de public/sounds : `sounds.ts` les précharge tous au premier geste.
+SOUND_FILES = sorted(f for f in os.listdir(os.path.join(os.path.dirname(E2E_DIR), "public", "sounds")) if f.endswith(".mp3"))
+
+# Fin d'un geste pour iOS et l'espion : un son « immédiat » part pendant leur diffusion.
+GESTURE_EVENTS = ("pointerup", "mouseup", "touchend", "click", "keydown")
+
+
+def wait_sounds_ready(page, timeout=15000):
+    """Attend que l'espion `WEBKIT_AUDIO` ait vu décoder tous les sons et qu'un contexte tourne.
+    Avant, un son demandé attend son fetch et son décodage : il part en retard sans régression.
+    Remplace une attente fixe, trop courte sous charge et trop longue sinon."""
+    try:
+        page.wait_for_function(
+            "(n) => window.__decoded && window.__decoded.size >= n && window.__audioRunning()",
+            arg=len(SOUND_FILES), timeout=timeout, polling=50)
+        return True
+    except Exception:
+        return False
+
+
+def immediate_sound(entries, name, budget_ms=250):
+    """(ok, détail) : un seul son, `name`, audible, démarré PENDANT la diffusion de l'événement de
+    fin de geste qui joue le coup (même tâche, microtâches comprises), et au plus `budget_ms` après
+    l'horodatage navigateur de cet événement.
+
+    Le critère principal ne dépend pas de la charge : un son repoussé à une tâche ultérieure
+    (setTimeout, requestAnimationFrame, fin d'animation) n'a plus d'événement en cours et échoue même
+    s'il part 5 ms plus tard. Le budget en temps n'est qu'un filet contre un long travail synchrone
+    ajouté avant le son, assez large pour le travail légitime d'une machine chargée.
+    Une programmation future de 80 ms ou plus échoue indépendamment de ce budget."""
+    sounds = [e for e in entries if e["name"] != "(muet)"]
+    detail = f"({fmt_sounds(sounds)}, {[(e.get('event'), e.get('trusted'), None if e.get('eventAt') is None else round(e['at'] - e['eventAt'], 1)) for e in sounds]})"
+    if len(sounds) != 1:
+        return False, detail
+    e = sounds[0]
+    ok = (e["name"] == name and e["audible"] and e.get("event") in GESTURE_EVENTS and e.get("trusted")
+          and e.get("scheduledMs", float("inf")) < 80
+          and e.get("eventAt") is not None and 0 <= e["at"] - e["eventAt"] < budget_ms)
+    return ok, detail
 
 
 def sound_log(page):
@@ -311,6 +359,19 @@ class Checker:
             sys.exit(1)
         print(f"TOUT PASSE ({self.suite}) : {self.passed} checks")
         sys.exit(0)
+
+
+def wait_js(page, expr, timeout=30000, arg=None):
+    """Vrai dès que l'expression JS est vraie, faux après `timeout` ms : remplace un délai fixe
+    suivi d'un constat (trop court sous charge, trop long sinon). Le check reste à l'appelant."""
+    try:
+        page.wait_for_function(expr, arg=arg, timeout=timeout, polling=100)
+        return True
+    except Exception:
+        return False
+
+
+PLIES_AT_LEAST = "(n) => document.querySelectorAll('main [data-current]').length >= n"
 
 
 def new_context(browser, ck, settings=None, **options):

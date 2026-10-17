@@ -2,7 +2,7 @@
 
 Usage : npm run test:e2e -- --suite v4
 """
-from helpers import BASE, SHOTS, Checker, click_square as sq, desktop_context, mobile_context
+from helpers import BASE, PLIES_AT_LEAST, SHOTS, Checker, click_square as sq, desktop_context, mobile_context, wait_js
 
 ck = Checker("v4")
 check = ck.check
@@ -29,14 +29,15 @@ def suite(p):
     check("[coach] pas de pendule", page.locator("main .font-mono.text-xl").count() == 0)
     bubble0 = page.locator(".bg-white").first.inner_text()
     sq(page, "e2"); page.wait_for_timeout(200); sq(page, "e4")
-    page.wait_for_timeout(6000)  # éval + réponse bot + éval
+    # Éval + réponse bot + éval : attendus par condition plutôt qu'en 6 s fixes.
+    wait_js(page, PLIES_AT_LEAST, arg=2)
+    wait_js(page, "(b0) => (document.querySelector('.bg-white')?.innerText ?? b0) !== b0", arg=bubble0, timeout=15000)
     bubble1 = page.locator(".bg-white").first.inner_text()
     check("[coach] bulle commente", bubble1 != bubble0, f"({bubble1[:50]}…)")
     n0 = page.locator("main [data-current]").count()
     check("[coach] deux demi-coups joués", n0 >= 2, f"({n0})")
     page.click("button:has-text('Indication')")
-    page.wait_for_timeout(4000)
-    check("[coach] badge non classée après Indication", page.locator("text=non classée").is_visible())
+    ck.appears("[coach] badge non classée après Indication", page, "text=non classée", timeout=30000)
     page.click("button:has-text('Annuler')")
     page.wait_for_timeout(1500)
     n1 = page.locator("main [data-current]").count()

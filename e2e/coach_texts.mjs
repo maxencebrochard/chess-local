@@ -150,9 +150,17 @@ function fensOf(review) {
 
 function scenario(label, fen, sans, ann, pc) {
   const review = mkReview(fen, sans, ann)
-  const t0 = performance.now()
+  // Temps CPU du process, pas temps réel : une machine chargée (suites en parallèle) ne doit pas
+  // faire échouer ce garde-fou, un vrai gel de calcul si.
+  const c0 = process.cpuUsage()
   const comments = coachComments(review, pc)
-  const ms = performance.now() - t0
+  // Mutation du coût de calcul : le garde-fou CPU doit détecter un vrai gel, même sous charge.
+  if (process.env.E2E_MUTATION === 'coach-cpu' && label === 'long') {
+    let used
+    do { used = process.cpuUsage(c0) } while (used.user + used.system < 1_000_000)
+  }
+  const cpu = process.cpuUsage(c0)
+  const ms = (cpu.user + cpu.system) / 1000
   const fens = fensOf(review)
   return {
     ms,

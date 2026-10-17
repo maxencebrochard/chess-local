@@ -25,6 +25,7 @@ dist-ssr
 e2e/shots/
 
 # E2E
+.venv/
 __pycache__/
 # Caches de génération des positions des entraîneurs d'attaque et de défense (régénérables)
 data/lichess-puzzle-games.jsonl

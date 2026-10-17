@@ -1,5 +1,7 @@
 """Ressenti du plateau partagé : géométrie pendant un geste CDP et audio à la pose."""
 
+import os
+
 from helpers import (
     BASE,
     WEBKIT_AUDIO,
@@ -7,13 +9,29 @@ from helpers import (
     desktop_context,
     mobile_context,
     drag_piece,
+    immediate_sound,
     piece_on,
     shot,
     sound_log,
     tap_move,
+    wait_sounds_ready,
 )
 
 ck = Checker("feeling")
+
+# Journal des animations Web Animations lancées sur une pièce de l'échiquier (case, keyframes).
+ANIM_SPY = """(() => {
+  window.__animations = []
+  const native = Element.prototype.animate
+  Element.prototype.animate = function (keyframes, options) {
+    const sq = this.closest && this.closest('[data-square]')
+    if (sq && Array.isArray(keyframes)) {
+      window.__animations.push({ square: sq.getAttribute('data-square'), from: String(keyframes[0]?.transform ?? ''),
+        to: String(keyframes[keyframes.length - 1]?.transform ?? ''), duration: typeof options === 'number' ? options : options?.duration ?? 0 })
+    }
+    return native.call(this, keyframes, options)
+  }
+})()"""
 
 
 def suite(p):
@@ -28,10 +46,26 @@ def suite(p):
                     p, browser, ck, standalone=True, settings={"playSounds": True}
                 )
             )
-            ctx.add_init_script(WEBKIT_AUDIO)
-            ctx.add_init_script(
-                "window.__release = 0; addEventListener('pointerup', () => window.__release = performance.now(), true)"
-            )
+            mutation = os.environ.get("E2E_MUTATION", "")
+            audio = WEBKIT_AUDIO
+            if mutation in ("sound-task", "sound-scheduled"):
+                # Mutation après l'espion : il observe le départ réellement demandé au navigateur.
+                audio += """;(() => {
+                  const start = AudioBufferSourceNode.prototype.start
+                  AudioBufferSourceNode.prototype.start = function (...args) {
+                """ + ("setTimeout(() => start.apply(this, args), 100)" if mutation == "sound-task"
+                       else "start.call(this, this.context.currentTime + 0.2)") + "}})()"
+            ctx.add_init_script(audio)
+            animation = ANIM_SPY
+            if mutation == "return-disabled":
+                # Une animation supprimée doit rester détectée malgré la lecture différée du journal.
+                animation += """;(() => {
+                  const animate = Element.prototype.animate
+                  Element.prototype.animate = function (frames, options) {
+                    return animate.call(this, frames, typeof options === 'number' ? 0 : {...options, duration: 0})
+                  }
+                })()"""
+            ctx.add_init_script(animation)
             page = ctx.new_page()
             page.goto(f"{BASE}/#/analyse")
             if not ck.appears(
@@ -40,7 +74,7 @@ def suite(p):
                 ctx.close()
                 continue
             page.locator("[data-square=a3]").click()
-            page.wait_for_timeout(700)
+            ck.check(f"{label} : sons préchargés au premier geste", wait_sounds_ready(page))
             start = len(sound_log(page))
 
             def during(x, y):
@@ -128,26 +162,21 @@ def suite(p):
                 f"{label} : coup à la pose",
                 piece_on(page, "e4") == "wP" and piece_on(page, "e2") is None,
             )
-            entries = [e for e in sound_log(page)[start:] if e["name"] != "(muet)"]
-            release = page.evaluate("window.__release")
-            ck.check(
-                f"{label} : un seul bon son audible à moins de 80 ms",
-                len(entries) == 1
-                and entries[0]["name"] == "move-self"
-                and entries[0]["audible"]
-                and 0 <= entries[0]["at"] - release < 80,
-                str(entries),
-            )
+            ok, detail = immediate_sound(sound_log(page)[start:], "move-self")
+            ck.check(f"{label} : un seul bon son audible, dans le geste de pose", ok, detail)
             if not desktop:
                 start = len(sound_log(page))
 
-                def after_release():
-                    active = page.locator("[data-square=e7] [data-piece]").evaluate(
-                        '(e) => e.getAnimations({subtree: true}).some(a => a.playState === "running")'
-                    )
-                    ck.check("illégal : retour animé", active)
-
-                drag_piece(page, "e7", "e4", after_release=after_release)
+                anims = page.evaluate("window.__animations.length")
+                drag_piece(page, "e7", "e4")
+                # Journal tenu dans la page : lire l'animation en cours après coup ratait ses 120 ms
+                # sur une machine chargée (aller-retour CDP plus long que l'animation).
+                back = [a for a in page.evaluate("window.__animations")[anims:] if a["square"] == "e7"]
+                ck.check(
+                    "illégal : retour animé",
+                    len(back) == 1 and back[0]["from"].startswith("translate(") and back[0]["to"] == "none" and back[0]["duration"] > 0,
+                    str(back),
+                )
                 ck.check(
                     "illégal : retour à la source et cible intacte",
                     piece_on(page, "e7") == "bP" and piece_on(page, "e4") == "wP",
@@ -169,14 +198,8 @@ def suite(p):
                 start = len(sound_log(page))
                 tap_move(page, "e7", "e5")
                 ck.check("clic-clic : coup adverse joué", piece_on(page, "e5") == "bP")
-                entries = [e for e in sound_log(page)[start:] if e["name"] != "(muet)"]
-                ck.check(
-                    "clic-clic : son adverse unique à la pose",
-                    len(entries) == 1
-                    and entries[0]["name"] == "move-opponent"
-                    and entries[0]["audible"]
-                    and 0 <= entries[0]["at"] - page.evaluate("window.__release") < 80,
-                )
+                ok, detail = immediate_sound(sound_log(page)[start:], "move-opponent")
+                ck.check("clic-clic : son adverse unique, dans le toucher de pose", ok, detail)
                 special_moves(page)
             ctx.close()
     finally:
@@ -210,16 +233,8 @@ def special_moves(page):
             ):
                 page.get_by_role("button", name="Dame", exact=True).tap()
                 page.wait_for_timeout(200)
-        entries = [e for e in sound_log(page)[start:] if e["name"] != "(muet)"]
-        release = page.evaluate("window.__release")
-        ck.check(
-            f"{name} : bon son unique et immédiat",
-            len(entries) == 1
-            and entries[0]["name"] == name
-            and entries[0]["audible"]
-            and 0 <= entries[0]["at"] - release < 80,
-            str(entries),
-        )
+        ok, detail = immediate_sound(sound_log(page)[start:], name)
+        ck.check(f"{name} : bon son unique et immédiat", ok, detail)
 
 
 ck.run(suite)
