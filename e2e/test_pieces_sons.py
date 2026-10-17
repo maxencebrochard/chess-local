@@ -5,7 +5,7 @@ helpers émule la politique de WebKit (contexte `suspended` hors geste, `__backg
 l'arrière-plan) et journalise chaque son joué avec son audibilité. Les seeds E2E coupent les
 sons : ils sont rallumés ici.
 
-Pièces : jeu par défaut « wikimedia » sur Jouer, Analyse, Puzzles et le sélecteur de promotion,
+Pièces : jeu par défaut « atelier » sur Jouer, Analyse, Puzzles et le sélecteur de promotion,
 images réellement servies sous le sous-chemin, choix « Chessnut » dans Réglages appliqué partout
 et persistant au rechargement.
 """
@@ -468,7 +468,7 @@ def square_has_drawing(page, square):
 
 
 def migration_suite(p, browser):
-    for old, version, expected in [(None, 0, "wikimedia"), ("celtique", 0, "wikimedia"), ("chessnut", 0, "chessnut"), ("celtique", 1, "celtique")]:
+    for old, version, expected in [(None, 0, "atelier"), ("celtique", 0, "atelier"), ("chessnut", 0, "chessnut"), ("celtique", 1, "celtique"), ("wikimedia", 1, "atelier"), ("wikimedia", 2, "wikimedia")]:
         ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block")
         page = ctx.new_page()
         page.goto(f"{BASE}/#/stats")
@@ -479,7 +479,7 @@ def migration_suite(p, browser):
         page.reload()
         if ck.appears(f"[migration {old}, v{version}] réglages affichés", page, f"[data-piece-set='{expected}'][aria-checked=true]", timeout=15000):
             stored = page.evaluate("JSON.parse(localStorage.getItem('chess-local-settings'))")
-            check(f"[migration {old}, v{version}] version et tous les réglages conservés", stored == {"state": {**original, "pieceSet": expected}, "version": 1}, str(stored))
+            check(f"[migration {old}, v{version}] version et tous les réglages conservés", stored == {"state": {**original, "pieceSet": expected}, "version": 2}, str(stored))
         ctx.close()
 
 
@@ -488,14 +488,14 @@ def pieces_suite(p, browser):
     page = ctx.new_page()
     if goto_play(page) and start_game(page, "Blancs"):
         srcs = piece_srcs(page)
-        check("[pièces] Jouer : 32 pièces du jeu par défaut « wikimedia »", len(srcs) == 32 and all_from(srcs, "wikimedia"), f"({len(srcs)} : {srcs[:2]})")
+        check("[pièces] Jouer : 32 pièces du jeu par défaut « atelier »", len(srcs) == 32 and all_from(srcs, "atelier"), f"({len(srcs)} : {srcs[:2]})")
         colors = page.evaluate("""() => ['a3', 'a4'].map(s => getComputedStyle(document.querySelector(`[data-square='${s}']`)).backgroundColor)""")
         check("[thème] vert mesuré : cases foncée et claire", colors == ["rgb(106, 138, 75)", "rgb(233, 233, 202)"], str(colors))
         served = images_served(page)
         check("[pièces] images servies (200, svg, décodées) sous le sous-chemin de l'app",
               len(served) == 12 and all(s["status"] == 200 and "svg" in (s["type"] or "") and s["decoded"] and BASE in s["src"] for s in served), f"({served[:2]})")
         check("[pièces] la case e1 montre un roi dessiné", square_has_drawing(page, "e1"))
-        shot(page, "f10_jouer_wikimedia_852")
+        shot(page, "f10_jouer_atelier_852")
 
     # Réglages : choix de Chessnut, avec aperçu.
     page.goto(f"{BASE}/#/stats")
@@ -514,7 +514,7 @@ def pieces_suite(p, browser):
         page.locator("[data-piece-set='classique']").scroll_into_view_if_needed()
         page.wait_for_timeout(200)
         tiles = page.evaluate("() => [...document.querySelectorAll('[data-piece-set]')].map((t) => t.querySelectorAll('img, svg').length)")
-        check("[pièces] chaque vignette montre ses deux pièces (cavalier blanc, dame noire)", tiles == [2] * 6, f"({tiles})")
+        check("[pièces] chaque vignette montre ses deux pièces (cavalier blanc, dame noire)", tiles == [2] * 7, f"({tiles})")
         shot(page, "f10_reglages_pieces_bas_852")
 
     page.goto(f"{BASE}/#/analyse")
@@ -533,12 +533,12 @@ def pieces_suite(p, browser):
     ctx, page, ok = puzzle_page(p, browser, [PROMO], settings={})
     if ok and wait_ply_played(page, PROMO, 1):
         srcs = piece_srcs(page)
-        check("[pièces] Puzzles : pièces « wikimedia »", all_from(srcs, "wikimedia"), f"({srcs[:2]})")
+        check("[pièces] Puzzles : pièces « atelier »", all_from(srcs, "atelier"), f"({srcs[:2]})")
         tap_move(page, "e7", "d8", pause=200)
         imgs = page.evaluate("() => [...document.querySelectorAll('button[aria-label] img')].map((i) => i.getAttribute('src'))")
         promo = [s for s in imgs if "pieces/" in s]
         check("[pièces] sélecteur de promotion : 4 pièces blanches du jeu choisi",
-              len(promo) == 4 and all("pieces/wikimedia/w" in s for s in promo), f"({promo})")
+              len(promo) == 4 and all("pieces/atelier/w" in s for s in promo), f"({promo})")
         shot(page, "f10_promotion_852")
     ctx.close()
 
@@ -546,24 +546,24 @@ def pieces_suite(p, browser):
     ctx = mobile_context(p, browser, ck, settings={}, standalone=False, service_workers="block")
     page = ctx.new_page()
     if goto_play(page) and start_game(page, "Blancs"):
-        check("[pièces] 393x660 : pièces « wikimedia »", all_from(piece_srcs(page), "wikimedia"))
-        shot(page, "f10_jouer_wikimedia_660")
+        check("[pièces] 393x660 : pièces « atelier »", all_from(piece_srcs(page), "atelier"))
+        shot(page, "f10_jouer_atelier_660")
     ctx.close()
 
     # Orientation noire : les coordonnées doivent rester lisibles sous les socles.
     ctx = mobile_context(p, browser, ck, settings={}, standalone=True)
     page = ctx.new_page()
     if goto_play(page) and start_game(page, "Noirs"):
-        check("[pièces] noirs en bas : pièces Wikimedia", all_from(piece_srcs(page), "wikimedia"))
-        shot(page, "f10_jouer_wikimedia_noirs_852")
+        check("[pièces] noirs en bas : pièces Atelier", all_from(piece_srcs(page), "atelier"))
+        shot(page, "f10_jouer_atelier_noirs_852")
     ctx.close()
 
     # Desktop 1440x900 : rendu de l'échiquier.
     ctx = desktop_context(browser, ck, settings={})
     page = ctx.new_page()
     if goto_play(page) and start_game(page, "Blancs"):
-        check("[pièces] desktop : pièces « wikimedia »", all_from(piece_srcs(page), "wikimedia"))
-        shot(page, "f10_jouer_wikimedia_1440")
+        check("[pièces] desktop : pièces « atelier »", all_from(piece_srcs(page), "atelier"))
+        shot(page, "f10_jouer_atelier_1440")
     ctx.close()
 
 

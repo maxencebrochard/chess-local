@@ -69,6 +69,9 @@ export function migrateSettings(persisted: unknown, version: number): Partial<Se
   if (version < 1 && (!settings.pieceSet || settings.pieceSet === 'celtique')) {
     return { ...settings, pieceSet: DEFAULT_PIECE_SET }
   }
+  if (version < 2 && (!settings.pieceSet || settings.pieceSet === 'wikimedia')) {
+    return { ...settings, pieceSet: DEFAULT_PIECE_SET }
+  }
   return settings
 }
 
@@ -101,7 +104,7 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'chess-local-settings',
-      version: 1,
+      version: 2,
       migrate: migrateSettings,
     },
   ),

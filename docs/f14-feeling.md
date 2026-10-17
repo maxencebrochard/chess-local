@@ -1,10 +1,13 @@
 # Ressenti F14 : observations et mesures
 
-Étude du 15 octobre 2026 sur la vidéo fournie par Max, 85,923 s, 60 images/s, 1206 × 2622.
-Les extractions audio et vidéo ont été réalisées exclusivement dans un dossier temporaire extérieur au dépôt, supprimé après vérification.
-Aucun extrait de référence ni aucun asset chess.com ne fait partie de ce dépôt.
+Étude initiale du 15 octobre 2026, complétée le 17 octobre avec la référence fournie par Max.
+Le fichier actuel mesure 85,920 s, 60 images/s, 1206 × 1234 (ffprobe) ; sa piste AAC mono à 44 100 Hz commence à 26,667 ms.
+Les extractions intermédiaires audio et vidéo restent dans /private/tmp/claude-501/chess-video/, hors dépôt.
+Max a précisé le 17 octobre que la vidéo ne vient pas de chess.com et a autorisé la reprise des sons et du design.
+Les MP3 finaux et les SVG redessinés Atelier sont distribués avec cette provenance dans leurs LICENSES.md.
+Aucun asset officiel chess.com n’est ajouté.
 
-## Méthode et limites
+## Méthode et limites de l’étude initiale
 
 FFmpeg a décodé la piste mono à 44 100 Hz ; son début est décalé de 27,642 ms dans le conteneur, décalage pris en compte pour le rapprochement avec les images.
 48 événements isolés ont été extraits séparément, avec une marge de silence avant et après, puis classés en croisant les positions et les gestes.
@@ -25,7 +28,7 @@ RMS et crêtes sont en dBFS numériques, pas en dB acoustiques : le volume du t�
 Les références ci-dessous sont les médianes par catégorie.
 Le retour en arrière à environ 39,33 s sonne dans la référence ; la navigation arrière de ChessLocal reste volontairement muette conformément au contrat F10 et à ses suites.
 
-## Comparaison mesurée
+## Comparaison historique de la synthèse (15 octobre)
 
 Les fichiers « après » sont exclusivement issus de la synthèse originale de `scripts/synthesize-moves.py`, sans entrée audio externe.
 Les notifications de début, fin, temps bas, réussite et échec d'exercice restent celles de Kenney.
@@ -162,7 +165,7 @@ Les numéros correspondent à l'ordre temporel des 48 sons extraits, avec le dé
 | 47 | 81.878 | Coup noir / retour |
 | 48 | 83.108 | Promotion |
 
-## Validation finale
+## Validation historique (15 octobre)
 
 `npm ci` a été exécuté avec Node 22.21.1 en tête du PATH.
 `npm run check` est vert (oxlint et TypeScript).
@@ -181,3 +184,88 @@ Commande : `npm run test:e2e -- --suite feeling --suite touch --suite pieces_son
 Les captures ChessLocal pendant le geste sont `e2e/shots/f14_drag_tactile.png` et `e2e/shots/f14_drag_souris.png` (gitignorées).
 Une seconde génération des sons produit exactement les mêmes empreintes SHA-256 ; les notifications Kenney sont inchangées.
 Les six familles de mutations ont chacune donné un code de sortie non nul, puis ont été retirées.
+
+## Reprise autorisée du 17 octobre 2026
+
+Les comparaisons historiques ci-dessus décrivent la synthèse remplacée, pas les nouveaux MP3.
+`scripts/extract-video-sounds.py` découpe les événements à 1,32 s (blanc), 2,29 s (noir), 8,13 s (prise), 20,53 s (roque), 53,56 s (échec), 83,07 s (promotion) et 17,68 s (refus).
+Les fenêtres incluent le début de l’impact ; le silence est rogné à 0,2 % de la crête, la composante continue retirée, et deux fondus de bord évitent les clics artificiels.
+La crête PCM est normalisée à -1 dBFS, puis encodée en MP3 mono 128 kbit/s.
+Les notifications Kenney sont inchangées (comparaison octet par octet avec HEAD).
+Le début actif des MP3 est compris entre 0,05 et 4,83 ms ; la queue de fichier conserve la décroissance faible, distincte de la durée active.
+
+Mesures des MP3 distribués avec `python3 scripts/measure-sounds.py public/sounds/*.mp3` :
+
+| Son | Durée active ms | Attaque ms | T50 ms | Décroissance ms | RMS dBFS | Crête dBFS | Centroïde Hz |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Coup blanc | 41,9 | 1,0 | 2,1 | 9,9 | -16,0 | -1,5 | 826 |
+| Coup noir | 43,9 | 2,0 | 3,1 | 11,5 | -16,6 | -1,5 | 917 |
+| Prise | 104,8 | 10,0 | 10,6 | 24,4 | -16,1 | -1,3 | 1862 |
+| Roque | 168,6 | 94,8 | 94,8 | 102,6 | -20,4 | -1,4 | 1313 |
+| Échec | 47,9 | 14,0 | 14,6 | 6,6 | -15,7 | -1,3 | 2242 |
+| Promotion | 102,8 | 64,9 | 65,0 | 56,7 | -18,9 | -1,4 | 989 |
+| Refus | 186,6 | 34,9 | 34,6 | 54,6 | -17,9 | -1,4 | 450 |
+
+Ces impacts ne sont pas périodiques : le centroïde décrit leur brillance, pas une hauteur musicale fondamentale.
+Le roque conserve ses deux contacts espacés d’environ 95 ms.
+
+### Dessin et centrage
+
+L’image de repos comporte des cases de 150,75 px.
+Les silhouettes ont un socle large (environ 56 % de case), un contour proche de 2 % de case, des blancs presque purs et des noirs anthracite avec ombre latérale.
+Atelier reprend ces proportions et les détails distinctifs : fente ouverte du fou, couronne à quatre pointes, croix du roi et deux ouvertures, profil courbe du cavalier.
+`scripts/draw-atelier.py` conserve les tracés vectoriels sur une grille 100 × 100, sans bitmap ni source officielle chess.com.
+Le jeu reste sélectionnable avec les six anciens jeux.
+La migration persist v2 remplace Wikimedia des versions antérieures, et Celtique seulement dans les stockages v0 ; tous les autres choix et données sont préservés.
+
+La reproduction initiale iPhone standalone montre des centres Wikimedia décalés de 4,3 à 8,4 % de case vers le haut alors que le transform de `.board-piece` est nul.
+La cause est la marge interne des SVG, pas `--piece-lift`.
+`PieceIcon` compense le centre de la boîte alpha supérieure à 127, mesurée à 512 px par `scripts/center-pieces.py`.
+Le conteneur de glissé reste inchangé ; les douze pièces de chacun des sept jeux sont contrôlées.
+L’oracle des SVG intégrés retire le transform CSS de sa copie avant rasterisation, sinon il compterait deux fois la correction.
+
+### Audio : preuve et limites
+
+Le diagnostic de la version déployée sans `--live` et la reproduction locale ne montrent pas de silence au premier glissé avec l’émulation des contraintes WebKit.
+Ils montrent en revanche des coups obsolètes rejoués après un chargement lent (test rouge avant correction).
+`playMoveSound` abandonne désormais un son de coup vieux de plus de 300 ms ; les notifications conservent leur comportement.
+Le déverrouillage dans le geste, les reprises après arrière-plan, le volume, BASE_URL et le service worker sont contrôlés par les suites audio et PWA existantes.
+Le silence observé sur l’appareil de Max ne peut pas être attribué avec certitude à cette cause sans essai acoustique sur cet iPhone.
+
+### Cadrage au lancement de Jouer
+
+La revue de la capture 393 × 660 a révélé un défaut distinct du centre des silhouettes : le défilement de la configuration était conservé au passage en partie.
+Le test `piece_viewport` le reproduit avant correction avec un plateau à y = -81 px, contre y = 52 px en standalone 393 × 852.
+`Play` remet le conteneur principal en haut à l’entrée dans l’état `playing`, après mise en page ; aucun défilement n’est imposé lors des coups suivants.
+
+## Validation de la reprise (17 octobre 2026)
+
+Toutes les commandes E2E sont passées par le verrou partagé à trois places, avec Node 22.21.1 et Playwright 1.56.0.
+Le build de production tourne sous `/chess-local/` ; les API chess.com utilisent la fixture, sans `--live`.
+
+| Suite de production | Checks réussis (dernier passage) | Code de sortie |
+|---|---:|---:|
+| piece_centers | 330 | 0 |
+| piece_viewport | 6 | 0 |
+| feeling | 30 | 0 |
+| pieces_sons | 90 | 0 |
+| audio_settings | 16 | 0 |
+| touch | 63 | 0 |
+| premove | 78 | 0 |
+| edge_navigation | 193 | 0 |
+| all_buttons | 96 | 0 |
+| upgrade | 989 | 0 |
+| backup | 228 | 0 |
+| pwa | 53 | 0 |
+| play_lifecycle | 84 | 0 |
+
+`feeling` passe aussi en développement : 30 checks, code 0.
+`npm run check` et `git diff --check` passent.
+Le premier lot de production comptait 267 checks de centrage ; l’extension aux erreurs sauvegardées et à la révision porte cette suite à 330.
+La dernière correction de cadrage est revérifiée avec `piece_viewport`, `pieces_sons`, `play_lifecycle` et `all_buttons` (276 checks, code 0).
+Les cinq notifications sont identiques octet par octet à HEAD ; une régénération des 12 SVG et des sept impacts laisse les 24 empreintes SVG/MP3 identiques.
+
+Captures relues dans `e2e/shots/` : `atelier_planche.png`, `centres_atelier.png`, `centres_atelier_attaque_att-05ejA.png`, `centres_atelier_apprendre_roque_grec-schema.png`, `f10_jouer_atelier_660.png`, `f10_jouer_atelier_852.png`, `f10_jouer_atelier_1440.png`, `f10_reglages_pieces_bas_852.png`, `f14_drag_tactile.png` et `plateau_depart_660.png`.
+Comparaison visuelle avec `rest.png`, `contact.png`, `castle.png`, `check.png` et la capture iPhone de Max, conservées hors dépôt.
+Les silhouettes restent lisibles sur cases claires et foncées, les pièces au repos sont centrées, et le plateau au lancement reste entier dans les deux hauteurs mobiles.
+Le contrôle acoustique et tactile sur un iPhone physique reste à effectuer ; les tests navigateur ne permettent pas de conclure sur le commutateur silencieux ou l’état matériel du téléphone de Max.
