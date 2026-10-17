@@ -83,7 +83,8 @@ export async function pickNextDomain(): Promise<LearnDomain> {
   // révision espacée (domaine 'revision'), les tentatives des entraîneurs d'attaque et de défense
   // (domaines 'attack' et 'defense'), les attaques manquées et les défenses ratées (domaines
   // 'missed-attack' et 'missed-defense'), les moments critiques (domaine 'critical-moment')
-    // ne doivent pas chasser les domaines d'Apprendre de la
+  // et celles de « Calcul et visualisation » (domaine 'visualisation') ne doivent pas chasser
+  // les domaines d'Apprendre de la
   // fenêtre. Les fautes revues par la révision s'écrivent dans 'mistakes' et comptent, à dessein,
   // comme du travail sur les erreurs.
   const learnDomains = new Set<string>(Object.keys(DOMAIN_META))

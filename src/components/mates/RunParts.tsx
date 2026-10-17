@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { Cta } from '../Cta'
 import type { RunStats } from '../../lib/mates'
 
-export function RunHeader({ title, score, onQuit }: { title: string; score: number; onQuit: () => void }) {
+// `errors` : marqueurs d'erreurs (sur trois) avant le score, pour les séries qui n'ont pas de bandeau chrono.
+export function RunHeader({ title, score, onQuit, errors }: { title: string; score: number; onQuit: () => void; errors?: number }) {
   return (
     <header className="flex items-center gap-2 px-2 py-1">
       <button
@@ -14,6 +15,13 @@ export function RunHeader({ title, score, onQuit }: { title: string; score: numb
         ✕
       </button>
       <h1 className="min-w-0 flex-1 truncate text-center text-base font-black">{title}</h1>
+      {errors !== undefined && (
+        <div data-errors={errors} aria-label={`${errors} erreur${errors > 1 ? 's' : ''} sur 3`} className="flex items-center gap-0.5 text-lg font-black">
+          {[0, 1, 2].map((i) => (
+            <span key={i} aria-hidden className={i < errors ? 'text-red-500' : 'text-neutral-600'}>✗</span>
+          ))}
+        </div>
+      )}
       <div data-score={score} className="flex h-10 min-w-10 items-center justify-center rounded-full bg-accent/20 px-3 text-lg font-black text-accent">
         {score}
       </div>
@@ -63,9 +71,11 @@ export function Sparkline({ values }: { values: number[] }) {
   )
 }
 
-export function RunSummary({ score, stats, newRecord, reason, children, onReplay, onMenu }: {
+export function RunSummary({ score, stats, newRecord, reason, children, onReplay, onMenu, units = ['mat réussi', 'mats réussis'] }: {
   score: number
-  stats: RunStats | null
+  stats: Pick<RunStats, 'best' | 'last'> | null
+  // Libellé du score, singulier puis pluriel (autres séries que les mats).
+  units?: [string, string]
   newRecord: boolean
   reason?: string | null
   children?: ReactNode
@@ -78,7 +88,7 @@ export function RunSummary({ score, stats, newRecord, reason, children, onReplay
       <p className="text-xl font-black">{newRecord ? '🏆 Nouveau record !' : 'Série terminée'}</p>
       <p className="text-5xl font-black text-accent">{score}</p>
       <p className="text-sm text-neutral-400">
-        {score > 1 ? 'mats réussis' : 'mat réussi'} · record {Math.max(stats?.best ?? 0, score)}
+        {score > 1 ? units[1] : units[0]} · record {Math.max(stats?.best ?? 0, score)}
       </p>
       {stats && stats.last.length > 1 && <Sparkline values={stats.last} />}
       {children}

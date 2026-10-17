@@ -24,6 +24,7 @@ import { ROQUE } from './lib/attackCourse'
 import Revision from './pages/Revision'
 import Attack from './pages/Attack'
 import Defense from './pages/Defense'
+import Visualisation from './pages/Visualisation'
 import Insights from './pages/Insights'
 
 // `match` : routes rattachées à l'onglet (allumé, sans être la page du lien), sous-chemins compris.
@@ -31,7 +32,7 @@ const NAV = [
   { to: '/', icon: '♞', label: 'Accueil', match: [] as string[] },
   { to: '/jouer', icon: '♟', label: 'Jouer', match: [] as string[] },
   { to: '/puzzles', icon: '🧩', label: 'Puzzles', match: ['/rush'] },
-  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/repertoire', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque', '/defenses-ratees', '/defense'] },
+  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/repertoire', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque', '/defenses-ratees', '/defense', '/visualisation'] },
   { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import', '/analyse/jouer', '/moment-critique'] },
   { to: '/archive', icon: '📚', label: 'Archive', match: [] as string[] },
   { to: '/stats', icon: '📊', label: 'Stats', match: ['/insights'] },
@@ -155,6 +156,7 @@ function Shell() {
             <Route path="/attaque/:id" element={<Attack />} />
             <Route path="/defense" element={<Defense />} />
             <Route path="/defense/:id" element={<Defense />} />
+            <Route path="/visualisation" element={<Visualisation />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/insights" element={<Insights />} />

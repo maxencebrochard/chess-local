@@ -277,14 +277,18 @@ export class RunRecorder {
   private id: number | null = null
   private chain: Promise<unknown> = Promise.resolve()
   private readonly itemId: string
+  private readonly domain: string
 
-  constructor(itemId: string) {
+  // `domain` : les séries de l'entraîneur de visualisation (domaine `visualisation`) réutilisent ce
+  // mécanisme.
+  constructor(itemId: string, domain: string = MATS_DOMAIN) {
     this.itemId = itemId
+    this.domain = domain
   }
 
   save(score: number): Promise<unknown> {
     this.chain = this.chain.then(async () => {
-      const row = { date: Date.now(), domain: MATS_DOMAIN, itemId: this.itemId, success: (score > 0 ? 1 : 0) as 0 | 1, ratingAfter: null, score }
+      const row = { date: Date.now(), domain: this.domain, itemId: this.itemId, success: (score > 0 ? 1 : 0) as 0 | 1, ratingAfter: null, score }
       if (this.id === null) this.id = (await db.learnSessions.add(row)) as number
       else await db.learnSessions.update(this.id, { score, success: row.success })
     }).catch(() => {})
@@ -296,7 +300,7 @@ export class RunRecorder {
   async finish(score: number, keepEmpty: boolean): Promise<boolean> {
     if (score === 0 && !keepEmpty && this.id === null) return false
     await this.save(score)
-    const rows = await db.learnSessions.where('domain').equals(MATS_DOMAIN).toArray()
+    const rows = await db.learnSessions.where('domain').equals(this.domain).toArray()
     const previous = rows.filter((r) => r.itemId === this.itemId && r.id !== this.id).map((r) => r.score ?? 0)
     return score > Math.max(0, ...previous)
   }
