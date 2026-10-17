@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 
+from course_helpers import advance, continue_btn, finish_line, observe_dom, open_lesson, wait_piece, wait_ready
 from helpers import BASE, Checker, desktop_context, mobile_context, overflow_x, piece_on, shot, tap_move, tap_square
 
 ck = Checker("endgame_course")
@@ -51,30 +52,6 @@ def feedback(page):
     return page.locator("[data-testid='line-feedback']").inner_text()
 
 
-def continue_btn(page):
-    return page.get_by_role("button", name="Continuer", exact=True)
-
-
-def solution_btn(page):
-    return page.get_by_role("button", name="💡 Solution")
-
-
-def finish_line(page, max_moves=40):
-    """Joue la ligne courante par « Solution » jusqu'au bout. Retourne le nombre de clics."""
-    clicks = 0
-    while not continue_btn(page).is_enabled() and clicks < max_moves:
-        btn = solution_btn(page)
-        btn.wait_for(state="visible", timeout=5000)
-        page.wait_for_function("() => [...document.querySelectorAll('button')].some((b) => b.textContent.includes('Solution') && !b.disabled) || [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Continuer' && !b.disabled)", timeout=5000)
-        if continue_btn(page).is_enabled():
-            break
-        btn.click()
-        clicks += 1
-        page.wait_for_timeout(120)
-    page.wait_for_timeout(900)
-    return clicks
-
-
 def in_viewport(page, locator):
     box = locator.bounding_box()
     vp = page.viewport_size
@@ -114,7 +91,7 @@ def suite(p):
     check("[leçon] flèches du diagramme", page.locator("[id^='chessboard-'] marker[id*='arrowhead']").count() == 2)
     check("[leçon] Précédent grisé à la 1re étape", not page.get_by_role("button", name="← Précédent").is_enabled())
     shot(page, "course_diagram")
-    continue_btn(page).click()
+    advance(page)
     ck.appears("[ligne] étape 2/3", page, "[data-testid='lesson-step']:has-text('2/3')")
     check("[ligne] URL porte l'étape", "etape=2" in page.url, f"({page.url})")
     check("[ligne] Continuer grisé tant que la ligne n'est pas jouée", not continue_btn(page).is_enabled())
@@ -122,15 +99,18 @@ def suite(p):
     tap_move(page, "a1", "a2")
     page.wait_for_timeout(150)
     check("[ligne] coup gagnant non attendu : « gagne aussi »", "gagne aussi" in feedback(page), f"({feedback(page)})")
-    page.wait_for_timeout(900)
+    wait_ready(page)
+    wait_piece(page, "a1", "wR")
+    wait_piece(page, "a2", None)
     check("[ligne] coup refusé repris", piece_on(page, "a1") == "wR" and piece_on(page, "a2") is None)
     check("[ligne] pas d'indice après un seul essai", page.locator("[id^='chessboard-'] marker[id*='arrowhead']").count() == 0)
     tap_move(page, "e1", "d2")
-    page.wait_for_timeout(1000)
+    wait_ready(page)
     check("[ligne] indice au 2e essai (flèche)", page.locator("[id^='chessboard-'] marker[id*='arrowhead']").count() == 1)
     tap_move(page, "a1", "a4")
     check("[ligne] bon coup accepté et commenté", "4e rangée" in feedback(page), f"({feedback(page)})")
-    page.wait_for_timeout(1100)
+    wait_ready(page)
+    wait_piece(page, "d5", "bK")
     check("[ligne] réponse adverse jouée (Rd5)", piece_on(page, "d5") == "bK")
     check("[ligne] réponse annoncée dans la bulle", "répondent" in page.locator(".bg-white").first.inner_text())
     shot(page, "course_line")
@@ -141,12 +121,16 @@ def suite(p):
     check("[refresh] ligne repartie de la position initiale", piece_on(page, "a1") == "wR" and piece_on(page, "e5") == "bK")
 
     # Précédent pendant la pause de la réponse adverse : aucune réponse jouée hors de son étape.
+    page.clock.install()
+    page.clock.pause_at(page.evaluate("Date.now() + 100"))
     tap_move(page, "a1", "a4", pause=120)
+    check("[pause] réponse encore en attente", not page.get_by_role("button", name="💡 Solution").is_enabled() and piece_on(page, "e5") == "bK")
     page.get_by_role("button", name="← Précédent").click()
-    page.wait_for_timeout(1100)
+    ck.appears("[pause] diagramme rendu", page, "[data-testid='lesson-step']:text-is('1/3')")
     check("[pause] Précédent ramène au diagramme", step_label(page) == "1/3")
-    continue_btn(page).click()
-    page.wait_for_timeout(400)
+    advance(page)
+    page.clock.run_for(1100)  # Dépasser la date du callback annulé dans la nouvelle étape.
+    page.clock.resume()
     check("[pause] la ligne repart de zéro", piece_on(page, "a1") == "wR" and piece_on(page, "a4") is None and piece_on(page, "e5") == "bK")
 
     clicks = finish_line(page)
@@ -154,17 +138,18 @@ def suite(p):
     check("[ligne] message de fin", "escalier" in feedback(page).lower(), f"({feedback(page)})")
     check("[ligne] Rejouer proposé", page.get_by_role("button", name="↺ Rejouer").is_visible())
     shot(page, "course_line_done")
-    continue_btn(page).click()
+    advance(page)
     ck.appears("[bilan] À retenir", page, "text=À retenir")
     check("[bilan] S'entraîner proposé", page.get_by_role("button", name="S'entraîner : Mat des deux tours").is_visible())
     check("[bilan] Leçon suivante proposée", page.get_by_role("button", name="Leçon suivante").is_visible())
     shot(page, "course_summary")
-    page.wait_for_timeout(300)
+    page.wait_for_function("async () => (await (" + COURSE_ROWS + ")()).length === 1", timeout=5000)
     check("[progrès] une ligne learnSessions course", page.evaluate(COURSE_ROWS) == ["finales:mat-deux-tours"], f"({page.evaluate(COURSE_ROWS)})")
     # Revoir le bilan ne compte pas deux fois.
     page.goto(f"{BASE}/#/apprendre/finales/mat-deux-tours?etape=3")
     ck.appears("[progrès] bilan rouvert", page, "text=À retenir")
-    page.wait_for_timeout(400)
+    page.wait_for_function("async () => (await (" + COURSE_ROWS + ")()).length === 1", timeout=5000)
+    page.wait_for_timeout(400)  # Conserver la fenêtre de détection d’une écriture en double.
     check("[progrès] idempotent", len(page.evaluate(COURSE_ROWS)) == 1, f"({page.evaluate(COURSE_ROWS)})")
 
     # ---------- S'entraîner : exercice lié, puis retour au cours ----------
@@ -182,10 +167,10 @@ def suite(p):
     for exit_label in ("Retour à la séance", "Sommaire", "Leçon suivante"):
         page.locator("button", has_text="Voir la leçon").click()
         ck.appears(f"[séance → {exit_label}] leçon ouverte", page, "[data-testid='lesson-step']:has-text('1/3')")
-        continue_btn(page).click()
+        advance(page)
         ck.appears(f"[séance → {exit_label}] ligne", page, "[data-testid='lesson-step']:has-text('2/3')")
         finish_line(page)
-        continue_btn(page).click()
+        advance(page)
         ck.appears(f"[séance → {exit_label}] bilan", page, "text=À retenir")
         check(f"[séance → {exit_label}] pas de S'entraîner au bilan", page.locator("button", has_text="S'entraîner").count() == 0)
         page.get_by_role("button", name=exit_label).click()
@@ -216,16 +201,21 @@ def suite(p):
     # ---------- Carré du pion : coup qui lâche le gain, promotion avec la mauvaise pièce ----------
     page.goto(f"{BASE}/#/apprendre/finales/carre-du-pion?etape=3")
     ck.appears("[carré] ligne ouverte (Noirs en bas)", page, "[data-testid='lesson-step']:has-text('3/4')")
-    tap_move(page, "b8", "c7", pause=120)
-    check("[carré] coup perdant : gain lâché", "échapper le gain" in feedback(page), f"({feedback(page)})")
-    check("[carré] case du coup refusé en rouge", page.evaluate("() => [...document.querySelectorAll(\"[data-square='c7'] div\")].some((e) => getComputedStyle(e).backgroundColor.includes('235, 97, 80'))"))
-    page.wait_for_timeout(900)
+    red = "() => [...document.querySelectorAll(\"[data-square='c7'] div\")].some((e) => getComputedStyle(e).backgroundColor.includes('235, 97, 80'))"
+    with observe_dom(page, red) as red_seen:
+        tap_move(page, "b8", "c7", pause=120)
+        check("[carré] coup perdant : gain lâché", "échapper le gain" in feedback(page), f"({feedback(page)})")
+        check("[carré] case du coup refusé en rouge", red_seen())
+    wait_ready(page)
+    wait_piece(page, "b8", "bK")
     check("[carré] roi reposé en b8", piece_on(page, "b8") == "bK")
     tap_move(page, "f4", "f3")
     check("[carré] seul coup gagnant salué", "Seul coup" in feedback(page), f"({feedback(page)})")
-    page.wait_for_timeout(1000)
+    wait_ready(page)
+    wait_piece(page, "f3", "bP")
     tap_move(page, "f3", "f2")
-    page.wait_for_timeout(1000)
+    wait_ready(page)
+    wait_piece(page, "f2", "bP")
     tap_square(page, "f2")
     page.wait_for_timeout(200)
     tap_square(page, "f1")
@@ -233,13 +223,15 @@ def suite(p):
     page.get_by_role("button", name="Tour", exact=True).click()  # sous-promotion en tour : gagne aussi
     page.wait_for_timeout(150)
     check("[carré] sous-promotion en tour : « gagne aussi »", "gagne aussi" in feedback(page), f"({feedback(page)})")
-    page.wait_for_timeout(900)
+    wait_ready(page)
+    wait_piece(page, "f2", "bP")
     tap_square(page, "f2")
     page.wait_for_timeout(200)
     tap_square(page, "f1")
     page.wait_for_timeout(300)
     page.get_by_role("button", name="Dame", exact=True).click()
-    page.wait_for_timeout(900)
+    wait_ready(page)
+    wait_piece(page, "f1", "bQ")
     check("[carré] promotion en dame : ligne terminée", continue_btn(page).is_enabled() and piece_on(page, "f1") == "bQ")
     shot(page, "course_square")
 
@@ -249,16 +241,14 @@ def suite(p):
 
     # ---------- Toutes les leçons se jouent jusqu'au bilan ----------
     for lid in LESSONS:
-        page.goto(f"{BASE}/#/apprendre/finales/{lid}")
-        page.wait_for_selector("[data-testid='lesson-step']", timeout=10000)
+        open_lesson(page, f"{BASE}/#/apprendre/finales/{lid}", COURSE["lessons"][lid])
         steps = COURSE["lessons"][lid]["steps"]
         ok = True
         for i, s in enumerate(steps):
             if s["kind"] == "line":
                 finish_line(page)
                 ok = ok and continue_btn(page).is_enabled()
-            continue_btn(page).click()
-            page.wait_for_timeout(150)
+            advance(page)
         ok = ok and page.locator("text=À retenir").is_visible()
         check(f"[toutes] {lid} jouée jusqu'au bilan", ok)
     page.goto(f"{BASE}/#/apprendre/finales")

@@ -297,6 +297,11 @@ class Checker:
 
     def _watch_page(self, page):
         page.on("pageerror", self._on_pageerror)
+        # Charge reproductible, opt-in : ralentir le rendu sans rallonger les assertions.
+        rate = float(os.environ.get("E2E_CPU_RATE", "1"))
+        if rate != 1:
+            page.context.new_cdp_session(page).send("Emulation.setCPUThrottlingRate", {"rate": rate})
+            print(f"[charge] CPU ralenti x{rate:g}", flush=True)
 
     def _on_pageerror(self, e):
         msg = str(e)
