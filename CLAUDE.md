@@ -63,6 +63,10 @@ Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` :
 Les captures vont dans `e2e/shots/` (gitignoré).
 La suite `ux_audit` photographie les familles de routes et leurs états principaux aux trois formats de référence, avec inventaire DOM dans `e2e/shots/ux-audit/{prod,dev}/`.
 Le diagnostic et le plan de refonte différée sont dans [docs/ux-refonte.md](docs/ux-refonte.md), sans changement des routes ni des domaines `learnSessions` dans cette phase.
+`E2E_CPU_RATE=40 npm run test:e2e -- --suite cours_roque --suite endgame_course` reproduit un CPU ralenti via CDP (facteur 1 par défaut), sans changer les délais des assertions.
+Les gestes partagés de ces suites vivent dans `e2e/course_helpers.py` : attendre le titre et le numéro d’étape après navigation, puis le changement de tour après Solution.
+Un clic terminé ne garantit pas que React a déjà remplacé le diagramme précédent ; ne pas synchroniser ces transitions avec une pause fixe.
+
 
 Autres scripts :
 

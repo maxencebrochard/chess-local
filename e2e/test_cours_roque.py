@@ -15,6 +15,7 @@ import tempfile
 
 import chess
 
+from course_helpers import advance, continue_btn, finish_line, observe_dom, open_lesson, play_solution, wait_piece, wait_ready
 from helpers import BASE, Checker, desktop_context, drag_piece, mobile_context, overflow_x, piece_on, shot, tap_move
 
 ck = Checker("cours_roque")
@@ -47,35 +48,6 @@ def feedback(page):
 
 def bubble(page):
     return page.locator(".bg-white").first.inner_text()
-
-
-def continue_btn(page):
-    return page.get_by_role("button", name="Continuer", exact=True)
-
-
-def solution_btn(page):
-    return page.get_by_role("button", name="💡 Solution")
-
-
-def wait_ready(page):
-    page.wait_for_function(
-        "() => [...document.querySelectorAll('button')].some((b) => (b.textContent.includes('Solution') || b.textContent.trim() === 'Continuer') && !b.disabled)",
-        timeout=5000,
-    )
-
-
-def finish_line(page, max_moves=40):
-    """Joue la ligne courante par « Solution » jusqu'au bout. Retourne le nombre de clics."""
-    clicks = 0
-    while not continue_btn(page).is_enabled() and clicks < max_moves:
-        wait_ready(page)
-        if continue_btn(page).is_enabled():
-            break
-        solution_btn(page).click()
-        clicks += 1
-        page.wait_for_timeout(120)
-    page.wait_for_timeout(900)
-    return clicks
 
 
 def in_viewport(page, locator):
@@ -240,31 +212,37 @@ def suite(p):
     shot(page, "roque_grec_diagram")
     li, line = lines_of("grec-schema")[0]
     for _ in range(li):
-        continue_btn(page).click()
-        page.wait_for_timeout(200)
+        advance(page)
     ck.appears("[grec] ligne ouverte", page, f"[data-testid='lesson-step']:has-text('{li + 1}/{total}')")
     check("[grec] Continuer grisé tant que la ligne n'est pas jouée", not continue_btn(page).is_enabled())
     _, fen0, m0, uci0 = student_moves(line)[0]
     wrong = bad_move(fen0, m0)
-    tap_move(page, wrong[:2], wrong[2:4], pause=120)
-    fb = feedback(page)
-    check("[grec] mauvais coup : refus prudent (Stockfish, avantage décisif)", "Selon Stockfish" in fb and "avantage décisif" in fb, f"({fb})")
-    check("[grec] indice du coup au premier échec", bool(m0.get("hint")) and "Indice" in fb and m0["hint"][:20] in fb, f"({fb})")
-    check("[grec] case du coup refusé en rouge", page.evaluate(f"() => [...document.querySelectorAll(\"[data-square='{wrong[2:4]}'] div\")].some((e) => getComputedStyle(e).backgroundColor.includes('235, 97, 80'))"))
-    page.wait_for_timeout(900)
+    wrong_piece = piece_on(page, wrong[:2])
+    red = f"() => [...document.querySelectorAll(\"[data-square='{wrong[2:4]}'] div\")].some((e) => getComputedStyle(e).backgroundColor.includes('235, 97, 80'))"
+    with observe_dom(page, red) as red_seen:
+        tap_move(page, wrong[:2], wrong[2:4], pause=120)
+        fb = feedback(page)
+        check("[grec] mauvais coup : refus prudent (Stockfish, avantage décisif)", "Selon Stockfish" in fb and "avantage décisif" in fb, f"({fb})")
+        check("[grec] indice du coup au premier échec", bool(m0.get("hint")) and "Indice" in fb and m0["hint"][:20] in fb, f"({fb})")
+        check("[grec] case du coup refusé en rouge", red_seen())
+    wait_ready(page)
+    wait_piece(page, wrong[:2], wrong_piece)
     check("[grec] coup refusé repris", piece_on(page, wrong[:2]) is not None)
     check("[grec] pas de flèche d'aide après un seul essai", page.locator(ARROWHEADS).count() == 0)
     tap_move(page, wrong[:2], wrong[2:4], pause=120)
-    page.wait_for_timeout(1000)
+    wait_ready(page)
     check("[grec] flèche d'aide au 2e essai", page.locator(ARROWHEADS).count() == 1)
     piece = piece_on(page, uci0[:2])
-    tap_move(page, uci0[:2], uci0[2:4])
-    check("[grec] bon coup accepté et commenté", (m0.get("text") or "Bien joué")[:25] in feedback(page), f"({feedback(page)})")
-    check("[grec] pièce arrivée", piece_on(page, uci0[2:4]) == piece, f"({piece_on(page, uci0[2:4])})")
-    page.wait_for_timeout(1100)
+    arrival = f"() => document.querySelector(\"[data-square='{uci0[2:4]}'] [data-piece]\")?.getAttribute('data-piece') === '{piece}'"
+    with observe_dom(page, arrival) as arrived:
+        tap_move(page, uci0[:2], uci0[2:4])
+        check("[grec] bon coup accepté et commenté", (m0.get("text") or "Bien joué")[:25] in feedback(page), f"({feedback(page)})")
+        check("[grec] pièce arrivée", arrived(), f"({piece})")
+    wait_ready(page)
     reply = chess.Board(fen0)
     reply.push_uci(uci0)
     rmv = reply.parse_san(line["moves"][1]["san"])
+    wait_piece(page, rmv.uci()[:2], None)
     check("[grec] réponse adverse jouée", piece_on(page, rmv.uci()[2:4]) is not None and piece_on(page, rmv.uci()[:2]) is None)
     check("[grec] réponse annoncée dans la bulle", "répondent" in bubble(page))
     shot(page, "roque_grec_line")
@@ -272,24 +250,23 @@ def suite(p):
     check("[grec] ligne jouée jusqu'au bout par Solution", continue_btn(page).is_enabled(), f"({clicks} clics)")
     check("[grec] message de fin", line["end"][:30] in feedback(page), f"({feedback(page)})")
     shot(page, "roque_grec_line_done")
-    continue_btn(page).click()
-    page.wait_for_timeout(200)
+    advance(page)
     for s in lesson["steps"][li + 1:]:
         if s["kind"] == "line":
             finish_line(page)
             check(f"[grec] ligne « {s['text'][:30]} » jouée jusqu'au bout", continue_btn(page).is_enabled())
-        continue_btn(page).click()
-        page.wait_for_timeout(200)
+        advance(page)
     ck.appears("[bilan] À retenir", page, "text=À retenir")
     check("[bilan] points clés affichés", all(k[:30] in page.inner_text("body") for k in lesson["keyPoints"]))
     check("[bilan] pas de S'entraîner (pas d'exercice de finale)", page.locator("button", has_text="S'entraîner").count() == 0)
     check("[bilan] Leçon suivante proposée", page.get_by_role("button", name="Leçon suivante").is_visible())
     shot(page, "roque_summary")
-    page.wait_for_timeout(300)
+    page.wait_for_function("async () => (await (" + ROWS + ")()).length === 1", timeout=5000)
     check("[progrès] une ligne learnSessions roque", page.evaluate(ROWS) == ["roque:grec-schema"], f"({page.evaluate(ROWS)})")
     page.goto(f"{BASE}/#/apprendre/roque/grec-schema?etape={total}")
     ck.appears("[progrès] bilan rouvert", page, "text=À retenir")
-    page.wait_for_timeout(400)
+    page.wait_for_function("async () => (await (" + ROWS + ")()).length === 1", timeout=5000)
+    page.wait_for_timeout(400)  # Conserver la fenêtre de détection d’une écriture en double.
     check("[progrès] idempotent", page.evaluate(ROWS) == ["roque:grec-schema"], f"({page.evaluate(ROWS)})")
 
     # ---------- « Garde aussi » : un coup de keeps autre que celui de la leçon ----------
@@ -306,12 +283,10 @@ def suite(p):
         page.goto(f"{BASE}/#/apprendre/roque/{lid}?etape={si + 1}")
         ck.appears("[garde aussi] ligne ouverte", page, f"[data-testid='lesson-step']:has-text('{si + 1}/')")
         for _ in range(i // 2):
-            wait_ready(page)
-            solution_btn(page).click()
-            page.wait_for_timeout(1000)
+            play_solution(page)
         tap_move(page, other[:2], other[2:4], pause=120)
         check("[garde aussi] message « garde aussi »", "garde aussi" in feedback(page), f"({lid} {other} : {feedback(page)})")
-        page.wait_for_timeout(900)
+        wait_ready(page)
 
     # ---------- Zone grise : un coup de `close` reçoit le message neutre ----------
     grey = None
@@ -326,12 +301,10 @@ def suite(p):
         page.goto(f"{BASE}/#/apprendre/roque/{lid}?etape={si + 1}")
         ck.appears("[zone grise] ligne ouverte", page, f"[data-testid='lesson-step']:has-text('{si + 1}/')")
         for _ in range(i // 2):
-            wait_ready(page)
-            solution_btn(page).click()
-            page.wait_for_timeout(1000)
+            play_solution(page)
         tap_move(page, other[:2], other[2:4], pause=120)
         check("[zone grise] message « moins net »", "moins net" in feedback(page), f"({lid} {other} : {feedback(page)})")
-        page.wait_for_timeout(900)
+        wait_ready(page)
 
     # ---------- Roque de l'élève par un vrai glisser (Opéra : O-O-O) et réponse faible marquée ----------
     castle = None
@@ -347,9 +320,7 @@ def suite(p):
         ck.appears("[roque] ligne ouverte", page, f"[data-testid='lesson-step']:has-text('{si + 1}/')")
         weak_seen = False
         for _ in range(i // 2):
-            wait_ready(page)
-            solution_btn(page).click()
-            page.wait_for_timeout(1000)
+            play_solution(page)
             weak_seen = weak_seen or re.search(r"répondent \S+ \?", bubble(page)) is not None
         wait_ready(page)
         drag_piece(page, uci[:2], uci[2:4])
@@ -366,15 +337,13 @@ def suite(p):
 
     # ---------- Toutes les leçons se jouent jusqu'au bilan ----------
     for lid in LESSONS:
-        page.goto(f"{BASE}/#/apprendre/roque/{lid}")
-        page.wait_for_selector("[data-testid='lesson-step']", timeout=10000)
+        open_lesson(page, f"{BASE}/#/apprendre/roque/{lid}", COURSE["lessons"][lid])
         ok = True
         for s in COURSE["lessons"][lid]["steps"]:
             if s["kind"] == "line":
                 finish_line(page)
                 ok = ok and continue_btn(page).is_enabled()
-            continue_btn(page).click()
-            page.wait_for_timeout(150)
+            advance(page)
         ok = ok and page.locator("text=À retenir").is_visible()
         check(f"[toutes] {lid} jouée jusqu'au bilan", ok)
     page.goto(f"{BASE}/#/apprendre/roque")
