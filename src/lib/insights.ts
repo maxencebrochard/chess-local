@@ -20,6 +20,7 @@ import { attacksFrom, backRankMate, captureInfo, fork, isInBadSpot, mateInOne, o
 import { openingForMoves } from './openings'
 import { openingFamilyFr } from './openingNames'
 import { familyOfLine } from './openingFamilies'
+import { DEFENSE_CLASSES, missedDefense } from './kingAttack'
 
 export type Phase = 'opening' | 'middlegame' | 'endgame'
 export const PHASES: Phase[] = ['opening', 'middlegame', 'endgame']
@@ -204,6 +205,7 @@ export interface Insights {
   errors: ErrorStat[] // dans l'ordre d'ERROR_KINDS, comptes nuls compris
   conversion: { winning: number; converted: number }
   defense: { losing: number; saved: number }
+  kingDefense: { faults: number; games: number; drop: number; examples: Example[] }
   opportunism: { chances: number; punished: number }
   ratingBands: Record<'weaker' | 'equal' | 'stronger', { n: number; score: number | null }> | null
   tilt: { n: number; score: number; overall: number } | null
@@ -479,6 +481,8 @@ export function computeInsights(input: ReviewRow[]): Insights {
   const errors = Object.fromEntries(ERROR_KINDS.map((k): [ErrorKind, ErrorStat] => [k, { kind: k, count: 0, drop: 0, examples: [], moves: {} }])) as Record<ErrorKind, ErrorStat>
   const time = { games: 0, pressureMoves: 0, pressureBlunders: 0, normalMoves: 0, normalBlunders: 0, pressureDrop: 0, examples: [] as Example[] }
   const secs: Record<Phase, number[]> = { opening: [], middlegame: [], endgame: [] }
+  const kingDefense: Insights['kingDefense'] = { faults: 0, games: 0, drop: 0, examples: [] }
+  const attackedGames = new Set<string>()
   let winning = 0
   let converted = 0
   let losing = 0
@@ -534,6 +538,15 @@ export function computeInsights(input: ReviewRow[]): Insights {
             if (m.class === 'blunder') time.normalBlunders++
           }
         }
+      }
+
+      // Même critère que « Mes défenses ratées », sur les seuls coups du joueur.
+      const defense = DEFENSE_CLASSES.has(m.class) ? missedDefense(fenBefore, m.bestMoveUci) : null
+      if (defense) {
+        kingDefense.faults++
+        kingDefense.drop += dropOf(m)
+        attackedGames.add(row.key)
+        kingDefense.examples.push(example(i, fenBefore, defense.bestSan))
       }
 
       if (!FAULT_CLASSES.includes(m.class)) continue
@@ -633,10 +646,14 @@ export function computeInsights(input: ReviewRow[]): Insights {
   const afterLoss = games.filter((_, j) => j > 0 && games[j - 1].row.result === 'loss').map((g) => g.row.result)
   const tilt = afterLoss.length >= 3 ? { n: afterLoss.length, score: scorePct(afterLoss), overall } : null
 
+  kingDefense.games = attackedGames.size
+  kingDefense.examples.sort((a, b) => b.drop - a.drop)
+  kingDefense.examples = kingDefense.examples.slice(0, 3)
+
   const base: Omit<Insights, 'findings' | 'narrative'> = {
     games: gamesBlock, accuracy, phases, openings, costlyOpenings, time: timeStat, errors: errorList,
     conversion: { winning, converted }, defense: { losing, saved }, opportunism: { chances, punished },
-    ratingBands, tilt, ownMoves, totalDrop,
+    ratingBands, tilt, ownMoves, totalDrop, kingDefense,
   }
   const findings = computeFindings(base)
   return { ...base, findings, narrative: narrate(base, findings) }
@@ -764,9 +781,25 @@ function computeFindings(b: Base): Insights['findings'] {
       weak({ id: 'mats-manques', title: 'Mats manqués', detail: `${plural(mates, 'mat manqué', 'mats manqués')} en ${n} parties${errCount(b, 'missedBackRank') ? `, dont ${plural(errCount(b, 'missedBackRank'), 'mat du couloir', 'mats du couloir')}` : ''}`, severity: share(b, errDrop(b, 'missedMate', 'missedBackRank')), plan: [{ label: backRank ? 'Mats éclair : mat du couloir' : 'Mats éclair : mat en 1', to: backRank ? '/mats?d=motif-backRankMate' : '/mats?d=mate-1' }, tactic('mateIn1', 'Séance Tactiques : mats en 1')], examples: errExamples(b, 'missedMate', 'missedBackRank') })
     }
 
+    // Au moins deux parties concernées : ne pas généraliser depuis une seule défense ratée.
+    const kd = b.kingDefense
+    if (kd.faults >= 2 && kd.games >= 2) {
+      weak({
+        id: 'roi-attaque', title: 'Tu t’effondres quand ton roi est attaqué',
+        detail: `${plural(kd.faults, 'faute', 'fautes')} sous attaque du roi dans ${kd.games} parties sur ${n} analysées · ${pct(share(b, kd.drop) * 100)} de l’avantage perdu`,
+        severity: share(b, kd.drop),
+        plan: [
+          { label: 'Entraîneur de défense', to: '/defense' },
+          { label: 'Mes défenses ratées', to: '/defenses-ratees' },
+          { label: 'Pour remplir ta liste personnelle, lance un bilan dans Analyse depuis un exemple.' },
+        ],
+        examples: kd.examples,
+      })
+    }
+
     // Attaque sur le roi.
     const atk = errCount(b, 'missedKingAttack')
-    if (atk / n >= 0.3) weak({ id: 'attaque', title: 'Attaques sur le roi manquées', detail: `${plural(atk, 'coup offensif', 'coups offensifs')} vers le roi adverse manqués en ${n} parties (${fr1(atk / n)} par partie)`, severity: share(b, errDrop(b, 'missedKingAttack')), plan: [tactic('kingsideAttack', "Séance Tactiques : attaque à l'aile roi"), { label: 'Mats éclair', to: '/mats' }], examples: errExamples(b, 'missedKingAttack') })
+    if (atk / n >= 0.3) weak({ id: 'attaque', title: 'Attaques sur le roi manquées', detail: `${plural(atk, 'coup offensif', 'coups offensifs')} vers le roi adverse manqués en ${n} parties (${fr1(atk / n)} par partie)`, severity: share(b, errDrop(b, 'missedKingAttack')), plan: [{ label: "Entraîneur d’attaque", to: '/attaque' }, { label: 'Mes attaques manquées', to: '/attaques-manquees' }, tactic('kingsideAttack', "Séance Tactiques : attaque à l'aile roi"), { label: 'La liste personnelle utilise ses propres critères d’attaque. Un bilan dans Analyse depuis un exemple y ajoute les fautes qui correspondent.' }], examples: errExamples(b, 'missedKingAttack') })
   }
 
   // Pendule.
@@ -792,7 +825,7 @@ function computeFindings(b: Base): Insights['findings'] {
   const { losing, saved } = b.defense
   if (losing >= 5) {
     const r = saved / losing
-    if (r < 0.1) weak({ id: 'defense', title: 'Défense des positions perdues', detail: `${saved} sauvée${saved > 1 ? 's' : ''} sur ${losing} positions perdantes (−3 ou pire), soit ${pct(r * 100)}`, severity: under(r, 0.1), plan: [tactic('defensiveMove', 'Séance Tactiques : coups défensifs'), { label: 'Position perdue : cherche les échecs, les pièges et la nulle plutôt que d\'abandonner en jouant vite.' }] })
+    if (r < 0.1) weak({ id: 'defense', title: 'Défense des positions perdues', detail: `${saved} sauvée${saved > 1 ? 's' : ''} sur ${losing} positions perdantes (−3 ou pire), soit ${pct(r * 100)}`, severity: under(r, 0.1), plan: [{ label: 'Entraîneur de défense', to: '/defense' }, tactic('defensiveMove', 'Séance Tactiques : coups défensifs'), { label: 'Position perdue : cherche les échecs, les pièges et la nulle plutôt que d\'abandonner en jouant vite.' }] })
     else if (r >= 0.3) strong({ id: 'defense', title: 'Défenseur coriace', detail: `${saved} positions perdantes sauvées sur ${losing}, soit ${pct(r * 100)}`, severity: over(r, 0.3) })
   }
   const { chances, punished } = b.opportunism
