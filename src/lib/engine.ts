@@ -145,7 +145,16 @@ export class Engine {
     return this.exclusive(() => this.ensureIdle())
   }
 
-  quit() {
+  // Au démontage d'un calcul ponctuel, l'option immédiate détruit le worker sans attendre
+  // la file ni envoyer de commande UCI. L'instance et ses recherches sont abandonnées.
+  quit({ immediate = false }: { immediate?: boolean } = {}) {
+    if (immediate) {
+      this.searchId++
+      this.worker.terminate()
+      this.listeners.clear()
+      this.onLines = null
+      return
+    }
     this.searchId++
     void this.exclusive(async () => {
       this.send('quit')

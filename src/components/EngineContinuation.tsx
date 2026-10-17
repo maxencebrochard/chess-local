@@ -426,7 +426,8 @@ function PlanPane({ startFen, playerColor, getEngine, onPlayFrom }: {
 // ---------- Briques ----------
 
 // Bande de coups numérotée à partir du FEN de départ (« 34... ♚d7 » quand les Noirs commencent).
-function LineStrip({ startFen, sans, current, onSelect }: {
+// Partagée avec RefutationPlayer.
+export function LineStrip({ startFen, sans, current, onSelect }: {
   startFen: string
   sans: string[]
   current: number
@@ -441,7 +442,8 @@ function LineStrip({ startFen, sans, current, onSelect }: {
     const strip = ref.current
     const el = strip?.querySelector<HTMLElement>('[data-current="true"]')
     if (!strip || !el) return
-    strip.scrollTo({ left: el.offsetLeft - strip.clientWidth / 2 + el.clientWidth / 2, behavior: 'smooth' })
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+    strip.scrollTo({ left: el.offsetLeft - strip.clientWidth / 2 + el.clientWidth / 2, behavior: reduce ? 'auto' : 'smooth' })
   }, [current, sans.length])
 
   return (

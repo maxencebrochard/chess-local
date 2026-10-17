@@ -13,6 +13,7 @@ import { MoveList } from '../components/MoveList'
 import { MoveStrip } from '../components/MoveStrip'
 import { CriticalMoments } from '../components/CriticalMoments'
 import { ReviewSummary } from '../components/ReviewSummary'
+import { RefutationPlayer } from '../components/RefutationPlayer'
 import { Toggle } from '../components/Toggle'
 import { Engine, type EngineLine } from '../lib/engine'
 import { db } from '../lib/db'
@@ -22,6 +23,7 @@ import { restorableBilan } from '../lib/criticalMoments'
 import { pgnKey } from '../lib/kingAttack'
 import { CLASS_META, figurine, reviewGame, winPct, type GameReview, type MoveClass } from '../lib/review'
 import { coachComments, coachSummary } from '../lib/coach'
+import { EXPLAINED_CLASSES } from '../lib/refutation'
 import { sounds } from '../lib/sounds'
 import { REVIEW_DEPTHS, useSettings } from '../store/settings'
 
@@ -85,6 +87,8 @@ export default function Analysis() {
   const [orientation, setOrientation] = useState<'w' | 'b'>('w')
   const [retry, setRetry] = useState<RetryState | null>(null)
   const [reviewStage, setReviewStage] = useState<'summary' | 'guided' | null>(null)
+  // « Pourquoi ? » : index du coup fautif dont la réfutation est déroulée en calque.
+  const [why, setWhy] = useState<number | null>(null)
   const [showBest, setShowBest] = useState(false)
   const [showLines, setShowLines] = useState(false)
   const [names, setNames] = useState<{ w: string; b: string }>({ w: 'Blancs', b: 'Noirs' })
@@ -225,7 +229,7 @@ export default function Analysis() {
   const reviewing = reviewProgress !== null
   const retrying = retry !== null
   const guidedNoLines = reviewStage === 'guided' && !showLines
-  const liveOn = engineOn && !reviewing && !retrying && reviewStage !== 'summary' && !guidedNoLines
+  const liveOn = engineOn && !reviewing && !retrying && reviewStage !== 'summary' && !guidedNoLines && why === null
 
   useEffect(() => {
     const onVisibility = () => setHidden(document.hidden)
@@ -650,6 +654,24 @@ export default function Analysis() {
 
   const lastMove = viewIndex >= 0 ? { from: moves[viewIndex].from, to: moves[viewIndex].to } : null
 
+  // « Pourquoi ? » : faute du joueur (les deux camps si sa couleur est inconnue, comme Mes erreurs)
+  // d'un bilan encore à jour (même coup joué à cet index).
+  const canExplain = (i: number) => {
+    const m = review?.moves[i]
+    return !!m && i < moves.length && m.uci === moves[i].lan && m.bestMoveUci !== m.uci
+      && EXPLAINED_CLASSES.includes(m.class) && (!reviewColor || colorAtIndex(i) === reviewColor)
+  }
+  const whyOverlay = why !== null && canExplain(why) && (
+    <RefutationPlayer
+      key={why}
+      fenBefore={fenBeforeMove(why)}
+      playedUci={moves[why].lan}
+      bestUci={review!.moves[why].bestMoveUci}
+      orientation={orientation}
+      onClose={() => setWhy(null)}
+    />
+  )
+
   // --- Écran résumé du bilan (style chess.com, plein écran par-dessus la nav) ---
   if (reviewStage === 'summary' && review) {
     return (
@@ -794,12 +816,13 @@ export default function Analysis() {
         />
         </div>
 
-        <div className="flex items-center gap-2 border-t border-black/40 p-3">
-          <BarAction label="Afficher" icon="♞" active={showLines} onClick={() => setShowLines(!showLines)} />
-          <BarAction label="Meilleur" icon="🔍" active={showBest} onClick={() => setShowBest(!showBest)} />
-          <BarAction label="Réessayer" icon="↺" disabled={!canRetry} onClick={() => startRetry(viewIndex)} />
+        <div className="flex items-center gap-1 border-t border-black/40 p-3">
+          <BarAction label="Afficher" icon="♞" active={showLines} tight onClick={() => setShowLines(!showLines)} />
+          <BarAction label="Meilleur" icon="🔍" active={showBest} tight onClick={() => setShowBest(!showBest)} />
+          <BarAction label="Réessayer" icon="↺" disabled={!canRetry} tight onClick={() => startRetry(viewIndex)} />
+          <BarAction label="Pourquoi" icon="💡" disabled={!canExplain(viewIndex)} tight onClick={() => { clearRetry(); setWhy(viewIndex) }} />
           <Cta
-            className="flex-1"
+            className="min-w-0 flex-1 px-2"
             onClick={() => {
               clearRetry()
               setShowBest(false)
@@ -811,6 +834,7 @@ export default function Analysis() {
           </Cta>
         </div>
       </div>
+      {whyOverlay}
       </div>
     )
   }
@@ -1016,6 +1040,14 @@ export default function Analysis() {
                   🎯 Réessayer
                 </button>
               )}
+              {canExplain(viewIndex) && (
+                <button
+                  onClick={() => setWhy(viewIndex)}
+                  className="flex-1 cursor-pointer rounded bg-surface-3 py-1 text-xs font-bold hover:bg-surface-3/70"
+                >
+                  💡 Pourquoi{'\u00a0'}?
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1160,6 +1192,7 @@ export default function Analysis() {
           </div>
         </div>
       )}
+      {whyOverlay}
     </div>
   )
 }
@@ -1185,18 +1218,19 @@ function SheetBtn({ label, onClick, disabled }: { label: string; onClick: () => 
 }
 
 // Action de la barre du bilan guidé : icône + libellé, style chess.com.
-function BarAction({ label, icon, active, disabled, onClick }: {
+function BarAction({ label, icon, active, disabled, tight, onClick }: {
   label: string
   icon: string
   active?: boolean
   disabled?: boolean
+  tight?: boolean // barre du bilan guidé : quatre actions et le CTA tiennent sur 393 px
   onClick: () => void
 }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`flex cursor-pointer flex-col items-center gap-0.5 rounded px-2 py-1 text-xs font-semibold disabled:cursor-default disabled:opacity-35 ${
+      className={`flex cursor-pointer flex-col items-center gap-0.5 rounded ${tight ? 'px-1' : 'px-2'} py-1 text-xs font-semibold disabled:cursor-default disabled:opacity-35 ${
         active ? 'text-accent' : 'text-neutral-300 hover:text-white'
       }`}
     >

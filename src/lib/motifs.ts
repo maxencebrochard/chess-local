@@ -46,7 +46,9 @@ export function see(fen: string, sq: Square): number {
     .attackers(sq, c.turn())
     .flatMap((from) => c.moves({ square: from, verbose: true }))
     .filter((m) => m.to === sq && m.captured)
-    .sort((a, b) => PIECE_VALUE[a.piece] - PIECE_VALUE[b.piece])
+    // À valeur égale, la promotion en dame d'abord : chess.js liste le cavalier en premier, et une
+    // sous-promotion fausserait l'échange (le pion qui prend en promouvant devient une dame).
+    .sort((a, b) => PIECE_VALUE[a.piece] - PIECE_VALUE[b.piece] || (b.promotion === 'q' ? 1 : 0) - (a.promotion === 'q' ? 1 : 0))
   if (caps.length === 0) return 0
   c.move(caps[0].san)
   return Math.max(0, PIECE_VALUE[caps[0].captured as PieceSymbol] - see(c.fen(), sq))
