@@ -41,9 +41,11 @@ interface BoardProps {
   silent?: boolean
   // Coordonnées sur les cases (vrai par défaut) ; coupées sur les vignettes, où elles masquent les pièces.
   notation?: boolean
+  // Échiquier non jouable dont on touche des cases pour répondre (entraîneur de visualisation).
+  onSquareTap?: (square: string) => void
 }
 
-export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares, showAttackers, silent, allowPremove = false, notation = true }: BoardProps) {
+export function Board({ fen, orientation, interactive, onMove, lastMove, arrows, movableColor, badge, markSquares, showAttackers, silent, allowPremove = false, notation = true, onSquareTap }: BoardProps) {
   const { themeId, showLegalMoves, premoves, pieceSet: storedSet } = useSettings()
   // Un jeu inconnu (localStorage abîmé) retombe sur le défaut plutôt que sur des images 404.
   const pieceSet = isPieceSet(storedSet) ? storedSet : DEFAULT_PIECE_SET
@@ -207,7 +209,10 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   }
 
   function handleSquareClick({ square }: { piece: unknown; square: string }) {
-    if (!interactive && !preparing) return
+    if (!interactive && !preparing) {
+      onSquareTap?.(square)
+      return
+    }
     if (queued.current) { clearPremove(); setSelected(null); return }
     if (selected === square) {
       setSelected(null) // re-tap : désélection

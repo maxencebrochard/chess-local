@@ -85,6 +85,9 @@ export interface LearnSession {
   // par le keyMove de la position rejouée), attendu et choisi parmi `forced`, `threat`, `plan`.
   // revision : puzzles revus par la révision espacée, itemId = `puzzle:<id>` (sans Elo) ; les
   // fautes et variantes revues s'écrivent dans leurs domaines d'origine (`mistakes`, `opening-drill`).
+  // visualisation (« Calcul et visualisation », hors Elo) : itemId = `q:<N>:<type>:<id puzzle>` pour
+  // une question répondue (fen = position montrée), ou `serie:<N>:<visible|flash>` pour une série
+  // (score = bonnes réponses), N étant la longueur de la ligne en demi-coups.
   domain: string
   itemId: string
   success: 0 | 1

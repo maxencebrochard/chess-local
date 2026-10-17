@@ -67,6 +67,8 @@ Autres scripts :
 - `python3 scripts/prepare-defenses.py` régénère `src/data/defenses.json` (banque de l'entraîneur de défense) : mêmes puzzles et même cache lichess que l'attaque, positions reculées de 1, 3 ou 5 demi-coups (défenseur au trait, avant le coup qui a craqué), gardées si Stockfish natif les juge défendables avec un seul bon coup et sous une vraie menace (coup nul), cache d'évals `data/defense-evals.jsonl` non versionné, clés incluant les seuils.
   `scripts/attack_facts.py` prend l'attaquant en paramètre (`att`, défaut le camp au trait) ; les phrases vues du défenseur sont dans `scripts/defense_facts.py`, que la suite `defense` réutilise ; `--relabel` les recalcule sans moteur.
   Le script affiche les rejets par critère et par catégorie ; le calibrage retenu est noté dans son docstring.
+- `python3 scripts/prepare-visualisation.py` régénère `src/data/visualisation.json` (banque de « Calcul et visualisation ») depuis `public/puzzles.json` et réécrit son tampon `scripts/visualisation.verified`.
+  Le meilleur coup de chaque position finale est confirmé par Stockfish natif (au plus deux processus mono-thread, cache de reprise dans `~/.cache/chess-local/`) ; sans tampon à jour, `scripts/check-visualisation.mjs` (suite `visualisation`) échoue.
 - `scripts/deploy.sh` build puis force-push `dist/` sur la branche `gh-pages`.
   Action sortante : ne pas le lancer sans demande explicite.
   Le push final est en HTTPS et échoue avec le compte GitHub par défaut de la machine ; `set -e` arrête alors le script avant `rm -rf dist/.git`, le commit reste dans `dist/`.
@@ -193,7 +195,7 @@ La vidéo de référence et ses extractions ffmpeg restent exclusivement dans un
 ### Données
 
 `public/puzzles.json` : 120 000 puzzles lichess au format compact `[id, fen, moves, rating, themes]`, hors bundle, chargés une fois par `loadPuzzles()`.
-`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`), `attackCourse.json` (cours « Démolir le roque », `#/apprendre/roque`), `attacks.json` (généré, banque de l'entraîneur d'attaque, `#/attaque`), `defenses.json` (généré, banque de l'entraîneur de défense, `#/defense`).
+`src/data/*.json` est bundlé : `openings.json` (généré), `endgames.json`, `strategy.json`, `courses.json` (contenu d'Apprendre, écrit à la main, en français), `endgameCourse.json` (cours de finales, `#/apprendre/finales`), `attackCourse.json` (cours « Démolir le roque », `#/apprendre/roque`), `attacks.json` (généré, banque de l'entraîneur d'attaque, `#/attaque`), `defenses.json` (généré, banque de l'entraîneur de défense, `#/defense`), `visualisation.json` (généré, banque de « Calcul et visualisation », chargée par `import()`).
 Une leçon terminée est une ligne `learnSessions` `{ domain: 'course', itemId: '<slug>:<id>' }` (`finales:`, `roque:`) : les ids de leçons sont figés (`FROZEN_IDS` du contrôle).
 Les noms d'ouvertures sont en anglais dans les données et traduits à l'affichage par `openingNames.ts`.
 

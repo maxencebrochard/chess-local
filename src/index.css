@@ -61,6 +61,17 @@ body {
 /* react-chessboard pose touch-action: none en ligne sur chaque pièce, même sans glissé possible.
    Sur un échiquier non jouable, une pièce se comporte comme une case vide : un diagramme de cours
    reste défilable depuis n'importe quelle case. Dans un .boardbox, son touch-action: none l'emporte. */
+/* « Calcul et visualisation » : sur un écran bas (Safari 393x660), l'échiquier laisse la place à la
+   ligne, à la question et à la correction sous lui, sans défilement. */
+.boardbox.vis-board {
+  width: min(100vw - 0.75rem, 100dvh - 19.5rem, 640px);
+}
+@media (min-width: 768px) {
+  .boardbox.vis-board {
+    width: min(76vh, 600px);
+  }
+}
+
 .board-still [data-piece] {
   touch-action: auto !important;
 }
