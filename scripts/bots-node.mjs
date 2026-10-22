@@ -41,7 +41,8 @@ class ProcessWorker {
   }
 }
 
-export async function loadApp() {
+// `entry` : module à bundler (par défaut celui du banc), relatif à la racine du dépôt.
+export async function loadApp(entry = join('scripts', 'bench-bots-entry.ts')) {
   assertSameEngine()
   globalThis.location ??= { href: '' } // engine.ts lit `location` au chargement du module
   globalThis.Worker = ProcessWorker
@@ -50,7 +51,7 @@ export async function loadApp() {
   const file = join(dir, 'app.mjs')
   await build({
     cwd: ROOT,
-    input: join(ROOT, 'scripts', 'bench-bots-entry.ts'),
+    input: join(ROOT, entry),
     output: { format: 'esm', file },
     transform: { define: { 'import.meta.env.BASE_URL': '"./"' } },
     logLevel: 'silent',

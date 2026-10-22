@@ -181,6 +181,17 @@ Domaine `learnSessions` `path` (sans Elo) : une ligne par série notée jouée j
 La série en cours survit au rechargement et à l'aller-retour vers l'analyseur dans `path-session-v1` ; un `pathStep` porté par la séance de finale d'Apprendre valide l'étape à toute réussite, même après Réessayer.
 Les finales de `#/finales/:id` (`endgame-play`) ne valident pas d'étape ; les puzzles ratés du parcours n'entrent pas dans la révision espacée, les variantes ratées si, comme dans l'entraîneur.
 
+### Alerte « Qu'est-ce qu'il menace ? » (`src/lib/threat.ts`)
+
+Dans Jouer (bot et entraîneur), après chaque coup du bot, `findThreat` cherche la menace par coup nul sur le moteur pleine force du coach (`coachEngineRef`, créé aussi en mode bot) : P (joueur au trait), N (P avec le trait rendu au bot), P_prev (avant son coup, cherchée seulement si la menace n'est pas liée au coup sur l'échiquier).
+Menace = au moins 2 points de matériel gagnés sur la ligne de N (reprise légale après la prise finale déduite par SEE), ou un mat en 1 ou 2 rejoué sur l'échiquier, créée par le coup (pièce qui vient de jouer, découverte, sinon 200 cp d'éval de plus qu'en P_prev) ; pas de question si P annonce un mat (pour l'un ou l'autre) ; vetos sans moteur : échec, reprise sans perte (SEE), partie finie.
+`judgeThreat` est pur ; `e2e/test_menace.py` le rejuge avec un oracle python-chess sur les scores du harnais Node `e2e/threat_cases.mjs` (vrai WASM via `scripts/bots-node.mjs`, entrée `e2e/threat_entry.ts`).
+Réglage hors persist Zustand : `localStorage['chess-local-threat-check']` (`{bot, coach}`, défaut `{bot: false, coach: true}`), dans `APP_LOCAL_KEYS` ; les contextes E2E le pré-remplissent à `{bot: false, coach: false}` (`threat_prefs=None` garde le défaut de l'app).
+Indisponible en bullet ; en mode bot, la pendule du joueur attend l'analyse et la réponse et la partie n'est pas classée ; en mode entraîneur, seule une menace révélée déclasse la partie.
+`Board.onSquareTap` (échiquier non jouable, prémouvement coupé) reçoit les touchers pendant la question ; `threatPly` de l'instantané de partie évite de reposer une question répondue.
+Poser une question ramène au direct si le joueur consultait l’historique pendant l’analyse ; l’échiquier entraîneur réserve la hauteur des commandes pour garder ses quatre coins accessibles sur petit écran.
+Chaque réponse écrit une ligne `learnSessions` domaine `threat-check` (hors Elo, ignorée par `pickNextDomain` et la révision), résumée dans Stats.
+
 ### Persistance
 
 Base Dexie `chess-local` (`src/lib/db.ts`), actuellement en `version(3)` (table `reviews` : cache des bilans d'Insights).

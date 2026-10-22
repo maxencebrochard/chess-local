@@ -136,6 +136,11 @@ def suite(p):
         b.click(); page.wait_for_timeout(120)
         check(f"[jouer] cadence {tcl}", selected(b))
     check("[jouer] classement affiché", "Mon classement" in page.locator("main").inner_text())
+    sw = page.locator("[data-testid=toggle-threat]")
+    was = sw.get_attribute("aria-checked")
+    sw.click(); page.wait_for_timeout(120)
+    check("[jouer] interrupteur « Qu'est-ce qu'il menace ? »", sw.get_attribute("aria-checked") != was)
+    sw.click(); page.wait_for_timeout(120)
 
     # ---------- JOUER : partie vs bot ----------
     page.get_by_role("button", name="Jouer", exact=True).click()

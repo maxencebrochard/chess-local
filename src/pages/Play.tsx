@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Chess, type Move } from 'chess.js'
+import { Chess, type Move, type Square } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
 import { AttackLegend } from '../components/AttackLegend'
 import { Board, type BoardArrow } from '../components/Board'
@@ -19,6 +19,7 @@ import { applyRating, db, getRating, type SavedGame } from '../lib/db'
 import { openingForMoves } from '../lib/openings'
 import { playMoveSound, sounds } from '../lib/sounds'
 import { TIME_CONTROLS, UNLIMITED, type TimeControl } from '../lib/timeControls'
+import { THREAT_DOMAIN, findThreat, loadThreatPrefs, saveThreatPrefs, threatItemId, type Score, type Threat, type ThreatPrefs } from '../lib/threat'
 import { PLAY_COLORS, PLAY_MODES, useSettings, type PlayColor, type PlayMode } from '../store/settings'
 
 type GameStatus = 'setup' | 'playing' | 'over'
@@ -41,6 +42,21 @@ interface LiveGame {
   playerColor: 'w' | 'b'
   tc: TimeControl // cadence effective (toujours Illimité en mode entraîneur)
   tcLabel: string // cadence choisie sur l'écran de configuration, mémorisée telle quelle
+  threat: boolean // alerte « Qu'est-ce qu'il menace ? » active pour cette partie
+}
+
+// Alerte menace active : selon le réglage du mode, jamais en 2 joueurs ni en bullet (la pendule
+// ne laisse pas le temps de répondre).
+function threatEnabled(mode: PlayMode, tc: TimeControl, prefs: ThreatPrefs): boolean {
+  if (mode === 'coach') return prefs.coach
+  return mode === 'bot' && prefs.bot && tc.timeClass !== 'bullet'
+}
+
+// Question en cours ou réponse affichée jusqu'au coup du joueur.
+interface ThreatQuestion {
+  phase: 'ask' | 'right' | 'wrong'
+  threat: Threat
+  ply: number // demi-coups joués dans la position de la question
 }
 
 // Partie en cours mémorisée pour survivre à un changement d'onglet, au retour arrière iOS et
@@ -61,6 +77,9 @@ interface StoredGame {
   // Mat annoncé par la dernière éval (côté blanc, en coups). Absent des instantanés écrits avant
   // son ajout : la reprise recalcule de toute façon l'éval.
   lastWhiteMate?: number | null
+  // Alerte menace : demi-coups de la dernière position traitée (question répondue ou sans menace).
+  // Une question en attente est reposée à la reprise, une question répondue jamais.
+  threatPly?: number
   savedAt: number
 }
 
@@ -115,14 +134,16 @@ function applyUci(chess: Chess, uci: string) {
 // Éval rapide d'une position, ramenée côté blanc avec le trait DE CETTE position (scores UCI du
 // point de vue du trait). Mat : ±10000 pour la jauge, et le nombre de coups pour le libellé.
 // `bestUci` : pv[0], le meilleur coup du camp au trait (repère du coach live).
-async function evalWhite(engine: Engine, fen: string, turn: 'w' | 'b'): Promise<{ whiteCp: number; whiteMate: number | null; bestUci: string | null }> {
+// `score` : le score brut, du point de vue du trait (repère de l'alerte menace).
+async function evalWhite(engine: Engine, fen: string, turn: 'w' | 'b'): Promise<{ whiteCp: number; whiteMate: number | null; bestUci: string | null; score: Score }> {
   const res = await engine.search({ fen, depth: 10, multipv: 1 })
   const line = res.lines[0]
   const sign = turn === 'w' ? 1 : -1
-  if (!line) return { whiteCp: 0, whiteMate: null, bestUci: null }
+  if (!line) return { whiteCp: 0, whiteMate: null, bestUci: null, score: { cp: 0, mate: null } }
   const bestUci = line.pv[0] ?? null
-  if (line.scoreMate !== null) return { whiteCp: sign * (line.scoreMate > 0 ? 10000 : -10000), whiteMate: sign * line.scoreMate, bestUci }
-  return { whiteCp: sign * (line.scoreCp ?? 0), whiteMate: null, bestUci }
+  const score = { cp: line.scoreCp, mate: line.scoreMate }
+  if (line.scoreMate !== null) return { whiteCp: sign * (line.scoreMate > 0 ? 10000 : -10000), whiteMate: sign * line.scoreMate, bestUci, score }
+  return { whiteCp: sign * (line.scoreCp ?? 0), whiteMate: null, bestUci, score }
 }
 
 export default function Play() {
@@ -184,6 +205,22 @@ export default function Play() {
   const unratedRef = useRef(false)
   const takebackGen = useRef(0) // incrémenté par Annuler : une éval lancée avant est jetée
 
+  // --- Alerte « Qu'est-ce qu'il menace ? » (voir lib/threat.ts) ---
+  const [threatPrefs, setThreatPrefs] = useState<ThreatPrefs>(loadThreatPrefs)
+  const [threatOn, setThreatOn] = useState(false) // active pour la partie en cours
+  const [threatQ, setThreatQ] = useState<ThreatQuestion | null>(null)
+  const threatQRef = useRef<ThreatQuestion | null>(null) // miroir synchrone pour la pendule et les callbacks
+  const [threatBusy, setThreatBusy] = useState(false) // analyse en cours
+  const threatRun = useRef(0)
+  const threatPly = useRef(-1) // demi-coups de la dernière position traitée (voir StoredGame)
+  const [threatDone, setThreatDone] = useState(-1) // miroir affiché (data-threat-ply) pour les suites E2E
+  // Score brut de la dernière éval live (entraîneur), avec sa FEN : la menace compare la position
+  // d'avant le coup adverse.
+  const lastScore = useRef<{ fen: string; score: Score } | null>(null)
+  // Pendule du joueur suspendue : analyse en cours ou question posée (mode bot, partie non classée).
+  const threatHold = useRef(false)
+  const askedAt = useRef(0) // apparition de la question : un toucher parti avant n'y répond pas
+
   // Instantané de la partie en cours (voir GAME_KEY).
   const saveGame = useCallback(() => {
     const g = gameRef.current
@@ -195,6 +232,7 @@ export default function Play() {
       tcLabel: g.tcLabel,
       sans: chessRef.current.history(),
       clocks: clocksRef.current,
+      threatPly: threatPly.current,
       unrated: unratedRef.current,
       lastWhiteCp: lastWhiteCp.current,
       lastWhiteMate: lastWhiteMate.current,
@@ -216,6 +254,58 @@ export default function Play() {
     coachEngineRef.current = null
   }, [])
 
+  // Question posée (la pendule du joueur s'arrête) ou retirée.
+  const setQuestion = useCallback((q: ThreatQuestion | null) => {
+    threatQRef.current = q
+    threatHold.current = q?.phase === 'ask'
+    if (q?.phase === 'ask') {
+      askedAt.current = performance.now()
+      setViewIndex(-1) // La question porte toujours sur la position actuelle.
+    }
+    setThreatQ(q)
+  }, [])
+
+  const markThreatDone = useCallback((ply: number) => {
+    threatPly.current = ply
+    setThreatDone(ply)
+  }, [])
+
+  // Cherche la menace créée par le coup adverse `last`, dans la position courante (joueur au
+  // trait). Le résultat est jeté si la position a changé entre-temps : coup joué (prémouvement
+  // compris), reprise, fin de partie. Le joueur reste libre de jouer pendant l'analyse.
+  const runThreatCheck = useCallback(
+    async (last: Move, known: { prev?: Score | null; now?: Score | null }) => {
+      const g = gameRef.current
+      if (!g || !g.threat) return
+      const seq = g.seq
+      const gen = takebackGen.current
+      const fen = chessRef.current.fen()
+      const ply = chessRef.current.history().length
+      if (chessRef.current.turn() !== g.playerColor || last.after !== fen) return
+      const alive = () => seq === gameSeq.current && gen === takebackGen.current && statusRef.current === 'playing' && chessRef.current.fen() === fen
+      const run = ++threatRun.current
+      setThreatBusy(true)
+      threatHold.current = true
+      try {
+        const threat = await findThreat((coachEngineRef.current ??= new Engine()), last.before, last.lan, known, alive)
+        if (!alive()) return
+        if (!threat) {
+          markThreatDone(ply)
+          saveGame()
+          return
+        }
+        setQuestion({ phase: 'ask', threat, ply })
+        saveGame()
+      } finally {
+        if (run === threatRun.current) {
+          setThreatBusy(false)
+          threatHold.current = threatQRef.current?.phase === 'ask'
+        }
+      }
+    },
+    [markThreatDone, saveGame, setQuestion],
+  )
+
   // Éval + commentaire live après chaque demi-coup (mode entraîneur).
   // Chaîne sérialisée : l'éval du coup N doit finir avant celle du coup N+1
   // (sinon la classification du coup du bot lirait une éval « avant » périmée).
@@ -227,7 +317,9 @@ export default function Play() {
     const fen = game.fen()
     const moverColor: 'w' | 'b' = game.turn() === 'w' ? 'b' : 'w'
     const turnAfter = game.turn()
-    const uciMoves = game.history({ verbose: true }).map((m) => m.lan)
+    const verbose = game.history({ verbose: true })
+    const lastMove = verbose[verbose.length - 1]
+    const uciMoves = verbose.map((m) => m.lan)
     const isBook = isBookPosition(uciMoves)
     const mate = game.isCheckmate()
     const over = game.isGameOver()
@@ -238,13 +330,14 @@ export default function Play() {
       let whiteCp: number
       let whiteMate: number | null = null
       let replyUci: string | null = null
+      let score: Score | null = null
       if (mate) {
         whiteCp = moverColor === 'w' ? 10000 : -10000
         whiteMate = 0
       } else if (over) {
         whiteCp = 0
       } else {
-        ;({ whiteCp, whiteMate, bestUci: replyUci } = await evalWhite((coachEngineRef.current ??= new Engine()), fen, turnAfter))
+        ;({ whiteCp, whiteMate, bestUci: replyUci, score } = await evalWhite((coachEngineRef.current ??= new Engine()), fen, turnAfter))
       }
       if (seq !== gameSeq.current || gen !== takebackGen.current) return
       // Mat pour le camp qui vient de jouer (positif) ou contre lui (négatif), pour le coach live.
@@ -262,9 +355,16 @@ export default function Play() {
       if (chessRef.current.fen() === fen) saveGame()
       const playedUci = uciMoves[uciMoves.length - 1]
       const cls = quickClass(cpBeforeMover, cpAfterMover, isBook, bestUci === playedUci)
+      const prevScore = lastScore.current?.fen === lastMove.before ? lastScore.current.score : null
+      lastScore.current = score ? { fen, score } : null
+      // Coup du bot : la menace part des deux évals live (avant et après son coup), seule la
+      // position du coup nul est cherchée en plus. Dans la chaîne : le coup suivant l'attend. Le
+      // commentaire du coup vient après, sinon il trahirait la menace avant la question.
+      if (!byPlayer && score) await runThreatCheck(lastMove, { prev: prevScore, now: score })
+      if (seq !== gameSeq.current || gen !== takebackGen.current) return
       setCoachMsg(liveComment({ san, moverColor, byPlayer, cls, uciMoves, bestUci, replyUci, mateFor }))
     })
-  }, [saveGame])
+  }, [saveGame, runThreatCheck])
 
   useEffect(() => {
     myRatingClass.current = effectiveTc.timeClass
@@ -331,6 +431,7 @@ export default function Play() {
       thinkingSeq.current = null
       setStatus('over')
       setConfirmResign(null)
+      setQuestion(null)
       writeStoredGame(null)
       releaseEngines()
       sounds.gameEnd()
@@ -383,7 +484,7 @@ export default function Play() {
       setSavedGameId(id ?? null)
       setGameOver({ result, termination, ratingBefore, ratingAfter })
     },
-    [releaseEngines],
+    [releaseEngines, setQuestion],
   )
 
   // Drapeau : le camp adverse ne gagne que s'il a de quoi mater, sinon nulle.
@@ -400,6 +501,8 @@ export default function Play() {
   useEffect(() => {
     if (status !== 'playing' || effectiveTc.baseMs === null) return
     const interval = setInterval(() => {
+      // Alerte menace (mode bot) : analyse et réponse hors pendule.
+      if (threatHold.current && chessRef.current.turn() === gameRef.current?.playerColor) return
       const turn = chessRef.current.turn()
       const next = { ...clocksRef.current, [turn]: Math.max(0, clocksRef.current[turn] - 100) }
       clocksRef.current = next
@@ -442,15 +545,20 @@ export default function Play() {
       setFen(c.fen())
       setSans(c.history())
       setViewIndex(-1)
+      if (byPlayer) {
+        if (threatQRef.current) setQuestion(null) // la réponse reste affichée jusqu'à ce coup
+        threatHold.current = false
+      }
       if (g.mode === 'coach') {
         setHintArrow(null)
         void liveEval(san, byPlayer)
       }
       const ended = checkGameEnd()
+      if (!ended && !byPlayer && g.threat && g.mode === 'bot') void runThreatCheck(move, {})
       if (!ended) saveGame() // jamais une position terminée dans l'instantané
       return !ended
     },
-    [checkGameEnd, liveEval, saveGame],
+    [checkGameEnd, liveEval, saveGame, setQuestion, runThreatCheck],
   )
 
   const playBotMove = useCallback(async () => {
@@ -500,13 +608,14 @@ export default function Play() {
   // Démarre une partie (neuve, ou restaurée depuis l'instantané avec ses coups et ses pendules).
   function beginGame(
     next: { mode: PlayMode; bot: Bot; color: 'w' | 'b'; tc: TimeControl },
-    restored: { chess: Chess; clocks: { w: number; b: number }; unrated: boolean; lastWhiteCp: number; lastWhiteMate: number | null } | null,
+    restored: { chess: Chess; clocks: { w: number; b: number }; unrated: boolean; lastWhiteCp: number; lastWhiteMate: number | null; threatPly: number } | null,
   ) {
     const gameTc = next.mode === 'coach' ? UNLIMITED : next.tc
     const c = restored?.chess ?? new Chess()
     chessRef.current = c
     gameSeq.current++
-    gameRef.current = { seq: gameSeq.current, mode: next.mode, bot: next.bot, playerColor: next.color, tc: gameTc, tcLabel: next.tc.label }
+    const threat = threatEnabled(next.mode, gameTc, threatPrefs)
+    gameRef.current = { seq: gameSeq.current, mode: next.mode, bot: next.bot, playerColor: next.color, tc: gameTc, tcLabel: next.tc.label, threat }
     thinkingSeq.current = null
     liveChain.current = Promise.resolve()
     takebackGen.current = 0
@@ -523,11 +632,20 @@ export default function Play() {
     clocksRef.current = restored?.clocks ?? { w: gameTc.baseMs ?? 0, b: gameTc.baseMs ?? 0 }
     setClocks(clocksRef.current)
     lowTimeWarned.current = false
-    unratedRef.current = restored?.unrated ?? false
+    // Alerte menace en mode bot : la pendule attend l'analyse et la réponse, et l'absence de
+    // question est déjà une information. La partie n'est pas classée, dès le premier coup.
+    unratedRef.current = (restored?.unrated ?? false) || (threat && next.mode === 'bot')
     setUnrated(unratedRef.current)
     setHintArrow(null)
     setHintBusy(false)
     setBookBadge(null)
+    setThreatOn(threat)
+    setQuestion(null)
+    threatRun.current++
+    setThreatBusy(false)
+    markThreatDone(restored?.threatPly ?? -1)
+    lastScore.current = null
+    threatHold.current = false
     lastWhiteCp.current = restored?.lastWhiteCp ?? 20
     lastBestUci.current = null // recalé par la prochaine éval
     // Posé tout de suite, pas après l'éval : sous StrictMode, le `saveGame` du démontage qui
@@ -543,7 +661,7 @@ export default function Play() {
       // Moteur créé et options posées dès maintenant : le WASM se charge pendant le premier coup du joueur.
       engineRef.current ??= new Engine()
       void engineRef.current.setOptions(botEngineOptions(next.bot))
-      if (next.mode === 'coach') coachEngineRef.current ??= new Engine()
+      if (next.mode === 'coach' || threat) coachEngineRef.current ??= new Engine()
       // Reprise en mode entraîneur : l'instantané a pu être écrit avant la fin de l'éval du
       // dernier coup (ou par une version qui ne gardait pas le mat). L'éval de la position
       // reprise est recalculée par la chaîne live, comme après Annuler.
@@ -553,14 +671,28 @@ export default function Play() {
         const turnNow = c.turn()
         liveChain.current = liveChain.current.then(async () => {
           if (seq !== gameSeq.current || takebackGen.current !== 0) return
-          const { whiteCp, whiteMate } = await evalWhite((coachEngineRef.current ??= new Engine()), fenNow, turnNow)
+          const { whiteCp, whiteMate, score } = await evalWhite((coachEngineRef.current ??= new Engine()), fenNow, turnNow)
           if (seq !== gameSeq.current || takebackGen.current !== 0) return
           lastWhiteCp.current = whiteCp
           lastWhiteMate.current = whiteMate
+          lastScore.current = { fen: fenNow, score }
           setLiveCp(whiteCp)
           setLiveMate(whiteMate)
           if (chessRef.current.fen() === fenNow) saveGame()
         })
+      }
+      // Reprise au trait du joueur, sur une position pas encore traitée : la question (en attente
+      // ou jamais calculée) est reposée. Entraîneur : après l'éval de reprise, dans la chaîne.
+      const lastMove = c.history({ verbose: true }).at(-1)
+      if (restored && threat && lastMove && c.turn() === next.color && restored.threatPly !== c.history().length) {
+        if (next.mode === 'coach') {
+          const fenNow = c.fen()
+          liveChain.current = liveChain.current.then(() =>
+            runThreatCheck(lastMove, { now: lastScore.current?.fen === fenNow ? lastScore.current.score : null }),
+          )
+        } else {
+          void runThreatCheck(lastMove, {})
+        }
       }
       if (c.turn() !== next.color) {
         const seq = gameSeq.current
@@ -605,6 +737,7 @@ export default function Play() {
         unrated: !!stored.unrated,
         lastWhiteCp: stored.lastWhiteCp ?? 20,
         lastWhiteMate: typeof stored.lastWhiteMate === 'number' ? stored.lastWhiteMate : null,
+        threatPly: typeof stored.threatPly === 'number' ? stored.threatPly : -1,
       },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -634,7 +767,7 @@ export default function Play() {
   // --- Actions du mode entraîneur ---
   async function requestHint() {
     const g = gameRef.current
-    if (!g || hintBusy || status !== 'playing' || chessRef.current.turn() !== g.playerColor) return
+    if (!g || hintBusy || status !== 'playing' || chessRef.current.turn() !== g.playerColor || threatQRef.current?.phase === 'ask') return
     markUnrated()
     setHintBusy(true)
     const seq = g.seq
@@ -660,6 +793,10 @@ export default function Play() {
     c.undo()
     c.undo()
     takebackGen.current++ // les évals des coups annulés sont jetées
+    // Question abandonnée sans être enregistrée ; la position reprise ne la repose pas.
+    setQuestion(null)
+    markThreatDone(c.history().length)
+    lastScore.current = null
     setFen(c.fen())
     setSans(c.history())
     setViewIndex(-1)
@@ -677,9 +814,10 @@ export default function Play() {
     lastBestUci.current = null
     liveChain.current = liveChain.current.then(async () => {
       if (seq !== gameSeq.current || gen !== takebackGen.current) return
-      const { whiteCp, whiteMate, bestUci } = await evalWhite((coachEngineRef.current ??= new Engine()), fenNow, turnNow)
+      const { whiteCp, whiteMate, bestUci, score } = await evalWhite((coachEngineRef.current ??= new Engine()), fenNow, turnNow)
       if (seq !== gameSeq.current || gen !== takebackGen.current) return
       lastWhiteCp.current = whiteCp
+      lastScore.current = { fen: fenNow, score }
       lastBestUci.current = bestUci
       lastWhiteMate.current = whiteMate
       setLiveCp(whiteCp)
@@ -687,6 +825,35 @@ export default function Play() {
       if (chessRef.current.fen() === fenNow) saveGame()
       setCoachMsg({ text: 'On reprend ici. Cherche un meilleur plan.', cls: null, mood: 'thinking' })
     })
+  }
+
+  // Réponse à « Qu'est-ce qu'il menace ? » : une case touchée, ou null pour « Je ne sais pas ».
+  // Une ligne `learnSessions` (domaine threat-check, hors Elo) par question répondue.
+  function answerThreat(square: string | null) {
+    const q = threatQRef.current
+    const g = gameRef.current
+    if (!q || q.phase !== 'ask' || !g || statusRef.current !== 'playing') return
+    // Un toucher lancé juste avant l'apparition (second toucher d'un coup en deux temps) n'est
+    // pas une réponse.
+    if (square !== null && performance.now() - askedAt.current < 400) return
+    const right = square !== null && q.threat.squares.includes(square as Square)
+    setQuestion({ ...q, phase: right ? 'right' : 'wrong' })
+    markThreatDone(q.ply)
+    if (right) sounds.success()
+    else sounds.fail()
+    // Entraîneur : la menace révélée est une aide, comme Indication.
+    if (!right && g.mode === 'coach') markUnrated()
+    else saveGame()
+    threatHold.current = false
+    void db.learnSessions
+      .add({ date: Date.now(), domain: THREAT_DOMAIN, itemId: threatItemId(q.threat), fen: q.threat.fen, success: right ? 1 : 0, ratingAfter: null })
+      .catch((err) => console.warn('Réponse non enregistrée :', err))
+  }
+
+  function chooseThreat(mode: 'bot' | 'coach', on: boolean) {
+    const next = { ...threatPrefs, [mode]: on }
+    setThreatPrefs(next)
+    saveThreatPrefs(next)
   }
 
   // --- Configuration : chaque choix est mémorisé dans les réglages ---
@@ -781,6 +948,24 @@ export default function Play() {
 
         <div className="mb-5 rounded bg-surface-2 px-3 py-2">
           <Toggle label="⚔ Compter les attaquants autour des rois" value={showAttackers} onChange={setShowAttackers} testId="toggle-attackers" />
+          {mode !== 'local' && (
+            <div className="mt-2 border-t border-black/30 pt-2" data-testid="threat-setting">
+              {mode === 'bot' && tc.timeClass === 'bullet' ? (
+                <p className="text-sm text-muted">
+                  🛡 Qu'est-ce qu'il menace ? Indisponible en bullet : la pendule ne laisse pas le temps de répondre.
+                </p>
+              ) : (
+                <>
+                  <Toggle label="🛡 Qu'est-ce qu'il menace ?" value={threatPrefs[mode]} onChange={(v) => chooseThreat(mode, v)} testId="toggle-threat" />
+                  <p className="mt-1 text-sm text-muted">
+                    {mode === 'bot'
+                      ? "Le coach t'arrête quand le bot crée une vraie menace. Ta pendule attend l'analyse et ta réponse : partie non classée."
+                      : "Le coach t'arrête quand le bot crée une vraie menace. Une menace que tu ne trouves pas compte comme une aide."}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <Cta className="w-full" onClick={startGame}>
@@ -794,7 +979,10 @@ export default function Play() {
   const topColor = orientation === 'w' ? 'b' : 'w'
   const nameOf = (c: 'w' | 'b') =>
     mode === 'local' ? (c === 'w' ? 'Blancs' : 'Noirs') : c === playerColor ? `Moi${myRating ? ` (${myRating})` : ''}` : `${bot.emoji} ${bot.name} (${bot.elo})`
-  const selectMove = (i: number) => setViewIndex(i >= sans.length - 1 ? -1 : i) // le dernier coup = le direct
+  // Pendant la question, l'historique reste au direct : la question porte sur la position courante.
+  const selectMove = (i: number) => {
+    if (threatQ?.phase !== 'ask') setViewIndex(i >= sans.length - 1 ? -1 : i) // le dernier coup = le direct
+  }
 
   const gameOverModal = gameOver && (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70" onClick={() => setGameOver(null)}>
@@ -823,8 +1011,10 @@ export default function Play() {
         {gameOver.saveFailed && (
           <p className="mb-4 text-sm text-red-400">Partie non enregistrée : stockage du navigateur plein ou indisponible.</p>
         )}
-        {mode === 'coach' && unrated && !gameOver.cancelled && (
-          <p className="mb-4 text-sm text-neutral-400">Partie non classée (aide du coach utilisée).</p>
+        {mode !== 'local' && unrated && !gameOver.cancelled && (
+          <p className="mb-4 text-sm text-neutral-400">
+            {mode === 'coach' ? 'Partie non classée (aide du coach utilisée).' : 'Partie non classée (alerte menace utilisée).'}
+          </p>
         )}
         <div className="flex flex-col gap-2">
           {savedGameId !== null && (
@@ -867,10 +1057,49 @@ export default function Play() {
     </div>
   )
 
+  // --- Alerte menace : bulle, flèche et cases, attributs lus par les suites E2E ---
+  const asking = threatQ?.phase === 'ask'
+  const threatAttrs = {
+    'data-threat': !threatOn ? 'off' : threatQ ? threatQ.phase : threatBusy ? 'thinking' : 'idle',
+    'data-threat-ply': threatDone,
+    // Cases acceptées, publiées seulement après la réponse : aucune aide cachée pendant la question.
+    'data-threat-squares': threatQ && !asking ? threatQ.threat.squares.join(' ') : undefined,
+  }
+  const revealed = threatQ && !asking && viewIndex === -1 ? threatQ : null
+  const threatColor = revealed?.phase === 'right' ? '#81b64c' : '#e2483d'
+  const threatArrows: BoardArrow[] = revealed ? [{ startSquare: revealed.threat.from, endSquare: revealed.threat.to, color: threatColor }] : []
+  const threatMarks = revealed
+    ? Object.fromEntries(revealed.threat.squares.map((sq) => [sq, revealed.phase === 'right' ? 'rgba(129, 182, 76, 0.55)' : 'rgba(226, 72, 61, 0.5)']))
+    : undefined
+  const pickSquare = asking && viewIndex === -1 ? (sq: string) => answerThreat(sq) : undefined
+  const threatBubble = (fixed: boolean) =>
+    threatQ && (
+      <div data-testid="threat-bubble">
+        <CoachBubble
+          mood={threatQ.phase === 'right' ? 'happy' : threatQ.phase === 'wrong' ? 'worried' : 'thinking'}
+          headline={threatQ.phase === 'ask' ? "Qu'est-ce qu'il menace ?" : threatQ.phase === 'right' ? 'Bien vu !' : 'Voici sa menace'}
+          fixed={fixed}
+          actions={
+            threatQ.phase === 'ask' ? (
+              <button
+                data-testid="threat-unknown"
+                onClick={() => answerThreat(null)}
+                className="cursor-pointer rounded bg-neutral-200 px-2 py-1 text-xs font-bold hover:bg-neutral-300"
+              >
+                Je ne sais pas
+              </button>
+            ) : undefined
+          }
+        >
+          {threatQ.phase === 'ask' ? 'Touche la pièce menacée, ou la case du mat.' : threatQ.threat.text}
+        </CoachBubble>
+      </div>
+    )
+
   // --- Rendu mode entraîneur : éval bar, coach, board plein, barre d'actions ---
   if (mode === 'coach') {
     return (
-      <div ref={gameViewRef} className="mx-auto flex h-full max-w-2xl flex-col">
+      <div ref={gameViewRef} className="mx-auto flex h-full max-w-2xl flex-col" {...threatAttrs}>
         <div className="px-3 pt-2">
           <HEvalBar cp={liveCp} mate={liveMate} />
         </div>
@@ -880,22 +1109,26 @@ export default function Play() {
             {unrated && <span className="rounded bg-surface-3 px-2 py-0.5 text-xs text-neutral-400">non classée</span>}
           </div>
           <div className="px-3 py-2">
-            <CoachBubble mood={coachMsg?.mood ?? 'thinking'} cls={coachMsg?.cls ?? undefined} headline={coachMsg?.headline} fixed>
-              {coachMsg?.text ?? '…'}
-            </CoachBubble>
+            {threatBubble(true) || (
+              <CoachBubble mood={coachMsg?.mood ?? 'thinking'} cls={coachMsg?.cls ?? undefined} headline={coachMsg?.headline} fixed>
+                {coachMsg?.text ?? '…'}
+              </CoachBubble>
+            )}
           </div>
           <div className="flex justify-center">
-            <div className="boardbox md:w-[min(56vh,520px)]">
+            <div className="boardbox" style={{ width: 'min(100vw - 0.75rem, 100dvh - 20rem, 520px)' }}>
               <Board
                 fen={viewFen}
                 orientation={orientation}
-                interactive={status === 'playing' && viewIndex === -1}
-                allowPremove={status === 'playing' && viewIndex === -1}
+                interactive={status === 'playing' && viewIndex === -1 && !asking}
+                allowPremove={status === 'playing' && viewIndex === -1 && !asking}
                 movableColor={playerColor}
                 onMove={handlePlayerMove}
+                onSquareTap={pickSquare}
                 lastMove={lastMove}
                 silent
-                arrows={hintArrow ? [hintArrow] : []}
+                arrows={[...(hintArrow ? [hintArrow] : []), ...threatArrows]}
+                markSquares={threatMarks}
                 badge={bookBadge && viewIndex === -1 ? { square: bookBadge, cls: 'book' } : null}
                 showAttackers={showAttackers}
               />
@@ -915,7 +1148,7 @@ export default function Play() {
             label={hintBusy ? '…' : 'Indication'}
             icon="💡"
             onClick={() => void requestHint()}
-            disabled={status !== 'playing' || hintBusy || chess.turn() !== playerColor}
+            disabled={status !== 'playing' || hintBusy || chess.turn() !== playerColor || asking}
           />
           <CoachAction
             label="Annuler"
@@ -936,22 +1169,28 @@ export default function Play() {
     )
   }
 
-  const noMoves = sans.length === 0
+  const noMoves = sans.length === 0 || asking
   return (
-    <div ref={gameViewRef} className="flex h-full flex-col items-center justify-start gap-2 p-2 md:flex-row md:justify-center md:gap-6 md:p-4">
+    <div ref={gameViewRef} className="flex h-full flex-col items-center justify-start gap-2 p-2 md:flex-row md:justify-center md:gap-6 md:p-4" {...threatAttrs}>
       <div className="flex flex-col gap-2">
         <div className="flex w-full items-center justify-between">
-          <span className="font-semibold">{nameOf(topColor)}</span>
+          <span className="flex items-center gap-2 font-semibold">
+            {nameOf(topColor)}
+            {mode === 'bot' && unrated && <span className="rounded bg-surface-3 px-2 py-0.5 text-xs font-normal text-neutral-400">non classée</span>}
+          </span>
           {effectiveTc.baseMs !== null && <Clock ms={clocks[topColor]} active={status === 'playing' && chess.turn() === topColor} label="" />}
         </div>
         <div className="boardbox">
           <Board
             fen={viewFen}
             orientation={orientation}
-            interactive={status === 'playing' && viewIndex === -1}
-            allowPremove={mode !== 'local' && status === 'playing' && viewIndex === -1}
+            interactive={status === 'playing' && viewIndex === -1 && !asking}
+            allowPremove={mode !== 'local' && status === 'playing' && viewIndex === -1 && !asking}
             movableColor={mode === 'bot' ? playerColor : undefined}
             onMove={handlePlayerMove}
+            onSquareTap={pickSquare}
+            arrows={threatArrows}
+            markSquares={threatMarks}
             lastMove={lastMove}
             showAttackers={showAttackers}
             silent
@@ -965,7 +1204,7 @@ export default function Play() {
       </div>
 
       <div className="flex w-full flex-col gap-2 px-1 pb-2 md:h-[min(76vh,640px)] md:w-72 md:gap-3 md:px-0 md:pb-0">
-        <div className="rounded bg-surface-2 px-3 py-2 text-sm text-neutral-300">
+        {threatBubble(true) || <div className="rounded bg-surface-2 px-3 py-2 text-sm text-neutral-300">
           {opening ? (
             <>
               <span className="font-mono text-xs text-neutral-500">{opening.eco}</span> {openingFr(opening.name)}
@@ -973,7 +1212,7 @@ export default function Play() {
           ) : (
             <span className="text-neutral-500">Ouverture inconnue</span>
           )}
-        </div>
+        </div>}
         <div className="h-32 md:min-h-0 md:h-auto md:flex-1">
           <MoveList sans={sans} currentIndex={viewIndex === -1 ? sans.length - 1 : viewIndex} onSelect={selectMove} />
         </div>

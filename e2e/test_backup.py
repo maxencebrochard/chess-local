@@ -21,7 +21,7 @@ import os
 import re
 import tempfile
 
-from helpers import BASE, DEFAULT_SETTINGS, SHOTS, Checker, mobile_context
+from helpers import BASE, DEFAULT_SETTINGS, SHOTS, THREAT_PREFS_KEY, Checker, mobile_context
 
 ck = Checker("backup")
 check = ck.check
@@ -603,6 +603,7 @@ def part_reset(p, browser):
     before = snapshot(page)
     check("[reset] réglages purple/deep en place avant", settings_state(page) == SEED_SETTINGS, f"({settings_state(page)})")
     page.evaluate(f"() => localStorage.setItem('{INSIGHTS_KEY}', JSON.stringify({{ config: {{ timeClass: 'blitz', count: 10, sources: ['local'] }}, lastRun: null }}))")
+    page.evaluate(f"() => localStorage.setItem('{THREAT_PREFS_KEY}', JSON.stringify({{ bot: true, coach: false }}))")
     page.click("[data-testid=reset-btn]")
     if ck.appears("[reset] première confirmation", page, "[data-testid=reset-sheet]"):
         body = page.locator("[data-testid=reset-sheet]").inner_text()
@@ -629,6 +630,7 @@ def part_reset(p, browser):
     check("[reset] réglages effacés (défauts du contexte, Jouer compris)", st == DEFAULT_SETTINGS, f"({st})")
     check("[reset] date du dernier export effacée", last_export(page) is None)
     check("[reset] configuration d'Insights effacée", page.evaluate(f"() => localStorage.getItem('{INSIGHTS_KEY}')") is None)
+    check("[reset] réglage « Qu'est-ce qu'il menace ? » effacé", page.evaluate(f"() => localStorage.getItem('{THREAT_PREFS_KEY}')") is None)
     if ok:
         page.goto(f"{BASE}/#/stats")
         ck.appears("[reset] Stats utilisable après réinitialisation", page, "main :text('Statistiques')", timeout=15000)
