@@ -58,6 +58,8 @@ from run import HOST, ROOT, SUBPATH, free_port, port_is_listening
 #                         d'Insights, réglages pieceSet/soundVolume/showAttackers.
 #   deployed-2026-10-16 : jeu façon chess.com (glissé, sons, prémouvements, pièces Wikimedia),
 #                         réglage premoves ; même schéma version(3).
+#   deployed-2026-10-22 : pièces centrées, jeu Atelier, sons de la vidéo de référence, réglages
+#                         persist en version 2 ; même schéma version(3).
 # On conserve les précédents : des appareils peuvent encore les porter.
 OLD_BUILDS = (
     {"tag": "deployed-2026-07-20", "sha": "388d3edae6fd6ec152ccca70b0573d242d612090", "labels": {"archive_bot": "vs Noa"}},
@@ -65,6 +67,8 @@ OLD_BUILDS = (
     {"tag": "deployed-2026-10-15", "sha": "de63ea79eea4f20d6596c841f8c9579929f602a6",
      "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
     {"tag": "deployed-2026-10-16", "sha": "9fb6f489aed18591031a7d664050f86cb4365323",
+     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
+    {"tag": "deployed-2026-10-22", "sha": "3067b8e5cb2ab480b54736b5a3b3599f5da3dde1",
      "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
 )
 DB_NAME = "chess-local"
