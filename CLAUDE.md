@@ -55,6 +55,7 @@ L'API chess.com est simulée par `e2e/fixtures/chesscom.json` (parties fictives)
 Le gate n'utilise jamais `--live`.
 `test_revision.py` sème IndexedDB nativement (après `wait_schema`, l'app ayant créé le schéma de `src/lib/db.ts`), bloque le service worker et remplace `puzzles.json` par une route ; ses dates sont relatives aux jours civils locaux (midi J-n, ou minuit plus une minute pour « aujourd'hui »), jamais « il y a une heure ».
 `test_parcours.py` remplace `puzzles.json` par une fixture synthétique (un mat en un connu sous un id et un Elo propres à chaque série et à chaque bande du test de placement), sème `learnSessions` nativement après `wait_schema`, et bundle `scripts/learning-path-entry.ts` avec rolldown pour vérifier la logique pure sous Node.
+`test_seance.py` suit le modèle de `test_revision.py` (et 404 sur `puzzles.json` pour le parcours sans puzzles) ; son banc Node tourne sous `TZ=Europe/Paris` pour le cas du passage à l'heure d'été.
 `test_pwa.py` ne tourne que sur le build local : sous-chemin, manifest, service worker, précache, puis redémarrage avec le serveur réellement tué (`set_offline` ne coupe pas le réseau du service worker).
 `test_upgrade.py` (prod uniquement) est le garde-fou de continuité des données : pour chaque ancien build déployé épinglé dans `OLD_BUILDS` (tags `deployed-2026-07-20`, `deployed-2026-10-06`, `deployed-2026-10-15`, `deployed-2026-10-16`, `deployed-2026-10-22` et `deployed-2026-10-22-2`, extraits de git ; `git fetch origin tag <tag>` s'il manque), il le sert, y crée de vraies données par l'interface dans un profil persistant, bascule sur le build courant sur le même port, vérifie IndexedDB, réglages et chiffres affichés à l'identique, puis restaure une sauvegarde de l'ancien build dans le nouveau ; `E2E_MUTATION=rename-db|clear-ratings|drop-table|clear-settings` sert une copie mutée du nouveau build pour prouver que la suite passe au rouge.
 `E2E_MUTATION=truncate-old-precache` fait couper par l'ancien serveur le corps de `puzzles.json` : l'installation du service worker de l'ancien build échoue à chaque fois, et les réessais bornés de `wait_sw_active` (contre les « Cache.put() encountered a network error » ponctuels sous charge) doivent finir en rouge.
@@ -136,6 +137,7 @@ Toute la décision passe par `chooseBotMove` de `bots.ts` ; les styles sont cali
 
 Les autres pages y envoient leur contenu par state de navigation :
 `navigate('/analyse', { state: { pgn | fen, uci?, viewIndex?, color?, orientation?, label?, review?, returnTo?, returnLabel? } })`.
+La séance du jour (`/seance`) y envoie ses puzzles, fautes et variantes avec `returnTo: '/seance'` et « Retour à la séance ».
 Archive et fin de partie passent par `?game=<id>` (lecture dans Dexie), avec `&review=1` pour lancer le bilan directement.
 `Analysis.tsx` consomme `location.state` au montage puis fait `navigate('.', { replace: true, state: null })` pour qu'un refresh ne rejoue pas le chargement.
 `returnTo` affiche un bouton retour (libellé `returnLabel`, « Retour à l'exercice » par défaut) qui navigue avec `state: { restore: true }` ; `Learn.tsx` et `Revision.tsx` restaurent alors leur séance depuis `sessionStorage`.
@@ -191,6 +193,11 @@ L’échec initial est la date de la faute ; seules les tentatives dont `itemId`
 La séance réutilise `MistakeExercise` (meilleur coup, mat ou alternative suffisamment bonne), puis `recordMissedAttack` ou `recordMissedDefense`, sans modifier la faute ni son calendrier classique.
 Une faute supprimée ou modifiée pendant une séance ne peut pas recevoir de nouveau résultat spécialisé.
 Le compteur de l'accueil ne charge jamais `puzzles.json` ; seule la séance le fait.
+La séance du jour (`/seance`, `src/pages/Seance.tsx`) enchaîne 10 à 15 minutes de blocs courts : révision due, puzzles classés, variante ratée, attaque ou finale.
+Son planificateur est pur (`src/lib/seance.ts`, banc Node de `test_seance.py`) : poids des faiblesses par domaine (70 % Insights si un rapport en cache couvre au moins 5 parties de moins de 30 jours, 30 % résultats des 14 derniers jours lissés, ou ces résultats seuls), budget par minutes estimées de `BLOCK_META`.
+`src/lib/seanceRun.ts` charge les données et matérialise le plan en étapes sérialisables ; chaque étape joue le lecteur de son écran d'origine (`PuzzlePlayer`, `MistakeExercise`, `OpeningDrill`, `PositionGame` avec `attackGameProps`/`endgameGameProps`) et écrit via ses fonctions (`recordReview`, `recordRatedPuzzle`, `recordDrill`, `recordAttempt`, `recordEndgamePlay`).
+Un nouveau type de bloc s'ajoute par `BLOCK_META`, `planSeance`, `MATERIALIZE` (seanceRun.ts) et `RENDER` (Seance.tsx), tous typés `Record<BlockKind, ...>`.
+Une séance menée au bilan écrit une ligne `learnSessions` du domaine `seance` (série de jours civils consécutifs, sans Elo) ; `pickNextDomain` l'ignore.
 
 ### Parcours d'apprentissage
 
@@ -224,7 +231,7 @@ La migration persist des réglages (version 2) est partagée avec l’import des
 Un jeu enregistré n'est jamais remplacé par `atelier` : seuls les stockages sans `pieceSet` (nouvel utilisateur compris) le reçoivent.
 Un choix `celtique` enregistré en version 1 est conservé ; cette version persist est indépendante de la version du schéma de sauvegarde.
 L’import valide ensuite les types (dont `premoves`, booléen sinon défaut) et les valeurs contre les listes réelles de l’application.
-Les séances en cours d'Apprendre, de révision et du parcours d'apprentissage vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`, `path-session-v1`) : `importBackup` et `resetApp` effacent ces trois clés, et seulement elles.
+Les séances en cours d'Apprendre, de révision, du parcours d'apprentissage et de la séance du jour vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`, `path-session-v1`, `seance-session-v1`) : `importBackup` et `resetApp` effacent ces quatre clés, et seulement elles.
 `main.tsx` demande `navigator.storage.persist()` ; iOS peut purger IndexedDB, et le périmètre des sauvegardes de `backup.ts` est décrit dans [README.md, section Features](README.md#features).
 
 ### Chemins et PWA

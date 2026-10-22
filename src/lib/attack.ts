@@ -2,6 +2,7 @@
 // et vérifiée par scripts/prepare-attacks.py), niveau du défenseur, résultats des tentatives.
 import { db } from './db'
 import type { Color, GameEnd, Opponent, StoredGame } from './positionGame'
+import type { PositionGameProps } from '../components/PositionGame'
 import attacksData from '../data/attacks.json'
 
 export type AttackCategory = 'opposes' | 'meme' | 'centre'
@@ -140,4 +141,26 @@ export function recordAttackReplaced(stored: StoredGame) {
   if (!stored.key.startsWith('attaque:')) return
   const pos = ATTACKS.find((a) => gameKey(a.id) === stored.key && a.fen === stored.startFen)
   if (pos) void recordAttempt(pos, 'abandon', stored.level ?? null, stored.assisted)
+}
+
+// Partie d'une position d'attaque, telle que `/attaque/:id` et la séance du jour la jouent : même
+// clé de persistance, même défenseur, mêmes écritures. L'écran ajoute retour, suivante, en-tête et
+// `onReplace={recordReplaced}` (lib/attempts.ts, qui dépend de ce module).
+export function attackGameProps(pos: AttackPosition, level: Level) {
+  return {
+    gameKey: gameKey(pos.id),
+    startFen: pos.fen,
+    title: pos.theme,
+    objective: 'win',
+    goalHint: pos.goal,
+    lesson: pos.plan,
+    lessonLabel: 'Conseils',
+    successTitle: 'Attaque réussie',
+    opponent: opponentFor(level),
+    decisiveCp: DECISIVE_CP,
+    allowDraw: false,
+    planButton: true,
+    onFinished: (_, info) => void recordAttempt(pos, outcomeOf(info.end, pos.attacker), level, info.assisted),
+    onAbandon: ({ assisted }) => void recordAttempt(pos, 'abandon', level, assisted),
+  } satisfies Partial<PositionGameProps>
 }

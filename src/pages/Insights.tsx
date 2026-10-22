@@ -16,7 +16,7 @@ import {
 } from '../lib/insights'
 import { cachedFor, collectGames, depthFor, estimateForConfig, formatDuration, runSeries, type Candidate, type RunProgress } from '../lib/insightsRun'
 import {
-  INSIGHTS_COUNTS, readInsights, writeInsights, type InsightsConfig, type InsightsLastRun, type InsightsSource, type InsightsTimeClass,
+  INSIGHTS_COUNTS, readInsights, rowFitsRun, writeInsights, type InsightsConfig, type InsightsLastRun, type InsightsSource, type InsightsTimeClass,
 } from '../lib/insightsStore'
 import { getFamily } from '../lib/openingTrainer'
 import { useSettings } from '../store/settings'
@@ -39,11 +39,6 @@ function periodFr(from: number, to: number): string {
   if (a.getFullYear() !== b.getFullYear()) return `Du ${frDate(from)} au ${frDate(to)}`
   if (a.getMonth() === b.getMonth()) return `Du ${a.getDate()} au ${frDate(to)}`
   return `Du ${shortDate(from)} au ${frDate(to)}`
-}
-// Ligne de cache conforme au rapport mémorisé : même profondeur et, pour chess.com, même compte.
-function rowFitsRun(r: ReviewRow, run: InsightsLastRun): boolean {
-  if (run.depth !== undefined && r.depth !== run.depth) return false
-  return run.username === undefined || r.source !== 'chesscom' || r.username === run.username
 }
 
 interface Shown {

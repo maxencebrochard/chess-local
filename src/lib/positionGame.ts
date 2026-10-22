@@ -2,8 +2,10 @@
 // quelconque venue de l'analyse) : thème d'une finale, fin de partie lue sur l'échiquier,
 // verdict selon l'objectif, persistance de la partie pour survivre à un rechargement.
 import { Chess } from 'chess.js'
+import { courseFor } from './courses'
 import { db } from './db'
-import type { EndgameGoal } from './learn'
+import type { EndgameGoal, EndgameItem } from './learn'
+import type { PositionGameProps } from '../components/PositionGame'
 
 export type Color = 'w' | 'b'
 // Objectif du joueur : gagner, tenir la nulle, ou tenir face à une attaque (`hold`, entraîneur de
@@ -50,6 +52,22 @@ export const ENDGAME_PLAY_DOMAIN = 'endgame-play'
 
 export async function recordEndgamePlay(id: string, fen: string, success: boolean): Promise<void> {
   await db.learnSessions.add({ date: Date.now(), domain: ENDGAME_PLAY_DOMAIN, itemId: id, fen, success: success ? 1 : 0, ratingAfter: null })
+}
+
+// Partie d'une finale, telle que `/finales/:id` et la séance du jour la jouent : même clé de
+// persistance, mêmes écritures. L'écran ajoute retour, autre finale, en-tête et
+// `onReplace={recordReplaced}` (lib/attempts.ts, qui dépend de ce module).
+export function endgameGameProps(eg: EndgameItem) {
+  return {
+    gameKey: `finale:${eg.id}`,
+    startFen: eg.fen,
+    title: eg.title,
+    objective: eg.objective,
+    goalHint: GOAL_HINT[eg.goal],
+    lesson: eg.lesson,
+    courseId: courseFor(eg.id) ? eg.id : null,
+    onFinished: (success: boolean) => void recordEndgamePlay(eg.id, eg.fen, success),
+  } satisfies Partial<PositionGameProps>
 }
 
 // Clés `id|fen` des finales déjà gagnées (objectif atteint sans aide).

@@ -5,6 +5,8 @@ import { Cta } from '../components/Cta'
 import { db, DEFAULT_RATING } from '../lib/db'
 import { describeKinds, loadReviewQueue, type ReviewItem } from '../lib/revision'
 import { usePathState } from '../components/usePathState'
+import { streak, streakLabel } from '../lib/seance'
+import { readStoredSeance, seanceDates } from '../lib/seanceRun'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -13,12 +15,15 @@ export default function Home() {
   const [nbGames, setNbGames] = useState(0)
   const [due, setDue] = useState<ReviewItem[] | null>(null) // null : compte pas encore connu
   const path = usePathState()
+  const [seance, setSeance] = useState<{ days: number; today: boolean } | null>(null) // série de séances du jour
+  const [current] = useState(() => readStoredSeance()) // séance du jour en cours (sessionStorage)
 
   useEffect(() => {
     void db.ratings.toArray().then((rs) => setRatings(Object.fromEntries(rs.map((r) => [r.key, r.value]))))
     void db.puzzleAttempts.where('date').above(0).toArray().then((a) => setSolved(a.filter((x) => x.success).length))
     void db.games.count().then(setNbGames)
     void loadReviewQueue().then((q) => setDue(q.due))
+    void seanceDates().then((d) => setSeance(streak(d)), () => setSeance({ days: 0, today: false }))
   }, [])
 
   const r = (key: string) => ratings[key] ?? DEFAULT_RATING
@@ -38,7 +43,7 @@ export default function Home() {
   ]
 
   return (
-    <div data-review-ready={due !== null ? '' : undefined} className="mx-auto flex h-full max-w-2xl flex-col p-4 md:justify-center md:p-8">
+    <div data-review-ready={due !== null ? '' : undefined} data-seance-ready={seance !== null ? '' : undefined} className="mx-auto flex h-full max-w-2xl flex-col p-4 md:justify-center md:p-8">
       <h1 className="mb-2 md:mb-4 text-3xl font-black">
         ♞ Chess<span className="text-accent">Local</span>
       </h1>
@@ -50,7 +55,7 @@ export default function Home() {
       <Link
         to="/puzzles"
         replace
-        className="mb-2 md:mb-4 block rounded-2xl bg-gradient-to-br from-[#4e7837] to-[#2e4a20] p-3 md:p-5 shadow-lg transition hover:brightness-110"
+        className="mb-2 md:mb-4 block rounded-2xl bg-gradient-to-br from-[#4e7837] to-[#2e4a20] p-3 md:p-5 shadow-lg transition hover:brightness-110 [@media(max-height:700px)]:py-2"
       >
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -65,12 +70,34 @@ export default function Home() {
         </div>
       </Link>
 
+      {/* Séance du jour : descente (push) ; la séance en cours se reprend à l'arrivée. */}
+      <Link
+        to="/seance"
+        data-seance-tile
+        className="mb-2 md:mb-4 flex items-center gap-3 rounded-2xl border border-accent/30 bg-surface-2 px-4 py-2 shadow-lg transition hover:bg-surface-3 [@media(max-height:700px)]:py-1.5"
+      >
+        <span className="text-2xl" aria-hidden="true">☀️</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Séance du jour</span>
+          <span data-seance-status className="block truncate text-xs text-neutral-400">
+            {current
+              ? `Reprendre · étape ${current.idx + 1}/${current.steps.length}`
+              : seance?.today
+                ? `✓ Faite aujourd'hui · ${streakLabel(seance.days)}`
+                : seance && seance.days > 0
+                  ? `10 à 15 min guidées · ${streakLabel(seance.days)}`
+                  : '10 à 15 min guidées'}
+          </span>
+        </span>
+        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
+      </Link>
+
       {/* Révision espacée : visible seulement quand quelque chose est dû ; descente (push), la
           séance démarre à l'arrivée. */}
       {due !== null && due.length > 0 && (
         <Link
           to="/revision"
-          className="mb-2 md:mb-4 flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-surface-2 px-4 py-2 shadow-lg transition hover:bg-surface-3"
+          className="mb-2 md:mb-4 flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-surface-2 px-4 py-2 shadow-lg transition hover:bg-surface-3 [@media(max-height:700px)]:py-1.5"
         >
           <span className="text-2xl" aria-hidden="true">🔁</span>
           <span className="min-w-0 flex-1">
@@ -84,11 +111,13 @@ export default function Home() {
         </Link>
       )}
 
-      {/* Cartes stats horizontales */}
+      {/* Cartes stats horizontales. Écran court (Safari avec ses barres, 393x660) : icônes masquées,
+          carte Problèmes et tuiles resserrées, pour que la tuile Séance, la carte Révision et la
+          rangée Parcours/Insights tiennent avec Jouer sans défilement. */}
       <div className="mb-2 md:mb-4 grid grid-cols-4 gap-2">
         {statCards.map((s) => (
           <Link key={s.label} to="/stats" replace className="rounded-xl bg-surface-2 p-3 text-center transition hover:bg-surface-3">
-            <div className="text-2xl">{s.icon}</div>
+            <div className="text-2xl [@media(max-height:700px)]:hidden">{s.icon}</div>
             <div className="text-xl font-black">{s.value}</div>
             <div className="text-xs text-neutral-400">{s.label}</div>
           </Link>
@@ -98,7 +127,7 @@ export default function Home() {
       {/* Tuiles secondaires */}
       <div className="mb-2 md:mb-4 grid grid-cols-2 gap-2">
         {tiles.map((t) => (
-          <ActivityCard key={t.to} to={t.to} replace={t.tab} icon={t.icon} title={t.title} description={t.desc} className="py-2" />
+          <ActivityCard key={t.to} to={t.to} replace={t.tab} icon={t.icon} title={t.title} description={t.desc} className="py-2 [@media(max-height:700px)]:py-1.5" />
         ))}
       </div>
 
@@ -123,7 +152,7 @@ export default function Home() {
 
       {/* CTA Jouer géant, collé en bas */}
       <div className="mt-auto md:mt-4">
-        <Cta className="w-full py-4 text-2xl" onClick={() => navigate('/jouer', { replace: true })}>
+        <Cta className="w-full py-4 text-2xl [@media(max-height:700px)]:py-3" onClick={() => navigate('/jouer', { replace: true })}>
           Jouer
         </Cta>
       </div>

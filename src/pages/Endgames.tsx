@@ -6,11 +6,9 @@ import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Cta } from '../components/Cta'
 import { PositionGame } from '../components/PositionGame'
 import { recordReplaced } from '../lib/attempts'
-import { courseFor } from '../lib/courses'
 import { ENDGAMES, type EndgameItem } from '../lib/learn'
 import {
-  endgameTheme, GOAL_HINT, inProgressKey, recordEndgamePlay, solvedEndgames, THEME_LABEL,
-  validFen, type EndgameTheme,
+  endgameGameProps, endgameTheme, inProgressKey, solvedEndgames, THEME_LABEL, validFen, type EndgameTheme,
 } from '../lib/positionGame'
 
 const THEME_ORDER: EndgameTheme[] = ['mates', 'pawns', 'rooks', 'queen', 'other']
@@ -139,20 +137,13 @@ function EndgamePlay({ id }: { id: string }) {
 
   return (
     <PositionGame
-      gameKey={`finale:${eg.id}`}
-      startFen={eg.fen}
-      title={eg.title}
-      objective={eg.objective}
-      goalHint={GOAL_HINT[eg.goal]}
-      lesson={eg.lesson}
-      courseId={courseFor(eg.id) ? eg.id : null}
+      {...endgameGameProps(eg)}
       restoreFinished={restore}
       returnTo={`/finales/${eg.id}`}
       returnLabel="Retour à la finale"
       // La liste est l'entrée d'en dessous quand on vient d'elle ; sinon (lien direct) on la pose.
       onExit={() => (((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0 ? navigate(-1) : navigate('/finales', { replace: true }))}
       onOther={() => navigate(`/finales/${pickEndgame(solved, eg.id).id}`, { replace: true })}
-      onFinished={(success) => void recordEndgamePlay(eg.id, eg.fen, success)}
       onReplace={recordReplaced}
     />
   )

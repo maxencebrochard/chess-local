@@ -99,7 +99,7 @@ def suite(p):
         ck.appears(f"[nav desktop] {label}", page, f"main :text('{marker_for(marker, 'desktop')}')", timeout=10000)
 
     # Accueil : carte Problèmes + tuiles + stats
-    tiles = [("Problèmes", "Classement puzzles"), ("Analyse", "Stockfish 18"), ("Puzzle Rush", "Survie"),
+    tiles = [("Problèmes", "Classement puzzles"), ("Séance du jour", "Quelques blocs courts"), ("Analyse", "Stockfish 18"), ("Puzzle Rush", "Survie"),
              ("Archive", "Archive ("), ("chess.com", "Importer depuis"), ("Blitz", "Statistiques")]
     for title, marker in tiles:
         page.locator("nav a", has_text="Accueil").first.click()

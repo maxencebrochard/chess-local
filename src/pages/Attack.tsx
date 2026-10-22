@@ -8,8 +8,8 @@ import { Cta } from '../components/Cta'
 import { LEVEL_HELP, LevelPicker as Picker } from '../components/LevelPicker'
 import { PositionGame } from '../components/PositionGame'
 import {
-  ATTACKS, attackStats, CATEGORY_LABEL, CATEGORY_ORDER, DECISIVE_CP, gameKey, loadLevel, opponentFor,
-  outcomeOf, recordAttempt, saveLevel, statsKey, type AttackCategory, type AttackPosition, type AttackStats, type Level,
+  ATTACKS, attackGameProps, attackStats, CATEGORY_LABEL, CATEGORY_ORDER, gameKey, loadLevel,
+  recordAttempt, saveLevel, statsKey, type AttackCategory, type AttackPosition, type AttackStats, type Level,
 } from '../lib/attack'
 import { recordReplaced } from '../lib/attempts'
 import { inProgressKey, loadStoredGame, resumedGame, validFen } from '../lib/positionGame'
@@ -217,22 +217,11 @@ function AttackPlay({ id }: { id: string }) {
     <>
       <PositionGame
         key={attempt}
-        gameKey={gameKey(pos.id)}
-        startFen={pos.fen}
-        title={pos.theme}
-        objective="win"
-        goalHint={pos.goal}
-        lesson={pos.plan}
-        lessonLabel="Conseils"
-        successTitle="Attaque réussie"
+        {...attackGameProps(pos, level)}
         resume={attempt === 0}
         restoreFinished={restore && attempt === 0}
         returnTo={`/attaque/${pos.id}`}
         returnLabel="Retour à l'attaque"
-        opponent={opponentFor(level)}
-        decisiveCp={DECISIVE_CP}
-        allowDraw={false}
-        planButton
         headerAction={
           <button
             onClick={() => setPicking(level)}
@@ -251,8 +240,6 @@ function AttackPlay({ id }: { id: string }) {
         }
         onOther={() => navigate(`/attaque/${next.id}`, { replace: true })}
         otherLabel="Suivante"
-        onFinished={(_, info) => void recordAttempt(pos, outcomeOf(info.end, pos.attacker), level, info.assisted)}
-        onAbandon={({ assisted }) => void recordAttempt(pos, 'abandon', level, assisted)}
         onReplace={recordReplaced}
       />
       {picking !== undefined && (
