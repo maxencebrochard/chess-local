@@ -183,7 +183,7 @@ WEBKIT_AUDIO = r"""(() => {
 })()"""
 
 
-# Fichiers de public/sounds : `sounds.ts` les précharge tous au premier geste.
+# Fichiers de public/sounds : `sounds.ts` les précharge tous au démarrage, sans attendre de geste.
 SOUND_FILES = sorted(f for f in os.listdir(os.path.join(os.path.dirname(E2E_DIR), "public", "sounds")) if f.endswith(".mp3"))
 
 # Fin d'un geste pour iOS et l'espion : un son « immédiat » part pendant leur diffusion.

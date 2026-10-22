@@ -91,13 +91,19 @@ function load(name: SoundName): Promise<AudioBuffer | null> {
   return p
 }
 
+// Téléchargement et décodage n'exigent aucun geste : seule la reprise du contexte en demande un.
+// Mémoïsé : coût nul après le premier appel.
+function preload() {
+  for (const name of FILES) void load(name)
+}
+
 // Appelé pendant un geste : seul moment où iOS laisse démarrer ou reprendre l'audio.
 function unlock() {
   if (!useSettings.getState().playSounds) return
   const c = context()
   if (!c) return
-  // Préchargement dès le premier geste, que le contexte tourne déjà ou non (mémoïsé : coût nul ensuite).
-  for (const name of FILES) void load(name)
+  // Sons activés en cours de session, ou préchargement du démarrage échoué.
+  preload()
   if (stateOf(c) === 'running') return
   void c.resume().catch(() => {})
   // Un tampon muet joué dans le geste achève le déverrouillage sur les anciens iOS.
@@ -120,6 +126,8 @@ export function installAudioUnlock() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && ctx) stale = true
   })
+  // Dès le démarrage : le premier coup ne doit pas attendre un téléchargement lancé par son geste.
+  if (useSettings.getState().playSounds) preload()
 }
 
 async function ready(c: AudioContext): Promise<boolean> {
@@ -153,12 +161,15 @@ export function play(name: SoundName, outdated: () => boolean = () => false) {
 
 // Son d'un coup, priorités de chess.com : échec, promotion, roque, prise, puis coup simple
 // (le mien ou celui de l'adversaire).
+// Au-delà, un son de coup arriverait trop tard après la pose : mieux vaut aucun son.
+const MOVE_SOUND_MAX_DELAY_MS = 1000
 let moveSoundId = 0
 export function playMoveSound(move: Pick<Move, 'san' | 'flags'>, opponent: boolean) {
   // Un son de coup qui attend encore son fichier ou le contexte se tait dès qu'un coup plus récent
-  // est demandé : pas de rafale de sons anciens, mais le premier coup d'une session n'est jamais perdu.
+  // est demandé (pas de rafale de sons anciens), ou s'il dépasse le plafond depuis la pose.
   const id = ++moveSoundId
-  play(moveSoundName(move, opponent), () => id !== moveSoundId)
+  const requestedAt = performance.now()
+  play(moveSoundName(move, opponent), () => id !== moveSoundId || performance.now() - requestedAt > MOVE_SOUND_MAX_DELAY_MS)
 }
 
 export function moveSoundName(move: Pick<Move, 'san' | 'flags'>, opponent: boolean): SoundName {

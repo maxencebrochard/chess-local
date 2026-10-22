@@ -1,4 +1,4 @@
-from helpers import BASE, WEBKIT_AUDIO, Checker, mobile_context, sounds_heard, drag_piece, tap_move, piece_on
+from helpers import BASE, SOUND_FILES, WEBKIT_AUDIO, Checker, mobile_context, sounds_heard, drag_piece, tap_move, piece_on
 
 ck = Checker("audio_settings")
 
@@ -107,7 +107,36 @@ def obsolete_moves(p, browser):
         ck.check("[chargement lent] deux coups joués", piece_on(page, "e4") == "wP" and piece_on(page, "e5") == "bP")
         page.evaluate("window.__releaseAudio()")
         entries = sounds_heard(page, 0, settle=500)
-        ck.check("[chargement lent] aucun coup obsolète en rafale", entries == [], str(entries))
+        ck.check("[chargement lent] seul le dernier coup sonne, sans rafale",
+                 [(e["name"], e["audible"]) for e in entries] == [("move-opponent", True)], str(entries))
+    ctx.close()
+
+
+def late_move(p, browser):
+    ctx = audio_context(p, browser)
+    ctx.add_init_script(HOLD_AUDIO)
+    page = ctx.new_page()
+    page.goto(f"{BASE}/#/analyse")
+    if ck.appears("[son trop tardif] plateau", page, "[data-square=e2] [data-piece]"):
+        tap_move(page, "e2", "e4")
+        page.wait_for_timeout(1300)
+        ck.check("[son trop tardif] coup joué", piece_on(page, "e4") == "wP")
+        page.evaluate("window.__releaseAudio()")
+        entries = sounds_heard(page, 0, settle=500)
+        ck.check("[son trop tardif] coup isolé abandonné au-delà d'une seconde", entries == [], str(entries))
+    ctx.close()
+
+
+def startup_preload(p, browser):
+    ctx = audio_context(p, browser)
+    page = ctx.new_page()
+    page.goto(f"{BASE}/#/analyse")
+    try:
+        page.wait_for_function("(n) => window.__decoded.size >= n", arg=len(SOUND_FILES), timeout=15000, polling=50)
+    except Exception:
+        pass
+    decoded = page.evaluate("[...window.__decoded].sort()")
+    ck.check("[démarrage] tous les sons décodés avant le moindre geste", decoded == SOUND_FILES, str(decoded))
     ctx.close()
 
 
@@ -116,6 +145,8 @@ def suite(p):
     try:
         first_move(p, browser)
         obsolete_moves(p, browser)
+        late_move(p, browser)
+        startup_preload(p, browser)
         for setting in ["0", "35", "désactivé"]:
             delayed_settings(p, browser, setting)
         prefixed_context(p, browser)

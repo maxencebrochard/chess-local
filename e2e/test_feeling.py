@@ -212,11 +212,30 @@ def suite(p):
 # le dernier (pas de success) ni un échec ou une prise.
 QUIET_PUZZLE = ["F14Q", "6k1/5ppp/8/8/8/8/5PPP/R5K1 b - - 0 1", "h7h6 a1a7 g8h7 a7f7", 1000, "endgame"]
 
+# Compte les commits React (crochet des outils de développement, appelé aussi en production), et
+# note ce compte à chaque relâchement et à chaque départ de son : un son joué par le propriétaire
+# du coup part avant le commit qui affiche ce coup.
+COMMIT_SPY = """(() => {
+  window.__commits = 0
+  window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = { isDisabled: false, supportsFiber: true, renderers: new Map(),
+    inject() { return 1 }, onCommitFiberRoot() { window.__commits++ }, onCommitFiberUnmount() {},
+    onPostCommitFiberRoot() {}, onScheduleFiberRoot() {}, checkDCE() {} }
+  window.__commitsAtRelease = []
+  addEventListener('pointerup', () => window.__commitsAtRelease.push(window.__commits), true)
+  window.__commitsAtSound = []
+  const start = AudioBufferSourceNode.prototype.start
+  AudioBufferSourceNode.prototype.start = function (...a) {
+    window.__commitsAtSound.push(window.__commits)
+    return start.apply(this, a)
+  }
+})()"""
+
 
 def puzzle_sound(p, browser):
     """Hors analyse aussi, le son d'un coup accepté part dans le geste de pose, une seule fois."""
     ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block", settings={"playSounds": True})
     ctx.add_init_script(WEBKIT_AUDIO)
+    ctx.add_init_script(COMMIT_SPY)
     body = json.dumps([QUIET_PUZZLE])
     ctx.route("**/puzzles.json", lambda route: route.fulfill(status=200, content_type="application/json", body=body))
     page = ctx.new_page()
@@ -237,8 +256,11 @@ def puzzle_sound(p, browser):
     start = len(sound_log(page))
     drag_piece(page, "a1", "a7")
     ck.check("puzzle : coup accepté", piece_on(page, "a7") == "wR")
-    ok, detail = immediate_sound(sound_log(page)[start:], "move-self")
-    ck.check("puzzle : son du coup dans le geste de pose", ok, detail)
+    ok, detail = immediate_sound(sound_log(page)[start:], "move-self", budget_ms=80)
+    ck.check("puzzle : son du coup dans le geste de pose, en moins de 80 ms", ok, detail)
+    spy = page.evaluate("({commits: window.__commits, release: window.__commitsAtRelease.at(-1), sound: window.__commitsAtSound[%d]})" % start)
+    ck.check("puzzle : son parti avant le commit React du coup",
+             spy["commits"] > 0 and spy["release"] is not None and spy["sound"] == spy["release"], str(spy))
     page.wait_for_timeout(800)
     heard = [e["name"] for e in sound_log(page)[start:] if e["name"] != "(muet)"]
     ck.check("puzzle : coup du joueur sonné une fois, puis la réponse", heard == ["move-self", "move-opponent"], str(heard))
