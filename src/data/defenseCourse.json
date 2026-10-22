@@ -60,7 +60,7 @@
           },
           "claim": "hold-b",
           "fails": "Qc6",
-          "eval": "-0.26",
+          "eval": "-0.30",
           "failsEval": "#-3",
           "orientation": "b"
         },
@@ -74,7 +74,7 @@
             {"san": "fxg5"},
             {"san": "Qxe5", "text": "La dame reprend le pion e5 et se place au centre, d'où elle surveille le roque.", "keeps": ["c7e5"]},
             {"san": "Kg1"},
-            {"san": "Bc6", "text": "Le fou rejoint la grande diagonale et vise g2.", "keeps": ["a6a5", "a8b8", "a8c8", "a8e8", "b7c6", "b7d5", "b7e4", "c4c3", "e5d5", "e5d6", "e5e4", "f7f5", "f7f6"], "close": ["e5c7", "f8c8", "f8d8"]},
+            {"san": "Bc6", "text": "Le fou rejoint la grande diagonale et vise g2.", "keeps": ["a6a5", "a8b8", "a8c8", "a8e8", "b7c6", "b7d5", "b7e4", "c4c3", "e5d5", "e5d6", "e5e4", "f7f5", "f7f6", "f8c8"], "close": ["e5c7", "f8d8"]},
             {"san": "Rc1"}
           ],
           "end": "Selon Stockfish, la position est équilibrée : l'attaque blanche s'est éteinte avec le cavalier."
@@ -100,7 +100,7 @@
           },
           "claim": "hold-b",
           "fails": "Bxg5",
-          "eval": "-0.60",
+          "eval": "-0.49",
           "failsEval": "#-2",
           "orientation": "b"
         },
@@ -114,7 +114,7 @@
             {"san": "Bxf5"},
             {"san": "g6", "text": "Le pion chasse le fou f5 avec gain de temps : la diagonale vers h7 va se fermer.", "keeps": ["g7g6"]},
             {"san": "Bh6"},
-            {"san": "Re8", "text": "La tour s'écarte du fou h6 et garde la colonne e.", "keeps": ["d8a5", "f8e8"]},
+            {"san": "Re8", "text": "La tour s'écarte du fou h6 et garde la colonne e.", "keeps": ["d8a5", "f8e8"], "close": ["e7f6"]},
             {"san": "Qe3"}
           ],
           "end": "Selon Stockfish, les Noirs tiennent et sont même un peu mieux : la plupart des attaquants ont disparu."
@@ -139,8 +139,8 @@
             "h6": "red"
           },
           "fails": "Qc8",
-          "eval": "-2.10",
-          "failsEval": "-2.35",
+          "eval": "-2.19",
+          "failsEval": "-2.64",
           "orientation": "b"
         },
         {
@@ -180,8 +180,8 @@
           },
           "threat": "Qxh7#",
           "fails": "g6",
-          "eval": "-2.92",
-          "failsEval": "-6.73",
+          "eval": "-3.21",
+          "failsEval": "-7.84",
           "orientation": "b"
         },
         {
@@ -222,7 +222,7 @@
           "claim": "hold-b",
           "fails": "h6",
           "eval": "-0.00",
-          "failsEval": "-6.81",
+          "failsEval": "-7.75",
           "orientation": "b"
         },
         {
@@ -235,7 +235,7 @@
             {"san": "Nh6+"},
             {"san": "Bxh6", "text": "Le fou prend le cavalier : un attaquant de moins.", "keeps": ["f8h6"]},
             {"san": "Bxh6"},
-            {"san": "Qd7", "text": "La dame se développe et garde f7 par la septième rangée.", "keeps": ["a8b8", "c5c4", "d6d5", "d8c7", "d8d7"], "close": ["a6b7", "a8c8"]},
+            {"san": "Qd7", "text": "La dame se développe et garde f7 par la septième rangée.", "keeps": ["a8b8", "a8c8", "c5c4", "d6d5", "d8c7", "d8d7"], "close": ["a6b7", "f6h5"]},
             {"san": "h3"}
           ],
           "end": "Selon Stockfish, la position est équilibrée : le pion g6 a chassé l'attaquant à temps."
@@ -262,7 +262,7 @@
           },
           "claim": "hold-b",
           "fails": "g6",
-          "eval": "+0.31",
+          "eval": "+0.19",
           "failsEval": "#-3",
           "orientation": "b"
         },
@@ -302,8 +302,8 @@
             "f8": "green"
           },
           "fails": "Nb6",
-          "eval": "-1.29",
-          "failsEval": "-3.53",
+          "eval": "-1.50",
+          "failsEval": "-4.16",
           "orientation": "b"
         },
         {
@@ -342,8 +342,8 @@
             "h6": "red"
           },
           "fails": "Bd6",
-          "eval": "-2.76",
-          "failsEval": "-4.71",
+          "eval": "-3.56",
+          "failsEval": "-5.52",
           "orientation": "b"
         },
         {
@@ -353,10 +353,10 @@
           "result": "win",
           "moves": [
             {"san": "Bf8", "text": "Le fou revient en f8 : g7 et h6 sont gardés.", "hint": "Le fou e7 peut revenir près du roi pour garder g7.", "keeps": ["e7f8"]},
-            {"san": "Nf6+"},
+            {"san": "Nf6+", "text": "Le cavalier donne échec en f6, mais Stockfish préférait c4.", "weak": true},
             {"san": "Nxf6", "text": "Le cavalier h5 prend : un attaquant de moins.", "keeps": ["h5f6"]},
             {"san": "Qxf6"},
-            {"san": "Be7", "text": "Le fou attaque la dame, qui doit reculer.", "keeps": ["d8c7", "d8c8", "d8d7", "e8e7", "f8e7"], "close": ["c5c4", "d8b8", "f8g7"]},
+            {"san": "Be7", "text": "Le fou attaque la dame, qui doit reculer.", "keeps": ["d8b8", "d8c7", "d8c8", "d8d7", "e8e7", "f8e7"], "close": ["c5c4", "d8a5", "f8g7"]},
             {"san": "Qe5"}
           ],
           "end": "Selon Stockfish, les Noirs ont un avantage décisif : la dame blanche est repoussée et le roque a retrouvé ses gardiens."
@@ -383,8 +383,8 @@
           },
           "threat": "Qh7#",
           "fails": "f5",
-          "eval": "-3.26",
-          "failsEval": "-4.36",
+          "eval": "-3.51",
+          "failsEval": "-5.34",
           "orientation": "b"
         },
         {
@@ -423,8 +423,8 @@
             "f7": "red"
           },
           "fails": "Raf8",
-          "eval": "-1.50",
-          "failsEval": "-6.70",
+          "eval": "-1.41",
+          "failsEval": "-11.63",
           "orientation": "b"
         },
         {
@@ -464,8 +464,8 @@
             "g8": "green"
           },
           "fails": "Bxh7+",
-          "eval": "+1.78",
-          "failsEval": "-2.00",
+          "eval": "+1.75",
+          "failsEval": "-2.20",
           "orientation": "b"
         },
         {
@@ -478,7 +478,7 @@
             {"san": "Qh5", "text": "La dame menace Dh7 mat, mais Stockfish préférait De4.", "weak": true, "threat": "Qh7#"},
             {"san": "Nf6", "text": "Le cavalier garde h7 et attaque la dame. Fxg5 ? perdrait : hxg5 ouvre la colonne h.", "only": true, "keeps": ["d5f6"]},
             {"san": "Qe2"},
-            {"san": "Qd5", "text": "La dame se centralise et vise a2 et g2.", "keeps": ["c7c5", "d8d5", "e7d6", "f6d5"], "close": ["a8c8", "b6b5", "b7g2", "d8e8", "f6e8", "f6h7", "f8e8", "g7g6"]},
+            {"san": "Qd5", "text": "La dame se centralise et vise a2 et g2.", "keeps": ["b6b5", "b7g2", "c7c5", "d8d5", "e7d6", "f6d5", "g7g6"], "close": ["a7a5", "a7a6", "a8b8", "a8c8", "c7c6", "d8d7", "d8e8", "e7b4", "f6e8", "f8e8"]},
             {"san": "Be5"}
           ],
           "end": "Selon Stockfish, les Noirs ont un avantage décisif : le fou sacrifié manque aux Blancs."
@@ -493,7 +493,7 @@
             {"san": "Qh5", "text": "La dame rejoint le cavalier et vise h7."},
             {"san": "Ng6", "text": "Le cavalier e7 rejoint g6 : il garde h8 et f8.", "hint": "Le cavalier e7 peut couvrir h8 et f8.", "only": true, "keeps": ["e7g6"]},
             {"san": "Re3"},
-            {"san": "Qc7", "text": "La dame garde f7 et vise h2.", "keeps": ["a8d8", "b6b2", "b6b3", "b6c7", "b6d6", "b6d8", "c5c4", "e6e5", "g8f8"], "close": ["a7a5", "a7a6", "a8b8", "a8c8", "b6a6", "b6b5", "b7c6", "b7d5"]},
+            {"san": "Qc7", "text": "La dame garde f7 et vise h2.", "keeps": ["a7a6", "a8d8", "b6b2", "b6b3", "b6b5", "b6c7", "b6d6", "b6d8", "c5c4", "e6e5", "g8f8"], "close": ["a7a5", "a8b8", "a8c8", "b6a6", "b7c6", "b7d5"]},
             {"san": "Rg3"}
           ],
           "end": "Selon Stockfish, les Noirs ont un avantage décisif : le roi a trouvé ses défenseurs et la pièce sacrifiée manque."
@@ -520,8 +520,8 @@
             "g6": "yellow"
           },
           "fails": "h6",
-          "eval": "-0.00",
-          "failsEval": "-3.07",
+          "eval": "+0.04",
+          "failsEval": "-4.66",
           "orientation": "b"
         },
         {
@@ -532,7 +532,7 @@
           "moves": [
             {"san": "hxg6", "text": "Le pion attaquant disparaît. La colonne h s'ouvre : il faut maintenant ramener les défenseurs près du roi.", "hint": "Ton pion h7 peut éliminer le pion g6.", "keeps": ["h7g6"]},
             {"san": "Rhg1"},
-            {"san": "Bf6", "text": "Le fou garde g7 et la grande diagonale.", "keeps": ["e6e5", "e7f6"], "close": ["g8f7"]},
+            {"san": "Bf6", "text": "Le fou garde g7 et la grande diagonale.", "keeps": ["e6e5", "e7f6", "g8f7"]},
             {"san": "Rxg6"},
             {"san": "Kf7", "text": "Le roi attaque la tour et garde g6 et e6.", "keeps": ["g8f7"], "close": ["e8f8"]},
             {"san": "Rg4"}
@@ -549,8 +549,8 @@
             "f5": "green"
           },
           "fails": "g6",
-          "eval": "-2.40",
-          "failsEval": "-4.15",
+          "eval": "-3.23",
+          "failsEval": "-5.05",
           "orientation": "b"
         },
         {
@@ -563,7 +563,7 @@
             {"san": "g6"},
             {"san": "Nf6", "text": "Le cavalier revient garder h7 et h5.", "keeps": ["d5f6"]},
             {"san": "Qh4"},
-            {"san": "Nb4", "text": "Le second cavalier part à l'assaut du roi blanc.", "keeps": ["c6b4", "d8e8", "e7b4"], "close": ["e7a3", "e7d6", "f8e8"]},
+            {"san": "Nb4", "text": "Le second cavalier part à l'assaut du roi blanc.", "keeps": ["c6b4", "d8e8", "e7b4", "e7d6"], "close": ["e7a3", "f8e8"]},
             {"san": "Ne2"}
           ],
           "end": "Selon Stockfish, les Noirs ont un avantage décisif : la tempête est bloquée et c'est le roi blanc qui devient la cible."
@@ -586,7 +586,7 @@
           "claim": "b",
           "arrows": [["c4", "f7"], ["g5", "f7"], ["d7", "d5"]],
           "text": "Position d'une partie lichess, les Noirs jouent. Le fou c4 et le cavalier g5 visent f7. La poussée d5 coupe la diagonale du fou et l'attaque. Selon Stockfish, cette riposte centrale donne un avantage décisif aux Noirs.",
-          "eval": "-3.46"
+          "eval": "-4.04"
         },
         {
           "kind": "line",
@@ -598,7 +598,7 @@
             {"san": "Qxe5"},
             {"san": "Bxe5", "text": "Le fou reprend la dame. Sans les dames, la pression sur ton roi diminue.", "keeps": ["g7e5"]},
             {"san": "Rxh6"},
-            {"san": "dxc4", "text": "Le pion prend le fou attaquant : la contre-attaque au centre rapporte du matériel.", "keeps": ["d5c4", "e5f4", "g8g7"], "close": ["c8f5"]},
+            {"san": "dxc4", "text": "Le pion prend le fou attaquant : la contre-attaque au centre rapporte du matériel.", "keeps": ["c8f5", "d5c4", "e5f4", "g8g7"]},
             {"san": "Kb1"}
           ],
           "end": "Selon Stockfish, les Noirs gardent un avantage décisif : la poussée centrale a permis d'échanger les dames et de prendre le fou c4."
