@@ -109,16 +109,19 @@ export class Engine {
   }
 
   // Recherche bloquante ; résout sur bestmove. onLines reçoit les lignes au fil de l'eau.
-  search(opts: { fen: string; depth?: number; movetimeMs?: number; multipv?: number }): Promise<SearchResult> {
+  // `nodes` + `newGame` (table de hachage vidée) : résultat identique quelle que soit la machine.
+  search(opts: { fen: string; depth?: number; movetimeMs?: number; nodes?: number; newGame?: boolean; multipv?: number }): Promise<SearchResult> {
     return this.exclusive(async () => {
       await this.ready
       await this.ensureIdle()
       const detach = this.attachInfoListener(opts.fen)
       if (opts.multipv) this.send(`setoption name MultiPV value ${opts.multipv}`)
+      if (opts.newGame) this.send('ucinewgame')
       this.send(`position fen ${opts.fen}`)
       const done = this.waitFor((l) => l.startsWith('bestmove'))
       this.searching = true
       if (opts.movetimeMs) this.send(`go movetime ${opts.movetimeMs}`)
+      else if (opts.nodes) this.send(`go nodes ${opts.nodes}`)
       else this.send(`go depth ${opts.depth ?? 16}`)
       const bestLine = await done
       this.searching = false

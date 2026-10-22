@@ -9,10 +9,10 @@ import { Cta } from './Cta'
 import { EngineContinuation } from './EngineContinuation'
 import { BigClock, RunHeader, RunSummary } from './mates/RunParts'
 import { PREMOVE_COST_MS, usePlayerClock } from './usePlayerClock'
-import type { Engine } from '../lib/engine'
+import type { Engine, SearchResult } from '../lib/engine'
 import {
   CLOCK_HINT, drawnStreak, ENDGAME_CLOCK_DOMAIN, familyById, familyOf, holdReached, HOLD_MOVES, judgeBoard, MIX,
-  cadenceLabel, recordKey, secondsLabel, seriesRound, WIN_DRAWN_TURNS,
+  cadenceLabel, recordKey, secondsLabel, seriesRound, VERDICT_NODES, WIN_DRAWN_TURNS,
   type ClockCadence, type ClockPosition, type EngineScore, type Verdict,
 } from '../lib/endgameClock'
 import { RunRecorder, type RunStats } from '../lib/mates'
@@ -146,23 +146,33 @@ function ClockSeries({ serie, cadence, stats, getEngine, onDone, onMenu, onRepla
     clock.start()
   }
 
+  async function guarded(search: Promise<SearchResult>): Promise<SearchResult | null> {
+    let guard: ReturnType<typeof setTimeout> | undefined
+    const res = await Promise.race([
+      search,
+      new Promise<null>((r) => {
+        guard = setTimeout(() => r(null), ENGINE_TIMEOUT_MS)
+      }),
+    ])
+    clearTimeout(guard)
+    return res
+  }
+
   async function reply(g: number) {
     const c = chessRef.current!
     const searched = c.fen()
     setThinking(true)
-    let guard: ReturnType<typeof setTimeout> | undefined
     // La réponse dure au moins BOT_MOVETIME_MS même si Stockfish rend la main tout de suite (un
     // seul coup légal) : la pièce adverse ne se téléporte pas, la pendule arrêtée l'est visiblement.
     const [res] = await Promise.all([
-      Promise.race([
-        getEngine().search({ fen: searched, movetimeMs: BOT_MOVETIME_MS, multipv: 1 }),
-        new Promise<null>((r) => {
-          guard = setTimeout(() => r(null), ENGINE_TIMEOUT_MS)
-        }),
-      ]),
+      guarded(getEngine().search({ fen: searched, movetimeMs: BOT_MOVETIME_MS, multipv: 1 })),
       new Promise((r) => setTimeout(r, BOT_MOVETIME_MS)),
     ])
-    clearTimeout(guard)
+    if (g !== gen.n || phaseRef.current !== 'play') return
+    const needsVerdict = res !== null && (family.objective === 'win' || playedRef.current >= HOLD_MOVES)
+    const judged = needsVerdict
+      ? await guarded(getEngine().search({ fen: searched, nodes: VERDICT_NODES, newGame: true, multipv: 1 }))
+      : null
     if (g !== gen.n || phaseRef.current !== 'play') return
     setThinking(false)
     const uci = res?.bestMove
@@ -192,7 +202,7 @@ function ClockSeries({ serie, cadence, stats, getEngine, onDone, onMenu, onRepla
       return
     }
     // Avis du moteur sur la position qu'il vient de jouer (de son point de vue, il avait le trait).
-    const line = res?.lines.find((l) => l.multipv === 1) ?? res?.lines[0]
+    const line = judged?.lines.find((l) => l.multipv === 1) ?? judged?.lines[0]
     const eng: EngineScore | null = line ? { cp: line.scoreCp, mate: line.scoreMate } : null
     if (family.objective === 'draw' && holdReached(playedRef.current, eng)) {
       conclude({ success: true, reason: `Nulle tenue : ${playedRef.current} coups sans rien lâcher.`, end: null })

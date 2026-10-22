@@ -110,6 +110,10 @@ export const HOLD_MAX_CP = 150
 // WIN_DRAWN_TURNS réponses de suite.
 export const WIN_DRAWN_CP = 50
 export const WIN_DRAWN_TURNS = 3
+// Les verdicts moteur (tenue, gain envolé) viennent d'une recherche distincte du coup joué, à
+// nœuds fixes et table de hachage vidée : même score sur iPhone, sous charge et dans la suite E2E,
+// qui la rejoue sur toutes les lignes optimales de la banque (pire nulle +63, pire gain +170).
+export const VERDICT_NODES = 100_000
 
 // Score d'une recherche du moteur, de SON point de vue (camp au trait de la position cherchée).
 export interface EngineScore {

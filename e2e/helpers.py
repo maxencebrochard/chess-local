@@ -576,7 +576,8 @@ def overflow_x(page):
 class Solver:
     """Le Stockfish du repo (node_modules, build lite mono-thread, celui de l'app) lancé sous
     Node, en UCI : un joueur simulé qui joue vraiment, quelle que soit la défense de l'app, et
-    un juge des seuils d'évaluation de l'app (`score`, même build et même `movetime` qu'elle)."""
+    un juge des seuils d'évaluation de l'app (`score`, même build et même recherche à nœuds fixes
+    qu'elle)."""
 
     def __init__(self):
         self.proc = subprocess.Popen(
@@ -605,8 +606,9 @@ class Solver:
         self._send(f"go depth {depth}")
         return self._until("bestmove").split()[1]
 
-    def score(self, fen, movetime=150):
-        """Dernier score (cp, mate) de la recherche, du point de vue du trait, comme `Engine.search`."""
+    def score(self, fen, nodes):
+        """Dernier score (cp, mate) d'une recherche à `nodes` nœuds, table de hachage vidée, du point
+        de vue du trait, comme `Engine.search({ nodes, newGame: true })` : indépendant de la charge."""
         last = {"cp": None, "mate": None}
 
         # Même lecture que `parseInfo` de src/lib/engine.ts : dernière ligne `info ... pv`.
@@ -617,8 +619,9 @@ class Solver:
             mate = re.search(r"\bscore mate (-?\d+)", line)
             last.update(cp=int(cp.group(1)) if cp else None, mate=int(mate.group(1)) if mate else None)
 
+        self._send("ucinewgame")
         self._send(f"position fen {fen}")
-        self._send(f"go movetime {movetime}")
+        self._send(f"go nodes {nodes}")
         self._until("bestmove", read)
         return last
 

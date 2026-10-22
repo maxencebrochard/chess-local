@@ -5,9 +5,11 @@ Ce qui est vérifié :
 - données : banque à jour avec ses sources et son tampon (`scripts/prepare-endgame-clock.py
   --check`), ids de familles figés (clés des records), positions légales, joueur au trait, objectif
   cohérent, lignes optimales légales, deux couleurs, aucune finale `chrono` dans endgames.json ;
-- seuils de l'app : le Stockfish lite du repo, en `movetime 150` comme l'app, sur chaque position
-  des lignes optimales où le moteur a le trait : nulle à tenir => moteur sous HOLD_MAX_CP, gain =>
-  défenseur sous -WIN_DRAWN_CP (les constantes sont lues dans src/lib/endgameClock.ts bundlé) ;
+- seuils de l'app : le Stockfish lite du repo, avec la recherche de verdict de l'app (VERDICT_NODES
+  nœuds, table de hachage vidée, donc indépendante de la charge), sur chaque position des lignes
+  optimales où le moteur a le trait : nulle à tenir => moteur sous HOLD_MAX_CP, gain => défenseur
+  sous -WIN_DRAWN_CP (les constantes sont lues dans src/lib/endgameClock.ts bundlé), et même score
+  pour une position rejugée après les autres ;
 - logique pure (bundle rolldown sous Node) : fins par les règles avant la conversion, conversion
   par promotion ou matériel raflé, sous-promotion refusée, tenue de nulle, gain envolé, cadences,
   ordre des séries ;
@@ -114,11 +116,11 @@ def data_suite():
 
 
 def thresholds_suite(data):
-    consts = bundle_eval("console.log(JSON.stringify({ hold: m.HOLD_MAX_CP, drawn: m.WIN_DRAWN_CP }))")
+    consts = bundle_eval("console.log(JSON.stringify({ hold: m.HOLD_MAX_CP, drawn: m.WIN_DRAWN_CP, nodes: m.VERDICT_NODES }))")
     if not consts:
         return
     solver = Solver()
-    worst_hold, worst_win, bad = -10**9, 10**9, []
+    worst_hold, worst_win, bad, first = -10**9, 10**9, [], None
     try:
         for f in data["families"]:
             for p in f["positions"]:
@@ -128,7 +130,8 @@ def thresholds_suite(data):
                     b.push_uci(m)
                     if b.turn == player or b.is_game_over():
                         continue
-                    s = solver.score(b.fen(), 150)
+                    s = solver.score(b.fen(), consts["nodes"])
+                    first = first or (b.fen(), s)
                     if f["objective"] == "draw":
                         # Le camp fort ne doit voir ni mat ni +HOLD_MAX_CP sur une ligne nulle.
                         cp = 10**6 if s["mate"] is not None and s["mate"] > 0 else -(10**6) if s["mate"] is not None else s["cp"]
@@ -141,8 +144,10 @@ def thresholds_suite(data):
                         worst_win = min(worst_win, -cp)
                         if cp >= -consts["drawn"]:
                             bad.append(f"{p['id']} gain vu à {s}")
+        again = solver.score(first[0], consts["nodes"])
     finally:
         solver.close()
+    check(f"[seuils] verdict reproductible à {consts['nodes']} nœuds, quelle que soit la recherche précédente", again == first[1], f"({first[1]} puis {again})")
     check(f"[seuils] nulles sous +{consts['hold']} cp (pire {worst_hold}), gains au-dessus de +{consts['drawn']} cp (pire {worst_win})", not bad, f"({bad[:5]})")
 
 
@@ -355,7 +360,10 @@ def clock_suite(p, browser):
     pre = pawn_push(after_reply)
     tap_move(page, chess.square_name(pre.from_square), chess.square_name(pre.to_square), pause=0)
     page.clock.run_for(50)
+    fen0 = run_state(page)["fen"]
     page.evaluate("uci => { for (const h of window.__heldUci) h[1] = 'bestmove ' + uci; window.__releaseUci() }", reply.uci())
+    # Le coup n'apparaît qu'après la recherche de verdict, à nœuds fixes : en temps réel, hors horloge.
+    wait(page, f"document.querySelector('[data-run]').dataset.fen !== {json.dumps(fen0)}")
     page.clock.run_for(50)
     after_reply.push(pre)
     s = run_state(page)
@@ -390,7 +398,10 @@ def clock_suite(p, browser):
     pre = pawn_push(board)
     tap_move(page, chess.square_name(pre.from_square), chess.square_name(pre.to_square), pause=0)
     page.clock.run_for(50)
+    fen0 = run_state(page)["fen"]
     page.evaluate("uci => { for (const h of window.__heldUci) h[1] = 'bestmove ' + uci; window.__releaseUci() }", reply.uci())
+    # Le coup n'apparaît qu'après la recherche de verdict, à nœuds fixes : en temps réel, hors horloge.
+    wait(page, f"document.querySelector('[data-run]').dataset.fen !== {json.dumps(fen0)}")
     page.clock.run_for(50)
     s = run_state(page)
     actual = chess.Board(s["fen"])
