@@ -66,7 +66,8 @@ export interface LearnSession {
   // missed-defense (tentative sur une défense ratée, même contrat que missed-attack), conversion
   // (entraîneur « Convertir l'avantage » : mêmes champs que attack, itemId = id de la position `conv-<puzzle>`),
   // structure-play (partie depuis une structure de pions de mes parties),
-  // critical-moment (moments critiques du bilan, hors Elo) ou path (parcours d’apprentissage).
+  // critical-moment (moments critiques du bilan, hors Elo), path (parcours d’apprentissage) ou
+  // endgame-clock (une série des Finales au chrono, hors Elo).
   // course : itemId = `<slug>:<id>`, le slug désignant le cours (`finales:` pour le cours de finales,
   // `roque:` pour « Démolir le roque », `bases:` pour « Les bases », `structures:` pour « Structures de pions »,
   // `defense:` pour « Tenir sous l'attaque »), ex. `finales:mat-dame`, `roque:grec-schema`,
@@ -87,6 +88,8 @@ export interface LearnSession {
   // critical-moment : fen = position du moment, itemId = `question:<attendu>:<choisi>` (réponse à
   // « Plan, menace ou coup forcé ? », success = bonne réponse) ou `coup:<attendu>` (tentative notée
   // par le keyMove de la position rejouée), attendu et choisi parmi `forced`, `threat`, `plan`.
+  // endgame-clock : une série des Finales au chrono, itemId = `<famille|mix>:<base s>+<incrément s>`,
+  // ex. `lucena:30+1`, `mix:15+0` ; score = finales réussies (même forme que `mats`).
   // revision : puzzles revus par la révision espacée, itemId = `puzzle:<id>` (sans Elo) ; les
   // fautes, variantes, attaques manquées et défenses ratées revues s'écrivent dans leurs domaines
   // d'origine (`mistakes`, `opening-drill`, `missed-attack`, `missed-defense`).

@@ -574,17 +574,17 @@ def read_puzzle(page):
 
 
 def play_solution(page, info):
-    """Joue tous les coups du joueur. Retourne False si un coup promeut (boîte de promotion) :
-    on passe alors ce puzzle plutôt que de dépendre de son UI."""
+    """Joue toute la solution par l'interface, y compris le choix de promotion."""
     moves = info["puzzle"]["moves"]
-    if any(len(m) > 4 for m in moves[1::2]):
-        return False
     for i in range(1, len(moves), 2):
         click_sq(page, moves[i][:2])
         page.wait_for_timeout(150)
         click_sq(page, moves[i][2:4])
+        if len(moves[i]) == 5:
+            # Les anciens builds nomment les boutons par leur figurine, les récents par la pièce.
+            label = {"q": "Dame|[♕♛]", "r": "Tour|[♖♜]", "b": "Fou|[♗♝]", "n": "Cavalier|[♘♞]"}[moves[i][4]]
+            page.get_by_role("button", name=re.compile(f"^(?:{label})$")).click()
         page.wait_for_timeout(700)  # réponse adverse automatique
-    return True
 
 
 def play_wrong_move(page, info):
@@ -627,9 +627,8 @@ def puzzles_phase(page, base):
             if play_wrong_move(page, info) is None:
                 page.click("button:has-text('Passer')")
                 continue
-        elif not play_solution(page, info):
-            page.click("button:has-text('Passer')")
-            continue
+        else:
+            play_solution(page, info)
         outcome = puzzle_outcome(page)
         if outcome is None:
             ck.fail("[ancien] puzzle sans verdict après le coup", f"(puzzle {info['puzzle']['id']}, {'raté voulu' if want_fail else 'solution jouée'})")
@@ -656,13 +655,10 @@ def rush_phase(page, base):
     solved = False
     for _ in range(4):
         info = read_puzzle(page)
-        if play_solution(page, info):
-            solved = wait_until(page, lambda: (page.locator("main .text-2xl.font-black").first.inner_text().strip() == "1", ""), 5000)[0]
-            if solved:
-                break
-        else:
-            play_wrong_move(page, info)  # promotion : on sacrifie ce puzzle (une croix), le suivant arrive
-            page.wait_for_timeout(800)
+        play_solution(page, info)
+        solved = wait_until(page, lambda: (page.locator("main .text-2xl.font-black").first.inner_text().strip() == "1", ""), 5000)[0]
+        if solved:
+            break
     check("[ancien] rush : un puzzle résolu (score 1)", solved)
     page.locator("main button", has_text="✕").click()
     ck.appears("[ancien] rush : arrêt → écran de fin", page, "text=puzzles résolus", timeout=10000)
@@ -721,8 +717,7 @@ def learn_phase(page, base):
     ck.appears("[ancien] apprendre : leçon tactique", page, "button:has-text(\"C'est parti\")", timeout=30000)
     page.get_by_role("button", name="C'est parti").click()
     info = read_puzzle(page)
-    if not play_solution(page, info):
-        play_wrong_move(page, info)  # promotion : n'importe quel coup donne un verdict, donc une séance enregistrée
+    play_solution(page, info)
     expect("[ancien] apprendre : verdict de l'exercice (séance enregistrée)",
            wait_until(page, lambda: (page.locator("text=Réussi").count() > 0 or page.locator("text=Raté").count() > 0, f"(pas de verdict : puzzle {info}, état {page.evaluate(FIBER_JS)})"), 15000))
     page.click("header button:has-text('✕')")

@@ -245,8 +245,9 @@ export interface MatsStats {
   totalRuns: number
 }
 
-export async function loadMatsStats(): Promise<MatsStats> {
-  const rows = await db.learnSessions.where('domain').equals(MATS_DOMAIN).sortBy('date')
+// `domain` : les Finales au chrono (domaine `endgame-clock`) tiennent leurs séries de la même façon.
+export async function loadMatsStats(domain = MATS_DOMAIN): Promise<MatsStats> {
+  const rows = await db.learnSessions.where('domain').equals(domain).sortBy('date')
   const byKey: Record<string, RunStats> = {}
   let totalMates = 0
   for (const r of rows) {
@@ -279,8 +280,8 @@ export class RunRecorder {
   private readonly itemId: string
   private readonly domain: string
 
-  // `domain` : les séries de l'entraîneur de visualisation (domaine `visualisation`) réutilisent ce
-  // mécanisme.
+  // `domain` : les séries de l'entraîneur de visualisation (domaine `visualisation`) et des Finales
+  // au chrono (domaine `endgame-clock`) réutilisent ce mécanisme.
   constructor(itemId: string, domain: string = MATS_DOMAIN) {
     this.itemId = itemId
     this.domain = domain

@@ -29,7 +29,7 @@ try:
 except ImportError:
     sys.exit("python-chess manquant : pip install -r e2e/requirements.txt")
 
-from helpers import BASE, Checker, click_square, desktop_context, mobile_context, overflow_x, scroll_state, shot
+from helpers import BASE, Checker, Solver, click_square, desktop_context, mobile_context, overflow_x, scroll_state, shot
 
 ck = Checker("mats")
 check = ck.check
@@ -162,43 +162,6 @@ def play_uci(page, uci, after=150):
         name = {"q": "Dame", "r": "Tour", "b": "Fou", "n": "Cavalier"}[uci[4]]
         page.get_by_role("button", name=name, exact=True).first.click()
         page.wait_for_timeout(150)
-
-
-class Solver:
-    """Le camp fort de la suite : le Stockfish du repo (node_modules, build lite mono-thread) lancé
-    sous Node, en UCI. Le joueur simulé mate donc vraiment, quelle que soit la défense de l'app."""
-
-    def __init__(self):
-        self.proc = subprocess.Popen(
-            ["node", "node_modules/stockfish/bin/stockfish-18-lite-single.js"],
-            cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1,
-        )
-        self._send("uci")
-        self._until("uciok")
-
-    def _send(self, cmd):
-        self.proc.stdin.write(cmd + "\n")
-        self.proc.stdin.flush()
-
-    def _until(self, prefix):
-        while True:
-            line = self.proc.stdout.readline()
-            if not line:
-                raise RuntimeError("Stockfish (Node) s'est arrêté")
-            if line.startswith(prefix):
-                return line.strip()
-
-    def best(self, fen):
-        self._send(f"position fen {fen}")
-        self._send("go depth 14")
-        return self._until("bestmove").split()[1]
-
-    def close(self):
-        try:
-            self._send("quit")
-            self.proc.wait(timeout=5)
-        except Exception:
-            self.proc.kill()
 
 
 # ---------- parcours ----------
