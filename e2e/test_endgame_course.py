@@ -8,7 +8,7 @@ import json
 import os
 import subprocess
 
-from course_helpers import advance, continue_btn, finish_line, observe_dom, open_lesson, wait_piece, wait_ready
+from course_helpers import advance, continue_btn, finish_line, observe_dom, open_lesson, wait_piece, wait_ready, wait_rows
 from helpers import BASE, Checker, desktop_context, mobile_context, overflow_x, piece_on, shot, tap_move, tap_square
 
 ck = Checker("endgame_course")
@@ -143,12 +143,12 @@ def suite(p):
     check("[bilan] S'entraîner proposé", page.get_by_role("button", name="S'entraîner : Mat des deux tours").is_visible())
     check("[bilan] Leçon suivante proposée", page.get_by_role("button", name="Leçon suivante").is_visible())
     shot(page, "course_summary")
-    page.wait_for_function("async () => (await (" + COURSE_ROWS + ")()).length === 1", timeout=5000)
+    wait_rows(ck, page, COURSE_ROWS, "[progrès] ligne learnSessions course écrite")
     check("[progrès] une ligne learnSessions course", page.evaluate(COURSE_ROWS) == ["finales:mat-deux-tours"], f"({page.evaluate(COURSE_ROWS)})")
     # Revoir le bilan ne compte pas deux fois.
     page.goto(f"{BASE}/#/apprendre/finales/mat-deux-tours?etape=3")
     ck.appears("[progrès] bilan rouvert", page, "text=À retenir")
-    page.wait_for_function("async () => (await (" + COURSE_ROWS + ")()).length === 1", timeout=5000)
+    wait_rows(ck, page, COURSE_ROWS, "[progrès] ligne learnSessions course relue")
     page.wait_for_timeout(400)  # Conserver la fenêtre de détection d’une écriture en double.
     check("[progrès] idempotent", len(page.evaluate(COURSE_ROWS)) == 1, f"({page.evaluate(COURSE_ROWS)})")
 

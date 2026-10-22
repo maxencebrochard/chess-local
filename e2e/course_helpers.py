@@ -1,5 +1,6 @@
 """Gestes des cours : attendre le rendu de l’étape et chaque réponse avant de rejouer."""
 import re
+import time
 from contextlib import contextmanager
 
 from playwright.sync_api import expect
@@ -61,7 +62,11 @@ def open_lesson(ck, page, url, lesson, step=1):
 
 
 def play_solution(ck, page):
-    return wait_ready(ck, page) and _settled(ck, page, "[cours] réponse affichée après Solution", lambda: _solution(page)) and wait_ready(ck, page)
+    return wait_ready(ck, page) and _reply(ck, page) and wait_ready(ck, page)
+
+
+def _reply(ck, page):
+    return _settled(ck, page, "[cours] réponse affichée après Solution", lambda: _solution(page))
 
 
 def _solution(page):
@@ -82,7 +87,7 @@ def finish_line(ck, page, max_moves=40):
     for clicks in range(max_moves + 1):
         if not wait_ready(ck, page) or continue_btn(page).is_enabled() or clicks == max_moves:
             return clicks
-        if not play_solution(ck, page):
+        if not _reply(ck, page):
             return clicks + 1
 
 
@@ -92,6 +97,17 @@ def wait_piece(ck, page, square, piece):
     if piece is None:
         return _settled(ck, page, f"[cours] case {square} vidée", lambda: expect(locator).to_have_count(0, timeout=5000))
     return _settled(ck, page, f"[cours] {piece} rendu en {square}", lambda: expect(locator.first).to_have_attribute("data-piece", piece, timeout=5000))
+
+
+def wait_rows(ck, page, rows, name):
+    """Attend au moins une ligne : le check de l’appelant constate l’absence de doublon."""
+    def wait():
+        end = time.monotonic() + 5
+        while not page.evaluate(rows):
+            if time.monotonic() > end:
+                raise TimeoutError("aucune ligne après 5000 ms")
+            page.wait_for_timeout(50)
+    return _settled(ck, page, name, wait)
 
 
 @contextmanager

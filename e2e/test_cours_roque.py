@@ -15,7 +15,7 @@ import tempfile
 
 import chess
 
-from course_helpers import advance, continue_btn, finish_line, observe_dom, open_lesson, play_solution, wait_piece, wait_ready
+from course_helpers import advance, continue_btn, finish_line, observe_dom, open_lesson, play_solution, wait_piece, wait_ready, wait_rows
 from helpers import BASE, Checker, desktop_context, drag_piece, mobile_context, overflow_x, piece_on, shot, tap_move
 
 ck = Checker("cours_roque")
@@ -261,11 +261,11 @@ def suite(p):
     check("[bilan] pas de S'entraîner (pas d'exercice de finale)", page.locator("button", has_text="S'entraîner").count() == 0)
     check("[bilan] Leçon suivante proposée", page.get_by_role("button", name="Leçon suivante").is_visible())
     shot(page, "roque_summary")
-    page.wait_for_function("async () => (await (" + ROWS + ")()).length === 1", timeout=5000)
+    wait_rows(ck, page, ROWS, "[progrès] ligne learnSessions roque écrite")
     check("[progrès] une ligne learnSessions roque", page.evaluate(ROWS) == ["roque:grec-schema"], f"({page.evaluate(ROWS)})")
     page.goto(f"{BASE}/#/apprendre/roque/grec-schema?etape={total}")
     ck.appears("[progrès] bilan rouvert", page, "text=À retenir")
-    page.wait_for_function("async () => (await (" + ROWS + ")()).length === 1", timeout=5000)
+    wait_rows(ck, page, ROWS, "[progrès] ligne learnSessions roque relue")
     page.wait_for_timeout(400)  # Conserver la fenêtre de détection d’une écriture en double.
     check("[progrès] idempotent", page.evaluate(ROWS) == ["roque:grec-schema"], f"({page.evaluate(ROWS)})")
 
