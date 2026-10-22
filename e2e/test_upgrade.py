@@ -60,6 +60,8 @@ from run import HOST, ROOT, SUBPATH, free_port, port_is_listening
 #                         réglage premoves ; même schéma version(3).
 #   deployed-2026-10-22 : pièces centrées, jeu Atelier, sons de la vidéo de référence, réglages
 #                         persist en version 2 ; même schéma version(3).
+#   deployed-2026-10-22-2 : second déploiement du jour (UTC) : cours « Tenir sous l'attaque », alerte
+#                         menace, révision élargie ; même schéma version(3).
 # On conserve les précédents : des appareils peuvent encore les porter.
 OLD_BUILDS = (
     {"tag": "deployed-2026-07-20", "sha": "388d3edae6fd6ec152ccca70b0573d242d612090", "labels": {"archive_bot": "vs Noa"}},
@@ -69,6 +71,8 @@ OLD_BUILDS = (
     {"tag": "deployed-2026-10-16", "sha": "9fb6f489aed18591031a7d664050f86cb4365323",
      "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
     {"tag": "deployed-2026-10-22", "sha": "3067b8e5cb2ab480b54736b5a3b3599f5da3dde1",
+     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
+    {"tag": "deployed-2026-10-22-2", "sha": "c2838e70f886f743b9e30519575c1fda06a7688d",
      "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
 )
 DB_NAME = "chess-local"
@@ -967,10 +971,11 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
         # Lu dans le bundle extrait : un `None` des deux côtés passerait sans rien prouver, d'où
         # ce check qui arrête la passe. Le `__BUILD__` est en UTC, le tag porte le jour du
         # déploiement : un déploiement entre minuit et 2 h (heure de Paris) nommerait son tag
-        # d'après le jour UTC.
+        # d'après le jour UTC. Un second déploiement le même jour prend le suffixe `-2` (puis `-3`...) :
+        # seuls les dix caractères de la date sont comparés.
         old_label = build_label_of(old_dir)
         if not check("[ancien build] horodatage __BUILD__ lisible dans le bundle, daté du jour du tag et différent du nouveau",
-                     bool(old_label) and old_label.startswith(build["tag"].removeprefix("deployed-")) and old_label != new_label,
+                     bool(old_label) and old_label.startswith(build["tag"].removeprefix("deployed-")[:10]) and old_label != new_label,
                      f"(ancien {old_label}, nouveau {new_label})"):
             return
         old_assets = sorted(os.listdir(os.path.join(old_dir, "assets")))
