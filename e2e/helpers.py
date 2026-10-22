@@ -17,12 +17,14 @@ import os
 import re
 from contextlib import contextmanager
 import signal
+import subprocess
 import sys
 import traceback
 
 from playwright.sync_api import sync_playwright
 
 E2E_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(E2E_DIR)
 FIXTURES = os.path.join(E2E_DIR, "fixtures")
 SHOTS = os.environ.get("SHOTS", os.path.join(E2E_DIR, "shots"))
 os.makedirs(SHOTS, exist_ok=True)
@@ -569,3 +571,60 @@ def overflow_x(page):
           return max
         }"""
     )
+
+
+class Solver:
+    """Le Stockfish du repo (node_modules, build lite mono-thread, celui de l'app) lancé sous
+    Node, en UCI : un joueur simulé qui joue vraiment, quelle que soit la défense de l'app, et
+    un juge des seuils d'évaluation de l'app (`score`, même build et même `movetime` qu'elle)."""
+
+    def __init__(self):
+        self.proc = subprocess.Popen(
+            ["node", "node_modules/stockfish/bin/stockfish-18-lite-single.js"],
+            cwd=ROOT_DIR, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1,
+        )
+        self._send("uci")
+        self._until("uciok")
+
+    def _send(self, cmd):
+        self.proc.stdin.write(cmd + "\n")
+        self.proc.stdin.flush()
+
+    def _until(self, prefix, on_line=None):
+        while True:
+            line = self.proc.stdout.readline()
+            if not line:
+                raise RuntimeError("Stockfish (Node) s'est arrêté")
+            if on_line:
+                on_line(line)
+            if line.startswith(prefix):
+                return line.strip()
+
+    def best(self, fen, depth=14):
+        self._send(f"position fen {fen}")
+        self._send(f"go depth {depth}")
+        return self._until("bestmove").split()[1]
+
+    def score(self, fen, movetime=150):
+        """Dernier score (cp, mate) de la recherche, du point de vue du trait, comme `Engine.search`."""
+        last = {"cp": None, "mate": None}
+
+        # Même lecture que `parseInfo` de src/lib/engine.ts : dernière ligne `info ... pv`.
+        def read(line):
+            if not line.startswith("info ") or " pv " not in line or " depth " not in line:
+                return
+            cp = re.search(r"\bscore cp (-?\d+)", line)
+            mate = re.search(r"\bscore mate (-?\d+)", line)
+            last.update(cp=int(cp.group(1)) if cp else None, mate=int(mate.group(1)) if mate else None)
+
+        self._send(f"position fen {fen}")
+        self._send(f"go movetime {movetime}")
+        self._until("bestmove", read)
+        return last
+
+    def close(self):
+        try:
+            self._send("quit")
+            self.proc.wait(timeout=5)
+        except Exception:
+            self.proc.kill()

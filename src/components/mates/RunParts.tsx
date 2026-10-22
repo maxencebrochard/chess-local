@@ -1,4 +1,5 @@
-// Briques partagées des séries de « Mats éclair » : en-tête, gros chrono, progression, bilan.
+// Briques partagées des séries de « Mats éclair » et des Finales au chrono : en-tête, gros chrono,
+// progression, bilan.
 import type { ReactNode } from 'react'
 import { Cta } from '../Cta'
 import type { RunStats } from '../../lib/mates'

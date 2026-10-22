@@ -8,6 +8,7 @@ import { ATTACK_PREFS_KEY } from './attack'
 import { CONVERSION_PREFS_KEY } from './conversion'
 import { DEFENSE_PREFS_KEY } from './defense'
 import { THREAT_PREFS_KEY } from './threat'
+import { ENDGAME_CLOCK_PREFS_KEY } from './endgameClock'
 import { INSIGHTS_KEY, readInsights, writeInsights } from './insightsStore'
 import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, migrateSettings, useSettings } from '../store/settings'
 import { BOTS } from './bots'
@@ -27,7 +28,7 @@ const LAST_EXPORT_KEY = 'chess-local-last-export'
 // menace ? ») et clés des séances d'Apprendre, de révision et du parcours d'apprentissage dans
 // sessionStorage :
 // les seules que la réinitialisation a le droit de toucher.
-const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, DEFENSE_PREFS_KEY, CONVERSION_PREFS_KEY, INSIGHTS_KEY, 'chess-local-visualisation', THREAT_PREFS_KEY]
+const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, DEFENSE_PREFS_KEY, CONVERSION_PREFS_KEY, INSIGHTS_KEY, 'chess-local-visualisation', THREAT_PREFS_KEY, ENDGAME_CLOCK_PREFS_KEY]
 const SESSION_KEYS = ['learn-session-v1', 'revision-session-v1', 'path-session-v1']
 
 export const TABLES = ['games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions', 'reviews'] as const

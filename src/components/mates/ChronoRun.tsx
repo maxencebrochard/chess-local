@@ -15,11 +15,11 @@ import {
   type Cadence, type ChronoPosition, type Drill, type RunStats,
 } from '../../lib/mates'
 import { playMoveSound, sounds } from '../../lib/sounds'
+import { usePlayerClock } from '../usePlayerClock'
 
 const BOT_MOVETIME_MS = 150
 const ENGINE_TIMEOUT_MS = 6000
 const WIN_PAUSE_MS = 1400 // réseau du mat affiché avant la position suivante
-const TICK_MS = 100
 
 type Phase = 'play' | 'won' | 'over'
 
@@ -87,13 +87,11 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
   const [phase, setPhase] = useState<Phase>('play')
   const [score, setScore] = useState(0)
   const [reason, setReason] = useState<string | null>(null)
-  const [left, setLeft] = useState(budget)
+  const clock = usePlayerClock(budget, () => fail('Temps écoulé : le drapeau est tombé.'))
   const [mateMs, setMateMs] = useState<number | null>(null)
   const [solution, setSolution] = useState(false)
   const [stopped, setStopped] = useState(false)
-  // Miroirs hors rendu : chrono, phase, score et génération (réponse moteur périmée ignorée).
-  const leftRef = useRef(budget)
-  const deadline = useRef<number | null>(null)
+  // Miroirs hors rendu : phase, score et génération (réponse moteur périmée ignorée).
   const phaseRef = useRef<Phase>('play')
   const scoreRef = useRef(0)
   const gen = useRef({ n: 0 }).current
@@ -104,29 +102,9 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
     return queue.current.pop()!
   }
 
-  // Démarrage du chrono au trait du joueur ; arrêt (temps restant figé) à son coup.
-  function startClock() {
-    deadline.current = Date.now() + leftRef.current
-  }
-  function stopClock() {
-    if (deadline.current !== null) leftRef.current = Math.max(0, deadline.current - Date.now())
-    deadline.current = null
-    setLeft(leftRef.current)
-  }
-
   useEffect(() => {
-    startClock()
-    const tick = () => {
-      if (deadline.current === null || phaseRef.current !== 'play') return
-      const l = Math.max(0, deadline.current - Date.now())
-      setLeft(l)
-      if (l === 0) fail('Temps écoulé : le drapeau est tombé.')
-    }
-    const id = setInterval(tick, TICK_MS)
-    document.addEventListener('visibilitychange', tick)
+    clock.start()
     return () => {
-      clearInterval(id)
-      document.removeEventListener('visibilitychange', tick)
       if (timer.current) clearTimeout(timer.current)
       gen.n++
       // Quitter en pleine série : ses mats sont déjà enregistrés (ligne écrite à chaque mat) ; on
@@ -141,7 +119,7 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
     if (phaseRef.current !== 'play' && !(why === null && phaseRef.current === 'won')) return
     if (timer.current) clearTimeout(timer.current)
     phaseRef.current = 'over'
-    stopClock()
+    clock.stop()
     gen.n++
     setThinking(false)
     setReason(why)
@@ -155,11 +133,11 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
   }
 
   function win() {
-    stopClock()
+    clock.stop()
     phaseRef.current = 'won'
     scoreRef.current += 1
     setScore(scoreRef.current)
-    setMateMs(budget - leftRef.current)
+    setMateMs(budget - clock.remaining())
     setPhase('won')
     sounds.success()
     void recorder.save(scoreRef.current)
@@ -173,8 +151,7 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
   function loadNext() {
     const next = nextPosition()
     chessRef.current = new Chess(next.fen)
-    leftRef.current = budget
-    setLeft(budget)
+    clock.reset(budget)
     setPos(next)
     setFen(next.fen)
     setLastMove(null)
@@ -183,7 +160,7 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
     setThinking(false)
     phaseRef.current = 'play'
     setPhase('play')
-    startClock()
+    clock.start()
   }
 
   // Fin de partie après un coup : mat du joueur, ou nulle (raté).
@@ -235,14 +212,14 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
     playMoveSound(move, true)
     setFen(c.fen())
     setLastMove(move)
-    if (!settle(move)) startClock()
+    if (!settle(move)) clock.start()
   }
 
   function onMove(from: string, to: string, promotion?: string, premove = false): boolean {
     const c = chessRef.current!
     if (phaseRef.current !== 'play' || thinking || c.turn() !== playerColor) return false
     // Drapeau tombé entre deux ticks : le coup arrive trop tard.
-    if (deadline.current !== null && Date.now() >= deadline.current) {
+    if (clock.expired()) {
       fail('Temps écoulé : le drapeau est tombé.')
       return false
     }
@@ -252,17 +229,12 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
     } catch {
       return false
     }
-    if (premove) {
-      stopClock()
-      leftRef.current = Math.max(0, leftRef.current - 100)
-      setLeft(leftRef.current)
-      if (leftRef.current === 0) {
-        c.undo() // Le coût du prémouvement fait tomber le drapeau : aucun coup joué.
-        fail('Temps écoulé : le drapeau est tombé.')
-        return false
-      }
+    clock.stop()
+    if (premove && !clock.debitPremove()) {
+      c.undo() // Le coût du prémouvement fait tomber le drapeau : aucun coup joué.
+      fail('Temps écoulé : le drapeau est tombé.')
+      return false
     }
-    stopClock()
     playMoveSound(move, false)
     setFen(c.fen())
     setLastMove(move)
@@ -286,7 +258,7 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
     <div data-run="chrono" data-fen={fen} data-phase={phase} className="mx-auto flex w-full max-w-2xl flex-col gap-2 pb-4">
       <RunHeader title={title} score={score} onQuit={() => fail(null)} />
       <div className="px-3">
-        <BigClock ms={left} running={phase === 'play' && !thinking} />
+        <BigClock ms={clock.left} running={phase === 'play' && !thinking} />
       </div>
       <p
         className={`text-center text-base font-bold ${

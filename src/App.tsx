@@ -13,6 +13,7 @@ import Learn from './pages/Learn'
 import OpeningTrainer from './pages/OpeningTrainer'
 import MyRepertoire from './pages/MyRepertoire'
 import Endgames from './pages/Endgames'
+import EndgameClock from './pages/EndgameClock'
 import PositionPlay from './pages/PositionPlay'
 import CriticalMoment from './pages/CriticalMoment'
 import Mates from './pages/Mates'
@@ -170,6 +171,8 @@ function Shell() {
             <Route path="/analyse/jouer" element={<PositionPlay />} />
             <Route path="/moment-critique" element={<CriticalMoment />} />
             <Route path="/finales" element={<Endgames />} />
+            {/* Statique : classée devant `/finales/:id` par le routeur, aucun id de finale ne vaut `chrono`. */}
+            <Route path="/finales/chrono" element={<EndgameClock />} />
             <Route path="/finales/:id" element={<Endgames />} />
             <Route path="/attaque" element={<Attack />} />
             <Route path="/attaque/:id" element={<Attack />} />
