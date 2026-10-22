@@ -10,16 +10,16 @@ Les notifications dérivées sont placées elles aussi sous CC0 1.0.
 
 | Fichier | Événement | Source | Traitement |
 |---|---|---|---|
-| `move-self.mp3` | coup joué | vidéo autorisée par Max | bruit filtré, impact court |
-| `move-opponent.mp3` | coup adverse | vidéo autorisée par Max | impact légèrement différent |
-| `capture.mp3` | prise | vidéo autorisée par Max | impact plus long, davantage d'aigus |
-| `castle.mp3` | roque | vidéo autorisée par Max | deux contacts espacés de 90 ms |
-| `move-check.mp3` | échec | vidéo autorisée par Max | clic bref plus aigu |
-| `promote.mp3` | promotion | vidéo autorisée par Max | deux contacts espacés de 60 ms |
+| `move-self.mp3` | coup joué | vidéo autorisée par Max | découpe à 1,32 s (coup blanc) |
+| `move-opponent.mp3` | coup adverse | vidéo autorisée par Max | découpe à 2,29 s (coup noir) |
+| `capture.mp3` | prise | vidéo autorisée par Max | découpe à 8,13 s |
+| `castle.mp3` | roque | vidéo autorisée par Max | découpe à 20,53 s, deux contacts espacés d'environ 95 ms |
+| `move-check.mp3` | échec | vidéo autorisée par Max | découpe à 53,56 s |
+| `promote.mp3` | promotion | vidéo autorisée par Max | découpe à 83,07 s |
 | `game-start.mp3` | début de partie | Interface `question_004` | crête -4 dBFS |
 | `game-end.mp3` | fin de partie | Interface `confirmation_004` | crête -4 dBFS |
 | `low-time.mp3` | temps bas | Interface `tick_004` doublé à 160 ms | crête -4 dBFS |
-| `illegal.mp3` | coup illégal | vidéo autorisée par Max | impact grave extrait |
+| `illegal.mp3` | coup illégal | vidéo autorisée par Max | découpe à 17,68 s, impact grave |
 | `success.mp3` | puzzle réussi | Interface `confirmation_002` | crête -4 dBFS |
 | `fail.mp3` | puzzle raté | Interface `error_006` | crête -4 dBFS |
 
