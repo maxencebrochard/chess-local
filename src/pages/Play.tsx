@@ -18,7 +18,7 @@ import { Engine } from '../lib/engine'
 import { applyRating, db, getRating, type SavedGame } from '../lib/db'
 import { openingForMoves } from '../lib/openings'
 import { playMoveSound, sounds } from '../lib/sounds'
-import { TIME_CONTROLS, UNLIMITED, type TimeControl } from '../lib/timeControls'
+import { PLAY_GAME_KEY, TIME_CONTROLS, UNLIMITED, type TimeControl } from '../lib/timeControls'
 import { THREAT_DOMAIN, findThreat, loadThreatPrefs, saveThreatPrefs, threatItemId, type Score, type Threat, type ThreatPrefs } from '../lib/threat'
 import { PLAY_COLORS, PLAY_MODES, useSettings, type PlayColor, type PlayMode } from '../store/settings'
 
@@ -62,7 +62,7 @@ interface ThreatQuestion {
 // Partie en cours mémorisée pour survivre à un changement d'onglet, au retour arrière iOS et
 // à une PWA tuée en arrière-plan (sessionStorage ne survit pas à cette dernière). Transitoire :
 // hors sauvegarde, expirée après 24 h, pendules figées pendant l'absence.
-const GAME_KEY = 'chess-local-play-game'
+const GAME_KEY = PLAY_GAME_KEY
 const GAME_TTL_MS = 24 * 3600_000
 
 interface StoredGame {
@@ -445,7 +445,10 @@ export default function Play() {
       }
       c.header('Event', g.mode !== 'local' ? `Partie vs ${g.bot.name}` : 'Partie locale')
       c.header('Site', 'chess-local')
-      c.header('Date', new Date().toISOString().slice(0, 10).replaceAll('-', '.'))
+      // Jour local, comme l'Archive : toISOString est en UTC (entre 0 h et 2 h, c'était la veille).
+      const now = new Date()
+      const p2 = (n: number) => String(n).padStart(2, '0')
+      c.header('Date', `${now.getFullYear()}.${p2(now.getMonth() + 1)}.${p2(now.getDate())}`)
       c.header('White', g.mode !== 'local' ? (g.playerColor === 'w' ? 'Moi' : g.bot.name) : 'Blancs')
       c.header('Black', g.mode !== 'local' ? (g.playerColor === 'b' ? 'Moi' : g.bot.name) : 'Noirs')
       c.header('Result', result)

@@ -21,7 +21,8 @@ export function EvalBar({ cp, mate, orientation }: EvalBarProps) {
   }
   const topIsWhite = orientation === 'b'
   const topShare = topIsWhite ? whiteShare : 100 - whiteShare
-  const labelOnWhite = mate !== null ? mate >= 0 : (cp ?? 0) >= 0
+  // Mat sur l'échiquier (mate 0) : c'est le signe de cp qui dit qui a maté, donc de quel côté est la barre.
+  const labelOnWhite = mate !== null ? (mate === 0 ? (cp ?? 0) > 0 : mate > 0) : (cp ?? 0) >= 0
 
   return (
     <div className="relative h-full w-6 overflow-hidden rounded bg-neutral-800" title={label}>

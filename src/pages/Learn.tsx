@@ -894,9 +894,19 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
   const badStreak = useRef(0)
   const promoted = useRef(false)
   const finished = useRef(false)
+  // Exercice démonté (page quittée, séance fermée) : une recherche qui finit après ne doit ni
+  // conclure ni relancer le moteur (getEngine en recréerait un, jamais quitté). Remis à vrai au
+  // montage : StrictMode simule un démontage puis un remontage.
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
 
   const conclude = useCallback((ok: boolean, reason: string) => {
-    if (finished.current || phase !== 'play') return
+    if (finished.current || !alive.current || phase !== 'play') return
     finished.current = true
     setOutcome({ ok, reason })
     onFinish(ok)
@@ -936,7 +946,7 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
     if (c.isInsufficientMaterial()) { conclude(hold, `Plus assez de matériel pour mater : nulle, ${missed}`); return }
     if (c.isDrawByFiftyMoves()) { conclude(hold, `Règle des 50 coups : nulle, ${missed}`); return }
     const { cp, mate } = await evaluate()
-    if (finished.current) return
+    if (finished.current || !alive.current) return
     const winning = cp >= 300 || (mate !== null && mate > 0)
     if (goal === 'promote' && promoted.current && winning) { conclude(true, "Pion promu : c'est gagné."); return }
     if (goal === 'capture' && winning && c.board().flat().filter((p) => p && p.color !== eg.side).length === 1) {
@@ -955,12 +965,12 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
   }, [eg, goal, conclude, evaluate])
 
   const botMove = useCallback(async () => {
-    if (!eg || finished.current) return
+    if (!eg || finished.current || !alive.current) return
     const c = chessRef.current
     if (c.isGameOver()) return
     const engine = getEngine()
     const res = await engine.search({ fen: c.fen(), movetimeMs: 350, multipv: 1 })
-    if (finished.current || !res.bestMove || res.bestMove.length < 4) return
+    if (finished.current || !alive.current || !res.bestMove || res.bestMove.length < 4) return
     try {
       c.move({ from: res.bestMove.slice(0, 2), to: res.bestMove.slice(2, 4), promotion: res.bestMove[4] })
     } catch {
