@@ -506,8 +506,12 @@ def games_suite(p, browser):
     check("[données] pas de nouvelle version ni table Dexie", dump["version"] == DB_VERSION and dump["stores"] == DB_STORES, f"({dump['version']}, {dump['stores']})")
 
     # Record relu après rechargement, cadence mémorisée.
+    # Attendre chaque rendu : sous CPU ralenti, Apprendre encore en montage ramènerait l'URL à
+    # #/apprendre après le second goto, et le rechargement ne rouvrirait pas les finales au chrono.
     page.goto(f"{BASE}/#/apprendre")
+    ck.appears("[records] Apprendre affiché", page, "[data-testid='endgame-clock-card']", timeout=10000)
     page.goto(f"{BASE}/#/finales/chrono")
+    ck.appears("[records] retour aux finales au chrono", page, "[data-serie='mix']", timeout=10000)
     page.reload()
     ck.appears("[records] page rechargée", page, "[data-serie='mix']", timeout=10000)
     check("[records] cadence mémorisée (1 min | 2)", page.get_by_role("radio", name="1 min", exact=True).get_attribute("aria-checked") == "true"
