@@ -33,7 +33,7 @@ import time
 
 import chess
 
-from helpers import BASE, E2E_DIR, HOLD_BESTMOVE, Checker, desktop_context, mobile_context, overflow_x, shot, tap_move
+from helpers import BASE, E2E_DIR, HOLD_BESTMOVE, Checker, desktop_context, mobile_context, overflow_x, shot, tap_move, wait_js
 
 ROOT = os.path.dirname(E2E_DIR)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
@@ -518,8 +518,25 @@ def white_at_bottom(page):
 
 # ---------- Suite ----------
 
+# Reproduction de la charge, hors gate (défaut : aucune). DEFENSE_WORKER_CPU_MS ajoute une boucle CPU
+# bornée au démarrage de chaque vrai worker Stockfish (script servi par une route, commandes et
+# réponses intactes ; service worker bloqué pour que la route voie le script) ; DEFENSE_CPU_RATE
+# ralentit la page par CDP pendant le contrôle UCI. Charge de référence : 2000 ms et x20.
+WORKER_CPU_MS = int(os.environ.get("DEFENSE_WORKER_CPU_MS", "0"))
+CPU_RATE = float(os.environ.get("DEFENSE_CPU_RATE", "1"))
+WORKER_URL = "**/engine/stockfish-18-lite-single.js"
+
+
+def load_worker(route):
+    response = route.fetch()
+    prefix = f"{{ const end = performance.now() + {WORKER_CPU_MS}; while (performance.now() < end) {{}} }};\n"
+    route.fulfill(response=response, body=prefix + response.text())
+
+
 def part_list_and_game(p, browser):
-    ctx = mobile_context(p, browser, ck, standalone=True)
+    ctx = mobile_context(p, browser, ck, standalone=True, **({"service_workers": "block"} if WORKER_CPU_MS else {}))
+    if WORKER_CPU_MS:
+        ctx.route(WORKER_URL, load_worker)
     ctx.add_init_script(UCI_SPY)
     ctx.add_init_script(HOLD_BESTMOVE)
     ctx.add_init_script(QA_WAIT)
@@ -586,21 +603,32 @@ def part_list_and_game(p, browser):
         shot(page, "defense_conseils_852")
         page.get_by_role("button", name="Conseils").tap()
 
-        play_best(page, color, 10, "uci")
-        wait_turn(page, color)
-        check("[partie] compteur « Coup 1/12 » après un coup", counter(page) == "Coup 1/12", f"({counter(page)})")
-        ws = workers(page.evaluate("() => window.__uci"))
-        attacker = [i for i, m in ws.items() if "go movetime 700" in m]
-        check("[uci] un moteur attaquant a joué", len(attacker) == 1, f"({list(ws)})")
-        if attacker:
-            opts = options_before_first_go(ws[attacker[0]])
-            check("[uci] attaquant : UCI_LimitStrength true et UCI_Elo 1500 avant son premier go",
-                  "setoption name UCI_LimitStrength value true" in opts and "setoption name UCI_Elo value 1500" in opts, f"({opts})")
-        page.wait_for_timeout(600)
-        ws = workers(page.evaluate("() => window.__uci"))
-        oracle = [i for i, m in ws.items() if "go movetime 300" in m]
-        check("[uci] suivi de la défense : un autre moteur, jamais bridé",
-              len(oracle) == 1 and oracle != attacker and not any("UCI_LimitStrength value true" in m for m in ws[oracle[0]]), f"({oracle} / {attacker})")
+        cpu = page.context.new_cdp_session(page)
+        try:
+            cpu.send("Emulation.setCPUThrottlingRate", {"rate": CPU_RATE})
+            print(f"[info] contrôle UCI : CPU page x{CPU_RATE:g}, charge initiale worker {WORKER_CPU_MS} ms")
+            play_best(page, color, 10, "uci")
+            wait_turn(page, color)
+            check("[partie] compteur « Coup 1/12 » après un coup", counter(page) == "Coup 1/12", f"({counter(page)})")
+            ws = workers(page.evaluate("() => window.__uci"))
+            attacker = [i for i, m in ws.items() if "go movetime 700" in m]
+            check("[uci] un moteur attaquant a joué", len(attacker) == 1, f"({list(ws)})")
+            if attacker:
+                opts = options_before_first_go(ws[attacker[0]])
+                check("[uci] attaquant : UCI_LimitStrength true et UCI_Elo 1500 avant son premier go",
+                      "setoption name UCI_LimitStrength value true" in opts and "setoption name UCI_Elo value 1500" in opts, f"({opts})")
+            # Le suivi crée son moteur au retour du trait (trackHold) : son premier go part après le
+            # démarrage à froid du WASM, d'une durée inconnue sous charge. Attente bornée de ce go.
+            started = wait_js(page, "() => window.__uci.some(([, m]) => m === 'go movetime 300')")
+            ws = workers(page.evaluate("() => window.__uci"))
+            oracle = [i for i, m in ws.items() if "go movetime 300" in m]
+            check("[uci] suivi de la défense : un autre moteur, jamais bridé",
+                  started and len(oracle) == 1 and oracle != attacker
+                  and not any("UCI_LimitStrength value true" in m for m in ws[oracle[0]]),
+                  f"(go du suivi {'vu' if started else 'absent après 30 s'} : {oracle} / {attacker})")
+        finally:
+            cpu.send("Emulation.setCPUThrottlingRate", {"rate": 1})
+            cpu.detach()
 
         # Recommencer après un coup : tentative notée abandonnée.
         n = len(rows(page))
@@ -640,9 +668,15 @@ def part_list_and_game(p, browser):
     if open_defense(page, first["id"]):
         play_best(page, color, 10, "série")
         wait_turn(page, color)
-        page.wait_for_timeout(600)
+        # L'éval du suivi rendue après le retour du trait (moteur à froid) récrit la partie stockée :
+        # la modifier avant écraserait la série semée ci-dessous. Attente bornée de cette éval.
+        evaluated = wait_js(page, f"""() => {{
+          const g = JSON.parse(localStorage.getItem('{STORED}') ?? 'null')
+          return !!g && g.holdFall?.ply === g.uci.length
+        }}""")
         stored = page.evaluate(f"() => JSON.parse(localStorage.getItem('{STORED}'))")
-        check("[série] série persistée avec la partie", stored and stored.get("key") == f"defense:{first['id']}" and isinstance(stored.get("holdFall"), dict),
+        check("[série] série persistée avec la partie, après l'éval du suivi",
+              evaluated and stored and stored.get("key") == f"defense:{first['id']}" and isinstance(stored.get("holdFall"), dict),
               f"({stored and stored.get('holdFall')})")
         if stored:
             stored["holdFall"] = {"count": 1, "ply": len(stored["uci"])}
