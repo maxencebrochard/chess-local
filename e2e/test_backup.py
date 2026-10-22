@@ -31,6 +31,8 @@ TABLES = ["games", "ratings", "puzzleAttempts", "rushScores", "mistakes", "learn
 TABLES_V2 = TABLES[:6]
 STORES = len(TABLES)
 INSIGHTS_KEY = "chess-local-insights-v1"
+# Clés sessionStorage des séances en cours (SESSION_KEYS de backup.ts).
+SESSION_KEYS = ["learn-session-v1", "revision-session-v1", "seance-session-v1"]
 SETTINGS_KEY = "chess-local-settings"
 LAST_EXPORT_KEY = "chess-local-last-export"
 FILE_INPUT = "input[type=file]"
@@ -617,6 +619,9 @@ def part_reset(p, browser):
     check("[reset] annulation : base INCHANGÉE", snapshot(page) == before)
     check("[reset] annulation : réglages inchangés", settings_state(page) == SEED_SETTINGS)
 
+    # Séances en cours d'Apprendre, de la révision et de la séance du jour (sessionStorage) : effacées,
+    # et elles seules (une clé étrangère survit).
+    page.evaluate(f"() => {{ for (const k of {json.dumps(SESSION_KEYS + ['cle-etrangere'])}) sessionStorage.setItem(k, '{{}}') }}")
     page.click("[data-testid=reset-btn]")
     ck.appears("[reset] première confirmation (2e passage)", page, "[data-testid=reset-sheet]")
     page.click("[data-testid=reset-confirm]")
@@ -631,6 +636,8 @@ def part_reset(p, browser):
     check("[reset] date du dernier export effacée", last_export(page) is None)
     check("[reset] configuration d'Insights effacée", page.evaluate(f"() => localStorage.getItem('{INSIGHTS_KEY}')") is None)
     check("[reset] réglage « Qu'est-ce qu'il menace ? » effacé", page.evaluate(f"() => localStorage.getItem('{THREAT_PREFS_KEY}')") is None)
+    left = page.evaluate(f"() => {json.dumps(SESSION_KEYS + ['cle-etrangere'])}.filter((k) => sessionStorage.getItem(k) !== null)")
+    check("[reset] séances en cours effacées (Apprendre, révision, séance du jour), clé étrangère gardée", left == ["cle-etrangere"], f"({left})")
     if ok:
         page.goto(f"{BASE}/#/stats")
         ck.appears("[reset] Stats utilisable après réinitialisation", page, "main :text('Statistiques')", timeout=15000)
@@ -650,11 +657,14 @@ def part_prod_format(p, browser, tmp):
     ctx.add_init_script(NO_SHARE)
     page = ctx.new_page()
     if open_stats(page):
+        page.evaluate(f"() => {{ for (const k of {json.dumps(SESSION_KEYS + ['cle-etrangere'])}) sessionStorage.setItem(k, '{{}}') }}")
         choose_file(page, path)
         if ck.appears("[prod v2] feuille ouverte", page, "[data-testid=restore-sheet]"):
             page.click("[data-testid=restore-confirm]")
         text, kind = message(page, timeout=20000)
         check("[prod v2] restaurée", kind == "success" and text.startswith("Sauvegarde restaurée"), f"({text!r})")
+        left = page.evaluate(f"() => {json.dumps(SESSION_KEYS + ['cle-etrangere'])}.filter((k) => sessionStorage.getItem(k) !== null)")
+        check("[prod v2] séances en cours effacées par la restauration, clé étrangère gardée", left == ["cle-etrangere"], f"({left})")
         check("[prod v2] le message annonce les analyses Insights vidées (absentes d'un fichier v2)", "Analyses Insights vidées" in text, f"({text!r})")
         after = snapshot(page)
         check("[prod v2] 6 tables identiques au fichier, reviews vide", {t: after[t] for t in TABLES_V2} == {t: prod[t] for t in TABLES_V2} and after["reviews"] == [], f"({counts(after)})")

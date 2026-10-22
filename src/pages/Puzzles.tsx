@@ -3,17 +3,17 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Chess } from 'chess.js'
 import { Cta } from '../components/Cta'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
-import { applyRating, db, getRating } from '../lib/db'
-import { loadPuzzles } from '../lib/puzzles'
+import { db, getRating } from '../lib/db'
+import { loadPuzzles, pickRatedPuzzle, PUZZLE_SESSION_KEY, recentPuzzleIds, recordRatedPuzzle } from '../lib/puzzles'
 import { displayThemes } from '../lib/puzzleThemes'
 import { figurine } from '../lib/review'
 
 type Phase = 'solving' | 'solved' | 'failed'
 
-// Puzzle en cours, conservé d'une visite à l'autre (rechargement, aller-retour vers l'analyseur,
-// changement d'onglet, PWA tuée par iOS) : quitter la page n'est pas un « passer » gratuit.
-// localStorage plutôt que sessionStorage : iOS vide ce dernier en tuant la PWA.
-const SESSION_KEY = 'chess-local-puzzle-session'
+// Puzzle en cours (PUZZLE_SESSION_KEY), conservé d'une visite à l'autre (rechargement, aller-retour
+// vers l'analyseur, changement d'onglet, PWA tuée par iOS) : quitter la page n'est pas un « passer »
+// gratuit. localStorage plutôt que sessionStorage : iOS vide ce dernier en tuant la PWA.
+const SESSION_KEY = PUZZLE_SESSION_KEY
 
 interface StoredSession {
   puzzle: PuzzleData
@@ -58,17 +58,7 @@ export default function Puzzles() {
 
   const pickPuzzle = useCallback(async (currentRating: number) => {
     const all = await loadPuzzles()
-    const recent = new Set(
-      (await db.puzzleAttempts.orderBy('date').reverse().limit(2000).toArray()).map((a) => a.puzzleId),
-    )
-    const candidates = all.filter(
-      (p) => Math.abs(p.rating - currentRating) < 120 && !recent.has(p.id),
-    )
-    const pool = candidates.length > 0
-      ? candidates
-      : all.filter((p) => Math.abs(p.rating - currentRating) < 300)
-    const chosen = pool[Math.floor(Math.random() * pool.length)] ?? all[0]
-    setPuzzle(chosen)
+    setPuzzle(pickRatedPuzzle(all, currentRating, await recentPuzzleIds()))
     setPhase('solving')
     setRatingDelta(null)
     scoredRef.current = false
@@ -139,14 +129,7 @@ export default function Puzzles() {
     scoredRef.current = true
     setScored(true)
     const before = rating
-    const after = await applyRating('puzzle', puzzle.rating, success ? 1 : 0)
-    await db.puzzleAttempts.add({
-      puzzleId: puzzle.id,
-      date: Date.now(),
-      success,
-      puzzleRating: puzzle.rating,
-      ratingAfter: after,
-    })
+    const after = await recordRatedPuzzle(puzzle, success)
     setRating(after)
     setRatingDelta(after - before)
     setStreak((s) => (success ? s + 1 : 0))

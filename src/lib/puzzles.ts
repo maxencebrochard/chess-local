@@ -2,6 +2,7 @@
 // format compact [id, fen, moves, rating, themes]). Hors bundle JS : fetch
 // une fois, caché en mémoire pour la session.
 import type { PuzzleData } from '../components/PuzzlePlayer'
+import { applyRating, db } from './db'
 
 type CompactPuzzle = [string, string, string, number, string]
 
@@ -32,4 +33,52 @@ export function loadPuzzles(): Promise<PuzzleData[]> {
       throw e
     })
   return pending
+}
+
+// ---------- Puzzles classés (/puzzles, séance du jour) ----------
+
+// Puzzle classé en cours sur /puzzles (localStorage) : la séance du jour ne le note pas à sa place.
+export const PUZZLE_SESSION_KEY = 'chess-local-puzzle-session'
+
+export function pendingPuzzleId(): string | null {
+  try {
+    const id = (JSON.parse(localStorage.getItem(PUZZLE_SESSION_KEY) ?? 'null') as { puzzle?: { id?: unknown } } | null)?.puzzle?.id
+    return typeof id === 'string' ? id : null
+  } catch {
+    return null
+  }
+}
+
+// Ids des 2000 dernières tentatives classées : un puzzle récent ne revient pas.
+export async function recentPuzzleIds(): Promise<Set<string>> {
+  return new Set((await db.puzzleAttempts.orderBy('date').reverse().limit(2000).toArray()).map((a) => a.puzzleId))
+}
+
+// Puzzle à portée du classement : à moins de 120 points et pas récent, sinon à moins de 300 (pas
+// récent d'abord), sinon le premier. `theme` (séance du jour) restreint d'abord aux puzzles portant ce thème lichess, et
+// retombe sur tous les puzzles s'il n'en reste aucun.
+export function pickRatedPuzzle(
+  all: PuzzleData[],
+  rating: number,
+  exclude: Set<string>,
+  opts: { theme?: string; rng?: () => number } = {},
+): PuzzleData {
+  const rng = opts.rng ?? Math.random
+  const pickIn = (base: PuzzleData[]): PuzzleData | null => {
+    const near = (span: number) => base.filter((p) => Math.abs(p.rating - rating) < span)
+    const wide = near(300)
+    const pools = [near(120).filter((p) => !exclude.has(p.id)), wide.filter((p) => !exclude.has(p.id)), wide]
+    const pool = pools.find((x) => x.length > 0)
+    return pool ? pool[Math.floor(rng() * pool.length)] : null
+  }
+  const theme = opts.theme
+  return (theme ? pickIn(all.filter((p) => p.themes.includes(theme))) : null) ?? pickIn(all) ?? all[0]
+}
+
+// Note un puzzle classé : Elo `puzzle` puis ligne `puzzleAttempts`, comme /puzzles. Renvoie le
+// nouveau classement.
+export async function recordRatedPuzzle(puzzle: PuzzleData, success: boolean): Promise<number> {
+  const after = await applyRating('puzzle', puzzle.rating, success ? 1 : 0)
+  await db.puzzleAttempts.add({ puzzleId: puzzle.id, date: Date.now(), success, puzzleRating: puzzle.rating, ratingAfter: after })
+  return after
 }

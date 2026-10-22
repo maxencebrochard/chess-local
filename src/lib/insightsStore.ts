@@ -1,6 +1,7 @@
 // Configuration et dernier rapport d'Insights, mémorisés dans localStorage : au retour sur
 // /insights (depuis l'Analyse, app relancée, hors ligne), le rapport se reconstruit depuis la
 // table `reviews` sans réseau ni moteur. Clé effacée par la réinitialisation (backup.ts).
+import type { ReviewRow } from './db'
 
 export const INSIGHTS_KEY = 'chess-local-insights-v1'
 
@@ -78,4 +79,11 @@ export function writeInsights(saved: InsightsSaved): void {
   } catch {
     // Stockage saturé : le rapport reste affiché, il ne sera simplement pas restauré au retour.
   }
+}
+
+// Ligne de cache conforme au rapport mémorisé : même profondeur et, pour chess.com, même compte.
+// Partagé par /insights et la séance du jour, qui relisent le dernier rapport sans le relancer.
+export function rowFitsRun(r: ReviewRow, run: InsightsLastRun): boolean {
+  if (run.depth !== undefined && r.depth !== run.depth) return false
+  return run.username === undefined || r.source !== 'chesscom' || r.username === run.username
 }

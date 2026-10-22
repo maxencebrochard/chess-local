@@ -28,7 +28,7 @@ check = ck.check
 SAFE_TOP, SAFE_BOTTOM = 59, 34
 # Pages qui défilent dans `<main>` ou non : la liste couvre les deux (mesuré sur main :
 # `/`, `/analyse`, `/puzzles` en 393x852 tiennent sans défiler).
-PAGES = ["/", "/mats", "/mats?d=geo-diagonale-ligne", "/apprendre", "/apprendre/parcours", "/analyse", "/jouer", "/puzzles", "/stats", "/revision"]
+PAGES = ["/", "/mats", "/mats?d=geo-diagonale-ligne", "/apprendre", "/apprendre/parcours", "/analyse", "/jouer", "/puzzles", "/stats", "/revision", "/seance"]
 # Débordement provoqué : un élément ajouté en fin de `host`, retiré par `remove_injected`. En
 # hauteur sur body, c'est le débordement du document (ce qu'iOS produit quand sa zone visible ne
 # colle pas à la mise en page) : sans lui, Chromium n'a nulle part où chaîner le geste et tous

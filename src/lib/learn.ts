@@ -84,8 +84,9 @@ export async function pickNextDomain(): Promise<LearnDomain> {
   // de conversion (domaines 'attack', 'defense' et 'conversion'), les attaques manquées et les défenses ratées (domaines
   // 'missed-attack' et 'missed-defense'), les moments critiques (domaine 'critical-moment'),
   // les séries de « Calcul et visualisation » (domaine 'visualisation'), du parcours (domaine
-  // 'path') et des Finales au chrono (domaine 'endgame-clock'), ainsi que les parties depuis mes
-  // structures (domaine 'structure-play'), ne doivent pas chasser les domaines d'Apprendre de la
+  // 'path') et des Finales au chrono (domaine 'endgame-clock'), les parties depuis mes structures
+  // (domaine 'structure-play') et les séances du jour terminées (domaine 'seance'), ne doivent pas
+  // chasser les domaines d'Apprendre de la
   // fenêtre. Les fautes revues par la révision s'écrivent dans 'mistakes' et comptent, à dessein,
   // comme du travail sur les erreurs.
   const learnDomains = new Set<string>(Object.keys(DOMAIN_META))

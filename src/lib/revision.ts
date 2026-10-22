@@ -2,6 +2,7 @@
 // reviennent selon une échelle de Leitner à intervalles fixes. Sans React, et sans
 // table dédiée : l'échéance de chaque item se calcule depuis son historique daté dans les tables
 // existantes, et un résultat de révision s'écrit là où l'écran d'origine écrit déjà.
+import { addDays, daysBetween, startOfDay } from './days'
 import { db, type LearnSession, type Mistake } from './db'
 import { scoreItem } from './learn'
 import { diagnoseMissedAttacks, diagnoseMissedDefenses, recordMissedAttack, recordMissedDefense } from './kingAttack'
@@ -16,6 +17,9 @@ import type { PuzzleData } from '../components/PuzzlePlayer'
 
 export type ReviewKind = 'puzzle' | 'mistake' | 'variant' | 'missed-attack' | 'missed-defense'
 
+// Jours civils : définis dans days.ts, réexportés pour les écrans de la révision.
+export { addDays, daysBetween, startOfDay }
+
 // Lignes `learnSessions` propres à la révision : les puzzles revus (`puzzle:<id>`), seuls items
 // sans journal de tentatives hors Elo (puzzleAttempts est celui des puzzles classés).
 export const REVISION_DOMAIN = 'revision'
@@ -29,7 +33,6 @@ export const LADDER_DAYS = [1, 3, 7, 21] as const
 // doit pas former un arriéré de centaines d'items à l'activation, ni au retour d'une longue pause.
 export const MAX_OVERDUE_DAYS = 30
 export const SESSION_MAX = 8
-const DAY = 86_400_000
 
 export interface ReviewEvent {
   date: number
@@ -48,25 +51,6 @@ export interface ReviewItem {
 export interface ReviewQueue {
   due: ReviewItem[] // échéance aujourd'hui ou avant, du plus en retard au moins en retard
   upcoming: ReviewItem[] // échéance future, de la plus proche à la plus lointaine
-}
-
-export function startOfDay(ms: number): number {
-  const d = new Date(ms)
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
-}
-
-// Jours civils locaux (setDate, pas des multiples de 86 400 000 ms : la nuit du passage à l'heure
-// d'été compte 23 h, et un minuit calculé en millisecondes tomberait à 1 h du matin).
-export function addDays(dayStart: number, days: number): number {
-  const d = new Date(dayStart)
-  d.setDate(d.getDate() + days)
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
-}
-
-export function daysBetween(fromDayStart: number, toDayStart: number): number {
-  return Math.round((toDayStart - fromDayStart) / DAY)
 }
 
 // Échéance d'un item depuis ses événements, ou null : jamais raté, ou acquis.

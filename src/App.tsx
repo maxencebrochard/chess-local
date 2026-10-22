@@ -33,10 +33,11 @@ import Convert from './pages/Convert'
 import Defense from './pages/Defense'
 import Visualisation from './pages/Visualisation'
 import Insights from './pages/Insights'
+import Seance from './pages/Seance'
 
 // `match` : routes rattachées à l'onglet (allumé, sans être la page du lien), sous-chemins compris.
 const NAV = [
-  { to: '/', icon: '♞', label: 'Accueil', match: [] as string[] },
+  { to: '/', icon: '♞', label: 'Accueil', match: ['/seance'] },
   { to: '/jouer', icon: '♟', label: 'Jouer', match: [] as string[] },
   { to: '/puzzles', icon: '🧩', label: 'Puzzles', match: ['/rush'] },
   { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/repertoire', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque', '/convertir', '/defenses-ratees', '/defense', '/visualisation', '/structures'] },
@@ -184,6 +185,7 @@ function Shell() {
             <Route path="/archive" element={<Archive />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/insights" element={<Insights />} />
+            <Route path="/seance" element={<Seance />} />
             <Route path="/import" element={<Import />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

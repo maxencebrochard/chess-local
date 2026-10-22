@@ -66,8 +66,8 @@ export interface LearnSession {
   // missed-defense (tentative sur une défense ratée, même contrat que missed-attack), conversion
   // (entraîneur « Convertir l'avantage » : mêmes champs que attack, itemId = id de la position `conv-<puzzle>`),
   // structure-play (partie depuis une structure de pions de mes parties),
-  // critical-moment (moments critiques du bilan, hors Elo), path (parcours d’apprentissage) ou
-  // endgame-clock (une série des Finales au chrono, hors Elo).
+  // critical-moment (moments critiques du bilan, hors Elo), path (parcours d’apprentissage),
+  // endgame-clock (une série des Finales au chrono, hors Elo) ou seance (séance du jour terminée).
   // course : itemId = `<slug>:<id>`, le slug désignant le cours (`finales:` pour le cours de finales,
   // `roque:` pour « Démolir le roque », `bases:` pour « Les bases », `structures:` pour « Structures de pions »,
   // `defense:` pour « Tenir sous l'attaque »), ex. `finales:mat-dame`, `roque:grec-schema`,
@@ -108,12 +108,15 @@ export interface LearnSession {
   // threat-check : questions « Qu'est-ce qu'il menace ? » de Jouer (sans Elo), une ligne par
   // question répondue : itemId = `<type>:<UCI du coup menaçant>` (types de `THREAT_KINDS`,
   // lib/threat.ts), fen = position où la question est posée, success = menace trouvée.
+  // seance : une séance du jour menée jusqu'au bilan (série de jours), itemId = types des blocs
+  // joints par « + » (ex. `revision+puzzles+attack`), score = étapes réussies, sans Elo ; les
+  // étapes elles-mêmes s'écrivent dans les domaines et tables de leurs écrans d'origine.
   domain: string
   itemId: string
   success: 0 | 1
   ratingAfter: number | null
   fen?: string // finales jouées jusqu'au bout, attaques manquées, défenses ratées, entraîneurs d'attaque, de défense et de conversion, moments critiques et structures : position de départ ; threat-check : position de la question (champ non indexé)
-  score?: number // mats : mats réussis dans la série (champ non indexé)
+  score?: number // mats : mats réussis dans la série ; seance : étapes réussies (champ non indexé)
   // Entraîneurs d'attaque, de conversion et de défense (champs non indexés) : issue de la tentative (union des
   // issues des domaines, `draw` et `resign` et `abandon` communs), Elo du défenseur bridé
   // (attack, conversion) ou de l'attaquant bridé (defense, depuis l'entraîneur de défense), null = pleine
