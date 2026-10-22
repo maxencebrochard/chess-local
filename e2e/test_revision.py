@@ -628,7 +628,16 @@ def part_stale_position(p, browser):
             click_next(page)
             if ck.appears("[F18 périmée] défense restaurée", page, '[data-review-item="missed-defense"]'):
                 tap_move(page, "d8", "g5")
-                ck.appears("[F18 périmée] écriture refusée et signalée", page, '[role="alert"]')
+                if ck.appears("[F18 périmée] écriture refusée et signalée", page, '[role="alert"]'):
+                    alert = page.locator('[role="alert"]').inner_text()
+                    check("[F18 périmée] message de position changée", "modifiée ou supprimée pendant la séance" in alert
+                          and "stockage indisponible" not in alert, alert)
+                check("[F18 périmée] pas d’échéance annoncée", next_label(page) == "Non enregistré", next_label(page))
+                click_next(page)
+                if ck.appears("[F18 périmée] fin", page, "[data-review-end]"):
+                    end = page.locator("[data-review-end]").inner_text()
+                    check("[F18 périmée] bilan sans échéance pour la défense", "Non enregistré" in end
+                          and "modifiée ou supprimée pendant la séance" in end, end)
                 check("[F18 périmée] aucune tentative orpheline", sessions(page, "missed-defense").count(("102", 1)) == 1)
     ctx.close()
 

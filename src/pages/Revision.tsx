@@ -12,11 +12,13 @@ import { Engine } from '../lib/engine'
 import { displayThemes } from '../lib/puzzleThemes'
 import {
   buildReviewSession, describeKinds, dueLabel, LADDER_DAYS, loadReviewQueue, recordReview, resolveSession, resolveVariant,
-  returnLabel, statusLabel, variantKey, type ReviewPayload, type ReviewQueue,
+  returnLabel, StaleReviewError, statusLabel, variantKey, type ReviewPayload, type ReviewQueue,
 } from '../lib/revision'
 import { sounds } from '../lib/sounds'
 
 type Phase = 'play' | 'success' | 'fail'
+
+type SaveError = 'storage' | 'stale'
 
 const SESSION_KEY = 'revision-session-v1'
 
@@ -50,7 +52,7 @@ export default function Revision() {
   const [puzzlesUnavailable, setPuzzlesUnavailable] = useState(false)
   const [missing, setMissing] = useState(0) // items dus introuvables (puzzle retiré de la base...)
   const [remaining, setRemaining] = useState(0) // items dus au-delà du plafond de la séance
-  const [saveError, setSaveError] = useState(false)
+  const [saveError, setSaveError] = useState<SaveError | null>(null)
   const [returnTo, setReturnTo] = useState('/')
   const engineRef = useRef<Engine | null>(null)
   // Items déjà jugés (index), posés de façon synchrone : un second verdict dans le même rendu
@@ -152,8 +154,12 @@ export default function Revision() {
     // Chaîne jamais empoisonnée : un échec d'écriture (stockage indisponible) est signalé, et
     // n'empêche ni les écritures suivantes ni « Continuer ».
     writes.current = writes.current.then(() => recordReview(item, success)).then(
-      () => setSaveError(false),
-      () => setSaveError(true),
+      () => setSaveError(null),
+      (e) => {
+        if (!(e instanceof StaleReviewError)) return setSaveError('storage')
+        setSaveError('stale')
+        setResults((r) => r.map((x) => (x.idx === idx ? { ...x, next: 'Non enregistré' } : x)))
+      },
     )
   }
 
@@ -241,7 +247,7 @@ export default function Revision() {
           <h1 className="text-2xl font-black">
             {ok}/{results.length} réussi{ok > 1 ? 's' : ''}
           </h1>
-          {saveError && <SaveAlert />}
+          {saveError && <SaveAlert kind={saveError} />}
           <ul className="w-full text-left text-sm">
             {results.map((r) => (
               <li key={r.idx} className="flex items-center gap-2 border-b border-white/10 py-2">
@@ -323,7 +329,7 @@ export default function Revision() {
           <span className="w-9" />
         </header>
         <p className="px-3 pb-2 text-center text-xs font-semibold text-neutral-400">{statusLabel(item.item)}</p>
-        {saveError && <div className="mx-3 mb-2"><SaveAlert /></div>}
+        {saveError && <div className="mx-3 mb-2"><SaveAlert kind={saveError} /></div>}
         {banner && <p className="mx-3 mb-2 truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold">{banner}</p>}
         {item.kind === 'puzzle' ? (
           <div className="flex justify-center px-3">
@@ -374,10 +380,12 @@ export default function Revision() {
   )
 }
 
-function SaveAlert() {
+function SaveAlert({ kind }: { kind: SaveError }) {
   return (
     <p role="alert" className="w-full rounded bg-red-900/40 px-3 py-2 text-sm text-red-200">
-      La dernière tentative n'a pas pu être enregistrée (stockage indisponible).
+      {kind === 'stale'
+        ? "Cette position a été modifiée ou supprimée pendant la séance : la dernière tentative n'a pas été enregistrée."
+        : "La dernière tentative n'a pas pu être enregistrée (stockage indisponible)."}
     </p>
   )
 }
