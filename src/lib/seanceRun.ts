@@ -78,7 +78,8 @@ interface Ctx {
 }
 
 // Étapes d'un bloc planifié, par type : un type ajouté sans sa matérialisation ne compile pas.
-const MATERIALIZE: Record<BlockKind, (b: PlannedBlock, c: Ctx) => Step[]> = {
+// Exporté pour le banc Node de la suite `seance`.
+export const MATERIALIZE: Record<BlockKind, (b: PlannedBlock, c: Ctx) => Step[]> = {
   revision: (b, c) => {
     const byKey = new Map(c.payloads.map((p) => [`${p.item.kind}:${p.item.key}`, p]))
     return buildReviewSession(c.payloads.map((p) => p.item), b.count).map((i) => ({ kind: 'revision', payload: byKey.get(`${i.kind}:${i.key}`)! }))
@@ -87,7 +88,7 @@ const MATERIALIZE: Record<BlockKind, (b: PlannedBlock, c: Ctx) => Step[]> = {
     const out: Step[] = []
     for (let i = 0; c.puzzles && i < b.count; i++) {
       const puzzle = pickRatedPuzzle(c.puzzles, c.rating, c.exclude, { theme: b.ref, rng: c.rng })
-      // Vivier épuisé (le dernier repli ignore les exclusions) : jamais deux fois le même puzzle.
+      // Vivier du niveau épuisé, thème et hors thème (le dernier repli ignore les exclusions) : jamais deux fois le même puzzle.
       if (!puzzle || c.inSeance.has(puzzle.id)) break
       c.exclude.add(puzzle.id)
       c.inSeance.add(puzzle.id)

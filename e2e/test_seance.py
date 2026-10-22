@@ -179,6 +179,48 @@ def node_bench():
     return json.loads(r.stdout.strip().splitlines()[-1])
 
 
+# Bloc puzzles à thème rare, avec la vraie matérialisation de seanceRun.ts : le vivier du thème
+# épuisé se complète de puzzles frais hors thème au même niveau, jamais d'un doublon de la séance.
+BLOCK_JS = r"""
+globalThis.location ??= { href: '' }
+const m = await import(process.argv[2])
+const rng = (seed = 7) => () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 }
+const pz = (id, rating, themes) => ({ id, fen: '8/8/8/8/8/8/8/8 w - - 0 1', moves: [], rating, themes })
+const all = [pz('t1', 2600, ['rare']), pz('t2', 2650, ['rare']), pz('t3', 2700, ['rare']), pz('tLoin', 2000, ['rare']),
+  pz('h1', 2580, ['fork']), pz('h2', 2620, ['pin']), pz('h3', 2700, ['fork']), pz('h4', 2850, ['pin']), pz('hLoin', 2100, ['fork'])]
+const run = (puzzles, count, seed, exclude = [], inSeance = []) => {
+  const ctx = { payloads: [], puzzles, rating: 2600, exclude: new Set([...exclude, ...inSeance]), inSeance: new Set(inSeance), rng: rng(seed) }
+  return m.MATERIALIZE.puzzles({ kind: 'puzzles', count, ref: 'rare', reason: '' }, ctx).map((s) => s.puzzle.id)
+}
+const out = {}
+out.seeds = Array.from({ length: 30 }, (_, i) => run(all, 5, i + 1, ['t3'], ['h3']))
+out.exhausted = Array.from({ length: 30 }, (_, i) => run(all.filter((p) => ['t1', 't2', 'tLoin', 'hLoin'].includes(p.id)), 4, i + 1))
+console.log(JSON.stringify(out))
+"""
+
+
+def block_bench():
+    with tempfile.TemporaryDirectory() as d:
+        bundle = os.path.join(d, "seanceRun.mjs")
+        r = subprocess.run([ROLLDOWN, os.path.join(ROOT, "src", "lib", "seanceRun.ts"), "--format", "esm", "--file", bundle], cwd=ROOT, capture_output=True, text=True, timeout=120)
+        if r.returncode != 0:
+            ck.fail("[banc] bundle rolldown de seanceRun.ts", (r.stderr or r.stdout)[-300:])
+            return
+        script = os.path.join(d, "block.mjs")
+        with open(script, "w", encoding="utf-8") as f:
+            f.write(BLOCK_JS)
+        r = subprocess.run(["node", script, "file://" + bundle], cwd=ROOT, capture_output=True, text=True, timeout=120)
+    if r.returncode != 0:
+        ck.fail("[banc] bloc puzzles de seanceRun.ts sous Node", r.stderr.strip()[-400:])
+        return
+    out = json.loads(r.stdout.strip().splitlines()[-1])
+    t = "[banc]"
+    bad = [s for s in out["seeds"] if len(s) != 5 or set(s[:2]) != {"t1", "t2"} or set(s[2:4]) != {"h1", "h2"} or s[4] != "h4"]
+    check(f"{t} thème rare épuisé : ses 2 puzzles frais, puis les frais hors thème à 120 puis 300 points (récent, déjà en séance et loin jamais tirés), 30 graines", not bad, f"({bad[:3]})")
+    bad = [s for s in out["exhausted"] if s not in (["t1", "t2"], ["t2", "t1"])]
+    check(f"{t} niveau entièrement épuisé : le bloc s'arrête sans doublon de la séance, 30 graines", not bad, f"({bad[:3]})")
+
+
 def laplace(ok, n):
     return round(1 - (ok + 1) / (n + 2), 3)
 
@@ -704,6 +746,7 @@ def suite(p):
     out = node_bench()
     if out:
         bench_checks(out)
+    block_bench()
     browser = p.chromium.launch(headless=True)
     try:
         part_main(p, browser)
