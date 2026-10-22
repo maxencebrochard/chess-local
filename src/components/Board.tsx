@@ -9,6 +9,7 @@ import { PieceIcon } from './PieceIcon'
 import { DEFAULT_PIECE_SET, PIECE_CODES, isPieceSet, preloadPieceSet } from '../lib/pieces'
 import { playMoveSound, sounds } from '../lib/sounds'
 import { premoveTargets } from '../lib/premove'
+import { haptic } from '../lib/native'
 import type { MoveClass } from '../lib/review'
 
 export interface BoardArrow {
@@ -157,7 +158,8 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
       .find((m) => m.to === planned.to && (!m.promotion || m.promotion === 'q'))
     if (move) {
       premoveSound.current = !silent
-      if (!submitMove(move.from, move.to, move.promotion, true)) premoveSound.current = false
+      if (submitMove(move.from, move.to, move.promotion, true)) poseHaptic(move)
+      else premoveSound.current = false
     }
     // submitMove lit onMove, silent et movableColor (prémouvement), déjà en dépendances.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -209,16 +211,20 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
       queued.current = planned
       setPremove(planned)
       setSelected(null)
+      haptic('premove')
       return true
     }
-    if (!legalMove(from, to)) return false
+    const move = chess.moves({ square: from as Square, verbose: true }).find((m) => m.to === to)
+    if (!move) return false
     if (isPromotion(from, to)) {
       setPendingPromotion({ from, to })
       setSelected(null)
       return true
     }
     setSelected(null)
-    return submitMove(from, to)
+    const accepted = submitMove(from, to)
+    if (accepted) poseHaptic(move)
+    return accepted
   }
 
   function legalMove(from: string, to: string): boolean {
@@ -250,6 +256,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
     }
     if (canMoveFrom(square)) {
       setSelected(square as Square)
+      haptic('lift')
       return
     }
     if (selected && legalTargets.has(square)) {
@@ -322,6 +329,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
             if (!square) return
             clearPremove()
             setSelected(square as Square)
+            haptic('lift')
             setDrag({ from: square, target: square, touch: touchInput.current, lift: (root.current?.clientWidth ?? 0) / 8 * .85 })
           },
           onMouseOverSquare: ({ square }) => setDrag((d) => d ? { ...d, target: square } : null),
@@ -332,7 +340,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
             if (!targetSquare) { returnPiece(sourceSquare); return false }
             if (preparing) {
               if (!tryMove(sourceSquare, targetSquare)) {
-                if (targetSquare !== sourceSquare && canMoveFrom(sourceSquare)) sounds.illegal()
+                if (targetSquare !== sourceSquare && canMoveFrom(sourceSquare)) refuse()
                 returnPiece(sourceSquare)
               }
               // La position reste inchangée : ne pas marquer la destination comme déjà déplacée.
@@ -341,7 +349,7 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
             // Pièce jouable lâchée sur une case interdite : son « coup illégal » (pas pour un
             // lâcher sur sa propre case, qui annule simplement le geste).
             if (targetSquare !== sourceSquare && canMoveFrom(sourceSquare) && !legalMove(sourceSquare, targetSquare)) {
-              sounds.illegal()
+              refuse()
               returnPiece(sourceSquare)
               return false
             }
@@ -417,7 +425,9 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
                 onClick={() => {
                   const { from, to } = pendingPromotion
                   setPendingPromotion(null)
-                  submitMove(from, to, p)
+                  // La pièce d'arrivée est lue avant le coup : chess suit encore l'ancienne position.
+                  const capture = !!chess.get(to as Square)
+                  if (submitMove(from, to, p)) haptic(capture ? 'capture' : 'move')
                 }}
               >
                 <PieceIcon set={pieceSet} code={`${promoColor}${p.toUpperCase()}`} />
@@ -428,6 +438,17 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
       )}
     </div>
   )
+}
+
+// Retour haptique de l'app native (no-op sur le web) : prise, en passant compris, ou coup simple.
+function poseHaptic(move: Pick<Move, 'flags'>) {
+  haptic(move.flags.includes('c') || move.flags.includes('e') ? 'capture' : 'move')
+}
+
+// Refus d'un coup : son grave et, dans l'app native, notification « erreur ».
+function refuse() {
+  sounds.illegal()
+  haptic('refuse')
 }
 
 const PROMO_LABELS: Record<string, string> = { q: 'Dame', r: 'Tour', b: 'Fou', n: 'Cavalier' }

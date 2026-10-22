@@ -9,6 +9,19 @@ export default defineConfig({
   base: './',
   // Horodatage de build, affiché dans l'app pour vérifier qu'on est à jour.
   define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')) },
+  // Couche native de l'app iOS (docs/ios-app.md) : les chunks de @capacitor/* et du pilote haptique,
+  // chargés seulement par l'app native, sont préfixés `native-` et exclus du précache : la PWA ne
+  // les télécharge jamais. Simple renommage : le découpage, donc le bundle web, reste celui par défaut.
+  build: {
+    rolldownOptions: {
+      output: {
+        chunkFileNames: (chunk) =>
+          chunk.moduleIds.some((id) => /@capacitor[\\/]|nativeHaptics/.test(id)) ? 'assets/native-[name]-[hash].js' : 'assets/[name]-[hash].js',
+      },
+    },
+  },
+  // Dev : pré-optimisés d'emblée, sinon leur découverte au premier import() natif fait recharger la page.
+  optimizeDeps: { include: ['@capacitor/core', '@capacitor/haptics'] },
   plugins: [
     react(),
     tailwindcss(),
@@ -18,6 +31,7 @@ export default defineConfig({
       // première visite (moteur WASM 7 Mo + 120k puzzles 16 Mo + sons inclus).
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,mp3,wasm,json,svg}'],
+        globIgnores: ['**/assets/native-*.js'],
         maximumFileSizeToCacheInBytes: 25 * 1024 * 1024,
         navigateFallback: 'index.html',
       },

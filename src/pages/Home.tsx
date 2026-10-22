@@ -7,6 +7,7 @@ import { describeKinds, loadReviewQueue, type ReviewItem } from '../lib/revision
 import { usePathState } from '../components/usePathState'
 import { streak, streakLabel } from '../lib/seance'
 import { readStoredSeance, seanceDates } from '../lib/seanceRun'
+import { dismissMigration, isNative, migrationDismissed } from '../lib/native'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -17,6 +18,9 @@ export default function Home() {
   const path = usePathState()
   const [seance, setSeance] = useState<{ days: number; today: boolean } | null>(null) // série de séances du jour
   const [current] = useState(() => readStoredSeance()) // séance du jour en cours (sessionStorage)
+  // App native : proposer de récupérer les données de la PWA (docs/ios-app.md), jusqu'à une
+  // restauration réussie ou « Non merci », même après un premier puzzle joué dans l'app.
+  const [offerMigration, setOfferMigration] = useState(() => isNative && !migrationDismissed())
 
   useEffect(() => {
     void db.ratings.toArray().then((rs) => setRatings(Object.fromEntries(rs.map((r) => [r.key, r.value]))))
@@ -47,6 +51,34 @@ export default function Home() {
       <h1 className="mb-2 md:mb-4 text-3xl font-black">
         ♞ Chess<span className="text-accent">Local</span>
       </h1>
+
+      {/* App native : elle n'a pas la même origine que la PWA, la sauvegarde est le seul pont.
+          La carte disparaît après une restauration réussie ou « Non merci ». */}
+      {offerMigration && (
+        <div data-testid="native-migration" className="mb-2 md:mb-4 flex items-center rounded-2xl border border-accent/40 bg-surface-2 shadow-lg">
+          <button
+            data-testid="native-migration-go"
+            onClick={() => navigate('/stats', { replace: true, state: { backup: true } })}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-l-2xl py-2 pl-4 text-left transition hover:bg-surface-3"
+          >
+            <span className="text-2xl" aria-hidden="true">📲</span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-bold">Récupérer tes données</span>
+              <span className="block truncate text-xs text-neutral-400">Exporte-les dans la PWA, puis restaure-les ici</span>
+            </span>
+            <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
+          </button>
+          <button
+            data-testid="native-migration-dismiss"
+            aria-label="Non merci"
+            title="Non merci"
+            onClick={() => { dismissMigration(); setOfferMigration(false) }}
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-r-2xl text-lg text-neutral-500 transition hover:text-neutral-200"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Navigations d'onglet (racines de la nav) en `replace`, comme la nav basse : le swipe-back
           iOS ne ramène pas à l'accueil en pleine partie. Puzzle Rush et chess.com sont des
