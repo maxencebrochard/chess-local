@@ -7,17 +7,21 @@ interface MoveListProps {
   currentIndex: number // -1 = position initiale
   onSelect: (index: number) => void
   classes?: (MoveClass | null)[]
+  // Trait au premier demi-coup ('b' pour un départ custom où les noirs jouent) : case blanche vide.
+  startTurn?: 'w' | 'b'
 }
 
-export function MoveList({ sans, currentIndex, onSelect, classes }: MoveListProps) {
+export function MoveList({ sans, currentIndex, onSelect, classes, startTurn = 'w' }: MoveListProps) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     ref.current?.querySelector('[data-current="true"]')?.scrollIntoView({ block: 'nearest' })
   }, [currentIndex])
 
   const rows: { num: number; white?: number; black?: number }[] = []
-  for (let i = 0; i < sans.length; i += 2) {
-    rows.push({ num: i / 2 + 1, white: i, black: i + 1 < sans.length ? i + 1 : undefined })
+  // Décalage d'un demi-coup quand les noirs commencent : l'indice -1 est la case blanche vide.
+  const shift = startTurn === 'b' ? 1 : 0
+  for (let i = sans.length ? -shift : 0; i < sans.length; i += 2) {
+    rows.push({ num: (i + shift) / 2 + 1, white: i >= 0 ? i : undefined, black: i + 1 < sans.length ? i + 1 : undefined })
   }
 
   const cell = (idx?: number) => {
@@ -32,7 +36,7 @@ export function MoveList({ sans, currentIndex, onSelect, classes }: MoveListProp
           idx === currentIndex ? 'bg-accent/30 text-white' : 'text-neutral-200 hover:bg-surface-3'
         }`}
       >
-        {figurine(sans[idx], idx % 2 === 0 ? 'w' : 'b')}
+        {figurine(sans[idx], (idx + shift) % 2 === 0 ? 'w' : 'b')}
         {marked && <ClassIcon cls={cls} size={18} />}
       </button>
     )

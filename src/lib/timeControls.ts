@@ -20,4 +20,7 @@ export const TIME_CONTROLS: TimeControl[] = [
   { label: 'Illimité', baseMs: null, incMs: 0, timeClass: 'unlimited' },
 ]
 
+// Partie de Jouer en cours (localStorage) : lue par Play.tsx, effacée par la réinitialisation.
+export const PLAY_GAME_KEY = 'chess-local-play-game'
+
 export const UNLIMITED = TIME_CONTROLS.find((t) => t.timeClass === 'unlimited')!

@@ -309,7 +309,8 @@ export class RunRecorder {
 
 // ---------- Préférences (localStorage, clé propre, hors sauvegarde) ----------
 
-const PREFS_KEY = 'chess-local-mats'
+export const MATES_PREFS_KEY = 'chess-local-mats'
+const PREFS_KEY = MATES_PREFS_KEY
 
 interface Prefs {
   cadence: Record<string, Cadence>

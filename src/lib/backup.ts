@@ -13,7 +13,9 @@ import { INSIGHTS_KEY, readInsights, writeInsights } from './insightsStore'
 import { SEANCE_SESSION_KEY } from './seanceRun'
 import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, migrateSettings, useSettings } from '../store/settings'
 import { BOTS } from './bots'
-import { TIME_CONTROLS } from './timeControls'
+import { PLAY_GAME_KEY, TIME_CONTROLS } from './timeControls'
+import { PUZZLE_SESSION_KEY } from './puzzles'
+import { MATES_PREFS_KEY } from './mates'
 import { isPieceSet } from './pieces'
 
 // Version du format de fichier = version du schéma Dexie : une table ajoutée = nouveau bloc
@@ -26,10 +28,15 @@ const LAST_EXPORT_KEY = 'chess-local-last-export'
 // Clés de l'app dans localStorage (le persist Zustand, la date du dernier export, la partie contre
 // le moteur en cours, les niveaux de l'adversaire bridé des entraîneurs d'attaque, de défense et de
 // conversion, la configuration et le dernier rapport d'Insights, l'alerte « Qu'est-ce qu'il
-// menace ? ») et clés des séances d'Apprendre, de révision, du parcours d'apprentissage et de la
-// séance du jour dans sessionStorage :
-// les seules que la réinitialisation a le droit de toucher.
-const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, DEFENSE_PREFS_KEY, CONVERSION_PREFS_KEY, INSIGHTS_KEY, 'chess-local-visualisation', THREAT_PREFS_KEY, ENDGAME_CLOCK_PREFS_KEY]
+// menace ? », la cadence des Finales au chrono, la partie de Jouer en cours, le puzzle en cours,
+// les préférences de Mats éclair) et clés des séances d'Apprendre, de révision, du parcours
+// d'apprentissage et de la séance du jour dans sessionStorage : les seules que la réinitialisation
+// a le droit de toucher.
+const APP_LOCAL_KEYS = [
+  'chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, DEFENSE_PREFS_KEY,
+  CONVERSION_PREFS_KEY, INSIGHTS_KEY, 'chess-local-visualisation', THREAT_PREFS_KEY, ENDGAME_CLOCK_PREFS_KEY,
+  PLAY_GAME_KEY, PUZZLE_SESSION_KEY, MATES_PREFS_KEY,
+]
 const SESSION_KEYS = ['learn-session-v1', 'revision-session-v1', 'path-session-v1', SEANCE_SESSION_KEY]
 
 export const TABLES = ['games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions', 'reviews'] as const

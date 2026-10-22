@@ -60,6 +60,7 @@ Le gate n'utilise jamais `--live`.
 `test_upgrade.py` (prod uniquement) est le garde-fou de continuité des données : pour chaque ancien build déployé épinglé dans `OLD_BUILDS` (tags `deployed-2026-07-20`, `deployed-2026-10-06`, `deployed-2026-10-15`, `deployed-2026-10-16`, `deployed-2026-10-22` et `deployed-2026-10-22-2`, extraits de git ; `git fetch origin tag <tag>` s'il manque), il le sert, y crée de vraies données par l'interface dans un profil persistant, bascule sur le build courant sur le même port, vérifie IndexedDB, réglages et chiffres affichés à l'identique, puis restaure une sauvegarde de l'ancien build dans le nouveau ; `E2E_MUTATION=rename-db|clear-ratings|drop-table|clear-settings` sert une copie mutée du nouveau build pour prouver que la suite passe au rouge.
 `E2E_MUTATION=truncate-old-precache` fait couper par l'ancien serveur le corps de `puzzles.json` : l'installation du service worker de l'ancien build échoue à chaque fois, et les réessais bornés de `wait_sw_active` (contre les « Cache.put() encountered a network error » ponctuels sous charge) doivent finir en rouge.
 Après un déploiement, ajouter le nouveau tag à `OLD_BUILDS` et retirer un build que plus aucun appareil ne porte.
+`test_bug_hunt.py` rejoue un scénario utilisateur par bug corrigé lors de la chasse aux bugs (réinitialisation, classes du bilan, liste des coups, barre d'éval, variante d'une partie archivée, date du PGN, worker de finale orphelin) ; `BUG_CASE=<nom>[,<nom>...]` cible des scénarios.
 Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` : deux lancements simultanés ne se gênent pas.
 Les captures vont dans `e2e/shots/` (gitignoré).
 La suite `ux_audit` photographie les familles de routes et leurs états principaux aux trois formats de référence, avec inventaire DOM dans `e2e/shots/ux-audit/{prod,dev}/`.
@@ -160,8 +161,10 @@ Une ligne `learnSessions` par série (domaine `endgame-clock`, `RunRecorder` de 
 ### Pipeline d'évaluation
 
 `review.ts` évalue chaque position en multipv 2 à profondeur fixe, convertit en win% (formule lichess) et classe chaque coup selon la chute de win%.
+Les nulles du bilan sont détectées avec l’historique complet ; le sacrifice utilise l’échange statique légal de `motifs.ts`, et un coup unique ne reçoit ni « Très bon » ni « Brillant ».
 `MoveClass`, `CLASS_META` (libellés, couleurs, symboles) et les seuils vivent uniquement là.
 En dépendent : `coach.ts` (commentaires post-partie générés par règles), `liveCoach.ts` (classe rapide du mode entraîneur), `ReviewSummary`, `EvalGraph`, `MoveList`.
+Modifier la ligne analysée détache sa clé et son libellé de la partie archivée, tout en conservant le camp du joueur.
 Un bilan lancé dans Analyse écrit les fautes dans la table `mistakes`, rejouées ensuite dans Apprendre → Mes erreurs.
 Le résumé du bilan se termine par « Moments critiques » (`components/CriticalMoments.tsx`, inséré par Analysis via la prop `extra` de `ReviewSummary`) : `criticalMoments.ts`, pur et testé sous Node par `test_moments.py`, retient au plus 3 coups du joueur, les plus grosses chutes de win% (au moins 10 points, coup différent de celui de Stockfish) et les coups uniques trouvés (2e coup à plus de 20 points, lu dans `winPctSecond` de `ReviewedMove`).
 La réponse à « Plan, menace ou coup forcé ? » se déduit de l'échiquier : coup forcé si un seul coup tient ou si le meilleur coup mate, sinon menace (échec, ou coup nul : mat en 1, prise gagnant au moins 2 points par `see`, promotion libre), sinon plan.
@@ -232,6 +235,7 @@ Un jeu enregistré n'est jamais remplacé par `atelier` : seuls les stockages sa
 Un choix `celtique` enregistré en version 1 est conservé ; cette version persist est indépendante de la version du schéma de sauvegarde.
 L’import valide ensuite les types (dont `premoves`, booléen sinon défaut) et les valeurs contre les listes réelles de l’application.
 Les séances en cours d'Apprendre, de révision, du parcours d'apprentissage et de la séance du jour vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`, `path-session-v1`, `seance-session-v1`) : `importBackup` et `resetApp` effacent ces quatre clés, et seulement elles.
+`resetApp` efface aussi les clés locales de Jouer, Puzzles et Mats éclair, exportées par leurs modules de logique.
 `main.tsx` demande `navigator.storage.persist()` ; iOS peut purger IndexedDB, et le périmètre des sauvegardes de `backup.ts` est décrit dans [README.md, section Features](README.md#features).
 
 ### Chemins et PWA

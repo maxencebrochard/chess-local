@@ -3,6 +3,7 @@
 // de win% entre le meilleur coup et le coup joué détermine la classe.
 import { Chess } from 'chess.js'
 import { Engine, type EngineLine } from './engine'
+import { see } from './motifs'
 import { isBookPosition } from './openings'
 
 export type MoveClass =
@@ -83,17 +84,6 @@ function lineCp(line: EngineLine): number {
 
 const PIECE_VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
 
-function materialBalance(chess: Chess, color: 'w' | 'b'): number {
-  let bal = 0
-  for (const row of chess.board()) {
-    for (const sq of row) {
-      if (!sq) continue
-      bal += (sq.color === color ? 1 : -1) * PIECE_VALUE[sq.type]
-    }
-  }
-  return bal
-}
-
 export async function reviewGame(
   pgn: string,
   engine: Engine,
@@ -114,8 +104,12 @@ export async function reviewGame(
   // Évaluations de chaque position (avant coup 1, après coup 1, ...).
   const chess = new Chess(customStart)
   const evals: { lines: EngineLine[] }[] = []
+  // Fin de partie de chaque position, lue sur cette instance qui a l'historique : une instance
+  // recréée depuis la FEN ne voit pas la triple répétition.
+  const ends: ('mate' | 'draw' | null)[] = []
   for (let i = 0; i <= total; i++) {
     if (i > 0) chess.move(verbose[i - 1].san)
+    ends.push(chess.isCheckmate() ? 'mate' : chess.isGameOver() ? 'draw' : null)
     // Bilan annulé (ligne modifiée, réimport, page quittée) : on s'arrête à la granularité
     // d'une recherche, sans jamais rendre de résultat partiel.
     if (signal?.aborted) throw new DOMException('Bilan annulé', 'AbortError')
@@ -151,8 +145,9 @@ export async function reviewGame(
     let cpAfterMover: number
     const replayAfter = new Chess(replay.fen())
     replayAfter.move(mv.san)
-    if (replayAfter.isCheckmate()) cpAfterMover = 10000
-    else if (replayAfter.isGameOver()) cpAfterMover = 0
+    const endAfter = ends[i + 1]
+    if (endAfter === 'mate') cpAfterMover = 10000
+    else if (endAfter === 'draw') cpAfterMover = 0
     else cpAfterMover = after[0] ? -lineCp(after[0]) : cpBefore
 
     const wBefore = winPct(cpBefore)
@@ -174,14 +169,17 @@ export async function reviewGame(
     } else if (mv.lan !== bestMoveUci && opponentJustBlundered && drop >= 5) {
       // L'adversaire venait d'offrir l'avantage, non puni : Occasion manquée.
       cls = 'miss'
+    } else if (mv.lan === bestMoveUci && (!bestLine || replay.moves().length === 1)) {
+      // Seul coup légal (ou position non évaluée, après une nulle) : ni choix ni mérite à saluer.
+      cls = 'best'
     } else if (mv.lan === bestMoveUci) {
       // Brillant (critères chess.com) : sacrifice réel d'au moins une pièce
       // mineure, sur une case effectivement prenable par l'adversaire, dans
       // une position pas déjà largement gagnante sans ce coup, et qui reste
-      // au moins égale ensuite.
-      const balBefore = materialBalance(replay, mover)
-      const balAfter2 = -materialBalance(replayAfter, replayAfter.turn())
-      const sacrifice = balBefore - balAfter2 >= 2 && !replayAfter.isCheckmate()
+      // au moins égale ensuite. Le sacrifice est ce que l'adversaire gagne en
+      // prenant sur la case d'arrivée (échange statique), net de ce que le coup a pris.
+      const given = see(replayAfter.fen(), mv.to) - (mv.captured ? PIECE_VALUE[mv.captured] : 0)
+      const sacrifice = given >= 2 && endAfter !== 'mate'
       const destAttacked = sacrifice && replayAfter.isAttacked(mv.to, replayAfter.turn())
       const secondBestWinPct = before[1] ? winPct(lineCp(before[1])) : 0
       const secondGap = wBefore - secondBestWinPct
@@ -204,9 +202,11 @@ export async function reviewGame(
     const afterLine = after[0] ?? null
     let evalAfterCp: number | null = null
     let mateAfter: number | null = null
-    if (replayAfter.isCheckmate()) {
+    if (endAfter === 'mate') {
       mateAfter = 0
       evalAfterCp = mover === 'w' ? 10000 : -10000
+    } else if (endAfter === 'draw') {
+      evalAfterCp = 0 // pat, répétition, 50 coups, matériel insuffisant : la courbe revient à 50 %
     } else if (afterLine) {
       const sign = replayAfter.turn() === 'w' ? 1 : -1
       if (afterLine.scoreMate !== null) mateAfter = sign * afterLine.scoreMate

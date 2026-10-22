@@ -37,7 +37,8 @@ export function loadPuzzles(): Promise<PuzzleData[]> {
 
 // ---------- Puzzles classés (/puzzles, séance du jour) ----------
 
-// Puzzle classé en cours sur /puzzles (localStorage) : la séance du jour ne le note pas à sa place.
+// Puzzle classé en cours sur /puzzles (localStorage) : la séance du jour ne le note pas à sa place,
+// et la réinitialisation l'efface.
 export const PUZZLE_SESSION_KEY = 'chess-local-puzzle-session'
 
 export function pendingPuzzleId(): string | null {

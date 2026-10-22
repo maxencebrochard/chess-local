@@ -385,6 +385,11 @@ export default function Analysis() {
       setReview(null)
       setReviewStage(null)
       clearRetry()
+      // Ce n'est plus la partie de l'Archive : ses fautes ne lui sont plus attribuées (clé et
+      // libellé). Le camp du joueur reste connu (exercice rejoué depuis un puzzle, variante d'une
+      // de ses parties).
+      gameKeyRef.current = null
+      setGameMeta(null)
       return move
     } catch {
       return false
@@ -961,6 +966,7 @@ export default function Analysis() {
             currentIndex={viewIndex}
             onSelect={setViewIndex}
             classes={review ? review.moves.map((m) => m.class as MoveClass | null) : undefined}
+            startTurn={startTurn}
           />
         </div>
 

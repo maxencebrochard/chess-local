@@ -57,6 +57,8 @@ Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bi
   La lecture avance toutes les 1,8 seconde jusqu'au bilan de la suite, avec pause, précédent et suivant ; elle démarre en pause si la réduction des animations est activée.
   Le calcul utilise le réglage courant de profondeur du bilan (Stats → Réglages), avec un minimum de 12, sans conserver la profondeur du bilan d'origine.
   La carte du meilleur coup indique ce qu'il empêche lorsqu'un effet est vérifié ; si le moteur juge le coup joué presque aussi bon ou meilleur, elle le précise.
+  Le bilan tient compte des nulles par répétition, reconnaît les sacrifices de matériel et ne récompense pas un coup unique comme « Très bon » ou « Brillant ».
+  Modifier la ligne d’une partie archivée détache les erreurs de cette variante de la partie d’origine.
 - **Parcours d'apprentissage** : `#/apprendre/parcours`, en tête d'Apprendre et depuis l'accueil, façon chess.com Path : 37 étapes en quatre niveaux (Débutant 800, Intermédiaire 1200, Confirmé 1600, Avancé 2000), chacune une courte leçon (cours « Les bases », de finales, « Démolir le roque » ou cours détaillé) suivie d'exercices à réussir (puzzles par thème, variantes d'ouverture, finale contre Stockfish).
   Les étapes se débloquent dans l'ordre, avec coche et étoiles, reprise sur l'étape en cours, et une leçon déjà terminée dans son cours compte.
   Chaque exercice doit atteindre l'objectif affiché : seuil de réussites pour les puzzles et variantes, gain ou nulle demandée pour une finale.
@@ -114,6 +116,7 @@ Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bi
   Les listes personnelles proviennent des bilans lancés dans Analyse, accessibles depuis les exemples ; leurs critères d’attaque diffèrent de ceux d’Insights.
   Les mesures de pendule utilisent les annotations `%clk` des PGN chess.com ; ChessLocal n'enregistre pas les temps par coup.
 - **Stats** : classements par cadence, bilan V/N/D, thèmes d'échiquier, réglages, sauvegarde et restauration des données IndexedDB et des réglages (fichier JSON), état du stockage, réinitialisation de l'app.
+  La réinitialisation efface aussi la partie de Jouer en cours, la séance de puzzle et les préférences de Mats éclair.
   Les bilans Insights en cache sont inclus dans la sauvegarde, mais pas la configuration ni la sélection du dernier rapport ; une restauration conserve la configuration locale et invalide ce rapport, sans supprimer les bilans restaurés.
   Les résultats et records de Calcul et visualisation sont inclus dans la sauvegarde ; ses préférences de longueur et d'affichage restent sur l'appareil, hors sauvegarde, et sont effacées par la réinitialisation de l'app.
 
