@@ -151,6 +151,8 @@ Finales au chrono (`/finales/chrono`, `pages/EndgameClock.tsx`, `components/Endg
 La pendule du joueur seule (`components/usePlayerClock.ts`, partagée avec le contre la montre de Mats éclair) ne tourne qu'à son trait, ajoute l'incrément après chaque coup et débite 100 ms par prémouvement.
 Gain : mat, roi adverse nu face à dame ou tour, ou promotion en dame qui survit à la réponse avec 3 points d'avance ; raté au drapeau, à une nulle, ou après trois réponses où le moteur s'estime à -0,50 ou mieux.
 Nulle : toute nulle par les règles, ou 15 coups tenus quand le moteur ne voit ni mat ni plus de +1,50 ; ces seuils sont validés par la suite `finales_chrono` sur les lignes optimales des tables.
+Le coup du moteur reste au temps (150 ms), mais ces deux verdicts viennent d'une seconde recherche de la position, à `VERDICT_NODES` nœuds (100 000) après `ucinewgame` : même score sur tout appareil et sous charge, et la suite les rejoue avec exactement cette recherche (`Solver.score`).
+Changer `VERDICT_NODES` impose de relancer la suite : à 10 000 nœuds la banque passe encore, le réglage garde de la marge (pire nulle +63, pire gain +170).
 Une ligne `learnSessions` par série (domaine `endgame-clock`, `RunRecorder` de `mates.ts`), la cadence choisie dans `localStorage['chess-local-endgame-clock']`.
 
 ### Pipeline d'évaluation
