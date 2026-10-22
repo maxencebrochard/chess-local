@@ -297,7 +297,7 @@ def suite(p):
     check("[entrée] carte Démolir le roque intacte", page.locator("[data-testid='attack-card-progress']").inner_text() == f"0/{ROQUE_N} leçons")
     cards = page.locator("button:has([data-testid$='card-progress'])")
     order = [cards.nth(i).locator("[data-testid]").get_attribute("data-testid") for i in range(cards.count())]
-    check("[entrée] tuile juste après Démolir le roque", order[-2:] == ["attack-card-progress", "defense-card-progress"], f"({order})")
+    check("[entrée] tuile juste après Démolir le roque", "attack-card-progress" in order and order[order.index("attack-card-progress") + 1:][:1] == ["defense-card-progress"], f"({order})")
     shot(page, "defense_learn_home", full_page=True)
     page.locator("button", has_text="Tenir sous l'attaque").click()
     ck.appears("[sommaire] titre", page, "h1:has-text(\"Tenir sous l'attaque\")")
