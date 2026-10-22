@@ -678,6 +678,42 @@ def coach_part(p, browser):
     check("[entraîneur] l'échiquier rejoue après la réponse (g6), bulle retirée", ok)
     ctx.close()
 
+    # ---------- Entraîneur, Indication demandée avant l'analyse de menace : jamais visible ----------
+    ctx = mobile_context(p, browser, ck, standalone=True, threat_prefs=None)
+    page = ctx.new_page()
+    open_play(page)
+    seed_game(page, "coach", "b", ["e4", "e5", "Bc4", "Nc6", "Qh5"])
+    page.evaluate("""() => {
+      window.__hintWhileThinking = []
+      const note = () => {
+        const el = document.querySelector('[data-threat]')
+        const btn = [...document.querySelectorAll('main button')].find((b) => b.textContent.includes('Indication'))
+        if (el?.dataset.threat === 'thinking' && btn) window.__hintWhileThinking.push(btn.disabled)
+      }
+      new MutationObserver(note).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-threat', 'disabled'] })
+      note()
+    }""")
+    hint = page.locator("main button", has_text="Indication")
+    clicked = False
+    for _ in range(300):
+        st = threat_state(page)
+        if st and st["s"] != "idle":
+            break
+        if st and hint.count() and hint.is_enabled():
+            hint.click()
+            clicked = True
+            break
+        page.wait_for_timeout(50)
+    check("[entraîneur] Indication demandée avant l'analyse de menace", clicked, f"({threat_state(page)})")
+    if ck.appears("[entraîneur] question posée malgré l'indication demandée", page, "[data-threat='ask']", timeout=40000):
+        page.wait_for_timeout(1500)
+        markers = page.locator("[data-board] svg marker").count()
+        check("[entraîneur] aucune flèche d'indication pendant la question", markers == 0, f"({markers} flèche(s))")
+        seen = page.evaluate("() => window.__hintWhileThinking")
+        check("[entraîneur] Indication désactivée pendant l'analyse de menace", len(seen) > 0 and all(seen), f"({seen})")
+        shot(page, "menace_coach_indication_avant_852")
+    ctx.close()
+
     # ---------- Entraîneur, fourchette f7 : bonne réponse, partie toujours classée ----------
     ctx = mobile_context(p, browser, ck, threat_prefs=None)  # onglet Safari 393x660
     page = ctx.new_page()
