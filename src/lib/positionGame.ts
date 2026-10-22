@@ -275,10 +275,10 @@ export interface StoredGame {
   assisted: boolean // indice ou coup repris
   recorded?: boolean // résultat de la tentative déjà noté
   back?: unknown // partie libre : state de navigation qui rouvre l'analyse d'origine
-  // Entraîneurs d'attaque et de défense : Elo de l'adversaire bridé de cette partie (le défenseur
-  // pour l'attaque, l'attaquant pour la défense), null = pleine force.
+  // Entraîneurs d'attaque, de défense et de conversion : Elo de l'adversaire bridé de cette partie
+  // (le défenseur pour l'attaque et la conversion, l'attaquant pour la défense), null = pleine force.
   level?: number | null
-  // Entraîneur d'attaque : avantage décisif atteint (`offered` : choix Continuer/Conclure affiché,
+  // Entraîneurs d'attaque et de conversion : avantage décisif atteint (`offered` : choix Continuer/Conclure affiché,
   // `continued` : le joueur poursuit, plus de proposition).
   decisive?: 'offered' | 'continued'
   // Entraîneur de défense : série de tours sous le plancher, et dernier demi-coup évalué. Rejouée
