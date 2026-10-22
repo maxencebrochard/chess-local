@@ -78,7 +78,7 @@ export interface LearnSession {
   // missed-attack, missed-defense : itemId = id de la ligne `mistakes`, fen = sa `fenBefore` (le
   // couple identifie l'exercice : une sauvegarde restaurée peut réattribuer les ids), success =
   // premier coup sans aide, égal au coup du bilan ou accepté par `PositionGame.judgeKeyMove` après
-  // vérification.
+  // vérification ; depuis la révision espacée, verdict de `MistakeExercise` (perte de win% < 5).
   // defense : fen = position de départ, success = défense réussie sans aide (outcome held, draw ou
   // win), outcome parmi held | draw | win | mated | collapsed | resign | abandon, attackerElo =
   // Elo de l'attaquant (null = pleine force), assisted comme pour attack ; defenderElo absent.
@@ -87,7 +87,8 @@ export interface LearnSession {
   // « Plan, menace ou coup forcé ? », success = bonne réponse) ou `coup:<attendu>` (tentative notée
   // par le keyMove de la position rejouée), attendu et choisi parmi `forced`, `threat`, `plan`.
   // revision : puzzles revus par la révision espacée, itemId = `puzzle:<id>` (sans Elo) ; les
-  // fautes et variantes revues s'écrivent dans leurs domaines d'origine (`mistakes`, `opening-drill`).
+  // fautes, variantes, attaques manquées et défenses ratées revues s'écrivent dans leurs domaines
+  // d'origine (`mistakes`, `opening-drill`, `missed-attack`, `missed-defense`).
   // visualisation (« Calcul et visualisation », hors Elo) : itemId = `q:<N>:<type>:<id puzzle>` pour
   // une question répondue (fen = position montrée), ou `serie:<N>:<visible|flash>` pour une série
   // (score = bonnes réponses), N étant la longueur de la ligne en demi-coups.
