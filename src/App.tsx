@@ -28,6 +28,7 @@ import { STRUCTURES_COURSE } from './lib/structuresCourse'
 import MyStructures, { MyStructuresCard } from './pages/MyStructures'
 import Revision from './pages/Revision'
 import Attack from './pages/Attack'
+import Convert from './pages/Convert'
 import Defense from './pages/Defense'
 import Visualisation from './pages/Visualisation'
 import Insights from './pages/Insights'
@@ -37,7 +38,7 @@ const NAV = [
   { to: '/', icon: '♞', label: 'Accueil', match: [] as string[] },
   { to: '/jouer', icon: '♟', label: 'Jouer', match: [] as string[] },
   { to: '/puzzles', icon: '🧩', label: 'Puzzles', match: ['/rush'] },
-  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/repertoire', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque', '/defenses-ratees', '/defense', '/visualisation', '/structures'] },
+  { to: '/apprendre', icon: '🎓', label: 'Apprendre', match: ['/apprendre', '/ouvertures', '/repertoire', '/finales', '/mats', '/revision', '/attaques-manquees', '/attaque', '/convertir', '/defenses-ratees', '/defense', '/visualisation', '/structures'] },
   { to: '/analyse', icon: '🔍', label: 'Analyse', match: ['/import', '/analyse/jouer', '/moment-critique'] },
   { to: '/archive', icon: '📚', label: 'Archive', match: [] as string[] },
   { to: '/stats', icon: '📊', label: 'Stats', match: ['/insights'] },
@@ -175,6 +176,8 @@ function Shell() {
             <Route path="/defense" element={<Defense />} />
             <Route path="/defense/:id" element={<Defense />} />
             <Route path="/visualisation" element={<Visualisation />} />
+            <Route path="/convertir" element={<Convert />} />
+            <Route path="/convertir/:id" element={<Convert />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/insights" element={<Insights />} />

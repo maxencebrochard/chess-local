@@ -110,9 +110,10 @@ export interface AttackStats {
 
 const levelRank = (l: Level) => (l === null ? Infinity : l)
 
-// Statistiques par `id|fen` : une position régénérée sous le même id repart de zéro.
-export async function attackStats(): Promise<Map<string, AttackStats>> {
-  const rows = await db.learnSessions.where('domain').equals(ATTACK_DOMAIN).toArray()
+// Statistiques par `id|fen` : une position régénérée sous le même id repart de zéro. Même forme de
+// ligne pour l'entraîneur de conversion (domaine `conversion`).
+export async function attackStats(domain: string = ATTACK_DOMAIN): Promise<Map<string, AttackStats>> {
+  const rows = await db.learnSessions.where('domain').equals(domain).toArray()
   const out = new Map<string, AttackStats>()
   for (const r of rows) {
     const key = `${r.itemId}|${r.fen ?? ''}`
@@ -130,7 +131,7 @@ export async function attackStats(): Promise<Map<string, AttackStats>> {
   return out
 }
 
-export const statsKey = (p: AttackPosition) => `${p.id}|${p.fen}`
+export const statsKey = (p: { id: string; fen: string }) => `${p.id}|${p.fen}`
 
 // Tentative d'attaque en cours écrasée par une autre partie (autre position, finale, partie
 // libre : un seul emplacement de persistance) : notée abandonnée. Appelée par `recordReplaced`

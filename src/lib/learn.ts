@@ -80,8 +80,8 @@ export async function pickNextDomain(): Promise<LearnDomain> {
   // Filtre avant la limite : les tentatives de l'entraîneur d'ouvertures (domaine 'opening-drill'),
   // les finales jouées jusqu'au bout (domaine 'endgame-play'), les leçons de cours terminées
   // (domaine 'course'), les séries de Mats éclair (domaine 'mats'), les puzzles revus par la
-  // révision espacée (domaine 'revision'), les tentatives des entraîneurs d'attaque et de défense
-  // (domaines 'attack' et 'defense'), les attaques manquées et les défenses ratées (domaines
+  // révision espacée (domaine 'revision'), les tentatives des entraîneurs d'attaque, de défense et
+  // de conversion (domaines 'attack', 'defense' et 'conversion'), les attaques manquées et les défenses ratées (domaines
   // 'missed-attack' et 'missed-defense'), les moments critiques (domaine 'critical-moment'),
   // les séries de « Calcul et visualisation » (domaine 'visualisation') et du parcours (domaine
   // 'path'), ainsi que les parties depuis mes structures (domaine 'structure-play'), ne doivent pas chasser les domaines d'Apprendre de la

@@ -92,6 +92,7 @@ export interface PositionGameProps {
   decisiveCp?: number // seuil d'avantage décisif (centipions) ; absent : pas de suivi
   lessonLabel?: string // libellé du bouton qui déplie `lesson`
   successTitle?: string // titre du verdict réussi
+  decisiveReason?: string // motif d'une fin sur avantage décisif (défaut : celui de l'attaque)
   headerAction?: ReactNode // à droite du titre, à la place du bouton du cours
   planButton?: boolean // fin de partie : « Plan », la suite de Stockfish depuis la position de départ
   allowDraw?: boolean // bouton Nulle (vrai par défaut)
@@ -582,7 +583,13 @@ export function PositionGame(props: PositionGameProps) {
   // Avantage décisif atteint : la tentative est réussie, quelle que soit la suite.
   const verdict = end ? (decisive && objective ? 'success' : judge(end, player, objective)) : null
   const baseText = end ? verdictText(end, player, objective, playerMoves) : null
-  const text = baseText && verdict === 'success' && props.successTitle ? { ...baseText, title: props.successTitle } : baseText
+  const titled = baseText && verdict === 'success' && props.successTitle ? { ...baseText, title: props.successTitle } : baseText
+  // Réussite acquise à l'avantage décisif, puis « Continuer » et une fin qui n'est pas un gain : le
+  // motif dit les deux (« Décisif atteint, puis nulle par pat. »).
+  const reached = titled && decisive && end && end.kind !== 'decisive' && judge(end, player, objective) !== 'success'
+    ? { ...titled, reason: `Décisif atteint, puis ${titled.reason.charAt(0).toLowerCase()}${titled.reason.slice(1)}` }
+    : titled
+  const text = reached && end?.kind === 'decisive' && props.decisiveReason ? { ...reached, reason: props.decisiveReason } : reached
   const offered = !end && decisive === 'offered'
   const clock = halfmoveClock(fen)
   const showClock = !end && (objective === 'draw' || clock >= 60)
