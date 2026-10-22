@@ -1,7 +1,7 @@
 // Joue un puzzle lichess : fen = position avant le coup adverse d'amorce,
 // moves[0] = coup adverse joué automatiquement, puis alternance joueur/adverse.
 import { useEffect, useRef, useState } from 'react'
-import { Chess } from 'chess.js'
+import { Chess, type Move } from 'chess.js'
 import { Board } from './Board'
 import { sounds } from '../lib/sounds'
 
@@ -75,7 +75,7 @@ export function PuzzlePlayer({ puzzle, onComplete, onStep, hintSquare }: PuzzleP
     onStep?.(currentStep + 1)
   }
 
-  function handleMove(from: string, to: string, promotion?: string): boolean {
+  function handleMove(from: string, to: string, promotion?: string): Move | boolean {
     if (done || stepIndex === 0 || stepIndex % 2 === 0) return false
     const c = chessRef.current
     const expected = puzzle.moves[stepIndex]
@@ -111,10 +111,10 @@ export function PuzzlePlayer({ puzzle, onComplete, onStep, hintSquare }: PuzzleP
       sounds.success()
       setDone(true)
       onComplete(true, next, c.fen())
-      return true
+      return move
     }
     later(() => applyUci(puzzle.moves[next], next), 350)
-    return true
+    return move
   }
 
   return (

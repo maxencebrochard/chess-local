@@ -468,7 +468,7 @@ def square_has_drawing(page, square):
 
 
 def migration_suite(p, browser):
-    for old, version, expected in [(None, 0, "atelier"), ("celtique", 0, "atelier"), ("chessnut", 0, "chessnut"), ("celtique", 1, "celtique"), ("wikimedia", 1, "atelier"), ("wikimedia", 2, "wikimedia")]:
+    for old, version, expected in [(None, 0, "atelier"), ("celtique", 0, "wikimedia"), ("chessnut", 0, "chessnut"), (None, 1, "atelier"), ("celtique", 1, "celtique"), ("wikimedia", 1, "wikimedia"), ("wikimedia", 2, "wikimedia")]:
         ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block")
         page = ctx.new_page()
         page.goto(f"{BASE}/#/stats")

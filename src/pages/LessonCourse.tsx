@@ -4,7 +4,7 @@
 // ligne (tables de finales ou Stockfish) et tamponné.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Chess } from 'chess.js'
+import { Chess, type Move } from 'chess.js'
 import { ActivityCard } from '../components/ActivityCard'
 import { PageHeader } from '../components/PageHeader'
 import { ProgressBar } from '../components/ProgressBar'
@@ -324,7 +324,7 @@ function LineView({ step, refusals, onDone }: { step: LineStep; refusals: Course
     }, REPLY_DELAY_MS)
   }
 
-  function handleMove(from: string, to: string, promotion?: string): boolean {
+  function handleMove(from: string, to: string, promotion?: string): Move | boolean {
     if (busy || finished || chessRef.current.turn() !== player) return false
     const c = chessRef.current
     let mv
@@ -339,7 +339,7 @@ function LineView({ step, refusals, onDone }: { step: LineStep; refusals: Course
     if (uci === ucis[ply]) {
       setMisses(0)
       accept(ply)
-      return true
+      return mv
     }
     // Mauvais coup : montré un instant, case d'arrivée en rouge, puis repris.
     const expected = step.moves[ply]

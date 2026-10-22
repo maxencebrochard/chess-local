@@ -185,9 +185,8 @@ Ajouter une table ou un index = nouveau bloc `db.version(n)` qui redéclare tous
 La table `ratings` est unique et indexée par clé texte : cadences (`bullet`, `blitz`, `rapid`, `unlimited`), `puzzle`, et domaines d'Apprendre (`learn-endgame`, `learn-tactic`, ...).
 Tous les Elo passent par `applyRating`/`eloUpdate`.
 Les réglages sont dans Zustand persist (`localStorage['chess-local-settings']`).
-La migration persist des réglages (version 2) est partagée avec l’import des sauvegardes : une version 0 ou absente avec `pieceSet` absent ou `celtique` donne `atelier`, comme une montée de version locale.
-Une version antérieure à 2 avec `wikimedia` ou sans jeu donne également `atelier`.
-Les choix explicites des versions 2 et suivantes sont conservés.
+La migration persist des réglages (version 2) est partagée avec l’import des sauvegardes : une version 0 ou absente avec `celtique` (ancien défaut implicite) donne `wikimedia`, et sans `pieceSet` donne le défaut `atelier`, comme une montée de version locale.
+Un jeu enregistré n'est jamais remplacé par `atelier` : seuls les stockages sans `pieceSet` (nouvel utilisateur compris) le reçoivent.
 Un choix `celtique` enregistré en version 1 est conservé ; cette version persist est indépendante de la version du schéma de sauvegarde.
 L’import valide ensuite les types (dont `premoves`, booléen sinon défaut) et les valeurs contre les listes réelles de l’application.
 Les séances en cours d'Apprendre, de révision et du parcours d'apprentissage vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`, `path-session-v1`) : `importBackup` et `resetApp` effacent ces trois clés, et seulement elles.

@@ -216,7 +216,8 @@ Les silhouettes ont un socle large (environ 56 % de case), un contour proche de 
 Atelier reprend ces proportions et les détails distinctifs : fente ouverte du fou, couronne à quatre pointes, croix du roi et deux ouvertures, profil courbe du cavalier.
 `scripts/draw-atelier.py` conserve les tracés vectoriels sur une grille 100 × 100, sans bitmap ni source officielle chess.com.
 Le jeu reste sélectionnable avec les six anciens jeux.
-La migration persist v2 remplace Wikimedia des versions antérieures, et Celtique seulement dans les stockages v0 ; tous les autres choix et données sont préservés.
+La migration persist ne donne Atelier qu’aux stockages sans jeu ; un jeu enregistré est conservé, sauf le Celtique implicite des stockages v0 qui devient Wikimedia comme avant.
+Tous les autres choix et données sont préservés.
 
 La reproduction initiale iPhone standalone montre des centres Wikimedia décalés de 4,3 à 8,4 % de case vers le haut alors que le transform de `.board-piece` est nul.
 La cause est la marge interne des SVG, pas `--piece-lift`.
@@ -228,7 +229,8 @@ L’oracle des SVG intégrés retire le transform CSS de sa copie avant rasteris
 
 Le diagnostic de la version déployée sans `--live` et la reproduction locale ne montrent pas de silence au premier glissé avec l’émulation des contraintes WebKit.
 Ils montrent en revanche des coups obsolètes rejoués après un chargement lent (test rouge avant correction).
-`playMoveSound` abandonne désormais un son de coup vieux de plus de 300 ms ; les notifications conservent leur comportement.
+`playMoveSound` abandonne désormais un son de coup encore en attente dès qu’un coup plus récent est demandé ; le premier coup d’une session sonne même si son fichier arrive tard, et les notifications conservent leur comportement.
+Les échiquiers dont le propriétaire renvoie le coup accepté (analyse, puzzles, exercices, entraîneur d’ouvertures, cours, séances d’Apprendre, continuation contre le moteur) le font sonner dans le geste de pose, avant le rendu React ; un coup faux reste muet.
 Le déverrouillage dans le geste, les reprises après arrière-plan, le volume, BASE_URL et le service worker sont contrôlés par les suites audio et PWA existantes.
 Le silence observé sur l’appareil de Max ne peut pas être attribué avec certitude à cette cause sans essai acoustique sur cet iPhone.
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Chess } from 'chess.js'
+import { Chess, type Move } from 'chess.js'
 import { ActivityCard } from '../components/ActivityCard'
 import { PageHeader } from '../components/PageHeader'
 import { ProgressBar } from '../components/ProgressBar'
@@ -956,7 +956,7 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
 
   if (!eg) return null
 
-  function handleMove(from: string, to: string, promotion?: string): boolean {
+  function handleMove(from: string, to: string, promotion?: string): Move | false {
     const c = chessRef.current
     if (phase !== 'play' || c.turn() !== eg!.side) return false
     let mv
@@ -972,7 +972,7 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
       await evalAndCheck()
       if (!finished.current) await botMove()
     })()
-    return true
+    return mv
   }
 
   return (
@@ -1038,7 +1038,7 @@ function OpeningExercise({ item, phase, onFinish }: ExerciseProps) {
 
   if (!line) return null
 
-  function handleMove(from: string, to: string, promotion?: string): boolean {
+  function handleMove(from: string, to: string, promotion?: string): Move | false {
     const c = chessRef.current
     if (phase !== 'play' || c.turn() !== playerColor || finished.current) return false
     const expected = line!.uci[step]
@@ -1054,7 +1054,7 @@ function OpeningExercise({ item, phase, onFinish }: ExerciseProps) {
       setMsg(null)
       setStep(step + 1)
       setFen(c.fen())
-      return true
+      return mv
     }
     // Mauvais coup : correction et nouvel essai.
     c.undo()

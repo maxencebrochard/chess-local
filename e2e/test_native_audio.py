@@ -67,7 +67,7 @@ def suite(p):
     for engine in os.environ.get('NATIVE_AUDIO_ENGINES', 'chromium').split(','):
         browser = getattr(p, engine).launch()
         try:
-            for delayed in (False, True):
+            for delayed in (False, 'first', 'burst'):
                 ctx = browser.new_context(**p.devices['iPhone 14 Pro'], service_workers='block')
                 ck.watch(ctx)
                 ctx.add_init_script(PROBE)
@@ -79,12 +79,23 @@ def suite(p):
                 ck.check(f'{engine}: nouveau profil Atelier', page.locator('[data-piece] img[src*="/atelier/"]').count() == 32)
                 tap_move(page, 'e2', 'e4')
                 page.wait_for_timeout(1000)
-                if delayed:
+                if delayed == 'first':
+                    # Fichier arrivé bien après le geste : le seul coup joué sonne quand même.
+                    page.evaluate('releaseAudio()')
+                    page.wait_for_timeout(600)
+                    heard = page.evaluate('audioEvents.map(e => e.name)')
+                    ck.check(f'{engine}: premier coup sonné malgré un chargement lent', heard == ['move-self.mp3'], str(heard))
+                    page.evaluate('audioPeak = 0; audioEvents = []')
+                    tap_move(page, 'e7', 'e5')
+                    expected = 'move-opponent.mp3'
+                elif delayed == 'burst':
                     tap_move(page, 'e7', 'e5')
                     page.wait_for_timeout(400)
                     page.evaluate('releaseAudio()')
                     page.wait_for_timeout(600)
-                    ck.check(f'{engine}: aucun son obsolète après chargement', page.evaluate('audioEvents.length === 0 && audioPeak === 0'))
+                    heard = page.evaluate('audioEvents.map(e => e.name)')
+                    ck.check(f'{engine}: après chargement, seul le dernier coup sonne', heard == ['move-opponent.mp3'], str(heard))
+                    page.evaluate('audioPeak = 0; audioEvents = []')
                     tap_move(page, 'g1', 'f3')
                     expected = 'move-self.mp3'
                 else:

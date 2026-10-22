@@ -698,10 +698,10 @@ def part_prod_format(p, browser, tmp):
 
         # La version persist, et non _version du fichier, pilote la migration des pièces.
         for version, piece_set, expected_piece in (
-            (0, None, "atelier"), (0, "celtique", "atelier"),
-            (None, "celtique", "atelier"), (1, "celtique", "celtique"),
-            (1, "wikimedia", "atelier"), (2, "wikimedia", "wikimedia"), (1, "classique", "classique"),
-            (1, "spatial", "spatial"),
+            (0, None, "atelier"), (0, "celtique", "wikimedia"),
+            (None, "celtique", "wikimedia"), (1, "celtique", "celtique"),
+            (1, None, "atelier"), (1, "wikimedia", "wikimedia"), (2, "wikimedia", "wikimedia"),
+            (2, "celtique", "celtique"), (1, "classique", "classique"), (1, "spatial", "spatial"),
         ):
             label = f"[pièces persist {version}, {piece_set}]"
             source = {**SEED_SETTINGS}

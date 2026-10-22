@@ -65,13 +65,11 @@ interface SettingsState {
 export function migrateSettings(persisted: unknown, version: number): Partial<SettingsState> {
   const settings = (persisted ?? {}) as Partial<SettingsState>
   // L'ancien défaut n'a été déployé que le 15 octobre 2026.
+  // En version 0, Celtique était ce défaut implicite, que la version 1 remplaçait par Wikimedia.
   // En version 1, Celtique reste un choix explicite à conserver.
-  if (version < 1 && (!settings.pieceSet || settings.pieceSet === 'celtique')) {
-    return { ...settings, pieceSet: DEFAULT_PIECE_SET }
-  }
-  if (version < 2 && (!settings.pieceSet || settings.pieceSet === 'wikimedia')) {
-    return { ...settings, pieceSet: DEFAULT_PIECE_SET }
-  }
+  // Un jeu enregistré n'est jamais remplacé par le défaut actuel, réservé aux stockages sans jeu.
+  if (version < 1 && settings.pieceSet === 'celtique') return { ...settings, pieceSet: 'wikimedia' }
+  if (version < 1 && !settings.pieceSet) return { ...settings, pieceSet: DEFAULT_PIECE_SET }
   return settings
 }
 

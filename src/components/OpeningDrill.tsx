@@ -3,7 +3,7 @@
 // faut le rejouer. Au-delà de la ligne lichess, Stockfish prolonge la variante (profondeur fixe,
 // résultat mémorisé par position : « Réessayer » redemande les mêmes coups).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Chess } from 'chess.js'
+import { Chess, type Move } from 'chess.js'
 import { Board, type BoardArrow } from './Board'
 import { Cta } from './Cta'
 import { sounds } from '../lib/sounds'
@@ -236,21 +236,19 @@ export function OpeningDrill(props: Props) {
 
   // ---------- Coups du joueur ----------
 
-  function handleMove(from: string, to: string, promotion?: string): boolean {
+  function handleMove(from: string, to: string, promotion?: string): Move | false {
     if (result || pending || thinking || !myTurn) return false
-    let san: string
-    let played: string
+    let mv: Move
     try {
-      const mv = new Chess(fen).move({ from, to, promotion: promotion ?? 'q' })
-      san = mv.san
-      played = mv.from + mv.to + (mv.promotion ?? '')
+      mv = new Chess(fen).move({ from, to, promotion: promotion ?? 'q' })
     } catch {
       return false
     }
-    if (mode === 'next') return judgeNext(played, san)
-    if (!inEngine) return judgeBook(played, san)
-    judgeEngine(played, san)
-    return true
+    const played = mv.from + mv.to + (mv.promotion ?? '')
+    if (mode === 'next') return judgeNext(played, mv.san) && mv
+    if (!inEngine) return judgeBook(played, mv.san) && mv
+    judgeEngine(played, mv.san)
+    return mv
   }
 
   function judgeNext(played: string, san: string): boolean {

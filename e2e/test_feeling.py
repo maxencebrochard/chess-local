@@ -1,5 +1,6 @@
 """Ressenti du plateau partagé : géométrie pendant un geste CDP et audio à la pose."""
 
+import json
 import os
 
 from helpers import (
@@ -202,8 +203,46 @@ def suite(p):
                 ck.check("clic-clic : son adverse unique, dans le toucher de pose", ok, detail)
                 special_moves(page)
             ctx.close()
+        puzzle_sound(p, browser)
     finally:
         browser.close()
+
+
+# Amorce noire, coup calme du joueur, réponse, puis fin : le premier coup du joueur n'est ni
+# le dernier (pas de success) ni un échec ou une prise.
+QUIET_PUZZLE = ["F14Q", "6k1/5ppp/8/8/8/8/5PPP/R5K1 b - - 0 1", "h7h6 a1a7 g8h7 a7f7", 1000, "endgame"]
+
+
+def puzzle_sound(p, browser):
+    """Hors analyse aussi, le son d'un coup accepté part dans le geste de pose, une seule fois."""
+    ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block", settings={"playSounds": True})
+    ctx.add_init_script(WEBKIT_AUDIO)
+    body = json.dumps([QUIET_PUZZLE])
+    ctx.route("**/puzzles.json", lambda route: route.fulfill(status=200, content_type="application/json", body=body))
+    page = ctx.new_page()
+    page.goto(f"{BASE}/#/")
+    nav = "nav[aria-label='Navigation principale'] a:visible"
+    if not ck.appears("puzzle : navigation", page, nav, timeout=30000):
+        ctx.close()
+        return
+    page.locator(nav, has_text="Puzzles").first.tap()
+    ck.check("puzzle : sons préchargés au geste d'arrivée", wait_sounds_ready(page))
+    try:
+        page.wait_for_function("() => document.querySelector('[data-square=h6] [data-piece=bP]')", timeout=20000)
+    except Exception:
+        ck.check("puzzle : amorce jouée", False)
+        ctx.close()
+        return
+    page.wait_for_timeout(300)
+    start = len(sound_log(page))
+    drag_piece(page, "a1", "a7")
+    ck.check("puzzle : coup accepté", piece_on(page, "a7") == "wR")
+    ok, detail = immediate_sound(sound_log(page)[start:], "move-self")
+    ck.check("puzzle : son du coup dans le geste de pose", ok, detail)
+    page.wait_for_timeout(800)
+    heard = [e["name"] for e in sound_log(page)[start:] if e["name"] != "(muet)"]
+    ck.check("puzzle : coup du joueur sonné une fois, puis la réponse", heard == ["move-self", "move-opponent"], str(heard))
+    ctx.close()
 
 
 def special_moves(page):
