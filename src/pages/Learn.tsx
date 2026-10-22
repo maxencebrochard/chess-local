@@ -386,13 +386,14 @@ export default function Learn() {
           <header className="flex items-center px-3 py-1">
             <button
               onClick={closeSession}
-              className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white"
+              aria-label="Quitter la séance"
+              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white"
             >
               ✕
             </button>
             <h1 className="flex-1 text-center text-lg font-black">
               {DOMAIN_META[session.domain].emoji} {DOMAIN_META[session.domain].label}
-              <span className="ml-2 text-sm font-semibold text-neutral-500">
+              <span className="ml-2 text-sm font-semibold text-neutral-400">
                 {itemIdx + 1}/{session.items.length}
               </span>
             </h1>
@@ -483,13 +484,13 @@ export default function Learn() {
         >
           <span className="text-2xl">🩹</span>
           <span className="font-bold">Mes erreurs</span>
-          <span className="ml-auto rounded-full bg-accent/20 px-2.5 py-0.5 text-sm font-bold text-accent">
+          <span className="ml-auto rounded-full bg-accent/20 px-2.5 py-0.5 text-sm font-bold text-accent-light">
             {mistakeCount}
           </span>
         </button>
       </div>
       {mistakeCount === 0 && (
-        <p className="mt-2 text-xs text-neutral-500">
+        <p className="mt-2 text-xs text-neutral-400">
           « Mes erreurs » se remplit automatiquement quand tu fais le bilan d'une partie.
         </p>
       )}
@@ -528,7 +529,7 @@ export default function Learn() {
           <span className="block font-bold">Mes attaques manquées</span>
           <span className="block text-xs text-neutral-400">Les moments de tes bilans où Stockfish attaquait le roi : à rejouer contre lui</span>
         </span>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold ${attackCount > 0 ? 'bg-accent/20 text-accent' : 'bg-surface-3 text-neutral-400'}`}>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold ${attackCount > 0 ? 'bg-accent/20 text-accent-light' : 'bg-surface-3 text-neutral-300'}`}>
           {attackCount}
         </span>
       </button>
@@ -543,7 +544,7 @@ export default function Learn() {
           <span className="block font-bold">Mes défenses ratées</span>
           <span className="block text-xs text-neutral-400">Les moments de tes bilans où ton roi était attaqué et où tu as craqué</span>
         </span>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold ${defenseCount > 0 ? 'bg-accent/20 text-accent' : 'bg-surface-3 text-neutral-400'}`}>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold ${defenseCount > 0 ? 'bg-accent/20 text-accent-light' : 'bg-surface-3 text-neutral-300'}`}>
           {defenseCount}
         </span>
       </button>
@@ -1013,7 +1014,7 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
     <div className="flex flex-col gap-2 px-3">
       <div
         className={`rounded px-3 py-1.5 text-center text-sm font-semibold ${
-          outcome ? (outcome.ok ? 'bg-accent/15 text-accent' : 'bg-red-900/40 text-red-200') : 'bg-surface-2'
+          outcome ? (outcome.ok ? 'bg-accent/15 text-accent-light' : 'bg-red-900/40 text-red-200') : 'bg-surface-2'
         }`}
       >
         {outcome

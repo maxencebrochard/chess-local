@@ -176,7 +176,7 @@ export default function PuzzleRush() {
 
   if (state === 'menu') {
     return (
-      <div className="mx-auto max-w-xl p-8">
+      <div className="mx-auto max-w-xl p-4 md:p-8">
         <h1 className="mb-2 text-2xl font-bold">⚡ Puzzle Rush</h1>
         <p className="mb-6 text-neutral-400">
           Enchaîne un maximum de puzzles. Trois erreurs et c'est fini. La difficulté monte avec ton score.
@@ -246,7 +246,7 @@ export default function PuzzleRush() {
             ))}
           </span>
         </div>
-        <button onClick={finish} className="cursor-pointer rounded bg-surface-3 px-3 py-2 font-semibold hover:bg-red-900">
+        <button onClick={finish} aria-label="Arrêter" className="min-h-11 min-w-11 cursor-pointer rounded bg-surface-3 px-3 py-2 font-semibold hover:bg-red-900">
           <span className="md:hidden">✕</span>
           <span className="hidden md:inline">Arrêter</span>
         </button>

@@ -31,12 +31,12 @@ export function ReviewSummary({ review, whiteName, blackName, playerColor, onSta
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center px-3 py-2">
-        <button onClick={onClose} className="cursor-pointer p-2 text-2xl text-neutral-400 hover:text-white">
+      <header className="flex items-center px-3 py-1">
+        <button onClick={onClose} aria-label="Fermer le bilan" className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white">
           ✕
         </button>
         <h1 className="flex-1 text-center text-xl font-black">Bilan de la partie</h1>
-        <span className="w-10" />
+        <span className="w-11" />
       </header>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 pb-4">
@@ -59,13 +59,13 @@ export function ReviewSummary({ review, whiteName, blackName, playerColor, onSta
           {TALLY_ORDER.map((cls) => (
             <div key={cls} className="grid grid-cols-[1fr_3rem_2rem_3rem] items-center gap-2 py-1">
               <span className="text-[15px] font-semibold text-neutral-200">{CLASS_META[cls].label}</span>
-              <span className="text-center text-lg font-black" style={{ color: CLASS_META[cls].color }}>
+              <span className="text-center text-xl font-black" style={{ color: CLASS_META[cls].color }}>
                 {review.counts.w[cls]}
               </span>
               <span className="flex justify-center">
                 <ClassIcon cls={cls} size={26} />
               </span>
-              <span className="text-center text-lg font-black" style={{ color: CLASS_META[cls].color }}>
+              <span className="text-center text-xl font-black" style={{ color: CLASS_META[cls].color }}>
                 {review.counts.b[cls]}
               </span>
             </div>
@@ -122,7 +122,7 @@ function PhaseRow({ label, verdicts }: { label: string; verdicts: { w: PhaseVerd
 }
 
 function VerdictIcon({ v }: { v: PhaseVerdict }) {
-  if (v === 'none') return <span className="text-lg text-neutral-500">–</span>
+  if (v === 'none') return <span className="text-lg text-neutral-400">–</span>
   const map = {
     good: { bg: '#81b64c', symbol: '✓' },
     meh: { bg: '#f7c631', symbol: '?!' },

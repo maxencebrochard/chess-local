@@ -3,6 +3,7 @@
 // (`/finales/:id`). Résultat noté à part, sans incidence sur l'Elo d'Apprendre.
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { PageHeader } from '../components/PageHeader'
 import { Cta } from '../components/Cta'
 import { PositionGame } from '../components/PositionGame'
 import { recordReplaced } from '../lib/attempts'
@@ -52,19 +53,8 @@ function EndgameList() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <div className="mb-1 flex items-center gap-1">
-        <button
-          onClick={() => navigate('/apprendre')}
-          aria-label="Retour à Apprendre"
-          className="-ml-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
-        >
-          ←
-        </button>
-        <h1 className="text-2xl font-black">🏁 Finales jusqu'au bout</h1>
-      </div>
-      <p className="mb-4 text-sm text-neutral-400">
-        Une position de finale, Stockfish à pleine force en face, aucune limite de coups : tu joues jusqu'au mat ou jusqu'à la nulle.
-      </p>
+      <PageHeader title="🏁 Finales jusqu'au bout" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+        description="Une position de finale, Stockfish à pleine force en face, aucune limite de coups : tu joues jusqu'au mat ou jusqu'à la nulle." />
 
       <Cta className="mb-5 w-full" onClick={() => navigate(`/finales/${pickEndgame(solved).id}`)}>
         🎲 Au hasard
@@ -90,12 +80,12 @@ function EndgameList() {
                     <span className="mt-0.5 flex items-center gap-2 text-xs">
                       <span
                         className={`rounded px-1.5 py-0.5 font-semibold ${
-                          eg.objective === 'win' ? 'bg-accent/15 text-accent' : 'bg-sky-900/40 text-sky-300'
+                          eg.objective === 'win' ? 'bg-accent/15 text-accent-light' : 'bg-sky-900/40 text-sky-300'
                         }`}
                       >
                         {eg.objective === 'win' ? 'Gagner' : 'Tenir la nulle'}
                       </span>
-                      <span className="text-neutral-500">{eg.difficulty}</span>
+                      <span className="text-neutral-400">{eg.difficulty}</span>
                     </span>
                   </span>
                   {/* Une partie en cours prime : c'est elle qu'un tap reprend. */}

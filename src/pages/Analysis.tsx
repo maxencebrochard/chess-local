@@ -732,12 +732,13 @@ export default function Analysis() {
         <header className="flex items-center px-3 py-1">
           <button
             onClick={() => { clearRetry(); setReviewStage('summary') }}
-            className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white"
+            aria-label="Retour au résumé du bilan"
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white"
           >
             ←
           </button>
           <h1 className="flex-1 text-center text-xl font-black">Bilan de la partie</h1>
-          <span className="w-10" />
+          <span className="w-11" />
         </header>
 
         <div className="px-3">
@@ -879,7 +880,7 @@ export default function Analysis() {
             <button
               // `replace` : l'analyse prend la place de l'aller, l'historique ne s'empile pas.
               onClick={() => navigate(returnTo, { replace: true, state: { restore: true } })}
-              className="flex w-fit cursor-pointer items-center gap-1 rounded px-1 py-1 text-sm font-semibold text-neutral-300 hover:text-white"
+              className="flex min-h-11 w-fit cursor-pointer items-center gap-1 rounded px-1 text-sm font-semibold text-neutral-300 hover:text-white"
             >
               ← {returnLabel}
             </button>
@@ -908,10 +909,10 @@ export default function Analysis() {
           <div className="hidden items-center gap-2 text-sm text-neutral-400 md:flex">
           {opening && (
             <span>
-              <span className="font-mono text-xs text-neutral-500">{opening.eco}</span> {openingFr(opening.name)}
+              <span className="font-mono text-xs text-neutral-400">{opening.eco}</span> {openingFr(opening.name)}
             </span>
           )}
-          {gameMeta && <span className="text-neutral-500">· {gameMeta}</span>}
+          {gameMeta && <span className="text-neutral-400">· {gameMeta}</span>}
           {reviewedCurrent && (
             <span className="ml-auto font-semibold" style={{ color: CLASS_META[reviewedCurrent.class].color }}>
               {moves[viewIndex].san} : {CLASS_META[reviewedCurrent.class].label}
@@ -925,7 +926,7 @@ export default function Analysis() {
         <div className="hidden items-center justify-between rounded bg-surface-2 px-3 py-2 md:flex">
           <span className="text-sm font-semibold">Stockfish 18</span>
           <div className="flex items-center gap-2">
-            {topLine && <span className="text-xs text-neutral-500">prof. {topLine.depth}</span>}
+            {topLine && <span className="text-xs text-neutral-400">prof. {topLine.depth}</span>}
             <button
               onClick={() => setEngineOn(!engineOn)}
               className={`h-6 w-11 cursor-pointer rounded-full p-0.5 transition ${engineOn ? 'bg-accent' : 'bg-surface-3'}`}
@@ -937,7 +938,7 @@ export default function Analysis() {
 
         {engineOn && (
           <div className="hidden space-y-1 rounded bg-surface-2 p-2 md:block">
-            {lines.length === 0 && <p className="px-1 text-sm text-neutral-500">{viewChess.isGameOver() ? 'Partie terminée.' : 'Calcul…'}</p>}
+            {lines.length === 0 && <p className="px-1 text-sm text-neutral-400">{viewChess.isGameOver() ? 'Partie terminée.' : 'Calcul…'}</p>}
             {lines.map((l) => (
               <div key={l.multipv} className="px-1">
                 <EngineLineRow line={l} fen={viewFen} />
@@ -1042,7 +1043,7 @@ export default function Analysis() {
               {coachCurrent && (coachCurrent.severity === 'warn' || coachCurrent.severity === 'alarm') && (
                 <button
                   onClick={() => { setReviewStage('guided'); startRetry(viewIndex) }}
-                  className="flex-1 cursor-pointer rounded bg-accent/20 py-1 text-xs font-bold text-accent hover:bg-accent/30"
+                  className="flex-1 cursor-pointer rounded bg-accent/20 py-1 text-xs font-bold text-accent-light hover:bg-accent/30"
                 >
                   🎯 Réessayer
                 </button>
@@ -1112,7 +1113,7 @@ export default function Analysis() {
                   className="flex w-full cursor-pointer justify-between rounded px-2 py-1 text-sm hover:bg-surface-3"
                 >
                   <span className="font-semibold">{san}</span>
-                  <span className="truncate pl-2 text-neutral-500">{b.openings[0].name}</span>
+                  <span className="truncate pl-2 text-neutral-400">{openingFr(b.openings[0].name)}</span>
                 </button>
               )
             })}
@@ -1146,7 +1147,7 @@ export default function Analysis() {
       </div>
 
       {showOptions && (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60 md:items-center" onClick={() => setShowOptions(false)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 md:items-center" onClick={() => setShowOptions(false)}>
           <div className="w-full max-w-md rounded-t-2xl bg-surface-2 p-4 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-3 text-center text-lg font-bold">Options</h2>
             <div className="space-y-2">
@@ -1174,7 +1175,7 @@ export default function Analysis() {
       )}
 
       {showImport && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70" onClick={() => setShowImport(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowImport(false)}>
           <div className="w-[520px] rounded-xl bg-surface-2 p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-3 text-lg font-bold">Importer PGN ou FEN</h2>
             <textarea

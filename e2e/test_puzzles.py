@@ -252,7 +252,7 @@ def rating_shown(page):
 
 
 def streak_shown(page):
-    txt = page.locator("main .text-orange-400").first.inner_text().strip()
+    txt = page.locator("main [data-streak]").first.inner_text().strip()
     return int(txt) if txt.isdigit() else None
 
 

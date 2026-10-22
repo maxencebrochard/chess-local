@@ -138,11 +138,11 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
   return (
     <div className="pt-safe fixed inset-0 z-40 flex flex-col bg-surface">
       <header className="flex items-center gap-2 px-3 py-1">
-        <button onClick={close} aria-label="Fermer la leçon" className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white">
+        <button onClick={close} aria-label="Fermer la leçon" className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white">
           ✕
         </button>
         <h1 className="min-w-0 flex-1 truncate text-center text-base font-black md:text-lg">{lesson.title}</h1>
-        <span data-testid="lesson-step" className="w-9 text-right text-sm font-semibold text-neutral-500">
+        <span data-testid="lesson-step" className="w-9 text-right text-sm font-semibold text-neutral-400">
           {stepIdx + 1}/{total}
         </span>
       </header>

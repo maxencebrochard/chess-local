@@ -655,7 +655,7 @@ export function PositionGame(props: PositionGameProps) {
           <button
             onClick={onExit}
             aria-label="Retour"
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
+            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
           >
             ←
           </button>
@@ -666,12 +666,12 @@ export function PositionGame(props: PositionGameProps) {
             onClick={() => setShowCourse(true)}
             title="Voir le cours"
             aria-label="Voir le cours"
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-lg font-black text-neutral-400 hover:text-white"
+            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-lg font-black text-neutral-400 hover:text-white"
           >
             ?
           </button>
         ) : (
-          <span className="w-10" />
+          <span className="w-11" />
         ))}
       </header>
 
@@ -679,7 +679,7 @@ export function PositionGame(props: PositionGameProps) {
         <div
           data-testid="objective"
           className={`mx-3 mt-1 rounded px-3 py-1.5 ${
-            verdict === 'success' || offered ? 'bg-accent/15 text-accent'
+            verdict === 'success' || offered ? 'bg-accent/15 text-accent-light'
             : verdict === 'fail' ? 'bg-red-900/40 text-red-200'
             : 'bg-surface-2'
           }`}
@@ -698,7 +698,7 @@ export function PositionGame(props: PositionGameProps) {
               <button
                 onClick={() => setShowLesson((s) => !s)}
                 aria-expanded={showLesson}
-                className="shrink-0 cursor-pointer rounded-full bg-surface-3/80 px-2.5 py-0.5 text-xs font-semibold text-neutral-200 hover:bg-surface-3"
+                className="relative inline-flex h-8 shrink-0 cursor-pointer items-center rounded-full bg-surface-3/80 px-3 text-xs font-semibold text-neutral-200 after:absolute after:-inset-x-1 after:-inset-y-1.5 after:content-[''] hover:bg-surface-3"
               >
                 {props.lessonLabel ?? 'Leçon'} {showLesson ? '▴' : '▾'}
               </button>
@@ -767,7 +767,7 @@ export function PositionGame(props: PositionGameProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-1 border-t border-black/40 px-1 py-1.5">
+      <div className="flex items-center border-t border-black/40 py-1.5">
         {offered ? (
           <>
             <Action label="Continuer" icon="▶" onClick={() => setDecisive('continued')} />
@@ -831,7 +831,7 @@ function Action({ label, icon, onClick, disabled }: { label: string; icon: strin
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex min-w-0 flex-1 cursor-pointer flex-col items-center gap-0.5 rounded px-0.5 py-1 text-[11px] font-semibold whitespace-nowrap text-neutral-300 hover:text-white disabled:cursor-default disabled:opacity-35"
+      className="flex min-w-0 flex-1 cursor-pointer flex-col items-center gap-0.5 rounded px-0 py-1 text-[11px] font-semibold whitespace-nowrap text-neutral-300 hover:text-white disabled:cursor-default disabled:opacity-35"
     >
       <span aria-hidden="true" className="text-xl leading-none">{icon}</span>
       {label}

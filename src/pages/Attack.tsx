@@ -3,6 +3,7 @@
 // choisi, sans plafond de coups, jusqu'au mat ou à un avantage décisif tenu (`/attaque/:id`).
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { PageHeader } from '../components/PageHeader'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { Cta } from '../components/Cta'
 import { LEVEL_HELP, LevelPicker as Picker } from '../components/LevelPicker'
@@ -81,19 +82,8 @@ function AttackList() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <div className="mb-1 flex items-center gap-1">
-        <button
-          onClick={() => navigate('/apprendre')}
-          aria-label="Retour à Apprendre"
-          className="-ml-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
-        >
-          ←
-        </button>
-        <h1 className="text-2xl font-black">⚔️ Entraîneur d'attaque</h1>
-      </div>
-      <p className="mb-4 text-sm text-neutral-400">
-        Ton attaque est prête : mène-la jusqu'au mat, ou jusqu'à un avantage décisif tenu. Recommence autant que tu veux.
-      </p>
+      <PageHeader title="⚔️ Entraîneur d'attaque" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+        description="Ton attaque est prête : mène-la jusqu'au mat, ou jusqu'à un avantage décisif tenu. Recommence autant que tu veux." />
 
       <section data-testid="defender" className="mb-4 rounded-xl bg-surface-2 p-3">
         <div className="mb-2 flex items-baseline justify-between gap-2">
@@ -101,7 +91,7 @@ function AttackList() {
           <span className="text-sm font-semibold text-accent">{level === null ? 'Stockfish pleine force' : `Stockfish Elo ${level}`}</span>
         </div>
         <LevelPicker value={level} onChange={pickLevel} />
-        <p className="mt-2 text-xs text-neutral-500">{LEVEL_HELP}</p>
+        <p className="mt-2 text-xs text-neutral-400">{LEVEL_HELP}</p>
       </section>
 
       <div role="tablist" aria-label="Catégories" className="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1">
@@ -121,7 +111,7 @@ function AttackList() {
               }`}
             >
               <span className="w-full truncate text-center text-[13px] font-bold">{CATEGORY_LABEL[c]}</span>
-              <span className="text-[11px] tabular-nums text-neutral-400">
+              <span className={`text-[11px] tabular-nums ${on ? 'text-neutral-300' : 'text-neutral-400'}`}>
                 {r.solved}/{all.length}{r.pct !== null && ` · ${r.pct} %`}
               </span>
             </button>
@@ -145,10 +135,10 @@ function AttackList() {
               onClick={() => navigate(`/attaque/${p.id}`)}
               className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5 text-left hover:bg-surface-3"
             >
-              <span className="w-6 shrink-0 text-center text-sm font-bold tabular-nums text-neutral-500">{i + 1}</span>
+              <span className="w-6 shrink-0 text-center text-sm font-bold tabular-nums text-neutral-400">{i + 1}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-bold">
-                  {p.theme} <span className="font-normal text-neutral-500">· {p.attacker === 'w' ? 'Blancs' : 'Noirs'}</span>
+                  {p.theme} <span className="font-normal text-neutral-400">· {p.attacker === 'w' ? 'Blancs' : 'Noirs'}</span>
                 </span>
                 <span className="block truncate text-xs text-neutral-400">{action(p.goal)}</span>
               </span>
@@ -159,7 +149,7 @@ function AttackList() {
                   ✓ battu à {s.bestLevel === null ? 'Max' : s.bestLevel}
                 </span>
               ) : s ? (
-                <span className="shrink-0 text-xs text-neutral-500">{s.attempts} essai{s.attempts > 1 ? 's' : ''}</span>
+                <span className="shrink-0 text-xs text-neutral-400">{s.attempts} essai{s.attempts > 1 ? 's' : ''}</span>
               ) : (
                 <span aria-hidden="true" className="shrink-0 text-xl text-neutral-500">›</span>
               )}
@@ -227,7 +217,7 @@ function AttackPlay({ id }: { id: string }) {
             onClick={() => setPicking(level)}
             aria-label="Niveau du défenseur"
             data-testid="level-chip"
-            className="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-full bg-surface-2 px-2.5 text-xs font-bold tabular-nums text-neutral-200 hover:bg-surface-3"
+            className="flex h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full bg-surface-2 px-2.5 text-xs font-bold tabular-nums text-neutral-200 hover:bg-surface-3"
           >
             🛡️ {level ?? 'Max'}
           </button>
@@ -251,7 +241,7 @@ function AttackPlay({ id }: { id: string }) {
           onCancel={() => setPicking(undefined)}
         >
           <LevelPicker value={picking} onChange={setPicking} />
-          <p className="text-xs text-neutral-500">{LEVEL_HELP}</p>
+          <p className="text-xs text-neutral-400">{LEVEL_HELP}</p>
           <p>Changer de niveau recommence la position.</p>
         </ConfirmSheet>
       )}

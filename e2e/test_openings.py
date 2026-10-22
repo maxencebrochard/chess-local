@@ -352,6 +352,10 @@ def suite(p):
             if page.locator("[data-result]").count():
                 break
             n = len(drill_uci(page))
+            # Le dernier coup peut déjà être affiché alors que l'effet React prépare le bilan.
+            # Attendre ce bilan ci-dessous, sans cliquer un Indice en train de disparaître.
+            if n >= len(first.split()):
+                break
             page.locator("button", has_text="Indice").click()
             hint = page.get_attribute(DRILL, "data-hint")
             if not hint:

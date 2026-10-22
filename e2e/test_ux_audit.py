@@ -260,7 +260,7 @@ def suite(p):
         page.goto(f"{BASE}/#/rush")
         page.get_by_role("button", name=re.compile("Survie")).click()
         capture(page, fmt, "rush-exercice", "[data-board]", selector=True)
-        page.get_by_role("button", name="Arrêter" if fmt == "desktop" else "✕", exact=True).click()
+        page.get_by_role("button", name="Arrêter", exact=True).click()
         capture(page, fmt, "rush-resultat", "Terminé")
 
         page.goto(f"{BASE}/#/apprendre")

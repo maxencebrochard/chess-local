@@ -2,7 +2,8 @@
 // Accueil (quatre familles d'exercices et records) → fiche d'un schéma (`?d=<id>` : le retour
 // arrière du téléphone ramène à l'accueil) → série (contre la montre ou puzzles).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { PageHeader } from '../components/PageHeader'
 import { Cta } from '../components/Cta'
 import type { PuzzleData } from '../components/PuzzlePlayer'
 import { ChronoRun } from '../components/mates/ChronoRun'
@@ -102,10 +103,11 @@ const GLYPH_SIZE: Record<number, string> = { 1: 'text-4xl', 2: 'text-3xl', 3: 't
 
 // ---------- Accueil ----------
 function Hub({ stats, onOpen }: { stats: MatsStats | null; onOpen: (id: string) => void }) {
+  const navigate = useNavigate()
   return (
     <div className="mx-auto max-w-3xl p-4 md:p-6">
-      <h1 className="text-2xl font-black">♚ Mats éclair</h1>
-      <p className="mb-4 text-sm text-neutral-400">Automatise les mats du bullet : vite, juste, sans réfléchir.</p>
+      <PageHeader title="♚ Mats éclair" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+        description="Automatise les mats du bullet : vite, juste, sans réfléchir." />
 
       <div className="mb-5 grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-surface-2 p-3 text-center">
@@ -196,7 +198,7 @@ function DrillSheet({ drill, stats, puzzles, loadError, onRetry, onBack, onStart
   return (
     <div data-sheet={drill.id} className="mx-auto max-w-3xl p-4 md:p-6">
       <header className="mb-3 flex items-center gap-2">
-        <button onClick={onBack} className="cursor-pointer py-1 pr-2 text-sm font-semibold text-neutral-400 hover:text-white">
+        <button onClick={onBack} className="-ml-2 inline-flex min-h-11 cursor-pointer items-center px-2 text-sm font-semibold text-neutral-400 hover:text-white">
           ← Mats
         </button>
       </header>
@@ -212,13 +214,13 @@ function DrillSheet({ drill, stats, puzzles, loadError, onRetry, onBack, onStart
               <NetBoard fen={lessonFen} principle="" />
             </div>
           ) : (
-            !chrono && !loadError && <p className="mb-3 text-sm text-neutral-500">Chargement des puzzles…</p>
+            !chrono && !loadError && <p className="mb-3 text-sm text-neutral-400">Chargement des puzzles…</p>
           )}
         </div>
         <div>
           <p className="mb-2 text-sm leading-relaxed text-neutral-300">{drill.text}</p>
-          {range && <p className="mb-3 text-xs text-neutral-500">{range}</p>}
-          {pool && <p className="mb-3 text-xs text-neutral-500">{pool.length} positions dans ce vivier.</p>}
+          {range && <p className="mb-3 text-xs text-neutral-400">{range}</p>}
+          {pool && <p className="mb-3 text-xs text-neutral-400">{pool.length} positions dans ce vivier.</p>}
 
           <p className="mb-1.5 text-sm font-semibold text-neutral-400">{chrono ? 'Temps pour mater' : 'Durée de la série'}</p>
           <div role="radiogroup" aria-label={chrono ? 'Temps pour mater' : 'Durée de la série'} className="mb-3 flex gap-2">
@@ -228,7 +230,7 @@ function DrillSheet({ drill, stats, puzzles, loadError, onRetry, onBack, onStart
                 role="radio"
                 aria-checked={c === cadence}
                 onClick={() => update({ ...prefs, cadence: { ...prefs.cadence, [drill.id]: c } })}
-                className={`flex-1 cursor-pointer rounded-lg py-2 text-sm font-bold ${
+                className={`min-h-11 flex-1 cursor-pointer rounded-lg py-2 text-sm font-bold ${
                   c === cadence ? 'bg-accent text-on-accent' : 'bg-surface-2 text-neutral-300 hover:bg-surface-3'
                 }`}
               >
@@ -237,7 +239,7 @@ function DrillSheet({ drill, stats, puzzles, loadError, onRetry, onBack, onStart
             ))}
           </div>
           {!chrono && (
-            <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-neutral-300">
+            <label className="mb-3 flex min-h-11 cursor-pointer items-center gap-2 text-sm text-neutral-300">
               <input
                 type="checkbox"
                 checked={prefs.showNet}

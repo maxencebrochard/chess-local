@@ -227,16 +227,17 @@ export default function Puzzles() {
               </div>
               <div className="text-sm text-neutral-400">Classement puzzles</div>
             </div>
-            <div className={`text-center ${streak > 0 ? '' : 'opacity-30 grayscale'}`}>
-              <div className="text-2xl">🔥</div>
-              <div className="text-sm font-bold text-orange-400">{streak}</div>
+            {/* Série nulle : la flamme s'éteint, le chiffre reste lisible. */}
+            <div className="text-center">
+              <div className={`text-2xl ${streak > 0 ? '' : 'opacity-30 grayscale'}`}>🔥</div>
+              <div data-streak className={`text-sm font-bold ${streak > 0 ? 'text-orange-400' : 'text-neutral-400'}`}>{streak}</div>
             </div>
           </div>
         </div>
 
         <div className="rounded-lg bg-surface-2 p-4">
           {phase === 'solving' && midFeedback && (
-            <p className="mb-2 rounded bg-accent/20 px-2 py-1 text-sm font-bold text-accent">✓ Trouvé ! Continue…</p>
+            <p className="mb-2 rounded bg-accent/20 px-2 py-1 text-sm font-bold text-accent-light">✓ Trouvé ! Continue…</p>
           )}
           {phase === 'solving' && (
             <>

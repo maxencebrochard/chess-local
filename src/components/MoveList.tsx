@@ -14,7 +14,15 @@ interface MoveListProps {
 export function MoveList({ sans, currentIndex, onSelect, classes, startTurn = 'w' }: MoveListProps) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    ref.current?.querySelector('[data-current="true"]')?.scrollIntoView({ block: 'nearest' })
+    // Défilement manuel, limité à la liste : scrollIntoView ferait aussi défiler `<main>`, qui
+    // poussait l'adversaire et sa pendule sous l'heure de l'iPhone à chaque coup.
+    const list = ref.current
+    const el = list?.querySelector<HTMLElement>('[data-current="true"]')
+    if (!list || !el) return
+    const lr = list.getBoundingClientRect()
+    const er = el.getBoundingClientRect()
+    if (er.top < lr.top) list.scrollTop -= lr.top - er.top
+    else if (er.bottom > lr.bottom) list.scrollTop += er.bottom - lr.bottom
   }, [currentIndex])
 
   const rows: { num: number; white?: number; black?: number }[] = []
@@ -44,10 +52,10 @@ export function MoveList({ sans, currentIndex, onSelect, classes, startTurn = 'w
 
   return (
     <div ref={ref} className="h-full overflow-y-auto overscroll-contain rounded bg-surface-2 p-2">
-      {rows.length === 0 && <p className="p-2 text-sm text-neutral-500">Aucun coup joué.</p>}
+      {rows.length === 0 && <p className="p-2 text-sm text-neutral-400">Aucun coup joué.</p>}
       {rows.map((r) => (
         <div key={r.num} className="flex items-center gap-1 py-px">
-          <span className="w-7 shrink-0 text-right text-xs text-neutral-500">{r.num}.</span>
+          <span className="w-7 shrink-0 text-right text-xs text-neutral-400">{r.num}.</span>
           {cell(r.white)}
           {cell(r.black)}
         </div>
