@@ -266,10 +266,9 @@ def suite(p):
             break
     page.wait_for_timeout(2000)
     page.locator("button", has_text="Analyser").click()
-    page.wait_for_timeout(1200)
-    check("[analyse] Analyser ouvre /analyse", "#/analyse" in page.url or page.evaluate("() => location.hash") == "#/analyse")
     back_btn = page.locator("button", has_text="Retour à l'exercice")
-    check("[analyse] bouton retour visible", back_btn.is_visible())
+    ck.appears("[analyse] bouton retour visible", page, "button:has-text(\"Retour à l'exercice\")")
+    check("[analyse] Analyser ouvre /analyse", "#/analyse" in page.url or page.evaluate("() => location.hash") == "#/analyse")
     # Partie contre le moteur depuis cette analyse puis retour : l'analyse rouverte garde son
     # bouton de retour vers l'exercice.
     page.locator("main button", has_text="Options").click()
@@ -278,7 +277,12 @@ def suite(p):
     page.get_by_role("button", name="Retour").click()
     ck.appears("[analyse] retour de la partie : bouton retour à l'exercice", page, "button:has-text(\"Retour à l'exercice\")")
     back_btn.click()
-    page.wait_for_timeout(800)
+    try:
+        page.wait_for_function(
+            "h => location.hash === '#/apprendre' && document.querySelector('header h1')?.innerText === h",
+            arg=header_before, timeout=30000)
+    except Exception:
+        pass  # les checks suivants échouent avec l'état réel
     check("[learn] retour restaure la séance", page.evaluate("() => location.hash") == "#/apprendre")
     check("[learn] compteur d'item restauré", page.locator("header h1").inner_text() == header_before)
     page.click("header button:has-text('✕')")
