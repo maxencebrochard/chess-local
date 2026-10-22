@@ -148,6 +148,8 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
       premoveSound.current = !silent
       if (!submitMove(move.from, move.to, move.promotion, true)) premoveSound.current = false
     }
+    // submitMove lit onMove, silent et movableColor (prémouvement), déjà en dépendances.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fen, chess, premove, premoveEnabled, movableColor, interactive, onMove, silent])
 
   useEffect(() => {

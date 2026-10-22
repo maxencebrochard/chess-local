@@ -4,7 +4,7 @@
 // la révision espacée. Après le verdict, « Pourquoi ? » déroule la réfutation de la faute
 // (RefutationPlayer).
 import { useMemo, useRef, useState } from 'react'
-import { Chess } from 'chess.js'
+import { Chess, type Move } from 'chess.js'
 import { Board } from './Board'
 import { RefutationPlayer } from './RefutationPlayer'
 import type { Mistake } from '../lib/db'
@@ -34,7 +34,7 @@ export function MistakeExercise({ mistake, active, onFinish, getEngine }: Props)
     }
   }, [mistake.fenBefore, mistake.playedSan, mistake.bestUci])
 
-  function handleMove(from: string, to: string, promotion?: string): boolean {
+  function handleMove(from: string, to: string, promotion?: string): Move | false {
     if (!active || checking || finished.current) return false
     const c = new Chess(fen)
     let mv
@@ -47,7 +47,7 @@ export function MistakeExercise({ mistake, active, onFinish, getEngine }: Props)
     if (played === mistake.bestUci || c.isCheckmate()) {
       finished.current = true
       onFinish(true)
-      return true
+      return mv
     }
     setChecking(true)
     void (async () => {
@@ -63,7 +63,7 @@ export function MistakeExercise({ mistake, active, onFinish, getEngine }: Props)
       setChecking(false)
       onFinish(wBefore - wAfter < 5)
     })()
-    return true
+    return mv
   }
 
   return (

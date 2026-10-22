@@ -240,11 +240,12 @@ function PlayPane({ startFen, initialMoves, initialResigned, playerColor, getEng
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function handleMove(from: string, to: string, promotion?: string): boolean {
+  function handleMove(from: string, to: string, promotion?: string): Move | false {
     const board = chessRef.current!
     if (over || thinking || board.turn() !== playerColor) return false
+    let mv: Move
     try {
-      board.move({ from, to, promotion: promotion ?? 'q' })
+      mv = board.move({ from, to, promotion: promotion ?? 'q' })
     } catch {
       return false
     }
@@ -253,7 +254,7 @@ function PlayPane({ startFen, initialMoves, initialResigned, playerColor, getEng
     const g = ++gen.n
     if (board.isGameOver()) setEvalW(terminalEval(board))
     else void botMove(g)
-    return true
+    return mv
   }
 
   const canUndo = !over && !thinking && c.turn() === playerColor && moves.some((m) => m.color === playerColor)

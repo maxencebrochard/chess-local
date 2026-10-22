@@ -130,14 +130,13 @@ async function ready(c: AudioContext): Promise<boolean> {
   return stateOf(c) === 'running'
 }
 
-export function play(name: SoundName, maxAgeMs = Infinity) {
-  const requestedAt = performance.now()
+export function play(name: SoundName, outdated: () => boolean = () => false) {
   const { playSounds, soundVolume } = useSettings.getState()
   if (!playSounds || soundVolume <= 0) return
   const c = context()
   if (!c) return
   const start = (buf: AudioBuffer | null, ok: boolean) => {
-    if (!buf || !ok || c !== ctx || !gain || performance.now() - requestedAt > maxAgeMs) return
+    if (!buf || !ok || c !== ctx || !gain || outdated()) return
     const { playSounds, soundVolume } = useSettings.getState()
     if (!playSounds || soundVolume <= 0) return
     gain.gain.setValueAtTime(soundVolume, c.currentTime)
@@ -154,9 +153,12 @@ export function play(name: SoundName, maxAgeMs = Infinity) {
 
 // Son d'un coup, priorités de chess.com : échec, promotion, roque, prise, puis coup simple
 // (le mien ou celui de l'adversaire).
+let moveSoundId = 0
 export function playMoveSound(move: Pick<Move, 'san' | 'flags'>, opponent: boolean) {
-  // Un coup ancien après un téléchargement lent ne doit pas arriver en rafale avec les suivants.
-  play(moveSoundName(move, opponent), 300)
+  // Un son de coup qui attend encore son fichier ou le contexte se tait dès qu'un coup plus récent
+  // est demandé : pas de rafale de sons anciens, mais le premier coup d'une session n'est jamais perdu.
+  const id = ++moveSoundId
+  play(moveSoundName(move, opponent), () => id !== moveSoundId)
 }
 
 export function moveSoundName(move: Pick<Move, 'san' | 'flags'>, opponent: boolean): SoundName {

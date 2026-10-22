@@ -112,7 +112,7 @@ Pièces : jeux libres, Celtique, Fantasy et Spatial de Maurizio Monge (MIT, repr
 Classique : pièces SVG standard de Wikimedia Commons dessinées par Cburnett (publiées sous GFDL, CC BY-SA 3.0, BSD 3 clauses et GPL au choix, reprises sous BSD 3 clauses), embarquées par `react-chessboard` (MIT), qui les cite sous CC BY-SA 3.0.
 Atelier et sons de coup : extrait d'une vidéo fournie par Max (2026-10-17), réutilisation autorisée par Max.
 Les pièces sont redessinées en SVG, les sons extraits par `scripts/extract-video-sounds.py`.
-Les anciens jeux restent sélectionnables ; la migration v2 remplace uniquement l’ancien défaut et conserve les autres réglages et les données.
+Les anciens jeux restent sélectionnables ; Atelier n’est attribué qu’aux profils sans jeu enregistré, et la migration v2 conserve le jeu choisi, les autres réglages et les données.
 Les notifications dérivent des packs Kenney « Impact Sounds » et « Interface Sounds » (CC0 1.0), régénérés par `scripts/make-sounds.sh` ; détail dans `public/sounds/LICENSES.md`.
 
 ## Architecture
