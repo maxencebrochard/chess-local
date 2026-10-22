@@ -1048,7 +1048,11 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
         check("[nouveau] service worker mis à jour : /#/import affiche le nouveau build", seen == new_label, f"(affiché {seen}, attendu {new_label}, après {time.time() - t_up:.0f} s)")
         check("[nouveau] page contrôlée par le service worker", page.evaluate("() => !!navigator.serviceWorker.controller"))
         cached = cached_paths(page)
-        check("[nouveau] précache : assets du nouveau build présents", all(f"{SUBPATH}assets/{n}" in cached for n in new_assets), f"({[c for c in cached if '/assets/' in c]})")
+        # Les chunks Capacitor sont livrés pour l'app iOS, mais exclus du précache de la PWA.
+        web_assets = [n for n in new_assets if not n.startswith("native-")]
+        native_assets = [n for n in new_assets if n.startswith("native-")]
+        check("[nouveau] précache : assets web du nouveau build présents", web_assets and all(f"{SUBPATH}assets/{n}" in cached for n in web_assets), f"({[c for c in cached if '/assets/' in c]})")
+        check("[nouveau] précache : chunks natifs absents", not any(f"{SUBPATH}assets/{n}" in cached for n in native_assets), str(native_assets))
         # Un asset au même hash dans les deux builds (CSS inchangé) reste légitimement en cache.
         gone = sorted(set(old_assets) - set(new_assets))
         check(f"[nouveau] précache : {len(gone)} asset(s) propres à l'ancien build purgés (nouveau service worker activé)",

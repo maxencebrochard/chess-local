@@ -11,9 +11,13 @@
     "typecheck": "tsc -b",
     "check": "npm run lint && npm run typecheck",
     "test:e2e": "python3 e2e/run.py",
-    "test:e2e:dev": "python3 e2e/run.py --mode dev"
+    "test:e2e:dev": "python3 e2e/run.py --mode dev",
+    "ios:sync": "npm run build && cap sync ios",
+    "ios:open": "cap open ios"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/haptics": "^8.0.2",
     "chess.js": "^1.4.0",
     "dexie": "^4.4.4",
     "react": "^19.2.7",
@@ -24,6 +28,8 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
     "@tailwindcss/vite": "^4.3.2",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",

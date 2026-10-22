@@ -17,6 +17,7 @@ import { PLAY_GAME_KEY, TIME_CONTROLS } from './timeControls'
 import { PUZZLE_SESSION_KEY } from './puzzles'
 import { MATES_PREFS_KEY } from './mates'
 import { isPieceSet } from './pieces'
+import { NATIVE_MIGRATION_KEY, dismissMigration, isNative } from './native'
 
 // Version du format de fichier = version du schéma Dexie : une table ajoutée = nouveau bloc
 // `db.version(n)` = nouvelle version de sauvegarde, avec son `since` dans SPECS.
@@ -29,13 +30,13 @@ const LAST_EXPORT_KEY = 'chess-local-last-export'
 // le moteur en cours, les niveaux de l'adversaire bridé des entraîneurs d'attaque, de défense et de
 // conversion, la configuration et le dernier rapport d'Insights, l'alerte « Qu'est-ce qu'il
 // menace ? », la cadence des Finales au chrono, la partie de Jouer en cours, le puzzle en cours,
-// les préférences de Mats éclair) et clés des séances d'Apprendre, de révision, du parcours
-// d'apprentissage et de la séance du jour dans sessionStorage : les seules que la réinitialisation
-// a le droit de toucher.
+// les préférences de Mats éclair, le refus de la carte de migration de l'app native) et clés des
+// séances d'Apprendre, de révision, du parcours d'apprentissage et de la séance du jour dans
+// sessionStorage : les seules que la réinitialisation a le droit de toucher.
 const APP_LOCAL_KEYS = [
   'chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, DEFENSE_PREFS_KEY,
   CONVERSION_PREFS_KEY, INSIGHTS_KEY, 'chess-local-visualisation', THREAT_PREFS_KEY, ENDGAME_CLOCK_PREFS_KEY,
-  PLAY_GAME_KEY, PUZZLE_SESSION_KEY, MATES_PREFS_KEY,
+  PLAY_GAME_KEY, PUZZLE_SESSION_KEY, MATES_PREFS_KEY, NATIVE_MIGRATION_KEY,
 ]
 const SESSION_KEYS = ['learn-session-v1', 'revision-session-v1', 'path-session-v1', SEANCE_SESSION_KEY]
 
@@ -159,6 +160,7 @@ export type SaveOutcome = 'shared' | 'downloaded' | 'cancelled' | 'failed'
 // Partage du fichier. À appeler SANS await préalable dans un gestionnaire de tap : WebKit exige
 // une activation utilisateur encore fraîche.
 function shareFile(file: File): Promise<SaveOutcome> {
+  if (!navigator.share) return Promise.resolve('failed')
   return navigator.share({ files: [file] }).then(
     () => 'shared' as const,
     (err: unknown) => {
@@ -175,6 +177,9 @@ function shareFile(file: File): Promise<SaveOutcome> {
 // feuille de partage (bureau), lien attaché au DOM, blob révoqué plus tard.
 export function saveBackupFile(file: File): Promise<SaveOutcome> {
   if (navigator.canShare?.({ files: [file] })) return shareFile(file)
+  // App native : la WKWebView de Capacitor n'a pas de gestionnaire de téléchargements, le lien
+  // ne sortirait rien. Un échec annoncé vaut mieux qu'une date d'export mensongère.
+  if (isNative) return Promise.resolve('failed')
   const url = URL.createObjectURL(file)
   const a = document.createElement('a')
   a.href = url
@@ -396,6 +401,8 @@ export async function importBackup(plan: BackupPlan): Promise<ImportResult> {
   // compte, un clear() global effacerait le stockage d'autres projets.
   for (const key of SESSION_KEYS) sessionStorage.removeItem(key)
   writeInsights({ config: readInsights().config, lastRun: null })
+  // App native : les données de la PWA sont arrivées, la carte de migration de l'accueil a servi.
+  if (isNative) dismissMigration()
   let settingsApplied = false
   if (plan.settingsState) {
     try {

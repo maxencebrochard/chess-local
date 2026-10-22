@@ -13,6 +13,7 @@
 
 import type { Move } from 'chess.js'
 import { useSettings } from '../store/settings'
+import { assetResponseOk } from './assetResponse'
 
 const FILES = [
   'move-self',
@@ -71,7 +72,7 @@ function load(name: SoundName): Promise<AudioBuffer | null> {
     if (!c) return Promise.resolve(null)
     p = fetch(`${import.meta.env.BASE_URL}sounds/${name}.mp3`)
       .then((res) => {
-        if (!res.ok) throw new Error(`${name}.mp3 : HTTP ${res.status}`)
+        if (!assetResponseOk(res)) throw new Error(`${name}.mp3 : HTTP ${res.status}`)
         return res.arrayBuffer()
       })
       // Décodé sur le contexte du moment : celui du départ a pu être jeté pendant le fetch
@@ -82,7 +83,8 @@ function load(name: SoundName): Promise<AudioBuffer | null> {
         return buf
       })
       .catch((err) => {
-        console.warn('Son non chargé :', err)
+        // Nom et message en clair : la console native de Capacitor sérialise une erreur en `{}`.
+        console.warn(`Son non chargé (${name}) :`, err instanceof Error ? `${err.name}: ${err.message}` : String(err))
         loading.delete(name) // nouvel essai au prochain appel
         return null
       })

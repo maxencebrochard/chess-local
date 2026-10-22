@@ -111,6 +111,8 @@ Autres scripts :
   La date du tag est le jour UTC du `__BUILD__` (affiché en bas de `/import`), que `test_upgrade.py` recoupe.
   Un second déploiement le même jour UTC prend le suffixe `-2` (puis `-3`...) : `deployed-AAAA-MM-JJ-2`.
 - `?debug-uci` dans l'URL logge le trafic UCI en console.
+- `npm run ios:sync` construit le web puis le copie dans le projet Xcode `ios/` (Capacitor 8, SPM) ; `npm run ios:open` ouvre Xcode.
+  Il faut Xcode 26 ou plus, absent de la machine de développement à ce jour : voir `docs/ios-app.md`.
 - `node scripts/bench-bots.mjs --preset chain --games 80 --out bench.jsonl` mesure l'Elo des bots (parties bot contre bot, Bradley-Terry ancré sur Iris = 1600, IC 95 % par bootstrap).
   Il exécute la vraie `bots.ts` et la vraie classe `Engine` sur le même WASM, dans Node ; compter environ une heure.
   À relancer après tout changement de style ou d'Elo d'un bot faible.
@@ -245,6 +247,18 @@ Tout asset de `public/` se charge via `import.meta.env.BASE_URL` (worker moteur,
 Le service worker précache tout (WASM 7 Mo, puzzles 16 Mo) avec un plafond de 25 Mo par fichier dans `vite.config.ts`.
 Un nouvel asset lourd ou une nouvelle extension doit être couvert par `globPatterns`.
 `__BUILD__` (horodatage de build) s'affiche en bas de `/import` pour vérifier qu'un iPhone a bien la dernière version.
+
+### App iOS (Capacitor)
+
+`ios/` et `capacitor.config.ts` empaquettent le même build web dans une `WKWebView` ; étude, intensités haptiques et marche à suivre dans `docs/ios-app.md`.
+`src/lib/native.ts` détecte le runtime natif (`window.Capacitor.isNativePlatform`, posé par la native-bridge) et expose `haptic(kind)`, no-op synchrone sur le web.
+Le plugin n'est chargé que par `import('./nativeHaptics')` en natif ; ne jamais importer `@capacitor/*` statiquement : son repli web appellerait `navigator.vibrate` et la PWA changerait.
+`vite.config.ts` préfixe les chunks de `@capacitor/*` et du pilote par `assets/native-`, puis les exclut du précache.
+`Board` n'émet un retour que pour un geste de l'utilisateur sur cet échiquier (saisie, pose acceptée, prise, refus, prémouvement en file puis exécuté), jamais pour un coup adverse ni une navigation.
+La migration PWA vers app passe par la sauvegarde de `backup.ts` (origines différentes) : carte de l'accueil en natif tant que la clé `chess-local-native-migration` est absente, posée par « Non merci » ou une restauration réussie, effacée par la réinitialisation.
+En natif, l'export sans feuille de partage annonce un échec au lieu d'un faux téléchargement.
+Règle de version : l'app ne se met pas à jour seule, et `inspectBackup` refuse une sauvegarde plus récente que son schéma ; ne pas déployer un nouveau `db.version(n)` sur le web avant un build de l'app qui le porte.
+`e2e/test_ios_app.py` simule la native-bridge par `CAPACITOR_IOS` de `helpers.py` (`haptic_log` lit les appels) et vérifie aussi que la PWA ne charge ni ne précache le chunk natif.
 
 ### Pièces et sons
 

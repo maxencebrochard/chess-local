@@ -2,6 +2,7 @@
 // format compact [id, fen, moves, rating, themes]). Hors bundle JS : fetch
 // une fois, caché en mémoire pour la session.
 import type { PuzzleData } from '../components/PuzzlePlayer'
+import { assetResponseOk } from './assetResponse'
 import { applyRating, db } from './db'
 
 type CompactPuzzle = [string, string, string, number, string]
@@ -14,7 +15,7 @@ export function loadPuzzles(): Promise<PuzzleData[]> {
   pending ??= fetch(`${import.meta.env.BASE_URL}puzzles.json`)
     .then((res) => {
       // Un 404 (page HTML) casserait res.json() comme une coupure réseau : même traitement.
-      if (!res.ok) throw new Error(`puzzles.json : HTTP ${res.status}`)
+      if (!assetResponseOk(res)) throw new Error(`puzzles.json : HTTP ${res.status}`)
       return res.json()
     })
     .then((raw: CompactPuzzle[]) => {

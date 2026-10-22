@@ -226,6 +226,37 @@ def immediate_sound(entries, name, budget_ms=250):
     return ok, detail
 
 
+# Runtime natif de l'app iOS simulé au plus près du contrat de la native-bridge de Capacitor
+# (node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js et JSExport.swift) :
+# `webkit.messageHandlers.bridge`, `Capacitor.isNativePlatform`, en-têtes de plugin et
+# `nativePromise`, que @capacitor/core appelle pour toute méthode déclarée. Les appels au plugin
+# Haptics sont journalisés dans `window.__haptics` au lieu de partir vers Swift.
+CAPACITOR_IOS = r"""(() => {
+  if (window.__haptics) return
+  window.__haptics = []
+  window.webkit = { messageHandlers: { bridge: { postMessage() {} } } }
+  const methods = ['impact', 'notification', 'vibrate', 'selectionStart', 'selectionChanged', 'selectionEnd']
+    .map((name) => ({ name, rtype: 'promise' }))
+  window.Capacitor = {
+    isNativePlatform: () => true,
+    getPlatform: () => 'ios',
+    PluginHeaders: [{ name: 'Haptics', methods }],
+    nativePromise: (plugin, method, options) => {
+      window.__haptics.push({ plugin, method, options: options ?? null, at: performance.now() })
+      return Promise.resolve()
+    },
+    nativeCallback: () => '',
+  }
+})()"""
+
+
+def haptic_log(page):
+    """Appels haptiques natifs depuis le début de la page, en « méthode:style » (impact:LIGHT,
+    notification:ERROR, selectionChanged...). None hors runtime natif simulé."""
+    return page.evaluate("""() => window.__haptics ? window.__haptics.map((h) =>
+      h.method + (h.options?.style ? ':' + h.options.style : h.options?.type ? ':' + h.options.type : '')) : null""")
+
+
 def sound_log(page):
     """Entrées de l'espion `WEBKIT_AUDIO` ({name, state, audible}), dans l'ordre des `start()`."""
     return page.evaluate("() => window.__sounds ?? []")

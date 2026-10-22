@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { db, DEFAULT_RATING, type PuzzleAttempt, type Rating, type SavedGame } from '../lib/db'
 import {
   MAX_BACKUP_BYTES,
@@ -29,6 +29,7 @@ import { THREAT_DOMAIN, THREAT_KIND_LABEL, threatStatsOf, type ThreatStats } fro
 import { BOARD_THEMES, currentTheme, useSettings } from '../store/settings'
 import { PieceIcon } from '../components/PieceIcon'
 import { PIECE_SETS } from '../lib/pieces'
+import { isNative } from '../lib/native'
 import { play } from '../lib/sounds'
 
 // Touches qui changent le volume du curseur : seules elles déclenchent l'aperçu sonore.
@@ -114,23 +115,35 @@ export default function Stats() {
   const [attacks, setAttacks] = useState<AttackDiagnostic | null>(null)
   const [threats, setThreats] = useState<ThreatStats | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const dataRef = useRef<HTMLHeadingElement>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
   const settings = useSettings()
   const theme = currentTheme(settings.themeId)
 
   // Relu après une restauration : l'interface doit refléter la base sans rechargement
   // (impossible à la main en PWA standalone).
-  const reload = useCallback(() => {
-    void db.ratings.toArray().then(setRatings)
-    void db.games.toArray().then(setGames)
-    void db.puzzleAttempts.toArray().then(setAttempts)
-    void loadAttackDiagnostic().then(setAttacks)
-    void db.learnSessions.where('domain').equals(THREAT_DOMAIN).toArray().then((rows) => setThreats(threatStatsOf(rows)))
-  }, [])
+  const reload = useCallback(() => Promise.all([
+    db.ratings.toArray().then(setRatings),
+    db.games.toArray().then(setGames),
+    db.puzzleAttempts.toArray().then(setAttempts),
+    loadAttackDiagnostic().then(setAttacks),
+    db.learnSessions.where('domain').equals(THREAT_DOMAIN).toArray().then((rows) => setThreats(threatStatsOf(rows))),
+  ]), [])
 
+  // Arrivée depuis la carte de migration de l'app native : directement sur « Tes données », une
+  // fois rendues les sections du dessus (sinon le titre redescendrait sous l'écran). Le state est
+  // effacé aussitôt, pour qu'un retour sur la page ne refasse pas défiler.
+  const toBackup = !!(location.state as { backup?: boolean } | null)?.backup
   useEffect(() => {
-    reload()
+    if (toBackup) navigate('.', { replace: true, state: null })
+    void reload().then(() => {
+      if (toBackup) requestAnimationFrame(() => dataRef.current?.scrollIntoView({ block: 'start' }))
+    })
     setLastExport(readLastExport())
     void storageProtected().then(setProtectedState)
+    // Lu au montage seulement, comme le state de navigation d'Analyse.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reload])
 
   const ratingOf = (key: string) => ratings.find((r) => r.key === key)
@@ -217,7 +230,7 @@ export default function Stats() {
     } catch (err) {
       setMsg(say((err as Error).message, 'error'))
     } finally {
-      reload()
+      void reload()
       setBusy(false)
       setPending(null)
     }
@@ -429,13 +442,19 @@ export default function Stats() {
         </div>
       </div>
 
-      <h2 className="mb-3 text-lg font-bold">Tes données</h2>
+      <h2 ref={dataRef} data-testid="data-heading" className="mb-3 scroll-mt-4 text-lg font-bold">Tes données</h2>
       <div data-testid="storage-status" className="space-y-3 rounded-lg bg-surface-2 p-4">
         <p className="text-sm text-neutral-300">
           Parties, classements, puzzles, erreurs et réglages ne vivent que sur cet appareil : supprimer l'icône de l'app
           les efface, et Safari et l'app installée ont chacun leur stockage. Exporte régulièrement et garde le fichier
           dans Fichiers ou iCloud.
         </p>
+        {isNative && (
+          <p data-testid="native-migration-help" className="text-sm text-neutral-300">
+            Venir de la PWA : dans la PWA, Stats, Tes données, Exporter tout, puis Enregistrer dans Fichiers. Ici,
+            Restaurer ce fichier remplace ce que tu as fait dans l'app.
+          </p>
+        )}
         <div className="space-y-1 text-sm">
           <div className="flex justify-between gap-3">
             <span className="text-neutral-400">Stockage protégé par le système</span>
