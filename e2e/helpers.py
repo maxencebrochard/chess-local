@@ -374,7 +374,14 @@ def wait_js(page, expr, timeout=30000, arg=None):
 PLIES_AT_LEAST = "(n) => document.querySelectorAll('main [data-current]').length >= n"
 
 
-def new_context(browser, ck, settings=None, **options):
+# Alerte « Qu'est-ce qu'il menace ? » (src/lib/threat.ts), hors réglages Zustand : coupée par
+# défaut dans les contextes de test, sinon une question imprévue (l'entraîneur l'active par défaut)
+# bloquerait les coups des suites de Jouer. `threat_prefs=None` garde le défaut de l'app.
+THREAT_PREFS_KEY = "chess-local-threat-check"
+THREAT_OFF = {"bot": False, "coach": False}
+
+
+def new_context(browser, ck, settings=None, threat_prefs=THREAT_OFF, **options):
     """Contexte surveillé par `ck`, réglages pré-remplis, chess.com simulé (sauf E2E_LIVE=1)."""
     ctx = browser.new_context(**options)
     ck.watch(ctx)
@@ -384,6 +391,13 @@ def new_context(browser, ck, settings=None, **options):
         "try { if (!localStorage.getItem('chess-local-settings')) "
         f"localStorage.setItem('chess-local-settings', {json.dumps(settings_json(settings))}) }} catch {{}}"
     )
+    if threat_prefs is not None:
+        # Une fois par onglet (marqueur de session) : une réinitialisation suivie d'un rechargement
+        # doit pouvoir constater la clé effacée.
+        ctx.add_init_script(
+            "try { if (!sessionStorage.getItem('e2e-threat-seeded')) { sessionStorage.setItem('e2e-threat-seeded', '1'); "
+            f"if (!localStorage.getItem('{THREAT_PREFS_KEY}')) localStorage.setItem('{THREAT_PREFS_KEY}', {json.dumps(json.dumps(threat_prefs))}) }} }} catch {{}}"
+        )
     mock_chesscom(ctx, ck)
     return ctx
 

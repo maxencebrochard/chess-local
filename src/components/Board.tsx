@@ -42,7 +42,8 @@ interface BoardProps {
   silent?: boolean
   // Coordonnées sur les cases (vrai par défaut) ; coupées sur les vignettes, où elles masquent les pièces.
   notation?: boolean
-  // Échiquier non jouable dont on touche des cases pour répondre (entraîneur de visualisation).
+  // Échiquier non jouable dont on touche des cases pour répondre (entraîneur de visualisation,
+  // question « Qu'est-ce qu'il menace ? » de Jouer).
   onSquareTap?: (square: string) => void
 }
 

@@ -100,11 +100,14 @@ export interface LearnSession {
   // (`local:<id>@14@iqp`, `chesscom:<id>@21@carlsbad`), fen = position de départ : le couple identifie la position
   // (une restauration peut réattribuer les ids `local:`) ; success = gain sans aide, outcome et
   // defenderElo comme l'entraîneur d'attaque.
+  // threat-check : questions « Qu'est-ce qu'il menace ? » de Jouer (sans Elo), une ligne par
+  // question répondue : itemId = `<type>:<UCI du coup menaçant>` (types de `THREAT_KINDS`,
+  // lib/threat.ts), fen = position où la question est posée, success = menace trouvée.
   domain: string
   itemId: string
   success: 0 | 1
   ratingAfter: number | null
-  fen?: string // finales jouées jusqu'au bout, attaques manquées, défenses ratées, entraîneurs d'attaque et de défense, moments critiques et structures : position de départ (champ non indexé)
+  fen?: string // finales jouées jusqu'au bout, attaques manquées, défenses ratées, entraîneurs d'attaque et de défense, moments critiques et structures : position de départ ; threat-check : position de la question (champ non indexé)
   score?: number // mats : mats réussis dans la série (champ non indexé)
   // Entraîneurs d'attaque et de défense (champs non indexés) : issue de la tentative (union des
   // issues des deux domaines, `draw` et `resign` et `abandon` communs), Elo du défenseur bridé

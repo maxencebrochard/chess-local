@@ -6,6 +6,7 @@ import { db } from './db'
 import { POSITION_GAME_KEY } from './positionGame'
 import { ATTACK_PREFS_KEY } from './attack'
 import { DEFENSE_PREFS_KEY } from './defense'
+import { THREAT_PREFS_KEY } from './threat'
 import { INSIGHTS_KEY, readInsights, writeInsights } from './insightsStore'
 import { BOARD_THEMES, PLAY_COLORS, PLAY_MODES, REVIEW_DEPTHS, migrateSettings, useSettings } from '../store/settings'
 import { BOTS } from './bots'
@@ -21,10 +22,10 @@ const MAX_SETTING_STRING = 100 // un pseudo chess.com fait moins de 30 caractèr
 const LAST_EXPORT_KEY = 'chess-local-last-export'
 // Clés de l'app dans localStorage (le persist Zustand, la date du dernier export, la partie contre
 // le moteur en cours, le niveau du défenseur de l'entraîneur d'attaque, la configuration et le
-// dernier rapport d'Insights) et clés des séances d'Apprendre, de révision et du parcours
-// d'apprentissage dans sessionStorage :
+// dernier rapport d'Insights, l'alerte « Qu'est-ce qu'il menace ? ») et clés des séances
+// d'Apprendre, de révision et du parcours d'apprentissage dans sessionStorage :
 // les seules que la réinitialisation a le droit de toucher.
-const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, DEFENSE_PREFS_KEY, INSIGHTS_KEY, 'chess-local-visualisation']
+const APP_LOCAL_KEYS = ['chess-local-settings', LAST_EXPORT_KEY, POSITION_GAME_KEY, ATTACK_PREFS_KEY, DEFENSE_PREFS_KEY, INSIGHTS_KEY, 'chess-local-visualisation', THREAT_PREFS_KEY]
 const SESSION_KEYS = ['learn-session-v1', 'revision-session-v1', 'path-session-v1']
 
 export const TABLES = ['games', 'ratings', 'puzzleAttempts', 'rushScores', 'mistakes', 'learnSessions', 'reviews'] as const

@@ -25,6 +25,7 @@ import {
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { Toggle } from '../components/Toggle'
 import { attackSummary, loadAttackDiagnostic, type AttackDiagnostic } from '../lib/kingAttack'
+import { THREAT_DOMAIN, THREAT_KIND_LABEL, threatStatsOf, type ThreatStats } from '../lib/threat'
 import { BOARD_THEMES, currentTheme, useSettings } from '../store/settings'
 import { PieceIcon } from '../components/PieceIcon'
 import { PIECE_SETS } from '../lib/pieces'
@@ -111,6 +112,7 @@ export default function Stats() {
   const [protectedState, setProtectedState] = useState<boolean | null>(null)
   const [lastExport, setLastExport] = useState<LastExport | null>(null)
   const [attacks, setAttacks] = useState<AttackDiagnostic | null>(null)
+  const [threats, setThreats] = useState<ThreatStats | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const settings = useSettings()
   const theme = currentTheme(settings.themeId)
@@ -122,6 +124,7 @@ export default function Stats() {
     void db.games.toArray().then(setGames)
     void db.puzzleAttempts.toArray().then(setAttempts)
     void loadAttackDiagnostic().then(setAttacks)
+    void db.learnSessions.where('domain').equals(THREAT_DOMAIN).toArray().then((rows) => setThreats(threatStatsOf(rows)))
   }, [])
 
   useEffect(() => {
@@ -300,6 +303,29 @@ export default function Stats() {
         <Link to="/attaques-manquees" className="mt-2 inline-block text-sm font-semibold text-accent hover:underline">
           Voir et rejouer ›
         </Link>
+      </div>
+
+      {/* Questions « Qu'est-ce qu'il menace ? » des parties contre les bots (domaine threat-check). */}
+      <div data-testid="threat-stats" className="mb-6 rounded-lg bg-surface-2 p-4">
+        <h2 className="mb-2 font-semibold">🛡 Menaces adverses</h2>
+        {!threats ? (
+          <p className="text-sm text-neutral-300">…</p>
+        ) : threats.total === 0 ? (
+          <p className="text-sm text-neutral-300">Aucune question encore : active « Qu'est-ce qu'il menace ? » dans Jouer.</p>
+        ) : (
+          <>
+            <p className="text-sm text-neutral-300" data-testid="threat-summary">
+              {threats.seen} {threats.seen > 1 ? 'menaces repérées' : 'menace repérée'} sur {threats.total} ({Math.round((threats.seen / threats.total) * 100)} %)
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-400">
+              {threats.byKind.map((k) => (
+                <li key={k.kind} data-threat-kind={k.kind}>
+                  {THREAT_KIND_LABEL[k.kind]} <b className="text-neutral-200">{k.seen}/{k.total}</b>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
 
       <h2 className="mb-3 text-lg font-bold">Réglages</h2>

@@ -34,6 +34,11 @@ Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bi
 - **Accueil** : carte Problèmes (résolus et classement puzzles, bouton « Résolvez ! »), quatre cartes Elo (rapide, blitz, bullet, puzzles) vers les stats, tuiles Analyse, Puzzle Rush, Archive (nombre de parties) et chess.com, tuiles Parcours (progression) et Insights, grand bouton Jouer.
 - **Jouer** : 9 bots de 400 à 3200 Elo (Stockfish 18 WASM, force limitée par UCI_Elo, fautes humaines pondérées par leur gravité sous 1320 Elo), mode 2 joueurs sur le même écran, cadences bullet/blitz/rapide avec incrément, pendules, confirmation d'abandon, classement Elo local par cadence, partie en cours et dernière configuration retrouvées au retour.
   Chaque réglage mémorisé invalide revient à sa valeur par défaut à l'ouverture de Jouer : mode contre un bot, Nina, Blancs ou 10 min, selon le réglage concerné.
+- **Qu'est-ce qu'il menace ?** : en partie contre un bot, quand son dernier coup crée une vraie menace (pièce en prise, fourchette, clouage, enfilade, découverte, mat en 1 ou 2, promotion), le coach t'arrête avant ton coup.
+  Tu touches la pièce menacée ou la case du mat ; sinon, ou avec « Je ne sais pas », la menace est montrée par une flèche, ses cases et une phrase.
+  Détection par coup nul avec Stockfish pleine force : pas de question pour une menace déjà parée, insignifiante ou qui existait avant son coup, ni face à un mat imparable, ni pendant un échange en cours ou un échec.
+  Activée par défaut en mode entraîneur (une menace révélée compte comme une aide), à activer pour les bots (pendule suspendue pendant l'analyse et la réponse, partie non classée), indisponible en bullet.
+  Menaces repérées et ratées, par type, dans Stats.
 - **Puzzles** : 120 000 puzzles de la base lichess (CC0), stratifiés de 400 à 3200, chargés hors bundle (fetch lazy), classement puzzle Elo local, indices, séries.
 - **Puzzle Rush** : 3 min, 5 min ou survie, difficulté croissante, 3 erreurs éliminatoires, records sauvegardés.
 - **Entraîneur d'ouvertures** : page `/ouvertures` (accessible depuis Apprendre), choix de l'ouverture et de la couleur, arbre des variantes lichess, trois modes (prochain coup, suite de coups, variante complète), coups théoriques alternatifs acceptés, Stockfish au-delà de la théorie (indicatif), progression par variante.
