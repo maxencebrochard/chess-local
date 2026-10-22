@@ -27,6 +27,8 @@ interface RowProps {
 // Carte d'une partie, mémoïsée : seule celle dont l'état change se re-rend.
 // Mobile : ligne 1 = résultat + infos, ligne 2 = actions ; une seule rangée à partir de md.
 const CARD = 'rounded bg-surface-2 px-3 py-2 md:flex md:items-center md:gap-4 md:px-4 md:py-2.5'
+// Boutons d'action : cible tactile de 44 px, `-my-1.5` la fait déborder sur le padding de la carte
+// sans l'agrandir (carte compacte, même hauteur que la barre « Partie supprimée »).
 const ACTIONS = 'mt-1 flex items-center justify-end gap-2 md:mt-0'
 const TITLE = 'truncate text-sm font-semibold leading-5 md:text-base md:leading-6'
 const META = 'truncate text-xs leading-4 text-neutral-400 md:text-sm md:leading-5'
@@ -77,7 +79,7 @@ const GameRow = memo(function GameRow({ g, pending, onRemove, onUndo }: RowProps
           <div className={TITLE}>
             {title}
             {g.mode === 'bot' && (
-              <span className="ml-2 text-xs font-normal text-neutral-500">{g.playerColor === 'w' ? 'Blancs' : 'Noirs'}</span>
+              <span className="ml-2 text-xs font-normal text-neutral-400">{g.playerColor === 'w' ? 'Blancs' : 'Noirs'}</span>
             )}
           </div>
           <div className={META} title={meta}>
@@ -88,17 +90,17 @@ const GameRow = memo(function GameRow({ g, pending, onRemove, onUndo }: RowProps
       <div className={ACTIONS}>
         <Link
           to={`/analyse?game=${id}&review=1`}
-          className="rounded bg-accent/20 px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent/30"
+          className="-my-1.5 inline-flex min-h-11 items-center rounded bg-accent/20 px-3 text-sm font-semibold text-accent-light hover:bg-accent/30"
         >
           🔍 Bilan
         </Link>
-        <Link to={`/analyse?game=${id}`} className="rounded bg-surface-3 px-3 py-1.5 text-sm font-semibold hover:bg-surface/60">
+        <Link to={`/analyse?game=${id}`} className="-my-1.5 inline-flex min-h-11 items-center rounded bg-surface-3 px-3 text-sm font-semibold hover:bg-surface/60">
           Analyser
         </Link>
         <button
           onClick={() => onRemove(id)}
           aria-label="Supprimer la partie"
-          className="-my-1.5 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded text-neutral-500 hover:text-red-400"
+          className="-my-1.5 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded text-neutral-400 hover:text-red-400"
         >
           ✕
         </button>
@@ -217,13 +219,13 @@ export default function Archive() {
   const remaining = total === null ? 0 : total - games.length
 
   return (
-    <div className="mx-auto max-w-4xl p-3 md:p-6">
+    <div className="mx-auto max-w-4xl p-4 md:p-6">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{total === null ? 'Archive' : `Archive (${total})`}</h1>
         {total !== null && total > 0 && (
           <button
             onClick={() => void exportAll()}
-            className="shrink-0 cursor-pointer rounded bg-surface-3 px-4 py-2 text-sm font-semibold hover:bg-surface-3/70"
+            className="min-h-11 shrink-0 cursor-pointer rounded bg-surface-3 px-4 py-2 text-sm font-semibold hover:bg-surface-3/70"
           >
             ⬇ Exporter tout (PGN)
           </button>

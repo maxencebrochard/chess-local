@@ -23,7 +23,7 @@ export function RunHeader({ title, score, onQuit, errors }: { title: string; sco
           ))}
         </div>
       )}
-      <div data-score={score} className="flex h-10 min-w-10 items-center justify-center rounded-full bg-accent/20 px-3 text-lg font-black text-accent">
+      <div data-score={score} className="flex h-10 min-w-10 items-center justify-center rounded-full bg-accent/20 px-3 text-lg font-black text-accent-light">
         {score}
       </div>
     </header>
@@ -55,7 +55,7 @@ export function BigClock({ ms, running, warnMs = 5000 }: { ms: number; running: 
 
 // Dix dernières séries en barres, la plus récente à droite.
 export function Sparkline({ values }: { values: number[] }) {
-  if (values.length === 0) return <p className="text-sm text-neutral-500">Aucune série pour l'instant.</p>
+  if (values.length === 0) return <p className="text-sm text-neutral-400">Aucune série pour l'instant.</p>
   const max = Math.max(1, ...values)
   return (
     <div className="flex h-12 items-end gap-1" aria-label={`Dernières séries : ${values.join(', ')}`}>

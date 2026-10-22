@@ -32,7 +32,7 @@ export function MoveStrip({ sans, classes, currentIndex, onSelect, startTurn = '
         const cls = classes[i]
         return (
           <span key={i} className="flex shrink-0 items-center gap-1">
-            {i % 2 === 0 && <span className="text-sm text-neutral-500">{i / 2 + 1}.</span>}
+            {i % 2 === 0 && <span className="text-sm text-neutral-400">{i / 2 + 1}.</span>}
             <button
               data-current={i === currentIndex}
               onClick={() => onSelect(i)}

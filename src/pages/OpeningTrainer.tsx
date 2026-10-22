@@ -3,7 +3,8 @@
 // variantes avec leur état. La fiche vit dans l'URL (?famille=&camp=&longueur=) : retour du
 // navigateur, rechargement et retour depuis l'analyse retrouvent la même fiche.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { PageHeader } from '../components/PageHeader'
 import { MoveText } from '../components/MoveText'
 import { OpeningDrill, type DrillItem } from '../components/OpeningDrill'
 import { Segmented } from '../components/Segmented'
@@ -191,9 +192,9 @@ export default function OpeningTrainer() {
         <div className="mx-auto max-w-2xl p-4 md:p-6">
           <button
             onClick={() => setParams({}, { replace: true })}
-            className="mb-2 -ml-1 cursor-pointer px-1 py-1 text-sm font-semibold text-neutral-400 hover:text-white"
+            className="-ml-2 inline-flex min-h-11 cursor-pointer items-center px-2 text-sm font-semibold text-neutral-400 hover:text-white"
           >
-            ‹ Ouvertures
+            ← Ouvertures
           </button>
           <h1 className="text-2xl font-black">{fam.label}</h1>
           <p className="mb-1 text-sm text-neutral-400">
@@ -270,7 +271,7 @@ export default function OpeningTrainer() {
               </li>
             ))}
           </ul>
-          {filtered.length === 0 && <p className="py-4 text-center text-sm text-neutral-500">Aucune variante dans ce filtre.</p>}
+          {filtered.length === 0 && <p className="py-4 text-center text-sm text-neutral-400">Aucune variante dans ce filtre.</p>}
           {!showAll && filtered.length > PAGE_SIZE && (
             <button
               onClick={() => setShowAll(true)}
@@ -290,20 +291,15 @@ export default function OpeningTrainer() {
   const mastered = (f: Family) => f.variants.filter((v) => variantStatus(progress, f.defaultColor, v) === 'mastered').length
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <Link to="/apprendre" className="mb-2 -ml-1 inline-block px-1 py-1 text-sm font-semibold text-neutral-400 hover:text-white">
-        ‹ Apprendre
-      </Link>
-      <h1 className="mb-1 text-2xl font-black">📖 Entraîneur d'ouvertures</h1>
-      <p className="mb-4 text-sm text-neutral-400">
-        Choisis une ouverture, puis trouve le prochain coup, la suite ou toute une variante, jusqu'au coup 15.
-      </p>
+      <PageHeader title="📖 Entraîneur d'ouvertures" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+        description="Choisis une ouverture, puis trouve le prochain coup, la suite ou toute une variante, jusqu'au coup 15." />
       <input
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Rechercher une ouverture"
         aria-label="Rechercher une ouverture"
-        className="mb-4 w-full rounded-xl bg-surface-2 px-4 py-3 text-base text-white placeholder:text-neutral-500 focus:ring-2 focus:ring-accent focus:outline-none"
+        className="mb-4 w-full rounded-xl bg-surface-2 px-4 py-3 text-base text-white placeholder:text-neutral-400 focus:ring-2 focus:ring-accent focus:outline-none"
       />
       {query.trim() ? (
         hits.length ? (
@@ -319,7 +315,7 @@ export default function OpeningTrainer() {
                     <span className="block truncate font-bold">{f.label}</span>
                     {via && <span className="block truncate text-xs text-neutral-400">{via}</span>}
                   </span>
-                  <span className="shrink-0 text-xs text-neutral-500">
+                  <span className="shrink-0 text-xs text-neutral-400">
                     {f.variants.length} variante{f.variants.length > 1 ? 's' : ''}
                   </span>
                 </button>
@@ -327,7 +323,7 @@ export default function OpeningTrainer() {
             ))}
           </ul>
         ) : (
-          <p className="py-6 text-center text-sm text-neutral-500">Aucune ouverture trouvée.</p>
+          <p className="py-6 text-center text-sm text-neutral-400">Aucune ouverture trouvée.</p>
         )
       ) : (
         <>
@@ -371,7 +367,7 @@ function VariantRow({ variant, status, onClick }: { variant: Variant; status: Va
           <MoveText moves={variant.moves} from={from} />
         </span>
       </span>
-      {status === 'mastered' && <span className="shrink-0 rounded-full bg-accent/20 px-2 py-0.5 text-xs font-bold text-accent">Maîtrisée</span>}
+      {status === 'mastered' && <span className="shrink-0 rounded-full bg-accent/20 px-2 py-0.5 text-xs font-bold text-accent-light">Maîtrisée</span>}
       {status === 'review' && <span className="shrink-0 rounded-full bg-red-900/50 px-2 py-0.5 text-xs font-bold text-red-300">À revoir</span>}
     </button>
   )

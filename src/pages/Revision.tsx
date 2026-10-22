@@ -226,11 +226,11 @@ export default function Revision() {
         ) : (
           <p className="text-neutral-400">Les puzzles, erreurs de parties, variantes d'ouverture, attaques manquées et défenses ratées reviendront ici.</p>
         )}
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-neutral-400">
           Calendrier : {LADDER_DAYS.map((d) => `J+${d}`).join(', ')}. Une réussite espace le prochain passage, un échec ramène à J+1.
         </p>
         {puzzlesUnavailable && <Cta className="w-full" onClick={() => void start()}>Réessayer</Cta>}
-        <Link to={returnTo} replace className="mt-2 text-sm font-semibold text-accent underline underline-offset-2">
+        <Link to={returnTo} replace className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-accent underline underline-offset-2">
           {returnTo === '/apprendre' ? 'Retour à Apprendre' : "Retour à l'accueil"}
         </Link>
       </div>
@@ -319,12 +319,12 @@ export default function Revision() {
     <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
       <div data-review-item={item.kind} className="mx-auto flex min-h-full max-w-2xl flex-col">
         <header className="flex items-center px-3 py-1">
-          <button onClick={close} aria-label="Quitter la révision" className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white">
+          <button onClick={close} aria-label="Quitter la révision" className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white">
             ✕
           </button>
           <h1 className="flex-1 text-center text-lg font-black">
             🔁 Révision
-            <span className="ml-2 text-sm font-semibold text-neutral-500">{progress}</span>
+            <span className="ml-2 text-sm font-semibold text-neutral-400">{progress}</span>
           </h1>
           <span className="w-9" />
         </header>

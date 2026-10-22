@@ -98,6 +98,9 @@ function Shell() {
   // `h-full` : la coquille prend exactement le body, fixé sur le viewport (index.css).
   return (
     <div className="flex h-full flex-col md:flex-row">
+      {/* Bande opaque sous l'heure et la Dynamic Island (index.css) : en PWA standalone, ce qui
+          défile n'y passe plus en transparence. Hauteur nulle hors iPhone. */}
+      <div aria-hidden="true" className="safe-top-band" />
       <nav aria-label="Navigation principale" className="hidden w-44 shrink-0 flex-col gap-1 border-r border-black/30 bg-surface-2 p-3 md:flex">
         <div className="mb-3 px-2 text-lg font-black">
           Chess<span className="text-accent">Local</span>
@@ -116,7 +119,7 @@ function Shell() {
               onClick={() => onTabClick(n.to)}
               aria-current={current}
               className={`flex min-h-11 items-center rounded px-3 py-2 font-semibold transition ${
-                current ? 'bg-accent/20 text-accent' : 'text-neutral-300 hover:bg-surface-3'
+                current ? 'bg-accent/20 text-accent-light' : 'text-neutral-300 hover:bg-surface-3'
               }`}
             >
               <span className="mr-2" aria-hidden="true">
@@ -126,7 +129,7 @@ function Shell() {
             </Link>
           )
         })}
-        <div className="mt-auto whitespace-nowrap px-2 text-[11px] text-neutral-600">100 % local · SF 18</div>
+        <div className="mt-auto whitespace-nowrap px-2 text-[11px] text-neutral-400">100 % local · SF 18</div>
       </nav>
       {/* `overscroll-contain` : en butée, le geste s'arrête là au lieu de se chaîner vers le
           document (index.css). */}

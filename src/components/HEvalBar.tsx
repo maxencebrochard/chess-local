@@ -1,5 +1,7 @@
 // Barre d'évaluation horizontale (sous l'en-tête du bilan) : remplissage
-// blanc = avantage blanc, étiquette de score à gauche.
+// blanc = avantage blanc. L'étiquette se pose du côté du camp qui mène, toujours sur sa propre
+// couleur : à gauche en noir sur le blanc, à droite en blanc sur le noir (à gauche, un petit
+// remplissage blanc passait sous un texte blanc et le rendait illisible).
 import { winPct } from '../lib/review'
 
 interface HEvalBarProps {
@@ -22,7 +24,7 @@ export function HEvalBar({ cp, mate }: HEvalBarProps) {
       <div className="absolute inset-y-0 left-0 bg-neutral-100 transition-all duration-300" style={{ width: `${share}%` }} />
       <span
         data-eval-label
-        className={`absolute top-1/2 left-2 -translate-y-1/2 text-xs font-black ${share > 12 ? 'text-neutral-900' : 'text-neutral-100'}`}
+        className={`absolute top-1/2 -translate-y-1/2 text-xs font-black ${share >= 50 ? 'left-2 text-neutral-900' : 'right-2 text-neutral-100'}`}
       >
         {label}
       </span>

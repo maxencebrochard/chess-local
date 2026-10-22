@@ -17,7 +17,7 @@ export function CourseSheet({ course, onClose }: CourseSheetProps) {
       >
         <header className="flex items-center border-b border-black/30 px-4 py-2">
           <h2 className="flex-1 text-lg font-black">📚 {course.title}</h2>
-          <button onClick={onClose} className="cursor-pointer p-2 text-2xl leading-none text-neutral-400 hover:text-white">
+          <button onClick={onClose} aria-label="Fermer le cours" className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white">
             ✕
           </button>
         </header>

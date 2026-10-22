@@ -495,9 +495,10 @@ def displayed_ok(tag, page, base, exp, labels):
 
     page.goto(f"{base}/#/stats")
     ck.appears(f"{tag} stats chargées", page, "text=Statistiques", timeout=15000)
+    # Radicaux au singulier : présents dans « 1 nulles » des anciens builds comme dans « 1 nulle » du build courant.
     expect(f"{tag} stats : bilan parties et puzzles",
-           wait_until(page, has_all([f"{exp['wins']} gagnées", f"{exp['draws']} nulles", f"{exp['losses']} perdues",
-                                     f"{exp['solved']} résolus / {exp['attempts']} tentés", f"Puzzles · {exp['attempts']} essais"])))
+           wait_until(page, has_all([f"{exp['wins']} gagnée", f"{exp['draws']} nulle", f"{exp['losses']} perdue",
+                                     f"{exp['solved']} résolus / {exp['attempts']} tentés", f"Puzzles · {exp['attempts']} essai"])))
     expect(f"{tag} stats : 4 cartes Elo", wait_until(page, cards_match(page.locator("main .grid").first.locator("> div"), elo_cards)))
 
     page.goto(f"{base}/#/apprendre")

@@ -389,7 +389,7 @@ export function OpeningDrill(props: Props) {
     ? `Trait aux ${sideFr} : trouve un coup de la théorie.`
     : myTurn ? `Tu joues les ${sideFr} : à toi.` : 'L\'adversaire répond…'
   const toneClass: Record<Tone, string> = {
-    ok: 'bg-accent/15 text-[#b5dc8c]',
+    ok: 'bg-accent/15 text-accent-light',
     bad: 'bg-red-900/40 text-red-200',
     info: 'bg-sky-900/40 text-sky-200',
     engine: 'bg-surface-2 text-neutral-300',
@@ -413,13 +413,13 @@ export function OpeningDrill(props: Props) {
           <button
             onClick={props.onClose}
             aria-label="Fermer le drill"
-            className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white"
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white"
           >
             ✕
           </button>
           <h1 className="min-w-0 flex-1 truncate text-center text-lg font-black">
             {props.title ?? MODE_LABEL[mode]}
-            <span className="ml-2 text-sm font-semibold text-neutral-500">{fam.label}</span>
+            <span className="ml-2 text-sm font-semibold text-neutral-400">{fam.label}</span>
           </h1>
           <span className="w-9 text-right text-sm font-bold text-accent" title="Réussites de la séance">
             {props.title === undefined && props.session.total > 0 ? `${props.session.ok}/${props.session.total}` : ''}
@@ -460,13 +460,13 @@ export function OpeningDrill(props: Props) {
         <div ref={stripRef} data-moves className="flex min-h-9 items-center gap-1 overflow-x-auto px-3 py-1.5 whitespace-nowrap [scrollbar-width:none]">
           {plies.map((p, i) => (
             <span key={i} className="flex shrink-0 items-center gap-1">
-              {i % 2 === 0 && <span className="text-sm text-neutral-500">{i / 2 + 1}.</span>}
+              {i % 2 === 0 && <span className="text-sm text-neutral-400">{i / 2 + 1}.</span>}
               <span
                 data-engine={p.src === 'engine' ? '' : undefined}
                 className={`rounded px-1 text-[15px] font-bold ${p.src === 'given' ? 'text-neutral-400' : p.src === 'engine' ? 'text-neutral-300' : 'text-neutral-100'}`}
               >
                 {figurine(sans[i] ?? p.uci, i % 2 === 0 ? 'w' : 'b')}
-                {p.src === 'engine' && <span className="ml-0.5 text-xs text-neutral-500" title="Coup de Stockfish">⚙</span>}
+                {p.src === 'engine' && <span className="ml-0.5 text-xs text-neutral-400" title="Coup de Stockfish">⚙</span>}
               </span>
             </span>
           ))}

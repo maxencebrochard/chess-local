@@ -173,6 +173,12 @@ export default function Play() {
     if (status === 'playing') gameViewRef.current?.closest('main')?.scrollTo(0, 0)
   }, [status])
   const statusRef = useRef<GameStatus>('setup') // miroir synchrone pour les minuteurs et les callbacks
+  // Réglages <-> partie : même route, donc `<main>` gardait le défilement des réglages (bouton
+  // Jouer tout en bas) et la partie s'ouvrait avec l'adversaire et sa pendule sous l'heure.
+  const inSetup = status === 'setup'
+  useLayoutEffect(() => {
+    document.querySelector('main')?.scrollTo(0, 0)
+  }, [inSetup])
   const [playerColor, setPlayerColor] = useState<'w' | 'b'>('w')
   const [clocks, setClocks] = useState<{ w: number; b: number }>({ w: 0, b: 0 })
   const clocksRef = useRef(clocks) // source de vérité de la pendule : le tick ne fait aucun effet de bord dans un updater
@@ -881,7 +887,7 @@ export default function Play() {
   // --- Rendu ---
   if (status === 'setup') {
     return (
-      <div className="mx-auto max-w-3xl p-6">
+      <div className="mx-auto max-w-3xl p-4 md:p-6">
         <h1 className="mb-6 text-2xl font-bold">Jouer</h1>
         <div className="mb-5 flex flex-wrap gap-2">
           <ModeButton active={mode === 'bot'} onClick={() => chooseMode('bot')} label="🤖 Contre un bot" />
@@ -989,7 +995,7 @@ export default function Play() {
   }
 
   const gameOverModal = gameOver && (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70" onClick={() => setGameOver(null)}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setGameOver(null)}>
       <div className="w-96 rounded-xl bg-surface-2 p-6 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h2 className="mb-1 text-2xl font-bold">
           {gameOver.cancelled
@@ -1037,7 +1043,7 @@ export default function Play() {
   // Confirmation d'abandon. Sous deux demi-coups, la partie est annulée plutôt que perdue.
   const tooShort = confirmResign?.cancel === true
   const confirmSheet = confirmResign && status === 'playing' && (
-    <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 md:items-center" onClick={() => setConfirmResign(null)}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 md:items-center" onClick={() => setConfirmResign(null)}>
       <div className="pb-safe w-full max-w-md rounded-t-2xl bg-surface-2 p-5 shadow-2xl md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <h2 className="mb-1 text-lg font-bold">{tooShort ? 'Annuler la partie ?' : 'Abandonner la partie ?'}</h2>
         <p className="mb-4 text-sm text-neutral-400">
@@ -1207,17 +1213,19 @@ export default function Play() {
         {showAttackers && <AttackLegend fen={viewFen} />}
       </div>
 
-      <div className="flex w-full flex-col gap-2 px-1 pb-2 md:h-[min(76vh,640px)] md:w-72 md:gap-3 md:px-0 md:pb-0">
+      {/* Mobile : la colonne prend la hauteur restante et la liste des coups s'y ajuste, pour que
+          la partie tienne sans défiler dans la PWA (iPhone 14 Pro, safe areas comprises). */}
+      <div className="flex min-h-0 w-full flex-1 flex-col gap-2 px-1 pb-2 md:h-[min(76vh,640px)] md:w-72 md:flex-none md:gap-3 md:px-0 md:pb-0">
         {threatBubble(true) || <div className="rounded bg-surface-2 px-3 py-2 text-sm text-neutral-300">
           {opening ? (
             <>
-              <span className="font-mono text-xs text-neutral-500">{opening.eco}</span> {openingFr(opening.name)}
+              <span className="font-mono text-xs text-neutral-400">{opening.eco}</span> {openingFr(opening.name)}
             </>
           ) : (
-            <span className="text-neutral-500">Ouverture inconnue</span>
+            <span className="text-neutral-400">Ouverture inconnue</span>
           )}
         </div>}
-        <div className="h-32 md:min-h-0 md:h-auto md:flex-1">
+        <div className="min-h-16 flex-1 md:min-h-0">
           <MoveList sans={sans} currentIndex={viewIndex === -1 ? sans.length - 1 : viewIndex} onSelect={selectMove} />
         </div>
         <div className="flex gap-2">
@@ -1227,11 +1235,11 @@ export default function Play() {
           <NavButton label="⏭" disabled={noMoves} onClick={() => setViewIndex(-1)} />
         </div>
         {status === 'playing' ? (
-          <button onClick={resign} className="cursor-pointer rounded bg-surface-3 py-2 font-semibold hover:bg-red-900">
+          <button onClick={resign} className="min-h-11 cursor-pointer rounded bg-surface-3 py-2 font-semibold hover:bg-red-900">
             🏳 Abandonner
           </button>
         ) : (
-          <button onClick={goSetup} className="cursor-pointer rounded bg-accent py-2 font-bold text-on-accent hover:bg-accent-hover">
+          <button onClick={goSetup} className="min-h-11 cursor-pointer rounded bg-accent py-2 font-bold text-on-accent hover:bg-accent-hover">
             Nouvelle partie
           </button>
         )}
@@ -1280,7 +1288,7 @@ function NavButton({ label, onClick, disabled }: { label: string; onClick: () =>
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex-1 cursor-pointer rounded bg-surface-3 py-1.5 hover:bg-surface-3/70 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-surface-3"
+      className="min-h-11 flex-1 cursor-pointer rounded bg-surface-3 py-1.5 hover:bg-surface-3/70 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-surface-3"
     >
       {label}
     </button>

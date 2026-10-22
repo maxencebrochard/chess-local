@@ -293,6 +293,7 @@ Les noms d'ouvertures sont en anglais dans les données et traduits à l'afficha
 Mobile d'abord : la cible principale est la PWA iPhone en mode standalone (nav basse, `pt-safe`/`pb-safe`, hauteurs en `dvh`), avec une nav latérale à partir de `md`.
 Les E2E tournent sur le device `iPhone 14 Pro` et en 1440x900.
 Couleurs via les tokens Tailwind `@theme` de `src/index.css` : `surface`, `surface-2`, `surface-3`, `accent`.
+Le token `accent-light` sert au texte vert sur fond teinté d'accent (`bg-accent/15` ou `/20`), où l'accent pur reste sous le contraste AA.
 Le lot 1 du [plan UX](docs/ux-refonte.md) ajoute `on-accent` (texte sombre sur un fond `accent` opaque, contraste 6,43:1) et `muted` (descriptions lisibles sur les surfaces).
 Ne pas remettre `text-white` sur un `bg-accent` opaque ; les variantes translucides conservent leur couleur métier.
 `Cta` conserve les variantes primaire/secondaire, avec cible minimale 44 px, type bouton par défaut et focus clavier visible.
@@ -303,6 +304,11 @@ Ne pas remettre `text-white` sur un `bg-accent` opaque ; les variantes transluci
 Ces composants sont appliqués aux tuiles Accueil/Apprendre, aux sommaires communs de cours, à la progression du parcours et aux états vides Archive/attaques/défenses personnelles.
 La suite `ux_foundation` vérifie contraste rendu, focus, dimensions, titres longs, retours, états vides et chargement aux trois formats ; ses captures restent dans `e2e/shots/ux-lot1/`.
 La navigation à cinq onglets et la réorganisation d’Apprendre restent différées aux lots suivants.
+Texte secondaire en `text-neutral-400` au plus sombre : `text-neutral-500` ne reste que sur les chevrons décoratifs `aria-hidden`.
+Cibles tactiles de 44 px au moins (`min-h-11`, `h-11 w-11`) ; les sous-pages d'Apprendre (cours, ouvertures, mats, finales, attaque, attaques manquées) ont leur retour dans `PageHeader`.
+`.safe-top-band` (`App.tsx`, z-45) masque sous l'heure et la Dynamic Island ce qui défile dans `<main>` et dans les calques z-40 ; les voiles de modale sont en z-50 pour l'assombrir, et un calque z-50 ne fait pas défiler son contenu sous sa marge haute.
+Un changement d'état qui remplace l'écran sans changer de route (réglages et partie de Jouer) remet `<main>` en haut ; aucun `scrollIntoView` dans un scroller imbriqué, il ferait aussi défiler `<main>`.
+La suite `ui_audit` (`e2e/test_ui_audit.py`) parcourt chaque route et ses états principaux en PWA standalone (safe areas émulées), en 393x660 et en 1440x900, capture dans `e2e/shots/ui_audit/` et échoue sur un débordement horizontal, un texte coupé, une cible tactile sous 44 px, un contraste sous WCAG AA, une faute de typographie française ou une commande sous l'encoche ; ses exceptions sont nommées dans `ALLOW`, `UI_AUDIT_MUTATION` prouve que chaque check peut échouer.
 `.boardbox` fixe la taille de la plupart des échiquiers ; les cours utilisent leur propre conteneur.
 `main.tsx` annule le `touchstart` natif dans les 25 px des bords du viewport sur les cases `[data-board] [data-square]`, pour empêcher les gestes précédent/suivant de WebKit depuis tout échiquier sans couper les événements de react-chessboard.
 `Board` porte toujours `data-board`, indépendamment de sa propriété `interactive` et des classes de mise en page : la protection couvre aussi la réflexion du moteur et les diagrammes.

@@ -8,6 +8,9 @@
   --color-accent-hover: #8fc45c;
   --color-on-accent: #262421;
   --color-muted: #b5b2ae;
+  /* Texte vert sur un fond teinté d'accent (badges, onglet actif) : l'accent pur n'y atteint pas
+     le contraste AA (3,9:1). */
+  --color-accent-light: #b5dc8c;
   --font-sans: 'Segoe UI', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -93,6 +96,19 @@ body {
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Barre d'état translucide (index.html) : sans cette bande, le contenu défilé de `<main>` et des
+   calques plein écran (z-40) passait sous l'heure et la Dynamic Island, en transparence. Sous les
+   voiles des feuilles et des modales (z-50), qui l'assombrissent avec le reste de l'écran ; les
+   calques z-50 ne défilent pas sous elle. Elle reçoit les touchers pour qu'aucun contenu masqué
+   ne soit touché à travers elle. */
+.safe-top-band {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: env(safe-area-inset-top);
+  z-index: 45;
+  background: var(--color-surface);
 }
 
 /* PWA standalone iOS : le contenu ne doit pas passer sous la Dynamic Island,

@@ -114,43 +114,46 @@ export function EngineContinuation(props: EngineContinuationProps) {
       aria-modal="true"
       aria-label={title}
       data-continuation={mode}
-      className="pt-safe pb-safe fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-surface"
+      className="pt-safe pb-safe fixed inset-0 z-50 flex flex-col bg-surface"
     >
-      <div className="mx-auto flex min-h-full max-w-2xl flex-col">
-        <header className="flex items-center px-3 py-1">
-          <button
-            ref={closeRef}
-            onClick={onClose}
-            className="w-24 cursor-pointer p-1.5 text-left text-sm font-semibold text-neutral-400 hover:text-white"
-          >
-            ← Exercice
-          </button>
-          <h1 className="flex-1 truncate text-center text-lg font-black">{title}</h1>
-          <span className="w-24" />
-        </header>
-        {mode === 'play' ? (
-          <PlayPane
-            key={start.tick}
-            startFen={start.fen}
-            initialMoves={start.moves}
-            initialResigned={start.resigned}
-            playerColor={playerColor}
-            getEngine={getEngine}
-            onAnalyse={props.returnTo ? analyse : undefined}
-            onReplay={() => setStart((s) => ({ fen: s.fen, moves: [], resigned: false, tick: s.tick + 1 }))}
-            onClose={onClose}
-          />
-        ) : (
-          <PlanPane
-            startFen={start.fen}
-            playerColor={playerColor}
-            getEngine={getEngine}
-            onPlayFrom={(fen) => {
-              setStart((s) => ({ fen, moves: [], resigned: false, tick: s.tick + 1 }))
-              setMode('play')
-            }}
-          />
-        )}
+      {/* Le défilement vit sous la marge haute : rien ne passe sous l'heure de l'iPhone. */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="mx-auto flex min-h-full max-w-2xl flex-col">
+          <header className="flex items-center px-3 py-1">
+            <button
+              ref={closeRef}
+              onClick={onClose}
+              className="min-h-11 w-24 cursor-pointer p-1.5 text-left text-sm font-semibold text-neutral-400 hover:text-white"
+            >
+              ← Exercice
+            </button>
+            <h1 className="flex-1 truncate text-center text-lg font-black">{title}</h1>
+            <span className="w-24" />
+          </header>
+          {mode === 'play' ? (
+            <PlayPane
+              key={start.tick}
+              startFen={start.fen}
+              initialMoves={start.moves}
+              initialResigned={start.resigned}
+              playerColor={playerColor}
+              getEngine={getEngine}
+              onAnalyse={props.returnTo ? analyse : undefined}
+              onReplay={() => setStart((s) => ({ fen: s.fen, moves: [], resigned: false, tick: s.tick + 1 }))}
+              onClose={onClose}
+            />
+          ) : (
+            <PlanPane
+              startFen={start.fen}
+              playerColor={playerColor}
+              getEngine={getEngine}
+              onPlayFrom={(fen) => {
+                setStart((s) => ({ fen, moves: [], resigned: false, tick: s.tick + 1 }))
+                setMode('play')
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   )
@@ -459,7 +462,7 @@ export function LineStrip({ startFen, sans, current, onSelect }: {
         }`
         return (
           <span key={i} className="flex shrink-0 items-center gap-1">
-            {prefix && <span className="text-sm text-neutral-500">{prefix}</span>}
+            {prefix && <span className="text-sm text-neutral-400">{prefix}</span>}
             {onSelect ? (
               <button data-current={i === current} onClick={() => onSelect(i)} className={`cursor-pointer ${cls}`}>
                 {figurine(san, color)}

@@ -31,6 +31,10 @@ Les parcours sont couverts par les suites E2E de production et de développement
 Les options du lanceur et les prérequis sont décrits dans [les commandes E2E](CLAUDE.md#commandes).
 Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bilan Q1](docs/q1-e2e.md).
 
+- **Interface iPhone** : textes secondaires plus lisibles, retours homogènes dans Apprendre et commandes tactiles agrandies.
+  En PWA, le contenu défilant reste masqué sous l'heure et la Dynamic Island ; démarrer une partie remet l'échiquier en haut.
+  L'audit UI contrôle les principaux écrans en 393×852, 393×660 et 1440×900, avec captures et détection de régressions de mise en page, contraste et typographie.
+
 - **Accueil** : carte Problèmes (résolus et classement puzzles, bouton « Résolvez ! »), tuile « Séance du jour », quatre cartes Elo (rapide, blitz, bullet, puzzles) vers les stats, tuiles Analyse, Puzzle Rush, Archive (nombre de parties) et chess.com, tuiles Parcours (progression) et Insights, grand bouton Jouer.
 - **Jouer** : 9 bots de 400 à 3200 Elo (Stockfish 18 WASM, force limitée par UCI_Elo, fautes humaines pondérées par leur gravité sous 1320 Elo), mode 2 joueurs sur le même écran, cadences bullet/blitz/rapide avec incrément, pendules, confirmation d'abandon, classement Elo local par cadence, partie en cours et dernière configuration retrouvées au retour.
   Chaque réglage mémorisé invalide revient à sa valeur par défaut à l'ouverture de Jouer : mode contre un bot, Nina, Blancs ou 10 min, selon le réglage concerné.

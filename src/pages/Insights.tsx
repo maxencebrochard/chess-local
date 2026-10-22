@@ -306,7 +306,7 @@ export default function Insights() {
             <div className="text-xs text-neutral-400">
               {shown.report.games.from && shown.report.games.to && periodFr(shown.report.games.from, shown.report.games.to)}
             </div>
-            <div className="text-xs text-neutral-500">
+            <div className="text-xs text-neutral-400">
               Rapport du {shortDate(shown.run.at)}
               {shown.run.depth ? ` · profondeur ${shown.run.depth}` : ''}
             </div>
@@ -563,7 +563,7 @@ function ExampleButton({ e, onOpen, withLabel = false }: { e: Example; onOpen: (
         {e.moveNo} <span className="text-[1.2em]">{e.sanFig}</span>
       </span>
       {e.bestSan && <span className="shrink-0 text-neutral-400">au lieu de {e.bestSan}</span>}
-      {withLabel && <span className="min-w-0 truncate text-neutral-500">· {e.label.replace(/^(chess\.com|ChessLocal) · /, '')}</span>}
+      {withLabel && <span className="min-w-0 truncate text-neutral-400">· {e.label.replace(/^(chess\.com|ChessLocal) · /, '')}</span>}
     </button>
   )
 }
@@ -763,7 +763,7 @@ function ReportView({ report: r, onExample }: { report: Report; onExample: (e: E
               >
                 <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
                   <span className="font-semibold">{PHASE_FR[p]}</span>
-                  <span className="text-neutral-300">{enough ? fr1(s.accuracy!) : <span className="text-neutral-500">pas assez de coups</span>}</span>
+                  <span className="text-neutral-300">{enough ? fr1(s.accuracy!) : <span className="text-neutral-400">pas assez de coups</span>}</span>
                 </div>
                 <MeterBar value={enough ? s.accuracy! : 0} tone={!enough ? 'muted' : s.accuracy! >= 80 ? 'accent' : s.accuracy! >= 65 ? 'warn' : 'bad'} />
                 <div className="mt-1 text-xs text-neutral-400">
@@ -846,7 +846,7 @@ function ReportView({ report: r, onExample }: { report: Report; onExample: (e: E
               ))}
             </div>
             {t.gamesWithClocks < g.n && (
-              <p className="mt-3 text-xs text-neutral-500">
+              <p className="mt-3 text-xs text-neutral-400">
                 {g.n - t.gamesWithClocks} partie{g.n - t.gamesWithClocks > 1 ? 's' : ''} sans pendule enregistrée (ChessLocal n'en garde pas) : hors de cette section.
               </p>
             )}
@@ -894,7 +894,7 @@ function ReportView({ report: r, onExample }: { report: Report; onExample: (e: E
         <Gauge testid="insights-defense" title="Défense" ok={r.defense.saved} of={r.defense.losing} text="positions perdantes (−3) sauvées" data={{ 'data-losing': r.defense.losing, 'data-saved': r.defense.saved }} />
         <Gauge testid="insights-opportunism" title="Opportunisme" ok={r.opportunism.punished} of={r.opportunism.chances} text="gaffes adverses punies" data={{}} />
       </div>
-      {g.skipped > 0 && <p className="text-xs text-neutral-500">{g.skipped} partie{g.skipped > 1 ? 's' : ''} illisible{g.skipped > 1 ? 's' : ''} ignorée{g.skipped > 1 ? 's' : ''}.</p>}
+      {g.skipped > 0 && <p className="text-xs text-neutral-400">{g.skipped} partie{g.skipped > 1 ? 's' : ''} illisible{g.skipped > 1 ? 's' : ''} ignorée{g.skipped > 1 ? 's' : ''}.</p>}
     </div>
   )
 }

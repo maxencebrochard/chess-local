@@ -641,7 +641,7 @@ def part_reset(p, browser):
     if ok:
         page.goto(f"{BASE}/#/stats")
         ck.appears("[reset] Stats utilisable après réinitialisation", page, "main :text('Statistiques')", timeout=15000)
-        check("[reset] Stats affiche 0 gagnées", page.locator("main :text('0 gagnées')").count() == 1)
+        check("[reset] Stats affiche 0 gagnée", page.locator("main :text('0 gagnée')").count() == 1)
     ctx.close()
 
 

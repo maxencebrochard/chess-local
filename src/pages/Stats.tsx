@@ -244,7 +244,7 @@ export default function Stats() {
   const hasCurrent = (c: Counts | null) => !!c && TABLES.some((t) => c[t] > 0)
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
+    <div className="mx-auto max-w-3xl p-4 md:p-6">
       <h1 className="mb-5 text-2xl font-bold">Statistiques</h1>
 
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -255,7 +255,7 @@ export default function Stats() {
               <div className="text-2xl">{c.icon}</div>
               <div className="text-2xl font-bold">{r?.value ?? DEFAULT_RATING}</div>
               <div className="text-xs text-neutral-400">
-                {c.label} · {r?.games ?? 0} {c.key === 'puzzle' ? 'essais' : 'parties'}
+                {c.label} · {r?.games ?? 0} {c.key === 'puzzle' ? 'essai' : 'partie'}{(r?.games ?? 0) > 1 ? 's' : ''}
               </div>
             </div>
           )
@@ -266,7 +266,7 @@ export default function Stats() {
         <span className="text-3xl" aria-hidden="true">🧠</span>
         <span className="min-w-0 flex-1">
           <span className="block font-bold">Insights</span>
-          <span className="block text-sm text-neutral-400">Tes N dernières parties passées au crible : où tu pèches, tes forces, quoi travailler.</span>
+          <span className="block text-sm text-neutral-400">Tes dernières parties passées au crible : où tu pèches, tes forces, quoi travailler.</span>
         </span>
         <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
       </Link>
@@ -275,9 +275,9 @@ export default function Stats() {
         <div className="rounded-lg bg-surface-2 p-4">
           <h2 className="mb-2 font-semibold">Parties contre les bots</h2>
           <div className="flex justify-between text-sm">
-            <span className="text-accent">{wins} gagnées</span>
-            <span className="text-neutral-400">{draws} nulles</span>
-            <span className="text-red-400">{losses} perdues</span>
+            <span className="text-accent">{wins} gagnée{wins > 1 ? 's' : ''}</span>
+            <span className="text-neutral-400">{draws} nulle{draws > 1 ? 's' : ''}</span>
+            <span className="text-red-400">{losses} perdue{losses > 1 ? 's' : ''}</span>
           </div>
           {botGames.length > 0 && (
             <div className="mt-2 flex h-2 overflow-hidden rounded-full">
@@ -300,7 +300,7 @@ export default function Stats() {
       <div data-testid="attack-stats" className="mb-6 rounded-lg bg-surface-2 p-4">
         <h2 className="mb-2 font-semibold">🎯 Attaques manquées</h2>
         <p className="text-sm text-neutral-300">{attacks ? attackSummary(attacks) : '…'}</p>
-        <Link to="/attaques-manquees" className="mt-2 inline-block text-sm font-semibold text-accent hover:underline">
+        <Link to="/attaques-manquees" className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-accent hover:underline">
           Voir et rejouer ›
         </Link>
       </div>
@@ -339,10 +339,12 @@ export default function Stats() {
                 onClick={() => settings.setTheme(t.id)}
                 className={`cursor-pointer overflow-hidden rounded border-2 ${settings.themeId === t.id ? 'border-accent' : 'border-transparent'}`}
                 title={t.name}
+                aria-label={t.name}
+                aria-pressed={settings.themeId === t.id}
               >
                 <div className="flex">
-                  <div className="h-8 w-8" style={{ background: t.light }} />
-                  <div className="h-8 w-8" style={{ background: t.dark }} />
+                  <div className="h-10 w-8" style={{ background: t.light }} />
+                  <div className="h-10 w-8" style={{ background: t.dark }} />
                 </div>
               </button>
             ))}
@@ -397,7 +399,7 @@ export default function Stats() {
               <span className="w-12 whitespace-nowrap text-right tabular-nums">{Math.round(settings.soundVolume * 100)}{' '}%</span>
             </label>
           )}
-          <p className="mt-1 text-xs text-neutral-500">Sur iPhone, le mode silencieux coupe les sons de l'app.</p>
+          <p className="mt-1 text-xs text-neutral-400">Sur iPhone, le mode silencieux coupe les sons de l'app.</p>
         </div>
         <Toggle label="⚔ Compter les attaquants autour des rois" value={settings.showAttackers} onChange={settings.setShowAttackers} testId="toggle-attackers" />
         <div>
@@ -413,7 +415,7 @@ export default function Stats() {
               <button
                 key={key}
                 onClick={() => settings.setReviewDepth(key)}
-                className={`cursor-pointer rounded border-2 px-3 py-1.5 text-sm font-semibold transition ${
+                className={`min-h-11 cursor-pointer rounded border-2 px-3 py-1.5 text-sm font-semibold transition ${
                   settings.reviewDepth === key ? 'border-accent bg-accent/10' : 'border-transparent bg-surface-3 hover:bg-surface-3/70'
                 }`}
               >
@@ -421,7 +423,7 @@ export default function Stats() {
               </button>
             ))}
           </div>
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-400">
             Rapide ≈ 30 s, Équilibré ≈ 1-2 min, Profond ≈ 4-5 min sur iPhone (partie de 40 coups).
           </p>
         </div>
@@ -546,7 +548,7 @@ export default function Stats() {
               data-testid="reset-export-first"
               onClick={() => void onExportFirst()}
               disabled={busy}
-              className="w-full cursor-pointer rounded-lg bg-surface-3 py-2.5 text-sm font-semibold text-neutral-200 hover:bg-surface-3/70 disabled:opacity-40"
+              className="min-h-11 w-full cursor-pointer rounded-lg bg-surface-3 py-2.5 text-sm font-semibold text-neutral-200 hover:bg-surface-3/70 disabled:opacity-40"
             >
               ⬇ Exporter d'abord mes données
             </button>

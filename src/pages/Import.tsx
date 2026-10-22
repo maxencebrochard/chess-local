@@ -23,7 +23,7 @@ const OUTCOME_STYLE = {
   loss: { label: 'P', color: 'text-red-400' },
 }
 
-const FIELD = 'min-w-0 flex-1 rounded bg-surface-2 px-3 py-2 outline-none placeholder:text-neutral-500 focus-visible:ring-2 focus-visible:ring-accent'
+const FIELD = 'min-h-11 min-w-0 flex-1 rounded bg-surface-2 px-3 py-2 outline-none placeholder:text-neutral-400 focus-visible:ring-2 focus-visible:ring-accent'
 
 // Erreur affichable, avec l'action à rejouer telle qu'elle a échoué (pseudo ou lien capturés),
 // seulement quand réessayer a un sens (transport), pas pour un pseudo inconnu ou une variante.
@@ -176,7 +176,7 @@ export default function Import() {
       {sharedUrl && (
         <div className="mb-4 rounded bg-surface-2 p-3 text-sm text-neutral-300">
           <p className="font-semibold">Partie partagée depuis chess.com</p>
-          <p className="break-all text-xs text-neutral-500">{sharedUrl}</p>
+          <p className="break-all text-xs text-neutral-400">{sharedUrl}</p>
           {sharedProblem ? (
             <p className="mt-2">{sharedProblem}</p>
           ) : (
@@ -243,7 +243,7 @@ export default function Import() {
 
       {games && !loading && (
         <div className="mb-6 space-y-1">
-          {games.length === 0 && <p className="text-sm text-neutral-500">Aucune partie récente trouvée.</p>}
+          {games.length === 0 && <p className="text-sm text-neutral-400">Aucune partie récente trouvée.</p>}
           {games.map((g) => {
             const res = OUTCOME_STYLE[outcomeFor(g)]
             const white = g.playerColor === 'w'
@@ -271,7 +271,7 @@ export default function Import() {
                     {timeClassLabel(g.timeClass)} · {moveCount(g.pgn)} coups · {terminationLabel(g)}
                   </div>
                 </div>
-                <span className="shrink-0 rounded bg-accent/20 px-2.5 py-1 text-xs font-semibold text-accent">
+                <span className="shrink-0 rounded bg-accent/20 px-2.5 py-1 text-xs font-semibold text-accent-light">
                   🔍 Bilan
                 </span>
               </button>
@@ -305,7 +305,7 @@ export default function Import() {
           </p>
         </div>
       </details>
-      <p className="mt-4 text-center text-[10px] text-neutral-600">build {__BUILD__}</p>
+      <p className="mt-4 text-center text-[10px] text-neutral-400">build {__BUILD__}</p>
     </div>
   )
 }
