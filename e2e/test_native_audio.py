@@ -78,7 +78,7 @@ def suite(p):
                 page.wait_for_selector('[data-square=e2] [data-piece]')
                 ck.check(f'{engine}: nouveau profil Atelier', page.locator('[data-piece] img[src*="/atelier/"]').count() == 32)
                 tap_move(page, 'e2', 'e4')
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(500 if delayed == 'first' else 1000)
                 if delayed == 'first':
                     # Fichier arrivé bien après le geste : le seul coup joué sonne quand même.
                     page.evaluate('releaseAudio()')
