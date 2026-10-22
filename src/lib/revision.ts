@@ -274,6 +274,13 @@ export async function resolveSession(items: ReviewItem[]): Promise<{ payloads: R
   return { payloads, missing, puzzlesUnavailable }
 }
 
+// Faute supprimée, refaite ou devenue inéligible entre le début de la séance et le verdict.
+export class StaleReviewError extends Error {
+  constructor() {
+    super('Cette position a changé depuis le début de la révision.')
+  }
+}
+
 // Écrit le résultat là où l'écran d'origine écrit, sans toucher aucun Elo : « Mes erreurs » et
 // l'entraîneur d'ouvertures voient la révision ; les puzzles classés (Elo, série) l'ignorent.
 // Une faute ratée en révision redevient pendante dans « Mes erreurs » (solved 0), même si elle
@@ -291,7 +298,7 @@ export async function recordReview(p: ReviewPayload, success: boolean): Promise<
     await db.transaction('rw', db.mistakes, db.learnSessions, async () => {
       const current = await db.mistakes.get(Number(p.item.key))
       if (!current || current.fenBefore !== p.mistake.fenBefore || current.bestUci !== p.mistake.bestUci
-        || diagnose(p.kind, [current]).items.length === 0) throw new Error('Cette position a changé depuis le début de la révision.')
+        || diagnose(p.kind, [current]).items.length === 0) throw new StaleReviewError()
       const record = p.kind === 'missed-attack' ? recordMissedAttack : recordMissedDefense
       await record(current.id!, current.fenBefore, success)
     })
