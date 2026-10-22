@@ -38,6 +38,7 @@ Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bi
   Tu touches la pièce menacée ou la case du mat ; sinon, ou avec « Je ne sais pas », la menace est montrée par une flèche, ses cases et une phrase.
   Détection par coup nul avec Stockfish pleine force : pas de question pour une menace déjà parée, insignifiante ou qui existait avant son coup, ni face à un mat imparable, ni pendant un échange en cours ou un échec.
   Activée par défaut en mode entraîneur (une menace révélée compte comme une aide), à activer pour les bots (pendule suspendue pendant l'analyse et la réponse, partie non classée), indisponible en bullet.
+  Ce choix reste sur l'appareil, hors sauvegarde, et est effacé par la réinitialisation de l'app.
   Menaces repérées et ratées, par type, dans Stats.
 - **Puzzles** : 120 000 puzzles de la base lichess (CC0), stratifiés de 400 à 3200, chargés hors bundle (fetch lazy), classement puzzle Elo local, indices, séries.
 - **Puzzle Rush** : 3 min, 5 min ou survie, difficulté croissante, 3 erreurs éliminatoires, records sauvegardés.

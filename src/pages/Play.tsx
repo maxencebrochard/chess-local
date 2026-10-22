@@ -261,6 +261,7 @@ export default function Play() {
     if (q?.phase === 'ask') {
       askedAt.current = performance.now()
       setViewIndex(-1) // La question porte toujours sur la position actuelle.
+      setHintArrow(null)
     }
     setThreatQ(q)
   }, [])
@@ -767,7 +768,7 @@ export default function Play() {
   // --- Actions du mode entraîneur ---
   async function requestHint() {
     const g = gameRef.current
-    if (!g || hintBusy || status !== 'playing' || chessRef.current.turn() !== g.playerColor || threatQRef.current?.phase === 'ask') return
+    if (!g || hintBusy || threatBusy || status !== 'playing' || chessRef.current.turn() !== g.playerColor || threatQRef.current?.phase === 'ask') return
     markUnrated()
     setHintBusy(true)
     const seq = g.seq
@@ -1148,7 +1149,7 @@ export default function Play() {
             label={hintBusy ? '…' : 'Indication'}
             icon="💡"
             onClick={() => void requestHint()}
-            disabled={status !== 'playing' || hintBusy || chess.turn() !== playerColor || asking}
+            disabled={status !== 'playing' || hintBusy || threatBusy || chess.turn() !== playerColor || asking}
           />
           <CoachAction
             label="Annuler"
