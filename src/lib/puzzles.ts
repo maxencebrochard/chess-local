@@ -56,7 +56,7 @@ export async function recentPuzzleIds(): Promise<Set<string>> {
 
 // Puzzle à portée du classement : à moins de 120 points et pas récent, sinon à moins de 300 (pas
 // récent d'abord), sinon le premier. `theme` (séance du jour) restreint d'abord aux puzzles portant ce thème lichess, et
-// retombe sur tous les puzzles s'il n'en reste aucun.
+// retombe sur tous les puzzles s'il n'en reste aucun hors des exclusions.
 export function pickRatedPuzzle(
   all: PuzzleData[],
   rating: number,
@@ -64,15 +64,15 @@ export function pickRatedPuzzle(
   opts: { theme?: string; rng?: () => number } = {},
 ): PuzzleData {
   const rng = opts.rng ?? Math.random
-  const pickIn = (base: PuzzleData[]): PuzzleData | null => {
+  const pickIn = (base: PuzzleData[], fresh: boolean): PuzzleData | null => {
     const near = (span: number) => base.filter((p) => Math.abs(p.rating - rating) < span)
     const wide = near(300)
-    const pools = [near(120).filter((p) => !exclude.has(p.id)), wide.filter((p) => !exclude.has(p.id)), wide]
+    const pools = [near(120).filter((p) => !exclude.has(p.id)), wide.filter((p) => !exclude.has(p.id)), ...(fresh ? [] : [wide])]
     const pool = pools.find((x) => x.length > 0)
     return pool ? pool[Math.floor(rng() * pool.length)] : null
   }
   const theme = opts.theme
-  return (theme ? pickIn(all.filter((p) => p.themes.includes(theme))) : null) ?? pickIn(all) ?? all[0]
+  return (theme ? pickIn(all.filter((p) => p.themes.includes(theme)), true) : null) ?? pickIn(all, false) ?? all[0]
 }
 
 // Note un puzzle classé : Elo `puzzle` puis ligne `puzzleAttempts`, comme /puzzles. Renvoie le
