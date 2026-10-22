@@ -63,7 +63,8 @@ export interface LearnSession {
   // attaque manquée), mats (une série de « Mats éclair »), revision (révision espacée), attack
   // (entraîneur d'attaque : itemId = id de la position, une ligne par tentative), defense
   // (entraîneur de défense : itemId = id de la position `def-<puzzle>`, une ligne par tentative) ou
-  // missed-defense (tentative sur une défense ratée, même contrat que missed-attack), ou
+  // missed-defense (tentative sur une défense ratée, même contrat que missed-attack), conversion
+  // (entraîneur « Convertir l'avantage » : mêmes champs que attack, itemId = id de la position `conv-<puzzle>`),
   // structure-play (partie depuis une structure de pions de mes parties),
   // critical-moment (moments critiques du bilan, hors Elo) ou path (parcours d’apprentissage).
   // course : itemId = `<slug>:<id>`, le slug désignant le cours (`finales:` pour le cours de finales,
@@ -108,11 +109,11 @@ export interface LearnSession {
   itemId: string
   success: 0 | 1
   ratingAfter: number | null
-  fen?: string // finales jouées jusqu'au bout, attaques manquées, défenses ratées, entraîneurs d'attaque et de défense, moments critiques et structures : position de départ ; threat-check : position de la question (champ non indexé)
+  fen?: string // finales jouées jusqu'au bout, attaques manquées, défenses ratées, entraîneurs d'attaque, de défense et de conversion, moments critiques et structures : position de départ ; threat-check : position de la question (champ non indexé)
   score?: number // mats : mats réussis dans la série (champ non indexé)
-  // Entraîneurs d'attaque et de défense (champs non indexés) : issue de la tentative (union des
-  // issues des deux domaines, `draw` et `resign` et `abandon` communs), Elo du défenseur bridé
-  // (attack) ou de l'attaquant bridé (defense, depuis l'entraîneur de défense), null = pleine
+  // Entraîneurs d'attaque, de conversion et de défense (champs non indexés) : issue de la tentative (union des
+  // issues des domaines, `draw` et `resign` et `abandon` communs), Elo du défenseur bridé
+  // (attack, conversion) ou de l'attaquant bridé (defense, depuis l'entraîneur de défense), null = pleine
   // force, aide utilisée (indice ou coup repris).
   outcome?: AttackOutcome | DefenseOutcome
   defenderElo?: number | null

@@ -31,6 +31,8 @@ __pycache__/
 data/lichess-puzzle-games.jsonl
 data/attack-evals.jsonl
 data/defense-evals.jsonl
+# Cache de génération des positions de « Convertir l'avantage » (régénérable)
+data/conversion-evals.jsonl
 
 # Environnement Python local des E2E
 .venv/
