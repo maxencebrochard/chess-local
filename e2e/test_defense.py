@@ -736,7 +736,8 @@ def part_list_and_game(p, browser):
             check("[défense] aucun coup repris après « tenue » (pas d'Annuler)", page.get_by_role("button", name="Annuler").count() == 0)
         else:
             # L'attaquant à 1320 peut se faire mater (ou annuler) au plus tard par le 12e coup, avant toute
-            # confirmation : cette fin de l'échiquier a ses trois checks, le total reste le même quel que soit le chemin.
+            # confirmation : cette fin de l'échiquier a ses quatre checks, autant que l'attente de la confirmation
+            # et les trois checks de « tenue », le total reste le même quel que soit le chemin.
             reason = {"mate": re.compile(rf"Mat en {moves} coups? : la contre-attaque a gagné\."),
                       "stalemate": re.compile(r"Nulle par pat\."), "repetition": re.compile(r"Nulle par triple répétition\."),
                       "insufficient": re.compile(r"Nulle : plus assez de matériel pour mater\."),
@@ -744,6 +745,7 @@ def part_list_and_game(p, browser):
             check("[défense] fin de l'échiquier au plus tard au 12e coup, sans confirmation lancée",
                   end in ("mate", "stalemate", "repetition", "fifty", "insufficient") and moves <= 12 and blocked is None,
                   f"(end={end}, {moves} coups, {blocked})")
+            check("[défense] aucun « vérifie ta défense… » après cette fin", page.locator(GAME, has_text="vérifie ta défense").count() == 0)
             subline = page.locator("[data-testid='objective-subline']")
             check("[défense] raison propre à cette fin (mat donné ou nulle)",
                   reason is not None and subline.filter(has_text=reason).count() == 1, f"(end={end}, {subline.inner_text() if subline.count() else None!r})")
