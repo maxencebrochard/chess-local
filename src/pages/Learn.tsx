@@ -157,7 +157,8 @@ export default function Learn() {
           setPathStep(saved.pathStep ?? null)
         } catch {}
       }
-      navigate('.', { replace: true, state: null })
+      // Sans state, rien à effacer : naviguer ici ramènerait sur Apprendre un onglet tapé entre-temps.
+      if (state) navigate('.', { replace: true, state: null })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
