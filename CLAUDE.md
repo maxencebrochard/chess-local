@@ -264,6 +264,7 @@ Règle de version : l'app ne se met pas à jour seule, et `inspectBackup` refuse
 ### Pièces et sons
 
 Les jeux de pièces sont des SVG documentés dans `public/pieces/<jeu>/` (liste dans `src/lib/pieces.ts`, réglage `pieceSet`), rendus en `<img>` par `Board` via l'option `pieces` de react-chessboard ; `classique` = pièces intégrées à la lib.
+Les jeux qui dessinent jusqu'au bord de la case portent une échelle (`scale` de `PIECE_SETS`), appliquée par `PieceIcon` au seul dessin sur l'échiquier, avant le recentrage de `pieceCenters.json` : les coins des coordonnées restent libres pour tous les jeux (suite `coordinates`), et le conteneur `.board-piece`, donc le glissé, garde la taille de la case.
 Les sons (`public/sounds/`, `scripts/make-sounds.sh` pour les notifications Kenney CC0 et `scripts/extract-video-sounds.py` pour les impacts de la vidéo autorisée par Max) passent tous par `src/lib/sounds.ts`, qui lit lui-même `playSounds` et `soundVolume` : pas de test du réglage aux appels.
 `Board` porte le ressenti tactile partagé : clone à 1,7, dessin décalé de 0,85 case au-dessus du contact, disque de visée et retour animé des refus.
 Le décalage vit sur `.board-piece` via `--piece-lift`, car déplacer le rectangle du clone serait compensé par le recentrage de dnd-kit.

@@ -4,16 +4,20 @@
 export interface PieceSet {
   id: string
   name: string
+  // Échelle du dessin dans sa case sur l'échiquier (1 par défaut). Les jeux qui dessinent jusqu'au bord
+  // de la case sont réduits pour laisser libres les coins des coordonnées : chaque facteur est l'échelle
+  // maximale mesurée sans contact sur une case de 47 px (iPhone), moins environ 1,5 % de marge.
+  scale?: number
 }
 
 export const PIECE_SETS: PieceSet[] = [
   { id: 'atelier', name: 'Atelier' },
   { id: 'wikimedia', name: 'Wikimedia' },
-  { id: 'celtique', name: 'Celtique' },
-  { id: 'chessnut', name: 'Chessnut' },
-  { id: 'fantasy', name: 'Fantasy' },
-  { id: 'spatial', name: 'Spatial' },
-  { id: 'classique', name: 'Classique' },
+  { id: 'celtique', name: 'Celtique', scale: 0.8 },
+  { id: 'chessnut', name: 'Chessnut', scale: 0.94 },
+  { id: 'fantasy', name: 'Fantasy', scale: 0.83 },
+  { id: 'spatial', name: 'Spatial', scale: 0.77 },
+  { id: 'classique', name: 'Classique', scale: 0.87 },
 ]
 
 export const DEFAULT_PIECE_SET = 'atelier'
@@ -23,6 +27,10 @@ export type PieceCode = (typeof PIECE_CODES)[number]
 
 export function isPieceSet(id: unknown): boolean {
   return PIECE_SETS.some((s) => s.id === id)
+}
+
+export function pieceScale(id: string): number {
+  return PIECE_SETS.find((s) => s.id === id)?.scale ?? 1
 }
 
 // URL d'une pièce d'un jeu à fichiers (servie depuis public/, donc relative à BASE_URL : jamais de
