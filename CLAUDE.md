@@ -255,7 +255,7 @@ Un nouvel asset lourd ou une nouvelle extension doit être couvert par `globPatt
 `src/lib/native.ts` détecte le runtime natif (`window.Capacitor.isNativePlatform`, posé par la native-bridge) et expose `haptic(kind)`, no-op synchrone sur le web.
 Le plugin n'est chargé que par `import('./nativeHaptics')` en natif ; ne jamais importer `@capacitor/*` statiquement : son repli web appellerait `navigator.vibrate` et la PWA changerait.
 `vite.config.ts` préfixe les chunks de `@capacitor/*` et du pilote par `assets/native-`, puis les exclut du précache.
-`Board` n'émet un retour que pour un geste de l'utilisateur sur cet échiquier (saisie, pose acceptée, prise, refus, prémouvement en file puis exécuté), jamais pour un coup adverse ni une navigation.
+`Board` émet un retour pour un geste de l'utilisateur sur cet échiquier (saisie, pose acceptée, prise, refus, prémouvement en file puis exécuté) et, plus léger via `playComputerMove`, pour un coup du camp opposé à `movableColor` ; jamais pour une navigation ou un saut de position.
 La migration PWA vers app passe par la sauvegarde de `backup.ts` (origines différentes) : carte de l'accueil en natif tant que la clé `chess-local-native-migration` est absente, posée par « Non merci » ou une restauration réussie, effacée par la réinitialisation.
 En natif, l'export sans feuille de partage annonce un échec au lieu d'un faux téléchargement.
 Règle de version : l'app ne se met pas à jour seule, et `inspectBackup` refuse une sauvegarde plus récente que son schéma ; ne pas déployer un nouveau `db.version(n)` sur le web avant un build de l'app qui le porte.
