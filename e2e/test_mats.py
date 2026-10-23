@@ -396,11 +396,18 @@ def puzzle_suite(p, browser, index, puzzles):
         # (1,5 s) est murale et deux lectures espacées de 800 ms en sortaient sous charge. Le journal
         # couvre toute la phase ; un chrono qui tourne y laisse au moins une autre valeur (tick de
         # 100 ms). Figé à la milliseconde : l'affichage gelé est le temps restant exact à la pause.
-        net = [e for e in page.evaluate("() => window.__clock") if e["phase"] == "net"]
+        # La durée va du premier rendu `net` au premier rendu qui le remplace (temps de la page) :
+        # un réseau trop court ne laisserait tomber aucun tick et ne prouverait rien.
+        log = page.evaluate("() => window.__clock")
+        net = [e for e in log if e["phase"] == "net"]
         frozen = sorted({e["ms"] for e in net})
+        last = max((i for i, e in enumerate(log) if e["phase"] == "net"), default=None)
+        after = next((e for e in log[last + 1:] if e["phase"] != "net"), None) if last is not None else None
+        net_ms = after["t"] - net[0]["t"] if after else 0
         check("[mat en 1] légende du réseau", any(e["legend"] >= 1 for e in net), f"({[e['legend'] for e in net]})")
-        check("[mat en 1] chrono suspendu pendant le réseau", len(frozen) == 1,
-              f"(valeurs affichées pendant le réseau : {frozen}, phase de {net[-1]['t'] - net[0]['t'] if net else 0:.0f} ms observés)")
+        check("[mat en 1] chrono suspendu pendant le réseau",
+              len(frozen) == 1 and after is not None and after["phase"] == "play" and net_ms >= 1000,
+              f"(valeurs affichées pendant le réseau : {frozen}, remplacé par {after['phase'] if after else None} après {net_ms:.0f} ms)")
         pid2 = attr(page, "[data-run]", "data-puzzle")
         check("[mat en 1] nouveau puzzle", pid2 and pid2 != pid)
         pz2 = puzzles.get(pid2)
