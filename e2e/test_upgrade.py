@@ -677,10 +677,12 @@ def recent_settings_phase(page, base):
 
 
 def export_backup(tag, page, base, dest):
-    """Stats → Exporter tout, téléchargement intercepté et copié hors du contexte (Playwright
-    supprime ses fichiers temporaires à la fermeture du contexte)."""
-    page.goto(f"{base}/#/stats")
-    ck.appears(f"{tag} stats : bouton Exporter tout", page, "button:has-text('Exporter tout')", timeout=15000)
+    """Exporter tout, téléchargement intercepté et copié hors du contexte (Playwright supprime ses
+    fichiers temporaires à la fermeture du contexte). Le bouton est dans Stats sur les anciens
+    builds, dans Mes données (`/donnees`) depuis le lot 3 du plan UX."""
+    route = "/stats" if tag == "[ancien]" else "/donnees"
+    page.goto(f"{base}/#{route}")
+    ck.appears(f"{tag} {route} : bouton Exporter tout", page, "button:has-text('Exporter tout')", timeout=15000)
     with page.expect_download(timeout=15000) as dl:
         page.click("button:has-text('Exporter tout')")
     dl.value.save_as(dest)
@@ -994,7 +996,7 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
             ctx = mobile_context(p, browser, ck, standalone=True)
             page = ctx.new_page()
             page.set_default_timeout(15000)
-            page.goto(f"{base}/#/stats")
+            page.goto(f"{base}/#/donnees")
             ck.appears("[restauration] nouveau build, profil vierge : bouton Restaurer", page, "button:has-text('Restaurer')", timeout=15000)
             page.set_input_files("input[type=file]", backup_path)
             # Nouveau flux : le fichier est d'abord validé, puis une feuille demande confirmation
@@ -1007,7 +1009,7 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
             ck.appears("[restauration] message de fin de restauration", page,
                        "[data-testid=backup-msg][data-kind=success] >> text=Sauvegarde restaurée", timeout=15000)
             page.reload()
-            ck.appears("[restauration] app rechargée", page, "main :text('Statistiques')", timeout=15000)
+            ck.appears("[restauration] app rechargée", page, "main h1:has-text('Mes données')", timeout=15000)
             restored = snapshot(page)
             compare_snapshots("[restauration]", before, restored)
             phase("affichage après restauration", displayed_ok, "[restauration]", page, base, exp, NEW_LABELS)

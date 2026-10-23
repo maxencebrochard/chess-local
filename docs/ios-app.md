@@ -112,8 +112,8 @@ La sauvegarde complète existante est donc le chemin, déjà vérifiée par les 
 1. Dans la PWA, Plus, Mes données, « Exporter tout », puis « Enregistrer dans Fichiers ».
 2. Dans l'app, l'accueil affiche « Récupérer tes données » jusqu'à une restauration réussie ou « Non merci » (la croix), même si un puzzle a déjà été joué dans l'app.
    La carte reste compacte pour que Jouer reste entièrement visible au-dessus de la navigation sur un petit iPhone.
-3. La carte ouvre Stats sur Tes données, où l'app seule affiche la marche à suivre ; « Restaurer » ouvre le sélecteur de fichiers d'iOS, puis l'écran de confirmation habituel affiche ce qui sera restauré.
-   La restauration remplace tout ce qui a été fait dans l'app avant elle, et Stats le dit.
+3. La carte ouvre Mes données (`#/donnees`), où l'app seule affiche la marche à suivre ; « Restaurer » ouvre le sélecteur de fichiers d'iOS, puis l'écran de confirmation habituel affiche ce qui sera restauré.
+   La restauration remplace tout ce qui a été fait dans l'app avant elle, et la page le dit.
 4. Après une restauration réussie, la carte disparaît (clé `chess-local-native-migration` posée).
 5. « Non merci » masque la carte pour un nouveau départ ; la réinitialisation efface la clé et la carte revient.
 
@@ -156,7 +156,7 @@ Par Max, sur l'appareil :
 - Service worker : absent sous `capacitor://`, l'enregistrement doit échouer en silence, les assets étant déjà locaux.
 - Migration : export depuis la PWA, restauration dans l'app, chiffres identiques sur Stats et l'accueil.
 - Export depuis l'app : la feuille de partage s'ouvre avec le fichier (sinon, phase suivante ci-dessus) ; c'est le filet avant une désinstallation.
-- Stats : la ligne « Stockage protégé » et son texte sont écrits pour la PWA ; noter ce que `navigator.storage.persisted()` répond dans l'app et adapter le texte en conséquence.
+- Mes données : la ligne « Stockage protégé » et son texte sont écrits pour la PWA ; noter ce que `navigator.storage.persisted()` répond dans l'app et adapter le texte en conséquence.
 - Appui long sur une pièce : aucun menu ni aperçu WebKit (`allowsLinkPreview` est coupé).
 
 ## Ce que Max doit faire

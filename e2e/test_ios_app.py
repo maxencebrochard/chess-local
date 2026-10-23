@@ -158,9 +158,9 @@ def part_web(p, browser):
     ck.appears("web : accueil", page, "text=Résolvez !")
     page.wait_for_timeout(500)
     check("web : pas de carte de migration sur base vide", page.locator(CARD).count() == 0)
-    page.goto(f"{BASE}/#/stats")
-    ck.appears("web : Stats", page, "[data-testid=restore-btn]")
-    check("web : pas de marche à suivre native dans Stats", page.locator("[data-testid=native-migration-help]").count() == 0)
+    page.goto(f"{BASE}/#/donnees")
+    ck.appears("web : Mes données", page, "[data-testid=restore-btn]")
+    check("web : pas de marche à suivre native dans Mes données", page.locator("[data-testid=native-migration-help]").count() == 0)
     # Le service worker n'existe qu'en build de production (vite-plugin-pwa ne l'active pas en dev).
     sw = page.evaluate("""() => fetch('sw.js').then(async (r) =>
       (r.headers.get('content-type') || '').includes('javascript') ? r.text() : null)""")
@@ -170,7 +170,7 @@ def part_web(p, browser):
           new Promise((r) => setTimeout(() => r(false), 15000))])""")
         check("web : service worker installé", ready)
         page.reload()
-        ck.appears("web : Stats rechargées sous service worker", page, "[data-testid=restore-btn]")
+        ck.appears("web : Mes données rechargée sous service worker", page, "[data-testid=restore-btn]")
         check("web : page contrôlée par le service worker", page.evaluate("() => navigator.serviceWorker.controller !== null"))
     page.wait_for_timeout(500)
     check("web : chunk natif jamais demandé (page ni service worker)", chunks == [], str(chunks))
@@ -435,17 +435,17 @@ def part_status0(p, browser):
 
 
 def part_migration(p, browser, tmp):
-    # 1. Dans la PWA : de vraies données, exportées par le bouton de Stats.
+    # 1. Dans la PWA : de vraies données, exportées par le bouton de Mes données.
     web = desktop_context(browser, ck, settings={"themeId": "purple"})
     web.add_init_script(NO_SHARE)
     page = web.new_page()
-    page.goto(f"{BASE}/#/stats")
-    if not check("pwa : base prête", ck.appears("pwa : Stats", page, "[data-testid=export-btn]") and wait_schema(page)):
+    page.goto(f"{BASE}/#/donnees")
+    if not check("pwa : base prête", ck.appears("pwa : Mes données", page, "[data-testid=export-btn]") and wait_schema(page)):
         web.close()
         return
     seed(page, SEED)
     page.reload()
-    ck.appears("pwa : Stats rechargée", page, "[data-testid=export-btn]")
+    ck.appears("pwa : Mes données rechargée", page, "[data-testid=export-btn]")
     before = snapshot(page)
     settings_before = settings_state(page)
     with page.expect_download() as dl:
@@ -464,21 +464,23 @@ def part_migration(p, browser, tmp):
         box = page.locator(CARD).bounding_box()
         check("app : carte dans la largeur de l'écran", box is not None and box["x"] >= 0 and box["x"] + box["width"] <= 393, str(box))
         play_visible(page, "app : Jouer entièrement à l'écran sous la carte")
+        hist = page.evaluate("() => history.length")
         page.click("[data-testid=native-migration-go]")
-        ck.appears("app : Stats, section Tes données", page, "[data-testid=restore-btn]")
+        ck.appears("app : page Mes données", page, "[data-testid=restore-btn]")
         ck.appears("app : marche à suivre depuis la PWA", page, "[data-testid=native-migration-help]")
         page.wait_for_timeout(400)
-        # Défilé jusqu'au titre : en haut de l'écran, ou défilement au maximum si la page est trop courte.
+        check("app : la carte ouvre #/donnees en replace (comme l'ancienne racine Stats)",
+              page.evaluate("() => location.hash") == "#/donnees" and page.evaluate("() => history.length") == hist,
+              f"({page.evaluate('() => location.hash')}, {hist} -> {page.evaluate('() => history.length')})")
+        # Titre et marche à suivre visibles d'emblée, sous la zone sûre, sans défilement.
         pos = page.evaluate("""() => {
-          const h = document.querySelector('[data-testid=data-heading]')
-          let el = h.parentElement
-          while (el && !(el.scrollHeight > el.clientHeight && /(auto|scroll)/.test(getComputedStyle(el).overflowY))) el = el.parentElement
-          el ??= document.scrollingElement
-          const r = h.getBoundingClientRect()
-          return { y: r.y, bottom: r.bottom, vh: innerHeight, scrolled: el.scrollTop, atEnd: el.scrollTop + el.clientHeight >= el.scrollHeight - 2 }
+          const r = (s) => document.querySelector(s).getBoundingClientRect()
+          return { y: r('[data-testid=data-heading]').y, help: r('[data-testid=native-migration-help]').bottom, vh: innerHeight,
+                   scrolled: document.querySelector('main').scrollTop }
         }""")
-        check("app : Tes données amené à l'écran", (pos["scrolled"] > 0 or pos["atEnd"]) and 0 <= pos["y"] and pos["bottom"] <= pos["vh"] and (pos["y"] < 120 or pos["atEnd"]), str(pos))
-        check("app : state de navigation consommé", page.evaluate("() => history.state?.usr == null"))
+        check("app : Mes données et la marche à suivre à l'écran", pos["scrolled"] == 0 and 0 <= pos["y"] < 140 and pos["help"] <= pos["vh"], str(pos))
+        check("app : aucun state de navigation", page.evaluate("() => history.state?.usr == null"))
+        shot(page, "ios_migration_donnees_393x852")
         page.set_input_files("input[type=file]", path)
         if ck.appears("app : confirmation de restauration", page, "[data-testid=restore-sheet]"):
             page.click("[data-testid=restore-confirm]")
@@ -510,7 +512,7 @@ def part_migration(p, browser, tmp):
         ck.appears("non merci : accueil rechargé", page, "text=Résolvez !")
         page.wait_for_timeout(600)
         check("non merci : retenu après rechargement", page.locator(CARD).count() == 0)
-        page.goto(f"{BASE}/#/stats")
+        page.goto(f"{BASE}/#/donnees")
         if ck.appears("non merci : réinitialiser", page, "[data-testid=reset-btn]"):
             downloads = []
             page.on("download", lambda d: downloads.append(d))

@@ -19,7 +19,8 @@ SETTINGS = {"chesscomUsername": "popeye232"}
 # (`plus:<clé>` : onglet Plus, puis la carte `data-plus` de cette clé).
 NAV = [("Jouer", "Adversaire"), ("Puzzles", "Classement puzzles"), ("Apprendre", "Séance"),
        ("Plus", "Mes données"), ("plus:analyse", {"mobile": "Options", "desktop": "Copier PGN"}),
-       ("plus:parties", "Archive"), ("plus:statistiques", "Statistiques"), ("Accueil", "ChessLocal")]
+       ("plus:parties", "Archive"), ("plus:statistiques", "Statistiques"),
+       ("plus:reglages", "Profondeur du bilan de partie"), ("plus:donnees", "Dernier export"), ("Accueil", "ChessLocal")]
 
 
 def marker_for(marker, layout):
@@ -363,28 +364,25 @@ def suite(p):
     ck.appears("[archive] Bilan lance le review", page, "text=Démarrer le bilan", timeout=120000)
     page.click("header button:has-text('✕')")
 
-    # ---------- STATS / RÉGLAGES ----------
+    # ---------- STATS, puis RÉGLAGES (page extraite de Stats au lot 3) ----------
     nav_to(page, "plus:statistiques")
-    page.wait_for_timeout(600)
+    ck.appears("[stats] statistiques affichées", page, "[data-testid=threat-stats]")
+    nav_to(page, "plus:reglages")
+    ck.appears("[réglages] page ouverte depuis le hub", page, "main h1:text-is('Réglages')")
     page.locator("button[title='Bois']").click()
     page.wait_for_timeout(300)
-    check("[stats] thème Bois", '"themeId":"brown"' in page.evaluate("() => localStorage.getItem('chess-local-settings')"))
+    check("[réglages] thème Bois", '"themeId":"brown"' in page.evaluate("() => localStorage.getItem('chess-local-settings')"))
     page.locator("button[title='Vert']").click()
-    toggles = page.locator("main button.h-6.w-11")
-    t0 = toggles.nth(0)
-    was_on = "bg-accent" in (t0.get_attribute("class") or "")
-    t0.click(); page.wait_for_timeout(200)
-    check("[stats] toggle coups légaux", ("bg-accent" in (t0.get_attribute("class") or "")) != was_on)
-    t0.click()
-    t1 = toggles.nth(1)
-    was_on = "bg-accent" in (t1.get_attribute("class") or "")
-    t1.click(); page.wait_for_timeout(200)
-    check("[stats] toggle sons", ("bg-accent" in (t1.get_attribute("class") or "")) != was_on)
-    t1.click()
+    for name, label in (("Afficher les coups légaux", "coups légaux"), ("Sons", "sons")):
+        t = page.get_by_role("switch", name=name, exact=True)
+        was_on = t.get_attribute("aria-checked") == "true"
+        t.click(); page.wait_for_timeout(200)
+        check(f"[réglages] toggle {label}", (t.get_attribute("aria-checked") == "true") != was_on)
+        t.click()
     for depth, key in [("Rapide", "fast"), ("Profond", "deep"), ("Équilibré", "balanced")]:
         page.get_by_role("button", name=depth, exact=True).click()
         page.wait_for_timeout(200)
-        check(f"[stats] profondeur {depth}", f'"reviewDepth":"{key}"' in page.evaluate("() => localStorage.getItem('chess-local-settings')"))
+        check(f"[réglages] profondeur {depth}", f'"reviewDepth":"{key}"' in page.evaluate("() => localStorage.getItem('chess-local-settings')"))
 
     ctx.close()
     browser.close()

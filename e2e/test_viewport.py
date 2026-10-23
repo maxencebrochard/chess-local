@@ -28,7 +28,7 @@ check = ck.check
 SAFE_TOP, SAFE_BOTTOM = 59, 34
 # Pages qui défilent dans `<main>` ou non : la liste couvre les deux (mesuré sur main :
 # `/`, `/analyse`, `/puzzles` en 393x852 tiennent sans défiler).
-PAGES = ["/", "/mats", "/mats?d=geo-diagonale-ligne", "/apprendre", "/apprendre/parcours", "/analyse", "/jouer", "/puzzles", "/stats", "/plus", "/revision", "/seance"]
+PAGES = ["/", "/mats", "/mats?d=geo-diagonale-ligne", "/apprendre", "/apprendre/parcours", "/analyse", "/jouer", "/puzzles", "/stats", "/reglages", "/donnees", "/plus", "/revision", "/seance"]
 # Débordement provoqué : un élément ajouté en fin de `host`, retiré par `remove_injected`. En
 # hauteur sur body, c'est le débordement du document (ce qu'iOS produit quand sa zone visible ne
 # colle pas à la mise en page) : sans lui, Chromium n'a nulle part où chaîner le geste et tous
@@ -347,7 +347,7 @@ def desktop_suite(p, browser):
     """1440x900 : nav latérale, même règle (document fixe, `<main>` à la hauteur du viewport)."""
     ctx = desktop_context(browser, ck)
     page = ctx.new_page()
-    for path in ("/", "/stats", "/analyse"):
+    for path in ("/", "/stats", "/reglages", "/analyse"):
         label = f"[1440x900] {path}"
         page.goto(f"{BASE}/#{path}")
         ck.appears(f"{label} : page affichée", page, "main >> *")

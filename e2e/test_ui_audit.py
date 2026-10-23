@@ -603,9 +603,13 @@ def tour(page, profile):
     a("archive")
     goto(page, "/stats", "main :text('Statistiques')")
     a("stats")
+    goto(page, "/reglages", "main h1:text-is('Réglages')")
+    a("reglages")
+    goto(page, "/donnees", "main h1:has-text('Mes données')")
+    a("donnees")
     click(page, f"{t} bouton de réinitialisation", "[data-testid=reset-btn]")
     page.wait_for_timeout(400)
-    a("stats-reinitialiser", scroll=False)
+    a("donnees-reinitialiser", scroll=False)
     page.keyboard.press("Escape")
 
     goto(page, "/insights", "main h1")
@@ -622,7 +626,7 @@ def tour_empty(page, profile):
     a = lambda name, **kw: audit(page, profile, name, **kw)  # noqa: E731
     goto(page, "/", "main [data-review-ready]")
     a("vide-accueil")
-    for path, name in (("/archive", "vide-archive"), ("/stats", "vide-stats"), ("/revision", "vide-revision"),
+    for path, name in (("/archive", "vide-archive"), ("/stats", "vide-stats"), ("/donnees", "vide-donnees"), ("/revision", "vide-revision"),
                        ("/attaques-manquees", "vide-attaques-manquees"), ("/insights", "vide-insights")):
         goto(page, path, "main h1")
         page.wait_for_timeout(1200)

@@ -621,7 +621,7 @@ def reset_prefs_suite(p, browser):
     page.reload()
     ck.appears("[préférences] longueur conservée", page, '[data-level="8"][aria-checked="true"]')
     ck.appears("[préférences] mode conservé", page, '[data-mode="flash"][aria-checked="true"]')
-    page.goto(f"{BASE}/#/stats")
+    page.goto(f"{BASE}/#/donnees")
     with page.expect_download() as download:
         page.locator('[data-testid="export-btn"]').click()
     with open(download.value.path(), encoding="utf-8") as f:
