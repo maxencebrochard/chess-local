@@ -282,9 +282,18 @@ export class RunRecorder {
 
   // `domain` : les séries de l'entraîneur de visualisation (domaine `visualisation`) et des Finales
   // au chrono (domaine `endgame-clock`) réutilisent ce mécanisme.
-  constructor(itemId: string, domain: string = MATS_DOMAIN) {
+  // `id` : ligne déjà écrite par cette série (série reprise au retour de l'analyseur), mise à jour
+  // en place plutôt que doublée.
+  constructor(itemId: string, domain: string = MATS_DOMAIN, id: number | null = null) {
     this.itemId = itemId
     this.domain = domain
+    this.id = id
+  }
+
+  // Ligne de la série, une fois la première écriture faite (null avant).
+  async rowId(): Promise<number | null> {
+    await this.chain
+    return this.id
   }
 
   save(score: number): Promise<unknown> {
@@ -305,6 +314,38 @@ export class RunRecorder {
     const previous = rows.filter((r) => r.itemId === this.itemId && r.id !== this.id).map((r) => r.score ?? 0)
     return score > Math.max(0, ...previous)
   }
+}
+
+// ---------- Bilan laissé pour l'analyseur (exerciseReturn.ts) ----------
+
+// Une série close (chrono arrêté, score déjà écrit) peut ouvrir l'analyseur : son bilan est gardé
+// tel quel et réaffiché au retour, sans nouvelle écriture ni chrono relancé.
+export const MATS_RETURN_SCREEN = 'mats'
+
+export interface PuzzleRunSummary {
+  kind: 'puzzle'
+  score: number
+  strikes: number
+  left: number // temps restant affiché à la fin (ms)
+  newRecord: boolean
+  missed: { id: string; fen: string; moves: string[]; rating: number; themes: string[] }[]
+}
+
+export interface ChronoRunSummary {
+  kind: 'chrono'
+  score: number
+  reason: string | null
+  stopped: boolean
+  newRecord: boolean
+  pos: ChronoPosition
+  moves: string[] // coups UCI joués sur la dernière position
+  left: number // temps restant affiché à la fin (ms)
+}
+
+export interface MatsReturn {
+  drillId: string
+  cadence: Cadence
+  summary: PuzzleRunSummary | ChronoRunSummary
 }
 
 // ---------- Préférences (localStorage, clé propre, hors sauvegarde) ----------

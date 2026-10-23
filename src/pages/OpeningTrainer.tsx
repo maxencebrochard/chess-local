@@ -3,12 +3,13 @@
 // variantes avec leur état. La fiche vit dans l'URL (?famille=&camp=&longueur=) : retour du
 // navigateur, rechargement et retour depuis l'analyse retrouvent la même fiche.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { MoveText } from '../components/MoveText'
-import { OpeningDrill, type DrillItem } from '../components/OpeningDrill'
+import { OpeningDrill, type DrillItem, type DrillSnapshot } from '../components/OpeningDrill'
 import { Segmented } from '../components/Segmented'
 import { Engine } from '../lib/engine'
+import { clearExercise, isRestore, readExercise, stashExercise } from '../lib/exerciseReturn'
 import { openingFr } from '../lib/openingNames'
 import {
   EMPTY_PROGRESS, MODE_LABEL, getFamily, loadProgress, modeStats, nextMovePositions, pickSuite, pickVariant,
@@ -28,8 +29,20 @@ const PAGE_SIZE = 20
 
 type Filter = 'all' | 'review' | 'new'
 
+type Drill = { item: DrillItem; key: number; retry: boolean; snapshot?: DrillSnapshot }
+
+// Drill jugé laissé pour l'analyseur (exerciseReturn.ts), repris au retour sur la même fiche.
+const RETURN_SCREEN = 'ouvertures'
+interface ReturnState {
+  famille: string
+  color: Color
+  drill: Drill
+  session: { ok: number; total: number }
+}
+
 export default function OpeningTrainer() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [params, setParams] = useSearchParams()
   const fam = getFamily(params.get('famille') ?? '')
   const campParam = params.get('camp')
@@ -40,15 +53,20 @@ export default function OpeningTrainer() {
   const [query, setQuery] = useState('')
   const [progress, setProgress] = useState<Progress>(EMPTY_PROGRESS)
   // retry : « Réessayer » d'une même position ; en « Prochain coup », seule la 1re tentative compte.
-  const [drill, setDrill] = useState<{ item: DrillItem; key: number; retry: boolean } | null>(null)
+  const [drill, setDrill] = useState<Drill | null>(null)
   const [saveError, setSaveError] = useState(false)
   const [session, setSession] = useState({ ok: 0, total: 0 })
   const [filter, setFilter] = useState<Filter>('all')
   const [showAll, setShowAll] = useState(false)
   const engineRef = useRef<Engine | null>(null)
+  // Retour de l'analyseur : le drill jugé et le compteur de séance de la fiche, lus une fois.
+  const returned = useRef(isRestore(location.state) ? readExercise<ReturnState>(RETURN_SCREEN) : null)
 
   useEffect(() => {
     void loadProgress().then(setProgress)
+    if (location.state) navigate(location.pathname + location.search, { replace: true, state: null })
+    clearExercise()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(
@@ -60,12 +78,22 @@ export default function OpeningTrainer() {
   )
 
   // Nouvelle fiche (ou retour navigateur pendant un drill) : drill fermé, en haut de page, liste
-  // repliée, filtre et compteur de séance remis à zéro. Le camp fait partie de la séance.
+  // repliée, filtre et compteur de séance remis à zéro. Le camp fait partie de la séance. Retour de
+  // l'analyseur sur la même fiche : drill et compteur repris tels quels (StrictMode rejoue cet
+  // effet : la reprise reste valable tant que la fiche ne change pas).
   useEffect(() => {
-    setDrill(null)
+    const r = returned.current
+    if (r && fam && r.famille === fam.key && r.color === color) {
+      setDrill(r.drill)
+      setSession(r.session)
+    } else {
+      returned.current = null
+      setDrill(null)
+      setSession({ ok: 0, total: 0 })
+    }
     setShowAll(false)
     setFilter('all')
-    setSession({ ok: 0, total: 0 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fam?.key, color])
   useEffect(() => {
     document.querySelector('main')?.scrollTo(0, 0)
@@ -153,6 +181,7 @@ export default function OpeningTrainer() {
       plyTarget={plyTarget}
       getEngine={getEngine}
       session={session}
+      snapshot={drill.snapshot}
       onResult={(ok) => void onResult(drill.item, drill.retry, ok)}
       onRetry={() => setDrill({ item: drill.item, key: drill.key + 1, retry: true })}
       onNext={() => {
@@ -160,7 +189,8 @@ export default function OpeningTrainer() {
         if (next) setDrill({ item: next, key: drill.key + 1, retry: false })
       }}
       onClose={() => setDrill(null)}
-      onAnalyse={(moves) =>
+      onAnalyse={(moves, snapshot) => {
+        stashExercise(RETURN_SCREEN, { famille: fam.key, color, drill: { ...drill, snapshot }, session } satisfies ReturnState)
         navigate('/analyse', {
           state: {
             fen: START_FEN,
@@ -170,7 +200,7 @@ export default function OpeningTrainer() {
             returnTo: `/ouvertures?${params.toString()}`,
           },
         })
-      }
+      }}
     />
   )
 

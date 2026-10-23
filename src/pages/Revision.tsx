@@ -6,7 +6,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Chess, DEFAULT_POSITION } from 'chess.js'
 import { Cta } from '../components/Cta'
 import { MistakeExercise } from '../components/MistakeExercise'
-import { OpeningDrill } from '../components/OpeningDrill'
+import { OpeningDrill, type DrillSnapshot } from '../components/OpeningDrill'
 import { PuzzlePlayer } from '../components/PuzzlePlayer'
 import { Engine } from '../lib/engine'
 import { displayThemes } from '../lib/puzzleThemes'
@@ -37,6 +37,7 @@ interface StoredSession {
   results: Result[]
   remaining: number
   returnTo: string
+  drill?: DrillSnapshot // variante jugée laissée pour l'analyseur : son verdict, repris au retour
 }
 
 export default function Revision() {
@@ -54,6 +55,8 @@ export default function Revision() {
   const [remaining, setRemaining] = useState(0) // items dus au-delà du plafond de la séance
   const [saveError, setSaveError] = useState<SaveError | null>(null)
   const [returnTo, setReturnTo] = useState('/')
+  // Verdict d'une variante restauré au retour de l'analyseur, pour la clé de drill d'alors.
+  const [drillSnap, setDrillSnap] = useState<{ key: string; snapshot: DrillSnapshot } | null>(null)
   const engineRef = useRef<Engine | null>(null)
   // Items déjà jugés (index), posés de façon synchrone : un second verdict dans le même rendu
   // (Réessayer sur le drill refait feu `onResult`) n'écrit jamais deux fois.
@@ -82,12 +85,15 @@ export default function Revision() {
           recorded.current = new Set(saved.results.map((r) => r.idx))
           setRemaining(saved.remaining ?? 0)
           setReturnTo(saved.returnTo)
-          // Une variante déjà jugée ne se restaure pas (le drill repartirait du premier coup) :
-          // la séance reprend à l'item suivant, ou à son écran de fin.
+          // Une variante jugée reprend sur son verdict (drill laissé par « Analyser »). Sans ce
+          // verdict (séance d'une version antérieure), le drill repartirait du premier coup : la
+          // séance reprend alors à l'item suivant, ou à son écran de fin.
           const judgedVariant = saved.items[saved.idx]?.kind === 'variant' && saved.results.some((r) => r.idx === saved.idx)
-          if (judgedVariant && saved.idx + 1 >= saved.items.length) setEnded(true)
-          setIdx(judgedVariant ? Math.min(saved.idx + 1, saved.items.length - 1) : saved.idx)
-          setPhase(judgedVariant ? 'play' : saved.phase)
+          const skip = judgedVariant && !saved.drill
+          if (judgedVariant && saved.drill) setDrillSnap({ key: `${saved.idx}-0`, snapshot: saved.drill })
+          if (skip && saved.idx + 1 >= saved.items.length) setEnded(true)
+          setIdx(skip ? Math.min(saved.idx + 1, saved.items.length - 1) : saved.idx)
+          setPhase(skip ? 'play' : saved.phase)
           navigate('.', { replace: true, state: null })
           return
         } catch {}
@@ -182,9 +188,14 @@ export default function Revision() {
     navigate(returnTo, { replace: true })
   }
 
-  function analyse(moves?: string[]) {
+  function analyse(moves?: string[], drill?: DrillSnapshot) {
     if (!items) return
     const item = items[idx]
+    // Le verdict de la variante part avec la séance : le retour le réaffiche tel quel.
+    if (drill) {
+      const stored: StoredSession = { items, idx, phase, results, remaining, returnTo, drill }
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
+    }
     const back = { returnTo: '/revision', returnLabel: 'Retour à la révision' }
     if (item.kind === 'puzzle') {
       const p = item.puzzle
@@ -297,13 +308,14 @@ export default function Revision() {
         plyTarget={null}
         getEngine={getEngine}
         session={{ ok: 0, total: 0 }}
+        snapshot={drillSnap?.key === key ? drillSnap.snapshot : null}
         title={`🔁 Révision ${progress}`}
         subtitle={statusLabel(item.item)}
         onResult={finish}
         onRetry={retry}
         onNext={next}
         onClose={close}
-        onAnalyse={(moves) => analyse(moves)}
+        onAnalyse={(moves, snapshot) => analyse(moves, snapshot)}
         nextLabel="Suivant"
         resultNote={result?.next ?? null}
       />

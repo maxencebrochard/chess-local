@@ -32,7 +32,7 @@ TABLES_V2 = TABLES[:6]
 STORES = len(TABLES)
 INSIGHTS_KEY = "chess-local-insights-v1"
 # Clés sessionStorage des séances en cours (SESSION_KEYS de backup.ts).
-SESSION_KEYS = ["learn-session-v1", "revision-session-v1", "seance-session-v1"]
+SESSION_KEYS = ["learn-session-v1", "revision-session-v1", "path-session-v1", "seance-session-v1", "exercise-return-v1"]
 SETTINGS_KEY = "chess-local-settings"
 LAST_EXPORT_KEY = "chess-local-last-export"
 FILE_INPUT = "input[type=file]"

@@ -438,6 +438,33 @@ def give_answer(page, kind, target, o, right):
     return [frm, to]
 
 
+def analysis_round_trip(page, o, rounds):
+    """Après un verdict : « Analyser » ouvre la ligne jusqu'à la position finale, et le retour rend
+    la même question sur le même verdict, compteurs compris, sans réécrire la question ni doubler
+    la ligne de série (vérifié aussi par le bilan de persistance en fin de série)."""
+    keys = ("data-item", "data-kind", "data-verdict", "data-phase")
+    before = {k: run_attr(page, k) for k in keys}
+    counters = (page.locator("[data-score]").first.get_attribute("data-score"), page.locator("[data-errors]").first.get_attribute("data-errors"))
+    rows_before = len(vis_rows(page, rounds + 1)["rows"])
+    if not ck.appears("[analyse] bouton Analyser après le verdict", page, "[data-reveal] button:has-text('Analyser')", timeout=3000):
+        return
+    page.locator("[data-reveal] button", has_text="Analyser").click()
+    if not ck.appears("[analyse] « Retour à l'exercice » dans l'analyseur", page, "button:has-text(\"Retour à l'exercice\")", timeout=10000):
+        return
+    check("[analyse] analyseur ouvert", page.evaluate("() => location.hash") == "#/analyse")
+    check("[analyse] position finale de la ligne transmise", board_settled(page, o["placement"], timeout=5000) == o["placement"])
+    page.get_by_role("button", name="Retour à l'exercice").click()
+    if not ck.appears("[analyse] retour : même question sur son verdict", page, f"[data-vis-run][data-item='{before['data-item']}'][data-phase='reveal']", timeout=15000):
+        return
+    after = {k: run_attr(page, k) for k in keys}
+    check("[analyse] retour : question, type et verdict identiques", after == before, f"({after} vs {before})")
+    got = (page.locator("[data-score]").first.get_attribute("data-score"), page.locator("[data-errors]").first.get_attribute("data-errors"))
+    check("[analyse] retour : score et erreurs identiques", got == counters, f"({got} vs {counters})")
+    check("[analyse] retour : position finale toujours révélée", board_settled(page, o["placement"]) == o["placement"])
+    page.wait_for_timeout(400)
+    check("[analyse] retour : aucune écriture de plus", len(vis_rows(page)["rows"]) == rows_before, f"({len(vis_rows(page)['rows'])} vs {rows_before})")
+
+
 def ui_suite(p, browser, bank):
     ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block")
     page = ctx.new_page()
@@ -498,6 +525,8 @@ def ui_suite(p, browser, bank):
         if f"r-{verdict}" not in shots_done:
             shots_done.add(f"r-{verdict}")
             shot(page, f"visualisation_reveal_{verdict}_393x852")
+        if score == 2 and right:
+            analysis_round_trip(page, o, rounds)
         page.get_by_role("button", name="Bilan" if errors >= 3 else "Suivant").click()
         if errors < 3:
             ck.appears(f"[série] tour {rounds} : question suivante", page, "[data-vis-run][data-phase='question']", timeout=5000)

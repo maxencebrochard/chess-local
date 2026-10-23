@@ -361,6 +361,20 @@ def play_item(page, kind, n, log):
             check_one_verdict("[variante] maîtrisée", page, n_snd, "success")
             btn = page.locator("[data-result] button", has_text="Suivant")
             check("[variante] bouton « Suivant » (pas « Variante suivante »)", btn.count() > 0 and btn.first.inner_text().strip() == "Suivant")
+            # Analyser la variante jugée puis revenir : même item sur son verdict, même échéance, pas
+            # l'item suivant (l'unique écriture est vérifiée par le bilan des données).
+            uci, header, note = page.get_attribute("[data-drill]", "data-uci"), header_text(page), next_label(page)
+            n_snd = len(sound_log(page))
+            page.locator("[data-result] button", has_text="Analyser").click()
+            if ck.appears("[variante:analyse] « Retour à la révision »", page, "button:has-text('Retour à la révision')", timeout=10000):
+                page.locator("button", has_text="Retour à la révision").click()
+                if ck.appears("[variante:analyse] retour : variante sur son verdict", page, "[data-drill] [data-result] >> text=Variante maîtrisée", timeout=10000):
+                    check("[variante:analyse] retour : même item, mêmes coups", header_text(page) == header and page.get_attribute("[data-drill]", "data-uci") == uci,
+                          f"({header_text(page)!r})")
+                    check("[variante:analyse] retour : même échéance annoncée", next_label(page) == note, f"({next_label(page)!r} vs {note!r})")
+                    page.wait_for_timeout(400)
+                    check("[variante:analyse] retour : aucun son de verdict rejoué",
+                          not [e for e in sounds_heard(page, n_snd) if e["name"] in ("success", "fail")])
         log["Göring"] = next_label(page) if ok else ""
         shot(page, "revision_variant_852")
 

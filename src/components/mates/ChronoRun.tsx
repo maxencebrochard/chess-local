@@ -2,6 +2,7 @@
 // Le chrono ne tourne qu'au trait du joueur, comme une pendule. Mats enchaînés jusqu'au premier
 // raté (drapeau, pat, nulle) ; une ligne de record par série, écrite dès le premier mat.
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Chess, type Move } from 'chess.js'
 import { Board } from '../Board'
 import { Cta } from '../Cta'
@@ -11,9 +12,10 @@ import { NetLegend } from './NetBoard'
 import type { Engine } from '../../lib/engine'
 import { analyseMate, netView, principleOf } from '../../lib/mateNet'
 import {
-  CADENCE_LABEL, CADENCE_MS, chronoPool, chronoTitle, RunRecorder, runKey,
-  type Cadence, type ChronoPosition, type Drill, type RunStats,
+  CADENCE_LABEL, CADENCE_MS, chronoPool, chronoTitle, MATS_RETURN_SCREEN, RunRecorder, runKey,
+  type Cadence, type ChronoPosition, type ChronoRunSummary, type Drill, type MatsReturn, type RunStats,
 } from '../../lib/mates'
+import { stashExercise } from '../../lib/exerciseReturn'
 import { playComputerMove, playMoveSound, sounds } from '../../lib/sounds'
 import { usePlayerClock } from '../usePlayerClock'
 
@@ -48,9 +50,10 @@ interface Props {
   getEngine: () => Engine
   onDone: () => void // série enregistrée : l'appelant relit les records
   onMenu: () => void
+  restored?: ChronoRunSummary // retour de l'analyseur : bilan de la série close, réaffiché tel quel
 }
 
-export function ChronoRun({ drill, cadence, stats, getEngine, onDone, onMenu }: Props) {
+export function ChronoRun({ drill, cadence, stats, getEngine, onDone, onMenu, restored }: Props) {
   const budget = CADENCE_MS[cadence] ?? 30_000
   const [series, setSeries] = useState(0) // « Rejouer » remonte tout
   return (
@@ -63,37 +66,41 @@ export function ChronoRun({ drill, cadence, stats, getEngine, onDone, onMenu }: 
       getEngine={getEngine}
       onDone={onDone}
       onMenu={onMenu}
+      restored={series === 0 ? restored : undefined}
       onReplay={() => setSeries((s) => s + 1)}
     />
   )
 }
 
-function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu, onReplay }: Props & {
+function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu, onReplay, restored }: Props & {
   budget: number
   onReplay: () => void
 }) {
-  const [newRecord, setNewRecord] = useState(false)
+  const navigate = useNavigate()
+  const [newRecord, setNewRecord] = useState(restored?.newRecord ?? false)
   const [played, setPlayed] = useState(0) // coups du joueur sur la position
   const timeouts = useRef(0) // délais de garde du moteur dépassés de suite
   const queue = useRef<ChronoPosition[]>([])
   const recorder = useRef(new RunRecorder(runKey(drill.id, cadence))).current
   const chessRef = useRef<Chess | null>(null)
-  const [pos, setPos] = useState<ChronoPosition>(() => nextPosition())
-  chessRef.current ??= new Chess(pos.fen)
+  const [pos, setPos] = useState<ChronoPosition>(() => restored?.pos ?? nextPosition())
+  // Bilan restauré : la dernière position telle que la série l'a laissée (coups rejoués).
+  chessRef.current ??= replay(pos.fen, restored?.moves ?? [])
   const playerColor = new Chess(pos.fen).turn()
-  const [fen, setFen] = useState(pos.fen)
-  const [lastMove, setLastMove] = useState<Move | null>(null)
+  const [fen, setFen] = useState(() => chessRef.current!.fen())
+  const [lastMove, setLastMove] = useState<Move | null>(() => chessRef.current!.history({ verbose: true }).at(-1) ?? null)
   const [thinking, setThinking] = useState(false)
-  const [phase, setPhase] = useState<Phase>('play')
-  const [score, setScore] = useState(0)
-  const [reason, setReason] = useState<string | null>(null)
-  const clock = usePlayerClock(budget, () => fail('Temps écoulé : le drapeau est tombé.'))
+  // Bilan restauré : la série est close, rien ne tourne ni ne s'écrit (phase 'over' dès le départ).
+  const [phase, setPhase] = useState<Phase>(restored ? 'over' : 'play')
+  const [score, setScore] = useState(restored?.score ?? 0)
+  const [reason, setReason] = useState<string | null>(restored?.reason ?? null)
+  const clock = usePlayerClock(restored?.left ?? budget, () => fail('Temps écoulé : le drapeau est tombé.'))
   const [mateMs, setMateMs] = useState<number | null>(null)
   const [solution, setSolution] = useState(false)
-  const [stopped, setStopped] = useState(false)
+  const [stopped, setStopped] = useState(restored?.stopped ?? false)
   // Miroirs hors rendu : phase, score et génération (réponse moteur périmée ignorée).
-  const phaseRef = useRef<Phase>('play')
-  const scoreRef = useRef(0)
+  const phaseRef = useRef<Phase>(restored ? 'over' : 'play')
+  const scoreRef = useRef(restored?.score ?? 0)
   const gen = useRef({ n: 0 }).current
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -103,7 +110,7 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
   }
 
   useEffect(() => {
-    clock.start()
+    if (!restored) clock.start()
     return () => {
       if (timer.current) clearTimeout(timer.current)
       gen.n++
@@ -243,6 +250,21 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
     return true
   }
 
+  // Série close : son bilan est gardé pour le retour, puis l'analyseur ouvre la dernière position.
+  function stash() {
+    const moves = chessRef.current!.history({ verbose: true }).map((m) => m.lan)
+    const summary: ChronoRunSummary = { kind: 'chrono', score, reason, stopped, newRecord, pos, moves, left: clock.left }
+    stashExercise(MATS_RETURN_SCREEN, { drillId: drill.id, cadence, summary } satisfies MatsReturn)
+    return moves
+  }
+
+  function analyse() {
+    const moves = stash()
+    navigate('/analyse', {
+      state: { fen: pos.fen, uci: moves, orientation: playerColor, label: title, returnTo: `/mats?d=${drill.id}`, returnLabel: 'Retour au bilan' },
+    })
+  }
+
   const net = phase === 'won' ? analyseMate(fen) : null
   const view = net ? netView(net, fen) : null
   const title = `${drill.pattern === 'mix' ? `${chronoTitle(pos.pattern)} (mélange)` : drill.title} · ${CADENCE_LABEL[cadence]}`
@@ -302,12 +324,29 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
             <Cta variant="secondary" className="w-full py-2 text-base" onClick={() => setSolution(true)}>
               💡 Voir la solution de Stockfish
             </Cta>
+            <Cta variant="secondary" className="w-full py-2 text-base" onClick={analyse}>
+              ♞ Analyser avec Stockfish
+            </Cta>
           </RunSummary>
         </div>
       )}
       {solution && (
-        <EngineContinuation startFen={pos.fen} playerColor={playerColor} mode="plan" onClose={() => setSolution(false)} />
+        <EngineContinuation
+          startFen={pos.fen}
+          playerColor={playerColor}
+          mode="plan"
+          label={title}
+          returnTo={`/mats?d=${drill.id}`}
+          onBeforeAnalyse={() => void stash()}
+          onClose={() => setSolution(false)}
+        />
       )}
     </div>
   )
+}
+
+function replay(fen: string, moves: string[]): Chess {
+  const c = new Chess(fen)
+  for (const m of moves) c.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] })
+  return c
 }

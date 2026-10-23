@@ -2,7 +2,7 @@
 // Accueil (quatre familles d'exercices et records) → fiche d'un schéma (`?d=<id>` : le retour
 // arrière du téléphone ramène à l'accueil) → série (contre la montre ou puzzles).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { Cta } from '../components/Cta'
 import type { PuzzleData } from '../components/PuzzlePlayer'
@@ -13,16 +13,21 @@ import { Sparkline } from '../components/mates/RunParts'
 import { Engine } from '../lib/engine'
 import {
   CADENCE_LABEL, CHRONO_CADENCES, chronoPool, drillBest, drillById, DRILLS, loadMatsStats, pieceCount, puzzleFinalFen,
-  puzzlePool, readPrefs, RUSH_CADENCES, runKey, SECTIONS, writePrefs,
-  type Cadence, type Drill, type MatsStats,
+  MATS_RETURN_SCREEN, puzzlePool, readPrefs, RUSH_CADENCES, runKey, SECTIONS, writePrefs,
+  type Cadence, type ChronoRunSummary, type Drill, type MatsReturn, type MatsStats, type PuzzleRunSummary,
 } from '../lib/mates'
+import { clearExercise, isRestore, readExercise } from '../lib/exerciseReturn'
 import { loadPuzzles } from '../lib/puzzles'
 
 export default function Mates() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const drill = drillById(params.get('d') ?? '') ?? null
   const [stats, setStats] = useState<MatsStats | null>(null)
-  const [run, setRun] = useState<{ drill: Drill; cadence: Cadence } | null>(null)
+  const [run, setRun] = useState<{ drill: Drill; cadence: Cadence; restored?: PuzzleRunSummary | ChronoRunSummary } | null>(null)
+  // Retour de l'analyseur : bilan de la série close, réaffiché sur la fiche de son schéma.
+  const returned = useRef(isRestore(location.state) ? readExercise<MatsReturn>(MATS_RETURN_SCREEN) : null)
   const [puzzles, setPuzzles] = useState<PuzzleData[] | null>(null)
   const [loadError, setLoadError] = useState(false)
   const engineRef = useRef<Engine | null>(null)
@@ -33,10 +38,13 @@ export default function Mates() {
 
   useEffect(() => {
     refresh()
+    if (location.state) navigate(location.pathname + location.search, { replace: true, state: null })
+    clearExercise()
     return () => {
       engineRef.current?.quit()
       engineRef.current = null
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function getEngine(): Engine {
@@ -50,8 +58,14 @@ export default function Mates() {
     loadPuzzles().then(setPuzzles).catch(() => setLoadError(true))
   }
   useEffect(() => {
-    // Retour arrière ou avant vers une autre page de /mats : la série en cours est close.
-    setRun(null)
+    // Retour arrière ou avant vers une autre page de /mats : la série en cours est close. Retour de
+    // l'analyseur sur la fiche du schéma : son bilan revient (StrictMode rejoue cet effet).
+    const r = returned.current
+    if (r && drill && r.drillId === drill.id) setRun({ drill, cadence: r.cadence, restored: r.summary })
+    else {
+      returned.current = null
+      setRun(null)
+    }
     if (needsPuzzles && !puzzles) load()
     // Contre la montre : le moteur démarre dès la fiche (1 à 2 s de WASM sur iPhone).
     if (drill?.section === 'chrono') getEngine()
@@ -67,7 +81,15 @@ export default function Mates() {
   if (run && drill && run.drill.id === drill.id) {
     const runStats = stats?.byKey[runKey(run.drill.id, run.cadence)] ?? null
     return run.drill.section === 'chrono' ? (
-      <ChronoRun drill={run.drill} cadence={run.cadence} stats={runStats} getEngine={getEngine} onDone={refresh} onMenu={() => setRun(null)} />
+      <ChronoRun
+        drill={run.drill}
+        cadence={run.cadence}
+        stats={runStats}
+        getEngine={getEngine}
+        onDone={refresh}
+        onMenu={() => setRun(null)}
+        restored={run.restored?.kind === 'chrono' ? run.restored : undefined}
+      />
     ) : puzzles ? (
       <PuzzleRun
         drill={run.drill}
@@ -77,6 +99,7 @@ export default function Mates() {
         showNet={readPrefs().showNet}
         onDone={refresh}
         onMenu={() => setRun(null)}
+        restored={run.restored?.kind === 'puzzle' ? run.restored : undefined}
       />
     ) : null
   }

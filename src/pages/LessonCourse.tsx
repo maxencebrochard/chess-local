@@ -1,7 +1,8 @@
 // Cours d'Apprendre (finales, « Démolir le roque », « Tenir sous l'attaque », structures de pions), façon chess.com Lessons : un sommaire par
 // chapitres, puis des leçons en étapes (diagramme commenté, ligne à jouer coup par coup, bilan).
-// 100 % hors ligne : aucune analyse moteur dans l'app, chaque verdict vient du contenu vérifié hors
-// ligne (tables de finales ou Stockfish) et tamponné.
+// 100 % hors ligne : aucune analyse moteur dans la leçon, chaque verdict vient du contenu vérifié
+// hors ligne (tables de finales ou Stockfish) et tamponné. « Analyser » ouvre la position de
+// l'étape dans l'analyseur, et son retour rend la même étape (ligne au même coup).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Chess, type Move } from 'chess.js'
@@ -16,6 +17,7 @@ import { ENDGAMES } from '../lib/learn'
 import { stepById } from '../lib/learningPath'
 import { figurine } from '../lib/review'
 import { playMoveSound, sounds } from '../lib/sounds'
+import { clearExercise, isRestore, readExercise, stashExercise } from '../lib/exerciseReturn'
 
 const MARK_COLORS: Record<MarkColor, string> = {
   green: 'rgba(129, 182, 76, 0.6)',
@@ -28,6 +30,17 @@ const ARROW_RED = '#eb6150'
 const ARROW_HINT = '#81b64c'
 const REPLY_DELAY_MS = 650
 const WRONG_SHOW_MS = 700
+
+// Étape laissée pour l'analyseur (exerciseReturn.ts). L'étape et le parcours vivent dans l'URL ;
+// restent l'origine « séance » (state de navigation, perdu à l'aller-retour) et le coup atteint
+// dans une ligne. Une leçon n'est pas notée : l'analyse est permise à toute étape avec échiquier.
+const RETURN_SCREEN = 'lecon'
+interface ReturnState {
+  path: string // `${course.path}/${id}`
+  step: number
+  fromSession: boolean
+  ply: number // demi-coups joués dans la ligne (0 pour un diagramme)
+}
 
 // Taille de l'échiquier d'une leçon : pleine largeur sur téléphone, mais bornée par la hauteur
 // pour que la bulle et les boutons tiennent sous l'échiquier, même sur un petit écran.
@@ -101,9 +114,15 @@ export function CourseLesson({ course }: { course: Course }) {
 function LessonView({ course, id, lesson }: { course: Course; id: string; lesson: Lesson }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const lessonPath = `${course.path}/${id}`
+  // Retour de l'analyseur sur cette leçon : origine et coup atteint, lus une fois.
+  const [returned] = useState(() => {
+    const r = isRestore(location.state) ? readExercise<ReturnState>(RETURN_SCREEN) : null
+    return r && r.path === lessonPath ? r : null
+  })
   // Ouverte depuis une séance d'Apprendre (« Voir la leçon ») : ✕ y retourne et la séance est
   // restaurée. Lu une fois : les changements d'étape (`setParams`) effacent le state.
-  const [fromSession] = useState(() => Boolean((location.state as { fromSession?: boolean } | null)?.fromSession))
+  const [fromSession] = useState(() => returned?.fromSession ?? Boolean((location.state as { fromSession?: boolean } | null)?.fromSession))
   const [params, setParams] = useSearchParams()
   // Ouverte depuis une étape du parcours d'apprentissage (`?parcours=<étape>`, gardé dans l'URL :
   // il survit aux changements d'étape et au rechargement) : ✕ et le bilan y ramènent.
@@ -111,10 +130,18 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
   const total = lesson.steps.length + 1 // + bilan
   const raw = Number(params.get('etape'))
   const stepIdx = Number.isInteger(raw) && raw >= 1 && raw <= total ? raw - 1 : 0
-  const [lineDone, setLineDone] = useState(false)
-  const [replay, setReplay] = useState(0)
-
   const step = lesson.steps[stepIdx] ?? null
+  const restoredPly = returned && returned.step === stepIdx && step?.kind === 'line' ? returned.ply : 0
+  const [lineDone, setLineDone] = useState(() => step?.kind === 'line' && restoredPly >= step.moves.length)
+  const [replay, setReplay] = useState(0)
+  const plyRef = useRef(restoredPly) // coup atteint dans la ligne affichée
+
+  // Retour lu : un rechargement repart de l'étape (ligne recommencée), l'origine « séance » reste.
+  useEffect(() => {
+    if (isRestore(location.state)) navigate(`${location.pathname}${location.search}`, { replace: true, state: fromSession ? { fromSession } : null })
+    clearExercise()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const isSummary = stepIdx === lesson.steps.length
 
   useEffect(() => {
@@ -123,6 +150,7 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
 
   function goTo(i: number) {
     setLineDone(false)
+    plyRef.current = 0
     setParams({ ...(pathStep ? { parcours: pathStep.id } : {}), ...(i === 0 ? {} : { etape: String(i + 1) }) }, { replace: true })
   }
 
@@ -134,6 +162,24 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
   const next = course.nextLessonId(id)
   const exercise = lesson.exercise ? ENDGAMES.find((e) => e.id === lesson.exercise) : undefined
   const canContinue = !step || step.kind === 'diagram' || lineDone
+
+  // Position de l'étape dans l'analyseur ; l'étape (et le coup atteint) revient au retour.
+  function analyse() {
+    if (!step) return
+    const ply = step.kind === 'line' ? plyRef.current : 0
+    stashExercise(RETURN_SCREEN, { path: lessonPath, step: stepIdx, fromSession, ply } satisfies ReturnState)
+    const orientation = step.kind === 'line' ? (step.fen.split(' ')[1] as 'w' | 'b') : (step.orientation ?? 'w')
+    navigate('/analyse', {
+      state: {
+        fen: step.fen,
+        uci: step.kind === 'line' ? lineUci(step).slice(0, ply) : undefined,
+        orientation,
+        label: lesson.title,
+        returnTo: `${location.pathname}${location.search}`,
+        returnLabel: 'Retour à la leçon',
+      },
+    })
+  }
 
   return (
     <div className="pt-safe fixed inset-0 z-40 flex flex-col bg-surface">
@@ -154,7 +200,14 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
         <div className="mx-auto flex max-w-xl flex-col gap-3 px-3 pb-3">
           {step?.kind === 'diagram' && <DiagramView step={step} />}
           {step?.kind === 'line' && (
-            <LineView key={`${stepIdx}-${replay}`} step={step} refusals={course.refusals} onDone={() => setLineDone(true)} />
+            <LineView
+              key={`${stepIdx}-${replay}`}
+              step={step}
+              refusals={course.refusals}
+              startPly={replay === 0 ? restoredPly : 0}
+              onProgress={(ply) => (plyRef.current = ply)}
+              onDone={() => setLineDone(true)}
+            />
           )}
           {isSummary && (
             <div className="flex flex-col gap-3 pt-2">
@@ -216,11 +269,21 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
               <button
                 onClick={() => {
                   setLineDone(false)
+                  plyRef.current = 0
                   setReplay((r) => r + 1)
                 }}
                 className="cursor-pointer rounded-lg px-3 py-2 text-sm font-semibold text-neutral-300 hover:text-white"
               >
                 ↺ Rejouer
+              </button>
+            )}
+            {step && (
+              <button
+                onClick={analyse}
+                className="flex cursor-pointer flex-col items-center rounded px-2 py-0.5 text-xs font-semibold text-neutral-300 hover:text-white"
+              >
+                <span className="text-base leading-none">♞</span>
+                Analyser
               </button>
             )}
             <Cta className="ml-auto px-6 py-2 text-base" disabled={!canContinue} onClick={() => goTo(stepIdx + 1)}>
@@ -264,19 +327,49 @@ function DiagramView({ step }: { step: DiagramStep }) {
 type Feedback = { tone: 'ok' | 'info' | 'bad'; headline?: string; text: string; reply?: string }
 
 // Ligne jouable : l'élève joue le camp au trait, l'app répond après une courte pause.
-function LineView({ step, refusals, onDone }: { step: LineStep; refusals: Course['refusals']; onDone: () => void }) {
+// `startPly` : retour de l'analyseur, la ligne reprend à ce coup (réponse adverse comprise).
+function LineView({ step, refusals, startPly = 0, onProgress, onDone }: {
+  step: LineStep
+  refusals: Course['refusals']
+  startPly?: number
+  onProgress: (ply: number) => void
+  onDone: () => void
+}) {
   const player = step.fen.split(' ')[1] as 'w' | 'b'
   const opponent = player === 'w' ? 'b' : 'w'
   const ucis = useMemo(() => lineUci(step), [step])
-  const [chess] = useState(() => new Chess(step.fen))
+  // Coup du joueur sans sa réponse (analyse ouverte pendant la pause) : la réponse est rejouée aussi.
+  const start = Math.min(startPly % 2 === 1 ? startPly + 1 : startPly, step.moves.length)
+  const [chess] = useState(() => {
+    const c = new Chess(step.fen)
+    for (const u of ucis.slice(0, start)) c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] })
+    return c
+  })
   const chessRef = useRef(chess)
-  const [fen, setFen] = useState(step.fen)
-  const [ply, setPly] = useState(0)
+  const [fen, setFen] = useState(() => chess.fen())
+  const [ply, setPlyState] = useState(start)
   const [busy, setBusy] = useState(false)
   const [misses, setMisses] = useState(0)
-  const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null)
+  const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(() => {
+    const last = chess.history({ verbose: true }).at(-1)
+    return last ? { from: last.from, to: last.to } : null
+  })
   const [wrongSquare, setWrongSquare] = useState<string | null>(null)
-  const [feedback, setFeedback] = useState<Feedback>({ tone: 'info', text: step.text })
+  const [feedback, setFeedback] = useState<Feedback>(() =>
+    start >= step.moves.length
+      ? { tone: 'ok', text: [step.moves[start - 1]?.text, step.end].filter(Boolean).join(' ') || 'Bien joué.' }
+      : { tone: 'info', text: step.text },
+  )
+
+  function setPly(n: number) {
+    setPlyState(n)
+    onProgress(n)
+  }
+
+  useEffect(() => {
+    onProgress(start)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const timers = useRef<number[]>([])
   const finished = ply >= step.moves.length
 

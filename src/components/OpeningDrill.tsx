@@ -26,6 +26,17 @@ export interface DrillItem {
 type Source = 'given' | 'book' | 'engine'
 type Tone = 'ok' | 'bad' | 'info' | 'engine'
 
+// Drill jugé, tel qu'affiché : l'appelant le garde avec sa séance avant d'ouvrir l'analyseur et le
+// rend au retour (prop `snapshot`), qui reprend le verdict à l'identique sans nouvelle écriture.
+export interface DrillSnapshot {
+  plies: { uci: string; src: Source }[]
+  faults: number
+  engineMisses: number
+  result: { success: boolean; empty?: boolean }
+  msg: { tone: Tone; text: string } | null
+  arrows: BoardArrow[]
+}
+
 interface Props {
   fam: Family
   color: Color
@@ -36,7 +47,8 @@ interface Props {
   onRetry: () => void
   onNext: () => void
   onClose: () => void
-  onAnalyse: (moves: string[]) => void
+  onAnalyse: (moves: string[], snapshot: DrillSnapshot) => void
+  snapshot?: DrillSnapshot | null // retour de l'analyseur : verdict restauré, déjà enregistré
   session: { ok: number; total: number }
   // Habillage de séance (révision espacée) : titre à la place du mode et compteur masqué, ligne
   // d'état sous l'en-tête, libellé du bouton suivant, ligne sous le verdict (« Revient dans 3 jours »).
@@ -105,17 +117,18 @@ export function OpeningDrill(props: Props) {
   const variant = item.variant
   const initial = mode === 'next' ? (item.position ?? []) : (variant?.moves.slice(0, item.start) ?? [])
 
-  const [plies, setPlies] = useState<{ uci: string; src: Source }[]>(() => initial.map((uci) => ({ uci, src: 'given' })))
+  const restored = props.snapshot ?? null
+  const [plies, setPlies] = useState<{ uci: string; src: Source }[]>(() => restored?.plies ?? initial.map((uci) => ({ uci, src: 'given' })))
   const [pending, setPending] = useState<string | null>(null) // coup du joueur en cours de vérification
   const [thinking, setThinking] = useState(false)
-  const [msg, setMsg] = useState<{ tone: Tone; text: string } | null>(null)
-  const [arrows, setArrows] = useState<BoardArrow[]>([])
+  const [msg, setMsg] = useState<{ tone: Tone; text: string } | null>(restored?.msg ?? null)
+  const [arrows, setArrows] = useState<BoardArrow[]>(restored?.arrows ?? [])
   const [hint, setHint] = useState<string | null>(null)
-  const [faults, setFaults] = useState(0) // fautes de théorie et indices
-  const [engineMisses, setEngineMisses] = useState(0) // écarts avec Stockfish, hors maîtrise
-  const [result, setResult] = useState<{ success: boolean; empty?: boolean } | null>(null)
+  const [faults, setFaults] = useState(restored?.faults ?? 0) // fautes de théorie et indices
+  const [engineMisses, setEngineMisses] = useState(restored?.engineMisses ?? 0) // écarts avec Stockfish, hors maîtrise
+  const [result, setResult] = useState<{ success: boolean; empty?: boolean } | null>(restored?.result ?? null)
   const alive = useRef(true)
-  const recorded = useRef(false)
+  const recorded = useRef(restored !== null) // verdict restauré : déjà écrit avant l'analyse
   const plannedReply = useRef<{ after: string; move: string } | null>(null)
   const stripRef = useRef<HTMLDivElement>(null)
 
@@ -499,7 +512,7 @@ export function OpeningDrill(props: Props) {
                 Réessayer
               </button>
               <button
-                onClick={() => props.onAnalyse(moves)}
+                onClick={() => props.onAnalyse(moves, { plies, faults, engineMisses, result, msg, arrows })}
                 className="flex cursor-pointer flex-col items-center rounded px-2 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
               >
                 <span className="text-lg leading-none">♞</span>

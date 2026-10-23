@@ -5,6 +5,7 @@ rotation des domaines, mise en page 393x852, 393x660 et 1440x900.
 Usage : npm run test:e2e -- --suite endgame_course
 """
 import json
+import re
 import os
 import subprocess
 
@@ -115,6 +116,19 @@ def suite(p):
     check("[ligne] réponse annoncée dans la bulle", "répondent" in page.locator(".bg-white").first.inner_text())
     shot(page, "course_line")
 
+    # Analyser en pleine ligne (leçon non notée) : la position atteinte part dans l'analyseur, et
+    # « Retour à la leçon » rend la même étape au même coup.
+    status = page.get_by_text(re.compile(r"^À toi : (Blancs|Noirs) · coup [0-9]+/[0-9]+$")).inner_text()
+    page.get_by_role("button", name="Analyser").click()
+    if ck.appears("[ligne:analyse] « Retour à la leçon » dans l'analyseur", page, "button:has-text('Retour à la leçon')", timeout=10000):
+        wait_piece(ck, page, "d5", "bK")
+        check("[ligne:analyse] position atteinte transmise", piece_on(page, "a4") == "wR" and piece_on(page, "d5") == "bK")
+        page.get_by_role("button", name="Retour à la leçon").click()
+        if ck.appears("[ligne:analyse] retour à l'étape 2/3", page, "[data-testid='lesson-step']:has-text('2/3')", timeout=10000):
+            wait_piece(ck, page, "a4", "wR")
+            check("[ligne:analyse] même coup de la ligne", piece_on(page, "a4") == "wR" and piece_on(page, "d5") == "bK"
+                  and page.get_by_text(status, exact=True).count() == 1, f"({status})")
+
     # Rafraîchissement en cours de leçon : on reste à l'étape 2 (ligne recommencée).
     page.reload()
     ck.appears("[refresh] reste à l'étape 2/3", page, "[data-testid='lesson-step']:has-text('2/3')")
@@ -182,6 +196,19 @@ def suite(p):
             page.click("header button[aria-label='Fermer la leçon']")
         ck.appears(f"[séance → {exit_label}] séance rendue", page, ".bg-white:has-text('Mat des deux tours')")
         check(f"[séance → {exit_label}] séance restaurée, pas l'accueil", page.get_by_role("button", name="C'est parti").is_visible())
+    # Diagramme analysé depuis une leçon ouverte par la séance : le retour rend l'étape, et ✕ rend
+    # toujours la séance (l'origine survit à l'aller-retour).
+    page.locator("button", has_text="Voir la leçon").click()
+    ck.appears("[séance → analyse] leçon ouverte", page, "[data-testid='lesson-step']:has-text('1/3')")
+    page.get_by_role("button", name="Analyser").click()
+    if ck.appears("[séance → analyse] « Retour à la leçon »", page, "button:has-text('Retour à la leçon')", timeout=10000):
+        wait_piece(ck, page, "a4", "wR")
+        check("[séance → analyse] position du diagramme transmise", piece_on(page, "a4") == "wR" and piece_on(page, "b1") == "wR" and piece_on(page, "e5") == "bK")
+        page.get_by_role("button", name="Retour à la leçon").click()
+        ck.appears("[séance → analyse] retour au diagramme 1/3", page, "[data-testid='lesson-step']:has-text('1/3')", timeout=10000)
+        page.click("header button[aria-label='Fermer la leçon']")
+        ck.appears("[séance → analyse] ✕ rend la séance", page, ".bg-white:has-text('Mat des deux tours')")
+        check("[séance → analyse] séance restaurée, pas l'accueil", page.get_by_role("button", name="C'est parti").is_visible())
     page.get_by_role("button", name="C'est parti").click()
     ck.appears("[exercice] échiquier de l'exercice", page, "text=Objectif")
     check("[exercice] position de rr-mate", piece_on(page, "a1") == "wR" and piece_on(page, "b1") == "wR")

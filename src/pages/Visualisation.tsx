@@ -2,12 +2,14 @@
 // Usage : README.md, rubrique « Calcul et visualisation ».
 // Logique pure et persistance dans src/lib/visualisation.ts.
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Board, type BoardArrow } from '../components/Board'
 import { FigText } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
 import { RunHeader, RunSummary, Sparkline } from '../components/mates/RunParts'
 import { loadChunk } from '../lib/lazyPage'
 import { RunRecorder } from '../lib/mates'
+import { clearExercise, isRestore, readExercise, stashExercise } from '../lib/exerciseReturn'
 import {
   checkMate, checkSquares, correction, DISPLAY_LABEL, finalPosition, KIND_LABEL, KINDS, LEVELS, lineMoves, loadBank,
   loadVisStats, MAX_ERRORS, pickQuestion, readVisPrefs, recordQuestion, seriesKey, SIDE_NAME, VIS_DOMAIN, writeVisPrefs,
@@ -19,12 +21,33 @@ const GREEN = 'rgba(80, 200, 80, 0.6)'
 const RED = 'rgba(220, 50, 50, 0.65)'
 const PICK = 'rgba(255, 255, 51, 0.55)'
 
+// Série laissée pour l'analyseur après un verdict (exerciseReturn.ts) : la question jugée, la
+// réponse et les compteurs, repris au retour sur le même verdict. La ligne de série déjà écrite
+// (`recorderId`) est mise à jour en place, la question n'est pas réenregistrée.
+const RETURN_SCREEN = 'visualisation'
+interface SeriesState {
+  level: Level
+  mode: DisplayMode
+  recorderId: number | null
+  question: Question
+  picked: string[]
+  yesNo: boolean | null
+  verdict: boolean
+  score: number
+  errors: number
+  used: string[]
+}
+
 export default function Visualisation() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [returned] = useState(() => (isRestore(location.state) ? readExercise<SeriesState>(RETURN_SCREEN) : null))
   const [bank, setBank] = useState<VisBank | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [stats, setStats] = useState<VisStats | null>(null)
   const [prefs, setPrefs] = useState<VisPrefs>(readVisPrefs)
-  const [run, setRun] = useState<VisPrefs | null>(null)
+  const [run, setRun] = useState<VisPrefs | null>(returned ? { level: returned.level, mode: returned.mode } : null)
+  const [restored, setRestored] = useState<SeriesState | undefined>(returned ?? undefined)
 
   function load() {
     setLoadError(false)
@@ -39,6 +62,9 @@ export default function Visualisation() {
   useEffect(() => {
     load()
     refresh()
+    if (location.state) navigate('.', { replace: true, state: null })
+    clearExercise()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function update(p: VisPrefs) {
@@ -47,7 +73,20 @@ export default function Visualisation() {
   }
 
   if (run && bank) {
-    return <Run bank={bank} level={run.level} mode={run.mode} stats={stats} onDone={refresh} onMenu={() => setRun(null)} />
+    return (
+      <Run
+        bank={bank}
+        level={run.level}
+        mode={run.mode}
+        stats={stats}
+        restored={restored}
+        onDone={refresh}
+        onMenu={() => {
+          setRestored(undefined)
+          setRun(null)
+        }}
+      />
+    )
   }
   return <Hub prefs={prefs} stats={stats} ready={!!bank} loadError={loadError} onRetry={load} onChange={update} onStart={() => setRun(prefs)} />
 }
@@ -162,37 +201,39 @@ function Hub({ prefs, stats, ready, loadError, onRetry, onChange, onStart }: {
 }
 
 // ---------- Série ----------
-function Run(props: { bank: VisBank; level: Level; mode: DisplayMode; stats: VisStats | null; onDone: () => void; onMenu: () => void }) {
+function Run(props: { bank: VisBank; level: Level; mode: DisplayMode; stats: VisStats | null; restored?: SeriesState; onDone: () => void; onMenu: () => void }) {
   const [series, setSeries] = useState(0)
-  return <Series key={series} {...props} onReplay={() => setSeries((s) => s + 1)} />
+  return <Series key={series} {...props} restored={series === 0 ? props.restored : undefined} onReplay={() => setSeries((s) => s + 1)} />
 }
 
 type Phase = 'line' | 'question' | 'reveal' | 'over'
 
-function Series({ bank, level, mode, stats, onDone, onMenu, onReplay }: {
+function Series({ bank, level, mode, stats, restored, onDone, onMenu, onReplay }: {
   bank: VisBank
   level: Level
   mode: DisplayMode
   stats: VisStats | null
+  restored?: SeriesState // retour de l'analyseur : même question, même verdict, mêmes compteurs
   onDone: () => void
   onMenu: () => void
   onReplay: () => void
 }) {
+  const navigate = useNavigate()
   const items = bank.levels[String(level)] ?? []
   const key = seriesKey(level, mode)
-  const recorder = useRef(new RunRecorder(key, VIS_DOMAIN)).current
-  const used = useRef(new Set<string>()).current
-  const [question, setQuestion] = useState<Question | null>(() => pickQuestion(items, level, used))
-  const [phase, setPhase] = useState<Phase>(mode === 'flash' ? 'line' : 'question')
+  const recorder = useRef(new RunRecorder(key, VIS_DOMAIN, restored?.recorderId ?? null)).current
+  const used = useRef(new Set<string>(restored?.used ?? [])).current
+  const [question, setQuestion] = useState<Question | null>(() => restored?.question ?? pickQuestion(items, level, used))
+  const [phase, setPhase] = useState<Phase>(restored ? 'reveal' : mode === 'flash' ? 'line' : 'question')
   const [flashIndex, setFlashIndex] = useState(0)
-  const [picked, setPicked] = useState<string[]>([])
-  const [yesNo, setYesNo] = useState<boolean | null>(null)
-  const [verdict, setVerdict] = useState<boolean | null>(null)
-  const [score, setScore] = useState(0)
-  const [errors, setErrors] = useState(0)
+  const [picked, setPicked] = useState<string[]>(restored?.picked ?? [])
+  const [yesNo, setYesNo] = useState<boolean | null>(restored?.yesNo ?? null)
+  const [verdict, setVerdict] = useState<boolean | null>(restored?.verdict ?? null)
+  const [score, setScore] = useState(restored?.score ?? 0)
+  const [errors, setErrors] = useState(restored?.errors ?? 0)
   const [newRecord, setNewRecord] = useState(false)
   const phaseRef = useRef<Phase>(phase)
-  const scoreRef = useRef(0)
+  const scoreRef = useRef(restored?.score ?? 0)
 
   const moves = useMemo(() => (question ? lineMoves(question.item) : []), [question])
   const final = useMemo(() => (question ? finalPosition(question.item) : null), [question])
@@ -281,6 +322,25 @@ function Series({ bank, level, mode, stats, onDone, onMenu, onReplay }: {
     void recorder.finish(scoreRef.current, !stopped).then((record) => {
       setNewRecord(record)
       onDone()
+    })
+  }
+
+  // Après le verdict : la série est gardée telle quelle, puis l'analyseur ouvre la ligne jusqu'à la
+  // position finale (la question est déjà jugée et enregistrée).
+  async function analyse() {
+    if (!question || verdict === null) return
+    const recorderId = await recorder.rowId()
+    stashExercise(RETURN_SCREEN, {
+      level, mode, recorderId, question, picked, yesNo, verdict, score, errors, used: [...used],
+    } satisfies SeriesState)
+    navigate('/analyse', {
+      state: {
+        fen: question.item.fen,
+        uci: question.item.line,
+        orientation: question.side,
+        label: `Calcul · ${level} demi-coups`,
+        returnTo: '/visualisation',
+      },
     })
   }
 
@@ -402,7 +462,14 @@ function Series({ bank, level, mode, stats, onDone, onMenu, onReplay }: {
             <div className="flex items-center gap-3">
               <span className={`text-lg font-black ${verdict ? 'text-accent' : 'text-red-400'}`}>{verdict ? '✓ Juste' : '✗ Faux'}</span>
               {question.kind === 'mate' && yesNo !== null && <span className="text-sm text-neutral-400">Ta réponse : {yesNo ? 'oui' : 'non'}</span>}
-              <Cta className="ml-auto px-4 py-2 text-base" onClick={next}>{errors >= MAX_ERRORS ? 'Bilan' : 'Suivant'}</Cta>
+              <button
+                onClick={() => void analyse()}
+                className="ml-auto flex cursor-pointer flex-col items-center rounded px-1.5 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
+              >
+                <span className="text-lg leading-none">♞</span>
+                Analyser
+              </button>
+              <Cta className="px-4 py-2 text-base" onClick={next}>{errors >= MAX_ERRORS ? 'Bilan' : 'Suivant'}</Cta>
             </div>
             <p data-correction className="mt-2 text-sm leading-snug text-neutral-300"><FigText text={correction(question)} /></p>
           </div>

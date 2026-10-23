@@ -713,6 +713,8 @@ def part_opening(page):
                 return
         if not ck.appears(f"[ouverture] drill {n + 1} : variante maîtrisée", page, "[data-result='ok']", timeout=8000):
             return
+        if n in (0, ex["count"] - 1):
+            variant_round_trip(page, f"[ouverture:analyse {n + 1}]")
         btn = page.locator("[data-result] button", has_text="Voir le résultat" if n + 1 == ex["count"] else "Suivant")
         if not check(f"[ouverture] drill {n + 1} : bouton suivant", btn.count() > 0):
             return
@@ -727,6 +729,26 @@ def part_opening(page):
         check("[ouverture] ligne `path` score 3", len(rows) == 1 and rows[0]["score"] == ex["count"] and rows[0]["success"] == 1, f"({rows})")
         drills = sessions(page, "opening-drill")
         check("[ouverture] chaque variante compte aussi dans l'entraîneur", len(drills) == ex["count"] and all(r["itemId"].startswith("full:w:") and r["success"] == 1 for r in drills), f"({len(drills)})")
+
+
+def variant_round_trip(page, tag):
+    """Variante jugée de la série : « Analyser » puis « Retour au parcours » rendent le même drill
+    sur son verdict (pas l'item suivant, ni le drill rejoué), sans nouvelle écriture."""
+    uci, title, result = page.get_attribute("[data-drill]", "data-uci"), page.locator("[data-drill] header").inner_text(), page.locator("[data-result]").inner_text()
+    page.wait_for_timeout(500)  # écriture du verdict en cours
+    n_drills = len(sessions(page, "opening-drill"))
+    page.locator("[data-result] button", has_text="Analyser").click()
+    if not ck.appears(f"{tag} « Retour au parcours » dans l'analyseur", page, "button:has-text('Retour au parcours')", timeout=15000):
+        return
+    check(f"{tag} analyseur ouvert", page.evaluate("() => location.hash") == "#/analyse")
+    page.get_by_role("button", name="Retour au parcours").click()
+    if not ck.appears(f"{tag} retour : drill sur son verdict", page, "[data-drill] [data-result='ok']", timeout=10000):
+        return
+    check(f"{tag} retour : même variante au même rang", page.locator("[data-drill] header").inner_text() == title
+          and page.get_attribute("[data-drill]", "data-uci") == uci, f"({page.locator('[data-drill] header').inner_text()!r})")
+    check(f"{tag} retour : même verdict", page.locator("[data-result]").inner_text() == result)
+    page.wait_for_timeout(400)
+    check(f"{tag} retour : aucune écriture de plus", len(sessions(page, "opening-drill")) == n_drills)
 
 
 def part_endgame_save(p, browser):

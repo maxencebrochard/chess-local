@@ -9,9 +9,10 @@ import { BigClock, RunHeader, RunSummary } from './RunParts'
 import { NetLegend } from './NetBoard'
 import { analyseMate, netView, principleOf, TAG_PRINCIPLE } from '../../lib/mateNet'
 import {
-  CADENCE_LABEL, CADENCE_MS, pickPuzzle, puzzlePool, RunRecorder, runKey,
-  type Cadence, type Drill, type RunStats,
+  CADENCE_LABEL, CADENCE_MS, MATS_RETURN_SCREEN, pickPuzzle, puzzlePool, RunRecorder, runKey,
+  type Cadence, type Drill, type MatsReturn, type PuzzleRunSummary, type RunStats,
 } from '../../lib/mates'
+import { stashExercise } from '../../lib/exerciseReturn'
 
 const NET_MS = 1500
 const NEXT_MS = 400
@@ -24,32 +25,34 @@ interface Props {
   showNet: boolean
   onDone: () => void
   onMenu: () => void
+  restored?: PuzzleRunSummary // retour de l'analyseur : bilan de la série close, réaffiché tel quel
 }
 
 export function PuzzleRun(props: Props) {
   const [series, setSeries] = useState(0)
-  return <PuzzleSeries key={series} {...props} onReplay={() => setSeries((s) => s + 1)} />
+  return <PuzzleSeries key={series} {...props} restored={series === 0 ? props.restored : undefined} onReplay={() => setSeries((s) => s + 1)} />
 }
 
 type Phase = 'play' | 'net' | 'over'
 
-function PuzzleSeries({ drill, cadence, all, stats, showNet, onDone, onMenu, onReplay }: Props & { onReplay: () => void }) {
+function PuzzleSeries({ drill, cadence, all, stats, showNet, onDone, onMenu, onReplay, restored }: Props & { onReplay: () => void }) {
   const navigate = useNavigate()
   const total = CADENCE_MS[cadence]
   const pool = useMemo(() => puzzlePool(drill, all), [drill, all])
-  const [newRecord, setNewRecord] = useState(false)
+  const [newRecord, setNewRecord] = useState(restored?.newRecord ?? false)
   const recorder = useRef(new RunRecorder(runKey(drill.id, cadence))).current
   const used = useRef(new Set<string>()).current
   const [puzzle, setPuzzle] = useState<PuzzleData | null>(() => pickPuzzle(pool, 0, used) ?? null)
-  const [phase, setPhase] = useState<Phase>('play')
-  const [score, setScore] = useState(0)
-  const [strikes, setStrikes] = useState(0)
+  // Bilan restauré : la série est close, rien ne tourne ni ne s'écrit (phase 'over' dès le départ).
+  const [phase, setPhase] = useState<Phase>(restored ? 'over' : 'play')
+  const [score, setScore] = useState(restored?.score ?? 0)
+  const [strikes, setStrikes] = useState(restored?.strikes ?? 0)
   const [netFen, setNetFen] = useState<string | null>(null)
-  const [missed, setMissed] = useState<PuzzleData[]>([])
-  const [left, setLeft] = useState(total ?? 0)
-  const phaseRef = useRef<Phase>('play')
-  const scoreRef = useRef(0)
-  const strikesRef = useRef(0)
+  const [missed, setMissed] = useState<PuzzleData[]>(restored?.missed ?? [])
+  const [left, setLeft] = useState(restored?.left ?? total ?? 0)
+  const phaseRef = useRef<Phase>(restored ? 'over' : 'play')
+  const scoreRef = useRef(restored?.score ?? 0)
+  const strikesRef = useRef(restored?.strikes ?? 0)
   const endAt = useRef(total === null ? null : Date.now() + total)
   const pausedAt = useRef<number | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -148,6 +151,8 @@ function PuzzleSeries({ drill, cadence, all, stats, showNet, onDone, onMenu, onR
   const principle = net ? (drill.geo && !other ? TAG_PRINCIPLE[drill.geo] : principleOf(net)) : ''
 
   function analyse(p: PuzzleData) {
+    const summary: PuzzleRunSummary = { kind: 'puzzle', score, strikes, left, newRecord, missed }
+    stashExercise(MATS_RETURN_SCREEN, { drillId: drill.id, cadence, summary } satisfies MatsReturn)
     navigate('/analyse', {
       state: {
         fen: p.fen,
@@ -156,6 +161,7 @@ function PuzzleSeries({ drill, cadence, all, stats, showNet, onDone, onMenu, onR
         orientation: p.fen.split(' ')[1] === 'w' ? 'b' : 'w',
         label: `Puzzle ${p.id} (${p.rating})`,
         returnTo: `/mats?d=${drill.id}`,
+        returnLabel: 'Retour au bilan',
       },
     })
   }
