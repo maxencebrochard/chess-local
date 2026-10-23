@@ -3,6 +3,8 @@
 - reset : « Réinitialiser l'app » efface aussi la partie de Jouer en cours, la séance de puzzle et
   les préférences de Mats éclair (elles survivaient : la partie reprenait après « Tout effacer »).
 - brillant : un vrai sacrifice (Fxh7+ du coup du roi grec) est classé Brillant (jamais atteint).
+- promotion : une promotion sur une case défendue ne sacrifie qu'un pion, elle n'est pas Brillante
+  (la dame promue comptait comme une pièce donnée).
 - repetition : le camp gagnant qui provoque la triple répétition reçoit « Gain manqué », et la courbe
   du bilan finit à 50 % (le coup n'était pas sanctionné, la courbe restait sur l'avantage).
 - coup_force : un seul coup légal n'est pas un « Très bon » coup.
@@ -24,7 +26,7 @@ import re
 
 import chess
 
-from helpers import BASE, FINALES, HOLD_BESTMOVE, Checker, desktop_context, mobile_context, piece_on, shot, tap_move
+from helpers import BASE, FINALES, HOLD_BESTMOVE, Checker, desktop_context, mobile_context, piece_on, shot, tap_move, wait_js
 
 ck = Checker("bug_hunt")
 check = ck.check
@@ -94,6 +96,13 @@ FORCED = """[FEN "rnbq1b1r/4pppp/p1p1kn2/p2pQ3/2PP3P/RP3P2/3NP1P1/2B1KBNR b K - 
 [SetUp "1"]
 
 15... Kd7 *"""
+
+# 1. b8=D+ est le seul bon coup (Cxb8 Te8#), sur une case que le cavalier d7 défend : Stockfish 18
+# natif, profondeur 10, +3,95 contre +0,35 pour le deuxième coup, +3,58 après (python-chess).
+PROMOTION = """[FEN "6k1/1P1n1ppp/8/8/8/8/2q2PPP/4R1K1 w - - 0 1"]
+[SetUp "1"]
+
+1. b8=Q+ *"""
 
 FOOLS_MATE_FEN = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"
 
@@ -184,6 +193,17 @@ def case_brillant(p, browser):
         shot(page, "bug_hunt_brillant")
         page.set_viewport_size({"width": 393, "height": 660})
         shot(page, "bug_hunt_brillant_393x660")
+    ctx.close()
+
+
+def case_promotion(p, browser):
+    ctx = mobile_context(p, browser, ck, standalone=True)
+    page = open_analysis(ctx)
+    load_text(page, PROMOTION)
+    if run_review(page, "promotion"):
+        t = page.evaluate(TALLIES)
+        check("[promotion] b8=D+ est classé chez les Blancs", sum(v[0] for v in t.values()) == 1, f"({t})")
+        check("[promotion] b8=D+ (seul un pion donné) n'est pas Brillant", t.get("Brillant", [0, 0])[0] == 0, f"({t})")
     ctx.close()
 
 
@@ -338,7 +358,9 @@ def case_finale_fuite(p, browser):
     # Le bestmove de l'éval qui suit le coup est retenu : la page est quittée pendant la réflexion.
     page.evaluate("() => { window.__heldUci = [] }")
     tap_move(page, frm, to)
-    page.wait_for_function("() => window.__heldUci.length > 0", timeout=30000)
+    if not check("[finale] le moteur réfléchit après le coup", wait_js(page, "() => window.__heldUci.length > 0")):
+        ctx.close()
+        return
     shot(page, "bug_hunt_finale_393x852")
     page.get_by_role("button", name="✕", exact=True).click()
     page.locator("nav a:visible", has_text="Accueil").click()
@@ -352,7 +374,7 @@ def case_finale_fuite(p, browser):
 
 
 CASES = [
-    ("reset", case_reset), ("brillant", case_brillant), ("repetition", case_repetition), ("coup_force", case_coup_force),
+    ("reset", case_reset), ("brillant", case_brillant), ("promotion", case_promotion), ("repetition", case_repetition), ("coup_force", case_coup_force),
     ("liste_noirs", case_liste_noirs), ("eval_mat_noir", case_eval_mat_noir), ("variante", case_variante),
     ("date_pgn", case_date_pgn), ("finale_fuite", case_finale_fuite),
 ]

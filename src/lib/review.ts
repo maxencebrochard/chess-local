@@ -177,13 +177,16 @@ export async function reviewGame(
       // mineure, sur une case effectivement prenable par l'adversaire, dans
       // une position pas déjà largement gagnante sans ce coup, et qui reste
       // au moins égale ensuite. Le sacrifice est ce que l'adversaire gagne en
-      // prenant sur la case d'arrivée (échange statique), net de ce que le coup a pris.
-      const given = see(replayAfter.fen(), mv.to) - (mv.captured ? PIECE_VALUE[mv.captured] : 0)
+      // prenant sur la case d'arrivée (échange statique), net de ce que le coup a pris et de
+      // ce que la promotion a ajouté : une dame promue puis prise ne coûte qu'un pion.
+      const given =
+        see(replayAfter.fen(), mv.to) -
+        (mv.captured ? PIECE_VALUE[mv.captured] : 0) -
+        (mv.promotion ? PIECE_VALUE[mv.promotion] - 1 : 0)
       const sacrifice = given >= 2 && endAfter !== 'mate'
-      const destAttacked = sacrifice && replayAfter.isAttacked(mv.to, replayAfter.turn())
       const secondBestWinPct = before[1] ? winPct(lineCp(before[1])) : 0
       const secondGap = wBefore - secondBestWinPct
-      if (sacrifice && destAttacked && secondBestWinPct < 85 && wAfter >= 50) {
+      if (sacrifice && secondBestWinPct < 85 && wAfter >= 50) {
         cls = 'brilliant'
       } else if (
         secondGap > 20 || // seul bon coup de la position
