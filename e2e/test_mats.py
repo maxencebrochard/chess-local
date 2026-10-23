@@ -373,16 +373,35 @@ def puzzle_suite(p, browser, index, puzzles):
     shot(page, "mats_rush_393x660")
     if pz:
         page.wait_for_timeout(900)
+        # Chaque rendu (phase, chrono, légende) est journalisé dans la page : sous charge, une
+        # capture ou une attente côté Playwright peut dépasser les 1,5 s du réseau et lire le
+        # puzzle suivant, où le chrono a légitimement repris.
+        page.evaluate("""() => {
+            window.__netLog = []
+            const rec = () => {
+                const run = document.querySelector('[data-run]'), timer = document.querySelector('[role=timer]')
+                if (run && timer) window.__netLog.push([run.dataset.phase, +timer.dataset.ms, performance.now(),
+                    document.querySelectorAll('[data-net-piece]').length])
+            }
+            rec()
+            window.__netObs = new MutationObserver(rec)
+            window.__netObs.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ms', 'data-phase'] })
+        }""")
         play_uci(page, pz[2].split()[1])
         ck.appears("[mat en 1] réseau affiché après le mat", page, "[data-run][data-phase='net']", timeout=3000)
-        ms1 = int(attr(page, "[role=timer]", "data-ms"))
         check("[mat en 1] score 1", attr(page, "[data-score]", "data-score") == "1")
-        check("[mat en 1] légende du réseau", page.locator("[data-net-piece]").count() >= 1)
         shot(page, "mats_rush_reseau_393x660")
-        page.wait_for_timeout(800)
-        ms2 = int(attr(page, "[role=timer]", "data-ms"))
-        check("[mat en 1] chrono suspendu pendant le réseau", attr(page, "[data-run]", "data-phase") == "net" and abs(ms1 - ms2) < 150, f"({ms1} → {ms2})")
         ck.appears("[mat en 1] puzzle suivant", page, "[data-run][data-phase='play']", timeout=3000)
+        log = page.evaluate("() => { window.__netObs.disconnect(); return window.__netLog }")
+        net = [e for e in log if e[0] == "net"]
+        check("[mat en 1] légende du réseau", any(e[3] >= 1 for e in net), f"({len(net)} rendus du réseau)")
+        net_ms = sorted({e[1] for e in net})
+        after = [e for e in log if net and e[2] > net[-1][2]]
+        # Durée du réseau : du premier rendu « net » au premier rendu qui le remplace.
+        shown = after[0][2] - net[0][2] if after else 0
+        check("[mat en 1] chrono suspendu pendant le réseau",
+              len(net_ms) == 1 and bool(after) and after[0][0] == "play" and shown >= 1000,
+              f"(chrono pendant le réseau : {net_ms}, réseau affiché {round(shown)} ms)")
         pid2 = attr(page, "[data-run]", "data-puzzle")
         check("[mat en 1] nouveau puzzle", pid2 and pid2 != pid)
         pz2 = puzzles.get(pid2)
