@@ -15,7 +15,7 @@ from run import Server, port_is_listening
 # (route, texte que seule cette page affiche) : la coquille de l'app s'affiche aussi sur une
 # route inconnue, donc « la nav est visible » ne prouverait pas que la page a chargé.
 ROUTES = [("", "Problèmes"), ("jouer", "Adversaire"), ("puzzles", "Classement puzzles"), ("rush", "Survie"),
-          ("apprendre", "Séance"), ("analyse", "Options"), ("archive", "Archive"), ("stats", "Statistiques"),
+          ("apprendre", "Séance rapide"), ("analyse", "Options"), ("archive", "Archive"), ("stats", "Statistiques"),
           ("import", "Importer depuis")]
 # Pages chargées à la demande (App.tsx) que ROUTES ne visite pas : hors ligne, chacune doit
 # trouver sa chunk dans le précache.
@@ -28,7 +28,10 @@ LAZY_ROUTES = [("ouvertures", "Entraîneur d'ouvertures"), ("apprendre/finales",
                ("apprendre/defense", "Tenir sous l'attaque"), ("defenses-ratees", "Mes défenses ratées"),
                ("moment-critique", "Aucun moment critique"), ("finales/chrono", "Finales au chrono"),
                ("defense", "Entraîneur de défense"), ("visualisation", "Calcul et visualisation"),
-               ("convertir", "Convertir l'avantage"), ("seance", "Séance du jour")]
+               ("convertir", "Convertir l'avantage"), ("seance", "Séance du jour"),
+               ("apprendre/lecons", "Toutes les leçons"), ("apprendre/entrainement", "Quelle compétence travailler"),
+               ("apprendre/entrainement/finales", "Jouer une finale jusqu'au bout"), ("apprendre/mes-parties", "Réviser mes parties"),
+               ("apprendre/moments-critiques", "Moments critiques")]
 SUBPATH = urlparse(BASE).path.rstrip("/") + "/"  # "/chess-local/"
 PRECACHED = ["engine/stockfish-18-lite-single.wasm", "engine/stockfish-18-lite-single.js", "puzzles.json",
              "sounds/move-self.mp3", "pieces/celtique/wK.svg", "index.html"] + [f"pieces/wikimedia/{c}{p}.svg" for c in "wb" for p in "KQRBNP"] + [f"pieces/atelier/{c}{p}.svg" for c in "wb" for p in "KQRBNP"]

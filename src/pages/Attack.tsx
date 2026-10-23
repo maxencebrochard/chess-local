@@ -2,6 +2,7 @@
 // est prête (`/attaque`, par catégorie de roques), puis partie contre Stockfish bridé à l'Elo
 // choisi, sans plafond de coups, jusqu'au mat ou à un avantage décisif tenu (`/attaque/:id`).
 import { useEffect, useMemo, useState } from 'react'
+import { groupBack } from '../lib/navigation'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { ConfirmSheet } from '../components/ConfirmSheet'
@@ -82,7 +83,7 @@ function AttackList() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <PageHeader title="⚔️ Entraîneur d'attaque" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+      <PageHeader title="⚔️ Entraîneur d'attaque" back={{ label: groupBack('attaque-defense').label, onClick: () => navigate(groupBack('attaque-defense').to) }}
         description="Ton attaque est prête : mène-la jusqu'au mat, ou jusqu'à un avantage décisif tenu. Recommence autant que tu veux." />
 
       <section data-testid="defender" className="mb-4 rounded-xl bg-surface-2 p-3">

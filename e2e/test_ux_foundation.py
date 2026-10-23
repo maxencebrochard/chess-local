@@ -65,7 +65,8 @@ def suite(p):
         for path, name, marker in [("/","accueil","h1"),("/apprendre","apprendre","h1"),
                 ("/apprendre/bases","bases","h1:text('Les bases')"),("/apprendre/finales","finales","h1:text('Cours de finales')"),
                 ("/apprendre/roque","roque","h1:text('Démolir le roque')"),("/archive","archive","text=Aucune partie enregistrée"),
-                ("/attaques-manquees","attaques","[data-testid=attack-empty]"),("/defenses-ratees","defenses","[data-testid=defense-empty]")]:
+                ("/attaques-manquees","attaques","[data-testid=attack-empty]"),("/defenses-ratees","defenses","[data-testid=defense-empty]"),
+                ("/apprendre/moments-critiques","moments","[data-testid=moments-empty]")]:
             page.goto(f"{BASE}/#{path}")
             if not ck.appears(f"{fmt}/{name} : prêt", page, marker):
                 continue
@@ -94,18 +95,19 @@ def suite(p):
                 ck.check(f"{fmt}/{name} : progression réelle et nommée", bar.count() == 1 and bar.get_attribute("aria-valuenow") == "0" and int(bar.get_attribute("aria-valuemax") or 0) > 0 and bool(bar.get_attribute("aria-label")))
                 if bar.count() == 1:
                     ck.check(f"{fmt}/{name} : contraste graphique AA", bar.locator("span").evaluate(CONTRAST, True)["ratio"] >= 3)
-                back = page.get_by_role("button", name="Retour à Apprendre", exact=True)
+                # Propriétaire des cours depuis le lot 5 : Toutes les leçons.
+                back = page.get_by_role("button", name="Retour à Toutes les leçons", exact=True)
                 if back.count():
                     back.click()
-                    page.wait_for_url("**/#/apprendre")
-                    ck.appears(f"{fmt}/{name} : hub restauré", page, "h1:has-text('Apprendre')")
-                ck.check(f"{fmt}/{name} : retour explicite", page.url.endswith("#/apprendre"))
+                    page.wait_for_url("**/#/apprendre/lecons")
+                    ck.appears(f"{fmt}/{name} : hub restauré", page, "h1:has-text('Toutes les leçons')")
+                ck.check(f"{fmt}/{name} : retour explicite", page.url.endswith("#/apprendre/lecons"))
             if name == "attaques":
                 title = page.locator("h1")
                 title.evaluate("e=>e.textContent='Mes attaques manquées et toutes les occasions à retravailler dans mes parties'")
                 ck.check(f"{fmt} : titre long sans débordement", not overflow_x(page) and title.evaluate("e=>e.scrollWidth<=e.clientWidth"))
                 page.screenshot(path=str(OUT / f"{fmt}-titre-long.png"))
-            if name in ("archive","attaques","defenses"):
+            if name in ("archive","attaques","defenses","moments"):
                 action = page.locator(".ui-empty a")
                 ck.check(f"{fmt}/{name} : action état vide", action.count() == 1)
                 if action.count():
@@ -143,7 +145,7 @@ def suite(p):
         lp.goto(f"{BASE}/#/apprendre/finales")
         ck.appears(f"{fmt} : chargement annoncé", lp, "[role=status]:text('Chargement de la progression')")
         ck.check(f"{fmt} : chargement sans faux zéro", lp.get_by_role("progressbar").count() == 0)
-        ck.check(f"{fmt} : en-tête conservé pendant le chargement", lp.locator("h1").is_visible() and lp.get_by_role("button", name="Retour à Apprendre", exact=True).is_visible())
+        ck.check(f"{fmt} : en-tête conservé pendant le chargement", lp.locator("h1").is_visible() and lp.get_by_role("button", name="Retour à Toutes les leçons", exact=True).is_visible())
         lp.screenshot(path=str(OUT / f"{fmt}-chargement.png"))
         lp.wait_for_function("window.__schemaRequests.length > 0")
         lp.evaluate("window.__releaseSchema()")

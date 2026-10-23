@@ -168,8 +168,8 @@ def part_diagnostic(p, browser):
     ctx = mobile_context(p, browser, ck, standalone=True)
     ctx.add_init_script(HOLD_BESTMOVE)
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/apprendre")
-    if not ck.appears("[apprendre] page chargée", page, "main :text('Apprendre')", timeout=20000):
+    page.goto(f"{BASE}/#/apprendre/mes-parties")
+    if not ck.appears("[apprendre] Réviser mes parties chargé", page, "main :text('Réviser mes parties')", timeout=20000):
         ctx.close()
         return
     page.wait_for_timeout(800)
@@ -519,7 +519,7 @@ def part_engine_failure(p, browser):
       }
     })()""")
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/apprendre")
+    page.goto(f"{BASE}/#/apprendre/mes-parties")
     page.wait_for_selector("[data-testid=missed-attacks-card]")
     seed_mistakes(page)
     page.goto(f"{BASE}/#/attaques-manquees/1")

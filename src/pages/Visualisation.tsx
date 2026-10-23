@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Board, type BoardArrow } from '../components/Board'
+import { PageHeader } from '../components/PageHeader'
+import { groupBack } from '../lib/navigation'
 import { FigText } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
 import { RunHeader, RunSummary, Sparkline } from '../components/mates/RunParts'
@@ -101,14 +103,16 @@ function Hub({ prefs, stats, ready, loadError, onRetry, onChange, onStart }: {
   onChange: (p: VisPrefs) => void
   onStart: () => void
 }) {
+  const navigate = useNavigate()
   const key = seriesKey(prefs.level, prefs.mode)
   const recentOk = stats ? KINDS.reduce((n, k) => n + (stats.rate[k]?.ok ?? 0), 0) : 0
   return (
     <div data-vis-hub className="mx-auto max-w-xl p-4 md:p-6">
-      <h1 className="text-2xl font-black">🧠 Calcul et visualisation</h1>
-      <p className="mb-4 text-sm text-neutral-400">
-        Lis la ligne sans bouger les pièces, imagine la position d'arrivée, puis réponds sur l'échiquier de départ.
-      </p>
+      <PageHeader
+        title="🧠 Calcul et visualisation"
+        description="Lis la ligne sans bouger les pièces, imagine la position d'arrivée, puis réponds sur l'échiquier de départ."
+        back={{ label: groupBack('tactique').label, onClick: () => navigate(groupBack('tactique').to) }}
+      />
 
       <div className="mb-5 grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-surface-2 p-3 text-center">

@@ -5,6 +5,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ConfirmSheet } from '../components/ConfirmSheet'
+import { PageHeader } from '../components/PageHeader'
+import { groupBack } from '../lib/navigation'
 import { PositionGame } from '../components/PositionGame'
 import { recordReplaced } from '../lib/attempts'
 import { DECISIVE_CP, loadLevel, opponentFor, outcomeOf, saveLevel, type Level } from '../lib/attack'
@@ -73,19 +75,11 @@ function StructureList() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <div className="mb-1 flex items-center gap-1">
-        <button
-          onClick={() => back(navigate, STRUCTURES_COURSE.path)}
-          aria-label="Retour"
-          className="-ml-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
-        >
-          ←
-        </button>
-        <h1 className="text-2xl font-black">🔎 Mes structures de pions</h1>
-      </div>
-      <p className="mb-4 text-sm text-neutral-400">
-        Les structures typiques de tes parties et tes résultats avec chacune. Rejoue une position contre Stockfish depuis le moment où la structure est apparue.
-      </p>
+      <PageHeader
+        title="🔎 Mes structures de pions"
+        description="Les structures typiques de tes parties et tes résultats avec chacune. Rejoue une position contre Stockfish depuis le moment où la structure est apparue."
+        back={{ label: groupBack('strategie').label, onClick: () => navigate(groupBack('strategie').to) }}
+      />
 
       {data === null ? (
         <p data-testid="structures-loading" className="rounded-xl bg-surface-2 p-4 text-sm text-neutral-400">Lecture de tes parties…</p>

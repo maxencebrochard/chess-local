@@ -432,9 +432,9 @@ def suite(p):
     page = ctx.new_page()
 
     # --- 2. Entrée, liste, niveau ---
-    page.goto(f"{BASE}/#/apprendre")
+    page.goto(f"{BASE}/#/apprendre/entrainement/attaque-defense")
     card = page.locator("main a", has_text="Convertir l'avantage")
-    ck.appears("[entrée] carte sur l'accueil Apprendre", page, "main a:has-text(\"Convertir l'avantage\")")
+    ck.appears("[entrée] carte dans Apprendre (Attaque et défense)", page, "main a:has-text(\"Convertir l'avantage\")")
     if card.count():
         card.tap()
     ck.appears("[liste] page de l'entraîneur", page, ITEM)

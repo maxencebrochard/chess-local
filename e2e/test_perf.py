@@ -104,6 +104,9 @@ ROUTES = [
     ("moment-critique", "main :text('Aucun moment critique')"), ("finales/chrono", "main :text('Finales au chrono')"),
     ("defense", "main :text('Entraîneur de défense')"), ("visualisation", "main :text('Calcul et visualisation')"),
     ("convertir", "main :text(\"Convertir l'avantage\")"), ("seance", "main :text('Séance du jour')"),
+    ("apprendre/lecons", "main :text('Toutes les leçons')"), ("apprendre/entrainement", "main :text('Quelle compétence travailler')"),
+    ("apprendre/entrainement/finales", "main [data-session=endgame]"), ("apprendre/mes-parties", "main [data-testid=moments-card]"),
+    ("apprendre/moments-critiques", "main [data-testid=moments-empty]"),
 ]
 # Score d'une ligne moteur de l'analyse mobile : seul Stockfish le produit.
 ENGINE_LINE = "main [data-engine-line]:visible [data-engine-score]:text-matches('^[+-]?(\\\\d+,\\\\d\\\\d|M\\\\d+)$')"

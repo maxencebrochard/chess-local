@@ -3,13 +3,12 @@
 // forcé ? »), la bonne réponse justifiée, puis la position rejouée contre Stockfish
 // (`/moment-critique`), le bilan se rouvrant au retour sans être recalculé.
 import { useEffect, useMemo, useState } from 'react'
-import { Chess } from 'chess.js'
 import { useNavigate } from 'react-router-dom'
 import { Board } from './Board'
 import { ClassIcon } from './ClassIcon'
 import { Cta } from './Cta'
 import {
-  ANSWER_LABEL, ANSWER_RULE, ANSWERS, criticalMoments, momentExplanation, momentHistory, recordMomentAnswer,
+  ANSWER_LABEL, ANSWER_RULE, ANSWERS, criticalMoments, momentExplanation, momentHistory, momentState, recordMomentAnswer,
   type CriticalMoment, type MomentAnswer, type MomentHistory,
 } from '../lib/criticalMoments'
 import { figurine, type GameReview } from '../lib/review'
@@ -24,36 +23,8 @@ interface CriticalMomentsProps {
   returnLabel: string
 }
 
-// State de navigation qui rouvre l'analyse sur ce bilan (lu par Analysis.tsx, champ `bilan`).
-export interface BilanBack {
-  pgn: string
-  color?: 'w' | 'b'
-  orientation?: 'w' | 'b'
-  label?: string
-  returnTo?: string
-  returnLabel?: string
-  bilan: { review: GameReview; gameKey: string | null }
-}
-
-// Position à rejouer, passée à `/moment-critique` (pages/CriticalMoment.tsx).
-export interface MomentTarget {
-  fen: string
-  bestUci: string
-  bestSan: string
-  playedSan: string
-  found: boolean
-  answer: MomentAnswer
-  moveNo: string
-  explanation: string
-}
-
-function bilanPgn(review: GameReview, names: { w: string; b: string }): string {
-  const c = new Chess(review.startFen)
-  c.header('White', names.w, 'Black', names.b)
-  if (review.startFen !== new Chess().fen()) c.header('SetUp', '1', 'FEN', review.startFen)
-  for (const m of review.moves) c.move(m.san)
-  return c.pgn()
-}
+// Types du state de `/moment-critique`, construits par `momentState` (lib/criticalMoments.ts).
+export type { BilanBack, MomentTarget } from '../lib/criticalMoments'
 
 export function CriticalMoments(props: CriticalMomentsProps) {
   const { review, playerColor } = props
@@ -75,21 +46,9 @@ export function CriticalMoments(props: CriticalMomentsProps) {
   }
 
   function replay(m: CriticalMoment) {
-    const back: BilanBack = {
-      pgn: bilanPgn(review, props.names),
-      color: playerColor ?? undefined,
-      orientation: playerColor ?? undefined,
-      label: props.label ?? undefined,
-      returnTo: props.returnTo ?? undefined,
-      returnLabel: props.returnTo ? props.returnLabel : undefined,
-      bilan: { review, gameKey: props.gameKey },
-    }
-    const moment: MomentTarget = {
-      fen: m.fen, bestUci: m.bestUci, bestSan: m.bestSan, playedSan: m.playedSan, found: m.found,
-      answer: m.answer, moveNo: m.moveNo, explanation: momentExplanation(m),
-    }
+    const state = momentState(review, m, props)
     // `replace` : l'analyse ne garde pas son state ; un retour arrière ramènerait une analyse vide.
-    navigate('/moment-critique', { replace: true, state: { moment, back } })
+    navigate('/moment-critique', { replace: true, state })
   }
 
   // Analyse ouverte depuis un moment rejoué : pas de moments imbriqués, qui écraseraient la

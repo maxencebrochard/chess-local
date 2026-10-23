@@ -39,6 +39,27 @@ LIVE = os.environ.get("E2E_LIVE") == "1"
 # Bouton du domaine Finales (et pas la carte « Cours de finales »).
 FINALES = re.compile(r"^\W*Finales$")
 
+# Hub d'Apprendre (lot 5 du plan UX) : les séances par domaine se lancent depuis leur groupe
+# d'Entraînement (carte `[data-session=<domaine>]`), Mes erreurs depuis Réviser mes parties. La
+# séance s'ouvre ensuite sur `#/apprendre`, comme avant : seules ces entrées ont changé.
+SESSION_GROUP = {"tactic": "tactique", "endgame": "finales", "opening": "ouvertures", "strategy": "strategie"}
+
+
+def open_learn_session(page, domain, tap=False):
+    """Ouvre le groupe du domaine et lance sa séance (`tap=True` : geste tactile)."""
+    page.goto(f"{BASE}/#/apprendre/entrainement/{SESSION_GROUP[domain]}")
+    card = page.locator(f"main [data-session={domain}]")
+    card.wait_for(state="visible", timeout=20000)
+    card.tap() if tap else card.click()
+
+
+def open_mistakes_session(page):
+    """Réviser mes parties, puis Mes erreurs (attend que le compte active la carte)."""
+    page.goto(f"{BASE}/#/apprendre/mes-parties")
+    page.wait_for_selector("[data-testid=mistakes-card]:not([disabled])", timeout=20000)
+    page.locator("[data-testid=mistakes-card]").click()
+
+
 DEFAULT_SETTINGS = {
     "themeId": "green",
     "pieceSet": "atelier",

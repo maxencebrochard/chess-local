@@ -212,9 +212,9 @@ def suite(p):
     page = ctx.new_page()
 
     # --- 1. Entrée et liste ---
-    page.goto(f"{BASE}/#/apprendre")
-    ck.appears("[entrée] bouton sur l'accueil Apprendre", page, "main button:has-text(\"Jouer une finale jusqu'au bout\")")
-    page.locator("main button", has_text="Jouer une finale jusqu'au bout").tap()
+    page.goto(f"{BASE}/#/apprendre/entrainement/finales")
+    ck.appears("[entrée] carte dans Apprendre (Finales)", page, "main a:has-text(\"Jouer une finale jusqu'au bout\")")
+    page.locator("main a", has_text="Jouer une finale jusqu'au bout").tap()
     ck.appears("[liste] page des finales", page, "[data-testid='endgame-item']")
     check("[liste] URL #/finales", page.evaluate("() => location.hash") == "#/finales")
     check("[liste] onglet Apprendre allumé", page.locator("nav a[aria-current]", has_text="Apprendre").locator("visible=true").count() == 1)

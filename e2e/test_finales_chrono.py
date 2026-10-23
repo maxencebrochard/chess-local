@@ -13,7 +13,7 @@ Ce qui est vérifié :
 - logique pure (bundle rolldown sous Node) : fins par les règles avant la conversion, conversion
   par promotion ou matériel raflé, sous-promotion refusée, tenue de nulle, gain envolé, cadences,
   ordre des séries ;
-- entrées : carte dans Apprendre, onglet Apprendre allumé, familles par thème, pas de débordement ;
+- entrées : carte du groupe Finales d'Apprendre (retour vers le groupe), onglet Apprendre allumé, familles par thème, pas de débordement ;
 - pendule sous horloge Playwright contrôlée : drapeau exact, incrément exact, pendule arrêtée et
   figée pendant la réponse du moteur (retenue à la frontière UCI), prémouvement débité de 100 ms
   puis incrément, drapeau au débit sans jouer ;
@@ -272,8 +272,8 @@ def first_quiet(board):
 def entry_suite(p, browser):
     ctx = mobile_context(p, browser, ck, standalone=True)
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/apprendre")
-    if ck.appears("[entrée] carte Finales au chrono dans Apprendre", page, "[data-testid='endgame-clock-card']", timeout=10000):
+    page.goto(f"{BASE}/#/apprendre/entrainement/finales")
+    if ck.appears("[entrée] carte Finales au chrono dans Apprendre (Finales)", page, "[data-testid='endgame-clock-card']", timeout=10000):
         shot(page, "finales_chrono_apprendre_393x852", full_page=True)
         page.locator("[data-testid='endgame-clock-card']").click()
         ck.appears("[entrée] Apprendre → /finales/chrono", page, "h1:has-text('Finales au chrono')", timeout=5000)
@@ -289,8 +289,8 @@ def entry_suite(p, browser):
     check("[accueil] pas de débordement horizontal (393)", overflow_x(page) == 0)
     shot(page, "finales_chrono_accueil_393x852")
     shot(page, "finales_chrono_accueil_full_393x852", full_page=True)
-    page.get_by_role("button", name="Retour à Apprendre").click()
-    ck.appears("[entrée] retour à Apprendre", page, "[data-testid='endgame-clock-card']", timeout=5000)
+    page.get_by_role("button", name="Retour à Finales").click()
+    ck.appears("[entrée] retour au groupe Finales d'Apprendre", page, "[data-testid='endgame-clock-card']", timeout=5000)
     ctx.close()
 
     ctx = mobile_context(p, browser, ck)
@@ -553,9 +553,9 @@ def games_suite(p, browser):
 
     # Record relu après rechargement, cadence mémorisée.
     # Attendre chaque rendu : sous CPU ralenti, Apprendre encore en montage ramènerait l'URL à
-    # #/apprendre après le second goto, et le rechargement ne rouvrirait pas les finales au chrono.
-    page.goto(f"{BASE}/#/apprendre")
-    ck.appears("[records] Apprendre affiché", page, "[data-testid='endgame-clock-card']", timeout=10000)
+    # la page d'Apprendre après le second goto, et le rechargement ne rouvrirait pas les finales au chrono.
+    page.goto(f"{BASE}/#/apprendre/entrainement/finales")
+    ck.appears("[records] Apprendre (groupe Finales) affiché", page, "[data-testid='endgame-clock-card']", timeout=10000)
     page.goto(f"{BASE}/#/finales/chrono")
     ck.appears("[records] retour aux finales au chrono", page, "[data-serie='mix']", timeout=10000)
     page.reload()

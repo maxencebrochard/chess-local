@@ -3,6 +3,7 @@
 // contre Stockfish à pleine force, exactement comme « Mes attaques manquées » : retrouver le coup de
 // défense du bilan (ou un coup qui tient aussi), puis continuer la partie librement.
 import { useEffect, useState } from 'react'
+import { REVIEW_BACK } from '../lib/navigation'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { EmptyState } from '../components/EmptyState'
@@ -44,7 +45,7 @@ function MissedDefenseList() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <PageHeader title="🧱 Mes défenses ratées" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }} />
+      <PageHeader title="🧱 Mes défenses ratées" back={{ label: REVIEW_BACK.label, onClick: () => navigate(REVIEW_BACK.to) }} />
       {diag === null && <p role="status" className="text-muted">Chargement des parties à rejouer…</p>}
 
       {diag && (

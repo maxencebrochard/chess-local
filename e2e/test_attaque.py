@@ -365,8 +365,8 @@ def suite(p):
     page = ctx.new_page()
 
     # --- 2. Entrée, liste, niveau ---
-    page.goto(f"{BASE}/#/apprendre")
-    ck.appears("[entrée] carte sur l'accueil Apprendre", page, "main a:has-text(\"Entraîneur d'attaque\")")
+    page.goto(f"{BASE}/#/apprendre/entrainement/attaque-defense")
+    ck.appears("[entrée] carte dans Apprendre (Attaque et défense)", page, "main a:has-text(\"Entraîneur d'attaque\")")
     if page.locator("main a", has_text="Entraîneur d'attaque").count():
         page.locator("main a", has_text="Entraîneur d'attaque").tap()
     ck.appears("[liste] page de l'entraîneur", page, "[data-testid='attack-item']")

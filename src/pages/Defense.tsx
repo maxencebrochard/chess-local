@@ -3,6 +3,7 @@
 // roques), puis partie contre Stockfish bridé à l'Elo choisi (`/defense/:id`) : tenir HOLD_MOVES
 // coups sans que l'éval passe sous le plancher, ou obtenir une nulle de l'échiquier ou un gain.
 import { useEffect, useMemo, useState } from 'react'
+import { groupBack } from '../lib/navigation'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { Cta } from '../components/Cta'
@@ -84,7 +85,7 @@ function DefenseList() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <PageHeader title="🛡️ Entraîneur de défense" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+      <PageHeader title="🛡️ Entraîneur de défense" back={{ label: groupBack('attaque-defense').label, onClick: () => navigate(groupBack('attaque-defense').to) }}
         description={<>Ton roi est attaqué, mais la position se défend : tiens {HOLD_MOVES} coups sans que l'éval passe sous {HOLD_FLOOR_CP / 100}. Une nulle ou un gain comptent aussi.</>} />
 
       <section data-testid="attacker" className="mb-4 rounded-xl bg-surface-2 p-3">

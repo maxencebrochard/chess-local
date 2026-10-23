@@ -400,8 +400,11 @@ def play_session(page, expected_n, log):
 def part_home_and_session(p, browser):
     ctx, page = seeded(p, browser, sounds=True)
 
-    # --- Apprendre : ligne Révision avec le compte ---
+    # --- Apprendre : carte Réviser mes parties du hub, puis ligne Révision avec le compte ---
     page.goto(f"{BASE}/#/apprendre")
+    ck.appears(f"[apprendre] hub : pastille {EXPECTED_DUE} sur « Réviser mes parties »", page,
+               f"main a[data-learn=mes-parties] [data-review-count]:text-is('{EXPECTED_DUE}')", timeout=10000)
+    page.goto(f"{BASE}/#/apprendre/mes-parties")
     if ck.appears("[apprendre] ligne « Révision espacée » (items dus)", page, "main a:has-text('Révision espacée')", timeout=10000):
         row = page.locator("main a", has_text="Révision espacée")
         badge = row.locator("[data-review-count]")
@@ -498,7 +501,7 @@ def part_home_and_session(p, browser):
     page.goto(f"{BASE}/#/")
     if ck.appears("[accueil] compte connu", page, "[data-review-ready]", timeout=10000):
         check("[accueil] carte masquée quand rien n'est dû", page.locator("main a", has_text="À réviser aujourd'hui").count() == 0)
-    page.goto(f"{BASE}/#/apprendre")
+    page.goto(f"{BASE}/#/apprendre/mes-parties")
     if ck.appears("[apprendre] échéances chargées", page, "main a:has-text('Révision espacée'):has-text('Rien à réviser')", timeout=10000):
         row = page.locator("main a", has_text="Révision espacée")
         text = row.inner_text()
@@ -515,10 +518,10 @@ def part_home_and_session(p, browser):
         check("[vide] prochaine échéance : demain, 3 éléments (faute ratée aujourd'hui, L12, L13)", "demain" in nxt and "3 " in nxt, f"({nxt!r})")
         check("[vide] aucun débordement horizontal", overflow_x(page) == 0)
         shot(page, "revision_empty_852")
-        if ck.appears("[vide] lien « Retour à Apprendre » (returnTo d'Apprendre)", page, "main a:has-text('Retour à Apprendre')", timeout=3000):
-            page.locator("main a", has_text="Retour à Apprendre").click()
+        if ck.appears("[vide] lien « Retour à Réviser mes parties » (returnTo d'Apprendre)", page, "main a:has-text('Retour à Réviser mes parties')", timeout=3000):
+            page.locator("main a", has_text="Retour à Réviser mes parties").click()
             page.wait_for_timeout(500)
-            check("[vide] retour sur #/apprendre", page.evaluate("() => location.hash") == "#/apprendre")
+            check("[vide] retour sur #/apprendre/mes-parties", page.evaluate("() => location.hash") == "#/apprendre/mes-parties")
     ctx.close()
 
 

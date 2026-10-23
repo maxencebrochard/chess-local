@@ -7,6 +7,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Cta } from '../components/Cta'
+import { PageHeader } from '../components/PageHeader'
+import { groupBack } from '../lib/navigation'
 import { OpeningDrill, type DrillItem, type DrillSnapshot } from '../components/OpeningDrill'
 import { Segmented } from '../components/Segmented'
 import { extractGameId, fetchRecentGames, normalizeUsername, outcomeFor, type ChesscomGame } from '../lib/chesscom'
@@ -338,13 +340,11 @@ export default function MyRepertoire() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <Link to="/apprendre" className="mb-2 -ml-1 inline-block px-1 py-1 text-sm font-semibold text-neutral-400 hover:text-white">
-        ‹ Apprendre
-      </Link>
-      <h1 className="mb-1 text-2xl font-black">🗺️ Mon répertoire</h1>
-      <p className="mb-4 text-sm text-neutral-400">
-        Où tu sors de la théorie dans tes parties chess.com, ce que ça te coûte, et le coup à jouer à la place.
-      </p>
+      <PageHeader
+        title="🗺️ Mon répertoire"
+        description="Où tu sors de la théorie dans tes parties chess.com, ce que ça te coûte, et le coup à jouer à la place."
+        back={{ label: groupBack('ouvertures').label, onClick: () => navigate(groupBack('ouvertures').to) }}
+      />
 
       <section data-source className="mb-4 rounded-xl bg-surface-2 p-3">
         {user ? (

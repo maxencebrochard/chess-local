@@ -3,6 +3,7 @@
 // variantes avec leur état. La fiche vit dans l'URL (?famille=&camp=&longueur=) : retour du
 // navigateur, rechargement et retour depuis l'analyse retrouvent la même fiche.
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { groupBack } from '../lib/navigation'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { MoveText } from '../components/MoveText'
@@ -321,7 +322,7 @@ export default function OpeningTrainer() {
   const mastered = (f: Family) => f.variants.filter((v) => variantStatus(progress, f.defaultColor, v) === 'mastered').length
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <PageHeader title="📖 Entraîneur d'ouvertures" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+      <PageHeader title="📖 Entraîneur d'ouvertures" back={{ label: groupBack('ouvertures').label, onClick: () => navigate(groupBack('ouvertures').to) }}
         description="Choisis une ouverture, puis trouve le prochain coup, la suite ou toute une variante, jusqu'au coup 15." />
       <input
         type="search"

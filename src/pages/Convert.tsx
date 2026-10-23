@@ -3,6 +3,7 @@
 // bridé à l'Elo choisi, sans plafond de coups, jusqu'au mat ou à un avantage décisif tenu
 // (`/convertir/:id`). Toute nulle est un échec : c'est la partie gagnante qu'on laisse filer.
 import { useEffect, useMemo, useState } from 'react'
+import { groupBack } from '../lib/navigation'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { Cta } from '../components/Cta'
@@ -80,7 +81,7 @@ function ConvertList() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <PageHeader title="🏆 Convertir l'avantage" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+      <PageHeader title="🏆 Convertir l'avantage" back={{ label: groupBack('attaque-defense').label, onClick: () => navigate(groupBack('attaque-defense').to) }}
         description="Tu es nettement mieux : gagne la partie, jusqu'au mat ou à un avantage décisif tenu. Une nulle compte comme un échec." />
 
       <section data-testid="defender" className="mb-4 rounded-xl bg-surface-2 p-3">

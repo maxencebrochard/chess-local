@@ -20,7 +20,7 @@ import os
 import subprocess
 import time
 
-from helpers import BASE, E2E_DIR, FINALES, Checker, drag_piece, mobile_context, shot, tap_move
+from helpers import BASE, E2E_DIR, Checker, drag_piece, mobile_context, shot, tap_move
 
 ROOT = os.path.dirname(E2E_DIR)
 ck = Checker("endgames")
@@ -161,12 +161,16 @@ def eval_label(page):
 
 def start_endgame(page, eg_id):
     """Ouvre Apprendre, force la finale servie, vérifie l'item lu dans sessionStorage, lance le jeu."""
-    page.goto(f"{BASE}/#/apprendre")
-    ck.appears("[séance] accueil Apprendre", page, "main button:has-text('Finales')")
+    page.goto(f"{BASE}/#/apprendre/entrainement/finales")
+    ck.appears("[séance] groupe Finales d'Apprendre", page, "main [data-session=endgame]")
     elo = page.evaluate(READ_RATING)
-    page.evaluate("(x) => { window.__rndQ = [x] }", rnd_for(eg_id, DEFAULT_ELO if elo is None else elo))
-    page.locator("main button", has_text=FINALES).tap()
+    # La même valeur plusieurs fois : la séance s'ouvre sur #/apprendre (lot 5), et les clés des
+    # deux navigations (aller, puis state effacé au montage) puisent aussi dans Math.random avant
+    # le tirage de la finale. La file est vidée une fois la leçon affichée.
+    page.evaluate("(x) => { window.__rndQ = Array(6).fill(x) }", rnd_for(eg_id, DEFAULT_ELO if elo is None else elo))
+    page.locator("main [data-session=endgame]").tap()
     ck.appears(f"[séance] leçon {eg_id}", page, "text=C'est parti")
+    page.evaluate("() => { window.__rndQ = [] }")
     raw = page.evaluate("() => sessionStorage.getItem('learn-session-v1')")
     served = None
     try:

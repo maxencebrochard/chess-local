@@ -40,6 +40,10 @@ const Seance = lazyPage(() => import('./pages/Seance'))
 const More = lazyPage(() => import('./pages/More'))
 const Settings = lazyPage(() => import('./pages/Settings'))
 const MyData = lazyPage(() => import('./pages/MyData'))
+const Lessons = lazyPage(() => import('./pages/Lessons'))
+const Training = lazyPage(() => import('./pages/Training'))
+const ReviewMyGames = lazyPage(() => import('./pages/ReviewMyGames'))
+const MomentsList = lazyPage(() => import('./pages/MomentsList'))
 const Finales = lazyCourse(() => import('./lib/endgameCourse').then((m) => m.FINALES))
 const Roque = lazyCourse(() => import('./lib/attackCourse').then((m) => m.ROQUE))
 const DefenseCourse = lazyCourse(() => import('./lib/defenseCourse').then((m) => m.DEFENSE))
@@ -193,6 +197,13 @@ function Shell() {
               <Route path="/puzzles" element={<Puzzles />} />
               <Route path="/rush" element={<PuzzleRush />} />
               <Route path="/apprendre" element={<Learn />} />
+              {/* Hub guidé d'Apprendre (lot 5) : les groupes vivent sous `entrainement/`, jamais
+                  directement sous `/apprendre`, où `finales`, `defense` et `structures` sont des cours. */}
+              <Route path="/apprendre/lecons" element={<Lessons />} />
+              <Route path="/apprendre/entrainement" element={<Training />} />
+              <Route path="/apprendre/entrainement/:groupe" element={<Training />} />
+              <Route path="/apprendre/mes-parties" element={<ReviewMyGames />} />
+              <Route path="/apprendre/moments-critiques" element={<MomentsList />} />
               <Route path="/ouvertures" element={<OpeningTrainer />} />
               <Route path="/repertoire" element={<MyRepertoire />} />
               <Route path="/apprendre/finales" element={<Finales.Index />} />

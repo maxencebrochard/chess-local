@@ -82,13 +82,13 @@ def suite(p):
                     measure(page, name + ' / ' + route)
                     if name == 'atelier':
                         shot(page, 'centres_atelier_' + route.replace('/', '_').replace('?', '_'))
-            for route, button in [('rush', 'Survie'), ('apprendre', 'Tactiques'),
-                                  ('mats?d=chrono-krr', 'Commencer'), ('mats?d=mate-1', 'Commencer')]:
+            # Séance Tactiques : lancée depuis son groupe d'Apprendre (lot 5).
+            for route, selector in [('rush', 'main button:has-text("Survie")'), ('apprendre/entrainement/tactique', 'main [data-session=tactic]'),
+                                    ('mats?d=chrono-krr', 'main button:has-text("Commencer")'), ('mats?d=mate-1', 'main button:has-text("Commencer")')]:
                 page.goto(f'{BASE}/#/{route}')
-                selector = f'main button:has-text("{button}")'
                 if ck.appears(name + ' : lancement ' + route, page, selector):
                     page.locator(selector).first.click()
-                    if route == 'apprendre' and ck.appears(name + ' : leçon', page, "button:has-text(\"C'est parti\")"):
+                    if route.startswith('apprendre') and ck.appears(name + ' : leçon', page, "button:has-text(\"C'est parti\")"):
                         page.get_by_role('button', name="C'est parti").click()
                     if ck.appears(name + ' : exercice ' + route, page, '[data-square] [data-piece]'):
                         measure(page, name + ' / ' + route)

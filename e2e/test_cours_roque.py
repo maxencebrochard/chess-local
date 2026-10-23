@@ -186,7 +186,7 @@ def suite(p):
     page = ctx.new_page()
 
     # ---------- Entrée depuis Apprendre ----------
-    page.goto(f"{BASE}/#/apprendre")
+    page.goto(f"{BASE}/#/apprendre/lecons")
     ck.appears("[entrée] carte Démolir le roque", page, "button:has-text('Démolir le roque')")
     check("[entrée] progression 0/N", page.locator("[data-testid='attack-card-progress']").inner_text() == f"0/{N} leçons")
     check("[entrée] carte des finales intacte", page.locator("[data-testid='course-card-progress']").inner_text() == f"0/{FINALES_N} leçons")
@@ -348,7 +348,7 @@ def suite(p):
         check(f"[toutes] {lid} jouée jusqu'au bilan", ok)
     page.goto(f"{BASE}/#/apprendre/roque")
     ck.appears("[toutes] sommaire N/N", page, f"[data-testid='course-progress']:has-text('{N}/{N}')")
-    page.goto(f"{BASE}/#/apprendre")
+    page.goto(f"{BASE}/#/apprendre/lecons")
     ck.appears("[toutes] carte N/N", page, f"[data-testid='attack-card-progress']:has-text('{N}/{N} leçons')")
     check("[toutes] les finales restent à 0", page.locator("[data-testid='course-card-progress']").inner_text() == f"0/{FINALES_N} leçons")
     page.goto(f"{BASE}/#/apprendre/finales")

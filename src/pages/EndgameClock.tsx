@@ -2,6 +2,7 @@
 // et incrément, records par cadence), puis une famille de finales théoriques ou le mélange ; un
 // tap lance la série contre Stockfish pleine force.
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { groupBack } from '../lib/navigation'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ENDGAME_CLOCK_RETURN_SCREEN, EndgameClockRun, type ClockReturn } from '../components/EndgameClockRun'
 import { PageHeader } from '../components/PageHeader'
@@ -103,7 +104,7 @@ export default function EndgameClock() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <PageHeader title="⏱ Finales au chrono" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+      <PageHeader title="⏱ Finales au chrono" back={{ label: groupBack('finales').label, onClick: () => navigate(groupBack('finales').to) }}
         description="La fin de partie de bullet : une finale théorique, Stockfish à pleine force, quelques secondes à ta pendule. Gagne ou tiens la nulle avant la chute du drapeau." />
 
       <p className="mb-1.5 text-sm font-semibold text-neutral-400">Temps</p>

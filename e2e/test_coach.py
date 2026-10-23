@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 
 import coach_oracle as oracle
-from helpers import BASE, FINALES, HOLD_BESTMOVE, SHOTS, Checker, click_square as sq, mobile_context, overflow_x
+from helpers import BASE, HOLD_BESTMOVE, SHOTS, Checker, click_square as sq, mobile_context, overflow_x, open_learn_session
 
 ck = Checker("coach")
 check = ck.check
@@ -371,9 +371,7 @@ def display_852(p, browser):
     page = ctx.new_page()
 
     # --- Leçon d'Apprendre ---
-    page.goto(f"{BASE}/#/apprendre")
-    page.wait_for_timeout(1500)
-    page.locator("main button", has_text=FINALES).click()
+    open_learn_session(page, "endgame")
     page.wait_for_timeout(1500)
     m = metrics(page, ".fixed")
     centred("[leçon 852] avatar centré dans son cercle", m)
@@ -580,9 +578,7 @@ def audit_game(p, browser, tag, pgn, color, result):
 def display_660(p, browser):
     ctx = mobile_context(p, browser, ck, standalone=False)
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/apprendre")
-    page.wait_for_timeout(1500)
-    page.locator("main button", has_text=FINALES).click()
+    open_learn_session(page, "endgame")
     page.wait_for_timeout(1500)
     centred("[leçon 660] avatar centré", metrics(page, ".fixed"))
     page.screenshot(path=f"{SHOTS}/coach_lesson_660.png")

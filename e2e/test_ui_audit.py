@@ -498,7 +498,7 @@ def tour(page, profile):
 
     goto(page, "/apprendre", "main :text('Séance')")
     a("apprendre")
-    page.get_by_role("button", name="Séance", exact=True).click()
+    page.get_by_role("button", name="Séance rapide", exact=True).click()
     if ck.appears(f"{t} séance d'Apprendre", page, "button:has-text(\"C'est parti\")", timeout=30000):
         a("apprendre-seance-intro", scroll=False)
         page.locator("button:has-text(\"C'est parti\")").click()
@@ -507,13 +507,29 @@ def tour(page, profile):
             a("apprendre-seance", scroll=False)
     # Séance de finales : son en-tête porte le « ? » du cours, face au ✕. Même route : détour par l'accueil.
     goto(page, "/", "main [data-review-ready]")
-    goto(page, "/apprendre", "main :text('Séance')")
-    page.locator("main button", has_text="Finales").first.click()
+    goto(page, "/apprendre/entrainement/finales", "main [data-session=endgame]")
+    page.locator("main [data-session=endgame]").click()
     if ck.appears(f"{t} séance de finales", page, "button:has-text(\"C'est parti\")", timeout=30000):
         page.locator("button:has-text(\"C'est parti\")").click()
         if ck.appears(f"{t} bouton « Voir le cours » de la séance", page, "header button[aria-label='Voir le cours']"):
             page.wait_for_timeout(1000)
             a("apprendre-seance-finales", scroll=False)
+
+    # Hub guidé d'Apprendre (lot 5) : sous-pages et liste des moments critiques (vide ici).
+    for path, name, marker in [
+        ("/apprendre/lecons", "apprendre-lecons", "[data-testid=defense-card-progress]"),
+        ("/apprendre/entrainement", "apprendre-entrainement", "main a[data-group]"),
+        ("/apprendre/entrainement/tactique", "apprendre-groupe-tactique", "main [data-session]"),
+        ("/apprendre/entrainement/attaque-defense", "apprendre-groupe-attaque-defense", "main a[href='#/convertir']"),
+        ("/apprendre/entrainement/finales", "apprendre-groupe-finales", "main [data-session]"),
+        ("/apprendre/entrainement/ouvertures", "apprendre-groupe-ouvertures", "main [data-session]"),
+        ("/apprendre/entrainement/strategie", "apprendre-groupe-strategie", "main [data-session]"),
+        ("/apprendre/mes-parties", "apprendre-mes-parties", "[data-testid=moments-card]"),
+        ("/apprendre/moments-critiques", "apprendre-moments-vide", "[data-testid=moments-empty]"),
+    ]:
+        goto(page, path, marker)
+        page.wait_for_timeout(400)
+        a(name)
 
     for slug in ("finales", "roque"):
         goto(page, f"/apprendre/{slug}", "[data-testid=course-progress]")
