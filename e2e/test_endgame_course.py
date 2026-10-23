@@ -128,6 +128,15 @@ def suite(p):
             wait_piece(ck, page, "a4", "wR")
             check("[ligne:analyse] même coup de la ligne", piece_on(page, "a4") == "wR" and piece_on(page, "d5") == "bK"
                   and page.get_by_text(status, exact=True).count() == 1, f"({status})")
+            # Le coup restauré ne vaut qu'une fois : quitter l'étape puis y revenir recommence la ligne.
+            page.get_by_role("button", name="← Précédent").click()
+            ck.appears("[ligne:analyse] Précédent → étape 1/3", page, "[data-testid='lesson-step']:has-text('1/3')")
+            advance(ck, page)
+            if ck.appears("[ligne:analyse] Continuer → étape 2/3", page, "[data-testid='lesson-step']:has-text('2/3')"):
+                wait_piece(ck, page, "a1", "wR")
+                check("[ligne:analyse] étape revisitée : ligne repartie du début",
+                      piece_on(page, "a1") == "wR" and piece_on(page, "a4") is None and piece_on(page, "e5") == "bK"
+                      and page.get_by_text(re.compile(r"^À toi : (Blancs|Noirs) · coup 1/[0-9]+$")).count() == 1)
 
     # Rafraîchissement en cours de leçon : on reste à l'étape 2 (ligne recommencée).
     page.reload()
