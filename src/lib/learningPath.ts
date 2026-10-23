@@ -2,12 +2,9 @@
 // dans l'ordre, chacune une courte leçon (cours d'Apprendre ou cours détaillé) suivie d'exercices
 // de validation. Données dans src/data/learningPath.json, contrôlées par
 // scripts/check-learning-path.mjs (références, ids figés, ordre). Ce module est pur (aucun accès à
-// la base) : la progression se calcule depuis des « faits » lus par learningPathStore.ts.
+// la base) : la progression se calcule depuis des « faits » lus par learningPathStore.ts. Il ne tire
+// aucun cours : les leçons des étapes se résolvent dans pathLessons.ts.
 import pathData from '../data/learningPath.json'
-import { BASES } from './basicsCourse'
-import { ROQUE } from './attackCourse'
-import { FINALES } from './endgameCourse'
-import type { Course as LessonCourse, Lesson } from './lessonCourse'
 
 export interface PuzzleExercise {
   kind: 'puzzles'
@@ -56,23 +53,12 @@ export const PLACEMENT_ID = 'placement'
 export const PLACEMENT_PER_LEVEL = 3
 export const PLACEMENT_PASS = 2
 
-export const PATH_COURSES: Record<string, LessonCourse> = { [BASES.slug]: BASES, [FINALES.slug]: FINALES, [ROQUE.slug]: ROQUE }
-
 export function stepById(id: string | null | undefined): PathStep | null {
   return STEPS.find((s) => s.id === id) ?? null
 }
 
 export function levelOf(step: PathStep): PathLevel {
   return LEVELS.find((l) => l.steps.includes(step))!
-}
-
-// Leçon d'un cours désignée par `<slug>:<id>`, avec son chemin dans l'app.
-export function lessonRef(ref: string | undefined): { course: LessonCourse; id: string; lesson: Lesson; path: string } | null {
-  if (!ref) return null
-  const [slug, id] = ref.split(':')
-  const course = PATH_COURSES[slug]
-  const lesson = course?.lessonById(id) ?? null
-  return course && lesson ? { course, id, lesson, path: `${course.path}/${id}` } : null
 }
 
 // Exercice noté : une série de N items avec seuil (puzzles, variantes d'ouverture).

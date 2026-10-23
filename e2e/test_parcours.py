@@ -773,7 +773,7 @@ def part_layouts(p, browser):
         if name == "660":
             go(page, "/")
             ck.appears("[660] accueil", page, "[data-testid=home-path]", timeout=10000)
-            # Progression calculée après le premier affichage (homeExtras.ts, import dynamique).
+            # Progression calculée après le premier affichage (learningPathStore.ts, import dynamique de Home.tsx).
             ck.appears("[660] progression du parcours connue", page, "[data-path-ready]", timeout=10000)
             fits = page.evaluate("() => { const m = document.querySelector('main'); return m.scrollHeight <= m.clientHeight + 1 }")
             check("[660] l'Accueil tient sans défiler avec la tuile Parcours", fits)
