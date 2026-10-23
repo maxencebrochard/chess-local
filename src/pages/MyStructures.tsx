@@ -77,7 +77,7 @@ function StructureList() {
         <button
           onClick={() => back(navigate, STRUCTURES_COURSE.path)}
           aria-label="Retour"
-          className="-ml-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
+          className="-ml-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
         >
           ←
         </button>
@@ -118,7 +118,7 @@ function StructureList() {
                     saveLevel(l)
                   }}
                 />
-                <p className="mt-2 text-xs text-neutral-500">{LEVEL_HELP}</p>
+                <p className="mt-2 text-xs text-neutral-400">{LEVEL_HELP}</p>
               </section>
             </>
           )}
@@ -141,7 +141,7 @@ function StructureList() {
               </div>
             </section>
           )}
-          <p className="mt-5 text-xs text-neutral-500">
+          <p className="mt-5 text-xs text-neutral-400">
             Comptées : tes parties contre les bots de l'app et les parties chess.com déjà passées au bilan par Insights (tous pseudos).
             Une structure compte dès le 10e demi-coup, quand chaque camp a encore trois pièces au moins (sauf la majorité, structure de
             finale), si elle tient quatre demi-coups de suite.
@@ -221,7 +221,7 @@ function PositionRow({ game, sighting, owner, plays, inProgress }: {
       onClick={() => navigate(structurePath(key))}
       className="flex min-h-12 cursor-pointer items-center gap-2 rounded-lg bg-surface-3/60 px-2.5 py-2 text-left hover:bg-surface-3"
     >
-      <span className={`w-14 shrink-0 rounded-full py-0.5 text-center text-[11px] font-bold ${owner ? 'bg-accent/20 text-accent' : 'bg-sky-900/40 text-sky-300'}`}>
+      <span className={`w-14 shrink-0 rounded-full py-0.5 text-center text-[11px] font-bold ${owner ? 'bg-accent/20 text-accent-light' : 'bg-sky-900/40 text-sky-300'}`}>
         {owner ? 'avec' : 'contre'}
       </span>
       <span className="min-w-0 flex-1">
@@ -235,7 +235,7 @@ function PositionRow({ game, sighting, owner, plays, inProgress }: {
       ) : p && p.successes > 0 ? (
         <span data-testid="structure-solved" className="shrink-0 text-xs font-bold text-accent">✓ gagnée</span>
       ) : p ? (
-        <span data-testid="structure-attempts" className="shrink-0 text-xs text-neutral-500">{plural(p.attempts, 'essai')}</span>
+        <span data-testid="structure-attempts" className="shrink-0 text-xs text-neutral-400">{plural(p.attempts, 'essai')}</span>
       ) : (
         <span aria-hidden="true" className="shrink-0 text-xl text-neutral-500">›</span>
       )}
@@ -322,7 +322,7 @@ function StructureGame({ posKey, game, sighting }: { posKey: string; game: MyGam
             onClick={() => setPicking(level)}
             aria-label="Niveau de Stockfish"
             data-testid="level-chip"
-            className="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-full bg-surface-2 px-2.5 text-xs font-bold tabular-nums text-neutral-200 hover:bg-surface-3"
+            className="flex h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full bg-surface-2 px-2.5 text-xs font-bold tabular-nums text-neutral-200 hover:bg-surface-3"
           >
             🤖 {level ?? 'Max'}
           </button>
@@ -341,7 +341,7 @@ function StructureGame({ posKey, game, sighting }: { posKey: string; game: MyGam
           onCancel={() => setPicking(undefined)}
         >
           <LevelPicker value={picking} onChange={setPicking} label="Niveau de Stockfish" />
-          <p className="text-xs text-neutral-500">{LEVEL_HELP}</p>
+          <p className="text-xs text-neutral-400">{LEVEL_HELP}</p>
           <p>Changer de niveau recommence la position.</p>
         </ConfirmSheet>
       )}

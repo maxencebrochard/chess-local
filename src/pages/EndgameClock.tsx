@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EndgameClockRun } from '../components/EndgameClockRun'
+import { PageHeader } from '../components/PageHeader'
 import { Engine } from '../lib/engine'
 import {
   BASES_S, baseLabel, DEFAULT_CADENCE, ENDGAME_CLOCK_DOMAIN, ENDGAME_CLOCK_PREFS_KEY, FAMILIES, INCREMENTS_S, MIX, parseCadence, cadenceKey,
@@ -91,19 +92,8 @@ export default function EndgameClock() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <div className="mb-1 flex items-center gap-1">
-        <button
-          onClick={() => navigate('/apprendre')}
-          aria-label="Retour à Apprendre"
-          className="-ml-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
-        >
-          ←
-        </button>
-        <h1 className="text-2xl font-black">⏱ Finales au chrono</h1>
-      </div>
-      <p className="mb-4 text-sm text-neutral-400">
-        La fin de partie de bullet : une finale théorique, Stockfish à pleine force, quelques secondes à ta pendule. Gagne ou tiens la nulle avant la chute du drapeau.
-      </p>
+      <PageHeader title="⏱ Finales au chrono" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+        description="La fin de partie de bullet : une finale théorique, Stockfish à pleine force, quelques secondes à ta pendule. Gagne ou tiens la nulle avant la chute du drapeau." />
 
       <p className="mb-1.5 text-sm font-semibold text-neutral-400">Temps</p>
       <div role="radiogroup" aria-label="Temps" className="mb-3 flex gap-2">
@@ -143,7 +133,7 @@ export default function EndgameClock() {
           </div>
         </section>
       ))}
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-neutral-400">
         Records en {cadenceLabel(cadence)}. Ta pendule ne tourne qu'à ton trait ; un prémouvement coûte 0,1 s.
       </p>
     </div>
@@ -156,7 +146,7 @@ function Choice({ label, checked, onClick }: { label: string; checked: boolean; 
       role="radio"
       aria-checked={checked}
       onClick={onClick}
-      className={`flex-1 cursor-pointer rounded-lg py-2 text-sm font-bold ${
+      className={`min-h-11 flex-1 cursor-pointer rounded-lg py-2 text-sm font-bold ${
         checked ? 'bg-accent text-on-accent' : 'bg-surface-2 text-neutral-300 hover:bg-surface-3'
       }`}
     >
@@ -171,7 +161,7 @@ function Record({ best }: { best: number | null }) {
   ) : (
     <span data-record={best} className="shrink-0 text-right leading-tight">
       <span className="block text-lg font-black text-accent">{best}</span>
-      <span className="block text-[10px] text-neutral-500">record</span>
+      <span className="block text-[10px] text-neutral-400">record</span>
     </span>
   )
 }
@@ -188,12 +178,12 @@ function FamilyCard({ family, best, onClick }: { family: ClockFamily; best: numb
         <span className="mt-0.5 flex items-center gap-2 text-xs">
           <span
             className={`rounded px-1.5 py-0.5 font-semibold ${
-              family.objective === 'win' ? 'bg-accent/15 text-accent' : 'bg-sky-900/40 text-sky-300'
+              family.objective === 'win' ? 'bg-accent/15 text-accent-light' : 'bg-sky-900/40 text-sky-300'
             }`}
           >
             {family.objective === 'win' ? 'Gagner' : 'Tenir la nulle'}
           </span>
-          <span className="text-neutral-500">{family.difficulty}</span>
+          <span className="text-neutral-400">{family.difficulty}</span>
         </span>
       </span>
       <Record best={best} />

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Chess, DEFAULT_POSITION } from 'chess.js'
 import { Cta } from '../components/Cta'
+import { PageHeader } from '../components/PageHeader'
 import { MistakeExercise } from '../components/MistakeExercise'
 import { OpeningDrill } from '../components/OpeningDrill'
 import { PositionGame } from '../components/PositionGame'
@@ -282,17 +283,8 @@ export default function Seance() {
     const blocks = (preview?.blocks ?? []).map((b) => ({ ...b, count: steps.filter((x) => x.kind === b.kind).length })).filter((b) => b.count > 0)
     return (
       <div data-seance-intro className="mx-auto max-w-lg p-4 md:p-6">
-        <div className="mb-1 flex items-center gap-1">
-          <button
-            onClick={quit}
-            aria-label="Retour à l'accueil"
-            className="-ml-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
-          >
-            ←
-          </button>
-          <h1 className="text-2xl font-black">☀️ Séance du jour</h1>
-        </div>
-        <p className="mb-4 text-sm text-neutral-400">Quelques blocs courts, choisis d'après ce que tu as à travailler, enchaînés sans avoir à choisir.</p>
+        <PageHeader title="☀️ Séance du jour" back={{ label: 'Accueil', onClick: quit }}
+          description="Quelques blocs courts, choisis d'après ce que tu as à travailler, enchaînés sans avoir à choisir." />
 
         <div className="mb-4 flex items-center gap-2 rounded-xl bg-surface-2 px-4 py-3">
           <span className="min-w-0 flex-1">
@@ -302,7 +294,7 @@ export default function Seance() {
             </span>
           </span>
           {s && (
-            <span data-seance-streak className={`shrink-0 text-right text-sm font-bold ${s.days > 0 ? 'text-orange-300' : 'text-neutral-500'}`}>
+            <span data-seance-streak className={`shrink-0 text-right text-sm font-bold ${s.days > 0 ? 'text-orange-300' : 'text-neutral-400'}`}>
               {s.days > 0 ? streakLabel(s.days) : 'Pas encore de série'}
               {s.today && <span className="block text-xs font-semibold text-accent">✓ Faite aujourd'hui</span>}
             </span>
@@ -344,7 +336,7 @@ export default function Seance() {
           </Cta>
         )}
         <div className="mt-4 text-center">
-          <Link to="/" replace className="text-sm font-semibold text-accent underline underline-offset-2">
+          <Link to="/" replace className="inline-flex min-h-11 items-center text-sm font-semibold text-accent underline underline-offset-2">
             Retour à l'accueil
           </Link>
         </div>
@@ -509,12 +501,12 @@ export default function Seance() {
       <div data-seance-step={step!.kind} className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
         <div data-seance-item={mistake ? 'mistake' : 'puzzle'} className="mx-auto flex min-h-full max-w-2xl flex-col">
           <header className="flex items-center px-3 py-1">
-            <button onClick={quit} aria-label="Quitter la séance" className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white">
+            <button onClick={quit} aria-label="Quitter la séance" className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white">
               ✕
             </button>
             <h1 className="flex-1 text-center text-lg font-black">
               ☀️ Séance
-              <span data-seance-progress className="ml-2 text-sm font-semibold text-neutral-500">{progress}</span>
+              <span data-seance-progress className="ml-2 text-sm font-semibold text-neutral-400">{progress}</span>
             </h1>
             <span className="w-9" />
           </header>

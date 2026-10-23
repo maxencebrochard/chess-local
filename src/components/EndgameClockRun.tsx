@@ -276,7 +276,7 @@ function ClockSeries({ serie, cadence, stats, getEngine, onDone, onMenu, onRepla
       <div className="flex items-center gap-2 px-3">
         <span
           className={`shrink-0 rounded px-2 py-1 text-sm font-bold ${
-            family.objective === 'win' ? 'bg-accent/15 text-accent' : 'bg-sky-900/40 text-sky-300'
+            family.objective === 'win' ? 'bg-accent/15 text-accent-light' : 'bg-sky-900/40 text-sky-300'
           }`}
         >
           {family.objective === 'win' ? 'Gagner' : 'Tenir la nulle'}

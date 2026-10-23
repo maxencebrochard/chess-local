@@ -167,18 +167,12 @@ export default function Play() {
   const [sans, setSans] = useState<string[]>([])
   const [viewIndex, setViewIndex] = useState(-1) // -1 = direct
   const [status, setStatus] = useState<GameStatus>('setup')
-  const gameViewRef = useRef<HTMLDivElement>(null)
-  // La configuration peut être défilée sur petit écran : une nouvelle partie commence en haut.
+  // Réglages <-> partie, ou nouvelle partie : même route, donc `<main>` gardait le défilement des
+  // réglages (bouton Jouer tout en bas) et la partie s'ouvrait avec l'adversaire et sa pendule sous l'heure.
   useLayoutEffect(() => {
-    if (status === 'playing') gameViewRef.current?.closest('main')?.scrollTo(0, 0)
+    if (status !== 'over') document.querySelector('main')?.scrollTo(0, 0)
   }, [status])
   const statusRef = useRef<GameStatus>('setup') // miroir synchrone pour les minuteurs et les callbacks
-  // Réglages <-> partie : même route, donc `<main>` gardait le défilement des réglages (bouton
-  // Jouer tout en bas) et la partie s'ouvrait avec l'adversaire et sa pendule sous l'heure.
-  const inSetup = status === 'setup'
-  useLayoutEffect(() => {
-    document.querySelector('main')?.scrollTo(0, 0)
-  }, [inSetup])
   const [playerColor, setPlayerColor] = useState<'w' | 'b'>('w')
   const [clocks, setClocks] = useState<{ w: number; b: number }>({ w: 0, b: 0 })
   const clocksRef = useRef(clocks) // source de vérité de la pendule : le tick ne fait aucun effet de bord dans un updater
@@ -1109,7 +1103,7 @@ export default function Play() {
   // --- Rendu mode entraîneur : éval bar, coach, board plein, barre d'actions ---
   if (mode === 'coach') {
     return (
-      <div ref={gameViewRef} className="mx-auto flex h-full max-w-2xl flex-col" {...threatAttrs}>
+      <div className="mx-auto flex h-full max-w-2xl flex-col" {...threatAttrs}>
         <div className="px-3 pt-2">
           <HEvalBar cp={liveCp} mate={liveMate} />
         </div>
@@ -1181,7 +1175,7 @@ export default function Play() {
 
   const noMoves = sans.length === 0 || asking
   return (
-    <div ref={gameViewRef} className="flex h-full flex-col items-center justify-start gap-2 p-2 md:flex-row md:justify-center md:gap-6 md:p-4" {...threatAttrs}>
+    <div className="flex h-full flex-col items-center justify-start gap-2 p-2 md:flex-row md:justify-center md:gap-6 md:p-4" {...threatAttrs}>
       <div className="flex flex-col gap-2">
         <div className="flex w-full items-center justify-between">
           <span className="flex items-center gap-2 font-semibold">

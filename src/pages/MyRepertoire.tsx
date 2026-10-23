@@ -375,7 +375,7 @@ export default function MyRepertoire() {
                 autoCorrect="off"
                 spellCheck={false}
                 placeholder="pseudo"
-                className="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-base text-white placeholder:text-neutral-500 focus:ring-2 focus:ring-accent focus:outline-none"
+                className="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-base text-white placeholder:text-neutral-400 focus:ring-2 focus:ring-accent focus:outline-none"
               />
               <button
                 type="submit"
@@ -407,7 +407,7 @@ export default function MyRepertoire() {
       </div>
 
       {report === null ? (
-        <p className="py-6 text-center text-sm text-neutral-500">Lecture de tes parties…</p>
+        <p className="py-6 text-center text-sm text-neutral-400">Lecture de tes parties…</p>
       ) : total === 0 ? (
         <p data-empty="none" className="py-6 text-center text-sm text-neutral-400">
           Aucune partie pour l'instant. Charge tes parties chess.com récentes, ou analyse-les dans Insights pour mesurer ce que te coûtent tes sorties.
@@ -446,7 +446,7 @@ export default function MyRepertoire() {
             ))}
           </ul>
           {report.skipped > 0 && (
-            <p className="mt-3 text-xs text-neutral-500">
+            <p className="mt-3 text-xs text-neutral-400">
               {plural(report.skipped, 'partie')} ignorée{report.skipped > 1 ? 's' : ''} (PGN illisible ou partie depuis une position).
             </p>
           )}
@@ -517,7 +517,7 @@ function DeviationRow({ d, state, onTrain, onGame }: { d: Deviation; state: Dril
           {cost.text}
         </span>
         {state && (
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${state === 'fixed' ? 'bg-accent/20 text-accent' : 'bg-amber-400/20 text-amber-300'}`}>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${state === 'fixed' ? 'bg-accent/20 text-accent-light' : 'bg-amber-400/20 text-amber-300'}`}>
             {state === 'fixed' ? 'Corrigée' : 'À revoir'}
           </span>
         )}
@@ -532,7 +532,7 @@ function DeviationRow({ d, state, onTrain, onGame }: { d: Deviation; state: Dril
         <button onClick={onGame} className="shrink-0 cursor-pointer rounded-md px-2 py-1 text-xs font-bold text-neutral-300 hover:bg-surface-3 hover:text-white">
           ♞ Partie
         </button>
-        <button data-train onClick={onTrain} className="shrink-0 cursor-pointer rounded-md bg-accent/20 px-2.5 py-1 text-xs font-bold text-accent hover:bg-accent/30">
+        <button data-train onClick={onTrain} className="shrink-0 cursor-pointer rounded-md bg-accent/20 px-2.5 py-1 text-xs font-bold text-accent-light hover:bg-accent/30">
           🎯 S'entraîner
         </button>
       </div>

@@ -116,7 +116,7 @@ function Hub({ prefs, stats, ready, loadError, onRetry, onChange, onStart }: {
           </button>
         ))}
       </div>
-      <p className="mb-4 text-xs text-neutral-500">
+      <p className="mb-4 text-xs text-neutral-400">
         {prefs.mode === 'visible'
           ? 'La ligne reste affichée pendant la question.'
           : 'Chaque coup s\'affiche seul un instant, puis la ligne disparaît : tout se joue de tête.'}
@@ -361,7 +361,7 @@ function Series({ bank, level, mode, stats, onDone, onMenu, onReplay }: {
             <span aria-hidden className={`mr-1.5 inline-block h-3 w-3 rounded-full align-[-1px] ring-1 ring-white/30 ${side === 'w' ? 'bg-neutral-100' : 'bg-neutral-900'}`} />
             Trait aux {SIDE_NAME[side]}
           </span>
-          <span className="text-neutral-500">{reveal ? 'Position finale' : 'Position de départ'}</span>
+          <span className="text-neutral-400">{reveal ? 'Position finale' : 'Position de départ'}</span>
         </div>
 
         <div data-line className="min-h-12 rounded-xl bg-surface-2 px-3 py-2">

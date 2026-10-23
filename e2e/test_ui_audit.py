@@ -533,6 +533,24 @@ def tour(page, profile):
     if ck.appears(f"{t} finale jouée", page, "[data-square='e2']"):
         page.wait_for_timeout(1500)
         a("finales-exercice", scroll=False)
+    goto(page, "/finales/chrono", "[data-serie='mix']")
+    a("finales-chrono")
+
+    for path, item, name in (("/convertir", "conversion-item", "convertir"), ("/defense", "defense-item", "defense")):
+        goto(page, path, f"[data-testid={item}]")
+        a(name)
+        page.locator(f"[data-testid={item}]").first.click()
+        if ck.appears(f"{t} exercice {name}", page, "[data-square='e2']"):
+            page.wait_for_timeout(1500)
+            a(f"{name}-exercice", scroll=False)
+
+    goto(page, "/seance", "[data-seance-intro]")
+    if ck.appears(f"{t} plan de la séance du jour", page, "[data-seance-plan]", timeout=30000):
+        a("seance-intro")
+        page.locator("[data-seance-intro] button", has_text="Commencer").first.click()
+        if ck.appears(f"{t} étape de la séance du jour", page, "[data-seance-step] [data-board]"):
+            page.wait_for_timeout(1000)
+            a("seance-etape", scroll=False)
 
     goto(page, "/analyse", "[data-square='e2']")
     page.wait_for_timeout(1500)
