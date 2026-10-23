@@ -277,9 +277,10 @@ def no_workers(page, timeout_ms=15000):
 ARCHIVE_CHUNK = re.compile(r"/(assets/Archive-[^/]*\.js|src/pages/Archive\.tsx)(\?.*)?$")
 
 
-# Quitter l'analyse au moment exact où elle lit la partie (`?game=`) dans Dexie : un toucher sur
-# l'onglet Archive placé dans la fenêtre de la course, au lieu d'espérer que la charge l'y mette.
-# Le clic part en microtâche, avant toute réponse d'IndexedDB (qui arrive dans une tâche).
+# Quitter l'analyse au moment exact où elle lit la partie (`?game=`) dans Dexie : une navigation
+# interne vers l'Archive (changement de hash, comme un lien du HashRouter ; l'Archive n'a plus
+# d'onglet depuis la nav à cinq onglets) placée dans la fenêtre de la course, au lieu d'espérer que
+# la charge l'y mette. Elle part en microtâche, avant toute réponse d'IndexedDB (qui arrive dans une tâche).
 LEAVE_ON_GAME_READ = """(() => {
   if (!location.hash.includes('game=')) return
   let armed = true
