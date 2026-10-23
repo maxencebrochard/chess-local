@@ -124,7 +124,9 @@ Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bi
   Les listes personnelles proviennent des bilans lancés dans Analyse, accessibles depuis les exemples ; leurs critères d’attaque diffèrent de ceux d’Insights.
   Les mesures de pendule utilisent les annotations `%clk` des PGN chess.com ; ChessLocal n'enregistre pas les temps par coup.
 - **Plus** : hub des parties, des outils, de la progression et des réglages (`#/plus`) ; sur ordinateur, la barre latérale déplie ses sous-destinations quand Plus est actif.
-- **Statistiques** (`#/stats`, depuis Plus) : classements par cadence, bilan V/N/D, thèmes d'échiquier, réglages, sauvegarde et restauration des données IndexedDB et des réglages (fichier JSON), état du stockage, réinitialisation de l'app.
+- **Statistiques** (`#/stats`, depuis Plus) : classements par cadence, bilan V/N/D contre les bots, puzzles résolus, attaques manquées et menaces adverses repérées.
+- **Réglages** (`#/reglages`, depuis Plus) : thème d'échiquier, pièces, coups légaux, attaquants, prémouvements, alerte « Qu'est-ce qu'il menace ? », sons et volume, profondeur du bilan.
+- **Mes données** (`#/donnees`, depuis Plus) : contenu de l'appareil, état du stockage, sauvegarde et restauration des données IndexedDB et des réglages (fichier JSON), réinitialisation de l'app.
   La réinitialisation efface aussi la partie de Jouer en cours, la séance de puzzle et les préférences de Mats éclair.
   Les bilans Insights en cache sont inclus dans la sauvegarde, mais pas la configuration ni la sélection du dernier rapport ; une restauration conserve la configuration locale et invalide ce rapport, sans supprimer les bilans restaurés.
   Les résultats et records de Calcul et visualisation sont inclus dans la sauvegarde ; ses préférences de longueur et d'affichage restent sur l'appareil, hors sauvegarde, et sont effacées par la réinitialisation de l'app.
