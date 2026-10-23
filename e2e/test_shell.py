@@ -1,15 +1,116 @@
-"""E2E « coquille » (App.tsx) : onglets sans empilement d'historique, scroll remis à zéro,
-frontière d'erreur, route inconnue, onglet actif sur /rush et /import, nav basse accessible.
+"""E2E « coquille » (App.tsx) : cinq onglets (lot 2 du plan UX) sans empilement d'historique,
+onglet allumé sur chaque famille de routes et anciens liens, hub Plus et sous-liste de la nav
+latérale, pictogrammes SVG (taille, couleur et aplat actifs mesurés), scroll remis à zéro,
+frontière d'erreur, route inconnue, nav accessible aux trois formats.
 
 Usage : npm run test:e2e -- --suite shell
 """
-from helpers import BASE, Checker, desktop_context, mobile_context, scroll_state, shot
+from helpers import BASE, Checker, desktop_context, mobile_context, overflow_x, scroll_state, shot
 
 ck = Checker("shell")
 check = ck.check
 
 TABS = [("Jouer", "#/jouer"), ("Puzzles", "#/puzzles"), ("Apprendre", "#/apprendre"),
-        ("Analyse", "#/analyse"), ("Archive", "#/archive"), ("Stats", "#/stats")]
+        ("Plus", "#/plus"), ("Accueil", "#/")]
+LABELS = ["Accueil", "Jouer", "Puzzles", "Apprendre", "Plus"]
+ACCENT = [129, 182, 76]        # --color-accent, onglet actif de la nav basse
+ACCENT_LIGHT = [181, 220, 140]  # --color-accent-light, onglet actif de la nav latérale
+SAFE_TOP, SAFE_BOTTOM = 59, 34
+
+# Chaque famille de routes et l'onglet qu'elle allume (« Placement cible de chaque route » du
+# lot 0) : "page" sur la racine de l'onglet, "true" sur une route rattachée. Le marqueur prouve
+# que l'ancien lien rend toujours sa page (pas de repli vers l'accueil).
+DEEP = [
+    ("/", "Accueil", "page", "text=Résolvez !"),
+    ("/seance", "Accueil", "true", "main h1"),
+    ("/jouer", "Jouer", "page", "text=Adversaire"),
+    ("/puzzles", "Puzzles", "page", "main >> text=Classement puzzles"),
+    ("/rush", "Puzzles", "true", "text=Survie"),
+    ("/mats", "Puzzles", "true", "h1:has-text('Mats éclair')"),
+    ("/apprendre", "Apprendre", "page", "main h1"),
+    ("/apprendre/parcours", "Apprendre", "true", "main h1"),
+    ("/ouvertures", "Apprendre", "true", "main h1"),
+    ("/repertoire", "Apprendre", "true", "main h1"),
+    ("/finales/chrono", "Apprendre", "true", "main h1"),
+    ("/revision", "Apprendre", "true", "main h1"),
+    ("/attaques-manquees", "Apprendre", "true", "main h1"),
+    ("/moment-critique", "Apprendre", "true", "text=Aucun moment critique"),
+    ("/plus", "Plus", "page", "main h1:text-is('Plus')"),
+    ("/analyse", "Plus", "true", "[data-board]"),
+    ("/analyse/jouer", "Plus", "true", "text=Aucune position"),
+    ("/archive", "Plus", "true", "main h1:has-text('Archive')"),
+    ("/import", "Plus", "true", "text=Importer depuis"),
+    ("/stats", "Plus", "true", "main h1:text-is('Statistiques')"),
+    ("/insights", "Plus", "true", "main h1:has-text('Insights')"),
+]
+# Sous-destination sélectionnée dans la sous-liste de la nav latérale, par route de la famille Plus.
+SELECTED = {"/plus": None, "/analyse": "Analyse", "/analyse/jouer": "Analyse", "/archive": "Mes parties",
+            "/import": "Importer", "/stats": "Statistiques", "/insights": "Mon bilan"}
+HUB = [  # (libellé, hash attendu, section de /stats amenée à l'écran)
+    ("Mes parties", "#/archive", None), ("Importer des parties", "#/import", None),
+    ("Analyse", "#/analyse", None), ("Mon bilan", "#/insights", None), ("Statistiques", "#/stats", None),
+    ("Réglages", "#/stats", "settings-heading"), ("Mes données", "#/stats", "data-heading"),
+]
+SUB = ["Mes parties", "Importer", "Analyse", "Mon bilan", "Statistiques", "Réglages", "Mes données"]
+
+# Mesures de la nav visible : onglets, pictogrammes, couleurs résolues par un canvas (Tailwind 4
+# écrit les gris en oklch), contraste WCAG contre le fond réel du lien (composé sur la nav).
+NAV_METRICS = """() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1
+  const g = cv.getContext('2d', { willReadFrequently: true })
+  const rgba = (c) => {
+    g.clearRect(0, 0, 1, 1); g.fillStyle = '#000'; g.fillStyle = c; g.fillRect(0, 0, 1, 1)
+    const d = g.getImageData(0, 0, 1, 1).data
+    return [d[0], d[1], d[2], Math.round(d[3] / 255 * 100) / 100]
+  }
+  const lum = (c) => {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2])
+  }
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05) }
+  const over = (top, under) => top[3] >= 1 ? top : [0, 1, 2].map((i) => top[i] * top[3] + under[i] * (1 - top[3])).concat(1)
+  const shown = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 }
+  const nav = [...document.querySelectorAll('nav[aria-label="Navigation principale"]')].find(shown)
+  if (!nav) return null
+  const navBg = rgba(getComputedStyle(nav).backgroundColor)
+  const tabs = [...nav.querySelectorAll('a[data-nav-tab]')].filter(shown).map((a) => {
+    const r = a.getBoundingClientRect()
+    const svg = a.querySelector('svg')
+    const s = svg ? svg.getBoundingClientRect() : null
+    const text = [...a.childNodes].find((n) => n.nodeType === 3)
+    let lines = 0, labelTop = null
+    if (text) {
+      const range = document.createRange(); range.selectNodeContents(text)
+      const rects = [...range.getClientRects()]
+      lines = new Set(rects.map((q) => Math.round(q.top))).size
+      labelTop = rects.length ? Math.min(...rects.map((q) => q.top)) : null
+    }
+    const color = rgba(getComputedStyle(a).color)
+    const bg = over(rgba(getComputedStyle(a).backgroundColor), navBg)
+    const shapes = svg ? [...svg.querySelectorAll('path, circle, rect, ellipse')] : []
+    return {
+      label: text ? text.textContent.trim() : '', current: a.getAttribute('aria-current'),
+      w: r.width, h: r.height, left: r.left, right: r.right, top: r.top, bottom: r.bottom,
+      icon: s && { w: s.width, h: s.height, cx: s.left + s.width / 2, top: s.top, bottom: s.bottom,
+        viewBox: svg.getAttribute('viewBox'), strokeWidth: svg.getAttribute('stroke-width'),
+        hidden: svg.getAttribute('aria-hidden'), name: svg.dataset.icon },
+      lines, labelTop, color, contrast: ratio(color, bg),
+      strokesFollowText: shapes.length > 0 && shapes.every((e) => rgba(getComputedStyle(e).stroke).join() === color.join()),
+      fills: [...(svg ? svg.querySelectorAll('[data-fill]') : [])].map((e) => {
+        const cs = getComputedStyle(e); return { rgba: rgba(cs.fill), opacity: +cs.fillOpacity }
+      }),
+    }
+  })
+  const sub = nav.querySelector('[data-nav-sub]')
+  return {
+    vw: innerWidth, vh: innerHeight, tabs, links: [...nav.querySelectorAll('a')].filter(shown).length,
+    currents: [...nav.querySelectorAll('[aria-current]')].filter(shown).length,
+    padBottom: getComputedStyle(nav).paddingBottom, navBottom: nav.getBoundingClientRect().bottom,
+    sub: sub && shown(sub) ? [...sub.querySelectorAll('a')].map((a) => ({
+      label: a.textContent.trim(), selected: a.hasAttribute('data-selected'), current: a.getAttribute('aria-current'),
+      h: a.getBoundingClientRect().height, w: a.getBoundingClientRect().width, href: a.getAttribute('href') })) : null,
+  }
+}"""
 
 # Crash de rendu provoqué SANS dépendre d'un bug de page : `useSearchParams` (Analyse)
 # construit un `URLSearchParams` à chaque rendu ; quand `window.__E2E_BOOM` est armé, le
@@ -63,12 +164,18 @@ RATING_ROW = """(row) => new Promise((resolve, reject) => {
 
 def tab(page, label):
     """Onglet visible portant ce libellé (la nav latérale est masquée sur mobile, la basse sur desktop)."""
-    return page.locator("nav a", has_text=label).locator("visible=true")
+    return page.locator("nav a[data-nav-tab]", has_text=label).locator("visible=true")
 
 
 def active_tab(page):
-    """Libellés des onglets visibles portant `aria-current` (attendu : exactement un)."""
+    """Libellés de TOUS les liens visibles de la nav portant `aria-current` (attendu : exactement
+    un, l'onglet : la sous-liste de Plus n'en porte jamais)."""
     return page.locator("nav a[aria-current]").locator("visible=true").all_inner_texts()
+
+
+def hub_link(page, label):
+    """Carte du hub Plus (dans `<main>`), par son titre exact."""
+    return page.locator("main a[data-plus]").filter(has=page.locator(".ui-card-title", has_text=label)).first
 
 
 def hist(page):
@@ -85,7 +192,7 @@ def hash_of(page):
 
 
 def tabs_do_not_stack(page, tag):
-    """TOUCH-6 : 6 onglets d'affilée, `history.length` ne bouge pas, l'onglet tapé est le seul actif."""
+    """TOUCH-6 : les 5 onglets d'affilée, `history.length` ne bouge pas, l'onglet tapé est le seul actif."""
     go(page, "#/")
     before = hist(page)
     for label, expected in TABS:
@@ -97,8 +204,188 @@ def tabs_do_not_stack(page, tag):
         check(f"[{tag}] onglet {label} : seul aria-current", len(actives) == 1 and label in actives[0], f"({actives})")
 
 
+def section_on_screen(page, testid):
+    """Titre de section de /stats amené en haut de `<main>` (défilement réel, pas déjà visible)."""
+    return page.evaluate("""(id) => {
+      const m = document.querySelector('main'), h = document.querySelector(`[data-testid=${id}]`)
+      if (!h) return null
+      const mr = m.getBoundingClientRect(), hr = h.getBoundingClientRect()
+      return { scrolled: m.scrollTop, offset: Math.round(hr.top - mr.top), atEnd: m.scrollTop + m.clientHeight >= m.scrollHeight - 2 }
+    }""", testid)
+
+
+def wait_section(page, testid):
+    for _ in range(30):
+        pos = section_on_screen(page, testid)
+        if pos and pos["scrolled"] > 0 and (0 <= pos["offset"] <= 160 or pos["atEnd"]):
+            return pos
+        page.wait_for_timeout(100)
+    return section_on_screen(page, testid)
+
+
+def nav_format(page, tag, desktop=False, safe=False):
+    """Cinq onglets exactement, pictogrammes SVG, couleurs actif/inactif mesurées, cibles et
+    géométrie, puis l'onglet allumé sur chaque famille de routes (anciens liens compris)."""
+    go(page, "#/jouer")
+    m = page.evaluate(NAV_METRICS)
+    if not check(f"[{tag}] nav visible mesurée", m is not None):
+        return
+    tabs = m["tabs"]
+    check(f"[{tag}] cinq onglets exactement, dans l'ordre", [t["label"] for t in tabs] == LABELS, f"({[t['label'] for t in tabs]})")
+    check(f"[{tag}] aucun autre lien dans la nav hors famille Plus", m["links"] == 5, f"({m['links']})")
+    check(f"[{tag}] cibles >= 44x44", all(t["w"] >= 44 and t["h"] >= 44 for t in tabs),
+          f"({[(round(t['w']), round(t['h'])) for t in tabs]})")
+    size = 20 if desktop else 24
+    icons = [t["icon"] for t in tabs]
+    check(f"[{tag}] un pictogramme SVG par onglet", all(icons), f"({icons})")
+    if not all(icons):
+        return
+    check(f"[{tag}] pictogrammes {size}x{size} px", all(abs(i["w"] - size) < 0.5 and abs(i["h"] - size) < 0.5 for i in icons),
+          f"({[(i['w'], i['h']) for i in icons]})")
+    check(f"[{tag}] grille 24 et trait 1,75 communs", all(i["viewBox"] == "0 0 24 24" and i["strokeWidth"] == "1.75" for i in icons),
+          f"({[(i['viewBox'], i['strokeWidth']) for i in icons]})")
+    check(f"[{tag}] pictogrammes masqués aux lecteurs d'écran", all(i["hidden"] == "true" for i in icons))
+    check(f"[{tag}] pictogrammes distincts", len({i["name"] for i in icons}) == 5, f"({[i['name'] for i in icons]})")
+    check(f"[{tag}] trait du pictogramme = couleur du libellé (currentColor)", all(t["strokesFollowText"] for t in tabs))
+    check(f"[{tag}] libellés sur une ligne", all(t["lines"] == 1 for t in tabs), f"({[t['lines'] for t in tabs]})")
+    active = [t for t in tabs if t["current"]]
+    idle = [t for t in tabs if not t["current"]]
+    if check(f"[{tag}] /jouer : un seul onglet actif, Jouer", [t["label"] for t in active] == ["Jouer"], f"({[t['label'] for t in active]})"):
+        a = active[0]
+        want = ACCENT_LIGHT if desktop else ACCENT
+        check(f"[{tag}] couleur active = {'accent-light' if desktop else 'accent'}", a["color"][:3] == want, f"({a['color']})")
+        check(f"[{tag}] couleur inactive commune et distincte de l'active",
+              len({tuple(t["color"]) for t in idle}) == 1 and idle[0]["color"] != a["color"], f"({[t['color'] for t in idle]})")
+        check(f"[{tag}] contraste des libellés et pictogrammes >= 4,5:1", all(t["contrast"] >= 4.5 for t in tabs),
+              f"({[round(t['contrast'], 2) for t in tabs]})")
+        check(f"[{tag}] aplat actif : formes remplies de la couleur à 22 %",
+              a["fills"] and all(f["rgba"][:3] == a["color"][:3] and f["rgba"][3] > 0 and abs(f["opacity"] - 0.22) < 0.01 for f in a["fills"]),
+              f"({a['fills']})")
+        check(f"[{tag}] onglets inactifs : contour seul", all(f["rgba"][3] == 0 for t in idle for f in t["fills"]),
+              f"({[t['fills'] for t in idle]})")
+    if not desktop:
+        widths = [t["w"] for t in tabs]
+        check(f"[{tag}] cinq colonnes égales sur toute la largeur", max(widths) - min(widths) < 1 and abs(sum(widths) - m["vw"]) < 1,
+              f"({[round(w, 1) for w in widths]}, vw {m['vw']})")
+        check(f"[{tag}] pictogramme centré au-dessus du libellé",
+              all(abs(t["icon"]["cx"] - (t["left"] + t["right"]) / 2) <= 1 and t["icon"]["bottom"] <= t["labelTop"] + 1 for t in tabs),
+              f"({[(round(t['icon']['cx'] - (t['left'] + t['right']) / 2, 1), round(t['labelTop'] - t['icon']['bottom'], 1)) for t in tabs]})")
+        check(f"[{tag}] nav basse collée en bas", abs(m["navBottom"] - m["vh"]) < 1, f"({m['navBottom']} / {m['vh']})")
+        if safe:
+            check(f"[{tag}] zone sûre basse appliquée", m["padBottom"] == f"{SAFE_BOTTOM}px", f"({m['padBottom']})")
+            check(f"[{tag}] onglets au-dessus de l'indicateur d'accueil", all(t["bottom"] <= m["vh"] - SAFE_BOTTOM + 0.5 for t in tabs),
+                  f"({[round(t['bottom']) for t in tabs]})")
+    check(f"[{tag}] aucun débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
+    shot(page, f"shell_nav_{tag.replace(' ', '_')}")
+
+    # Familles de routes : un seul `aria-current` dans la nav, sur le bon onglet, avec la bonne valeur.
+    for path, label, value, marker in DEEP:
+        page.goto(f"{BASE}/#{path}")
+        ck.appears(f"[{tag}] {path} : page rendue par l'ancien lien", page, marker, timeout=15000)
+        check(f"[{tag}] {path} : URL conservée", hash_of(page) == f"#{path}", f"({hash_of(page)})")
+        m = page.evaluate(NAV_METRICS)
+        cur = [(t["label"], t["current"]) for t in m["tabs"] if t["current"]]
+        check(f"[{tag}] {path} allume {label} ({value})", cur == [(label, value)] and m["currents"] == 1, f"({cur}, {m['currents']} aria-current)")
+        if desktop:
+            if label == "Plus":
+                sub = m["sub"] or []
+                check(f"[{tag}] {path} : sous-liste de Plus dépliée", [x["label"] for x in sub] == SUB, f"({[x['label'] for x in sub]})")
+                sel = [x["label"] for x in sub if x["selected"]]
+                want = SELECTED[path]
+                check(f"[{tag}] {path} : sous-destination sélectionnée {want}", sel == ([want] if want else []), f"({sel})")
+                check(f"[{tag}] {path} : sous-liste sans aria-current, cibles >= 44 px",
+                      all(x["current"] is None and x["h"] >= 44 for x in sub), f"({[(x['current'], round(x['h'])) for x in sub]})")
+            else:
+                check(f"[{tag}] {path} : sous-liste de Plus repliée", m["sub"] is None)
+    if desktop:
+        shot(page, f"shell_sidebar_plus_{tag}")
+
+
+def hub_plus(page, tag):
+    """Hub /plus : titre, trois groupes, sept destinations en push ; Réglages et Mes données
+    amènent leur section de /stats à l'écran."""
+    go(page, "#/plus")
+    check(f"[{tag}] hub : titre Plus", page.locator("main h1").inner_text().strip() == "Plus")
+    groups = page.locator("main section h2").all_inner_texts()
+    check(f"[{tag}] hub : trois groupes", groups == ["Parties", "Outils et progression", "Réglages et données"], f"({groups})")
+    titles = page.locator("main a[data-plus] .ui-card-title").all_inner_texts()
+    check(f"[{tag}] hub : sept destinations dans l'ordre", titles == [h[0] for h in HUB], f"({titles})")
+    descs = page.locator("main a[data-plus] .ui-card-description").all_inner_texts()
+    check(f"[{tag}] hub : chaque destination a sa description", len(descs) == 7 and all(d.strip() for d in descs), f"({len(descs)})")
+    cards = page.locator("main a[data-plus]")
+    boxes = [cards.nth(i).bounding_box() for i in range(cards.count())]
+    check(f"[{tag}] hub : cartes >= 44 px de haut", all(b and b["height"] >= 44 for b in boxes))
+    check(f"[{tag}] hub : un pictogramme SVG masqué par carte",
+          page.locator("main a[data-plus] svg[aria-hidden='true']").count() == 7)
+    check(f"[{tag}] hub : aucun débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
+    shot(page, f"shell_hub_{tag}", full_page=True)
+    for label, expected, section in HUB:
+        go(page, "#/plus")
+        before = hist(page)
+        hub_link(page, label).click()
+        page.wait_for_timeout(600)
+        check(f"[{tag}] hub {label} -> {expected}, descente empilée", hash_of(page) == expected and hist(page) == before + 1,
+              f"({hash_of(page)}, {before} -> {hist(page)})")
+        actives = active_tab(page)
+        check(f"[{tag}] hub {label} : Plus reste allumé", len(actives) == 1 and "Plus" in actives[0], f"({actives})")
+        if section:
+            pos = wait_section(page, section)
+            check(f"[{tag}] hub {label} : section amenée en haut de l'écran",
+                  bool(pos) and pos["scrolled"] > 0 and (0 <= pos["offset"] <= 160 or pos["atEnd"]), f"({pos})")
+            check(f"[{tag}] hub {label} : state consommé (un retour ne refait pas défiler)",
+                  page.evaluate("() => history.state?.usr == null"))
+        page.go_back()
+        page.wait_for_timeout(500)
+        check(f"[{tag}] hub {label} : retour arrière -> hub", hash_of(page) == "#/plus", f"({hash_of(page)})")
+
+
+def sidebar_plus(page):
+    """Nav latérale : sous-liste de Plus en replace, Réglages et Mes données sur la même page."""
+    go(page, "#/plus")
+    before = hist(page)
+    sub = page.locator("nav [data-nav-sub] a")
+    sub.filter(has_text="Statistiques").click()
+    page.wait_for_timeout(600)
+    check("[desktop] sous-liste Statistiques -> #/stats en replace", hash_of(page) == "#/stats" and hist(page) == before,
+          f"({hash_of(page)}, {before} -> {hist(page)})")
+    for label, section in (("Réglages", "settings-heading"), ("Mes données", "data-heading")):
+        page.evaluate("() => document.querySelector('main').scrollTo(0, 0)")
+        sub.filter(has_text=label).click()
+        pos = wait_section(page, section)
+        check(f"[desktop] sous-liste {label} depuis /stats : section amenée en haut",
+              hash_of(page) == "#/stats" and bool(pos) and pos["scrolled"] > 0 and (0 <= pos["offset"] <= 160 or pos["atEnd"]), f"({pos})")
+        check(f"[desktop] sous-liste {label} : history.length stable", hist(page) == before, f"({before} -> {hist(page)})")
+    sub.filter(has_text="Mes parties").click()
+    page.wait_for_timeout(600)
+    check("[desktop] sous-liste Mes parties -> #/archive", hash_of(page) == "#/archive")
+    check("[desktop] sélection déplacée sur Mes parties",
+          page.locator("nav [data-nav-sub] a[data-selected]").all_inner_texts() == ["Mes parties"])
+    shot(page, "shell_sidebar_archive")
+    tab(page, "Jouer").click()
+    page.wait_for_timeout(400)
+    check("[desktop] sous-liste repliée hors de Plus", page.locator("nav [data-nav-sub]").count() == 0)
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
+
+    # ---------- Trois formats : nav, pictogrammes, familles de routes ----------
+    ctx = mobile_context(p, browser, ck, standalone=True, viewport={"width": 393, "height": 660})
+    page = ctx.new_page()
+    page.context.new_cdp_session(page).send("Emulation.setSafeAreaInsetsOverride", {"insets": {"top": SAFE_TOP, "bottom": SAFE_BOTTOM}})
+    nav_format(page, "393x660 standalone", safe=True)
+    ctx.close()
+    ctx = mobile_context(p, browser, ck, standalone=True)
+    page = ctx.new_page()
+    nav_format(page, "393x852")
+    hub_plus(page, "393x852")
+    ctx.close()
+    ctx = desktop_context(browser, ck)
+    page = ctx.new_page()
+    nav_format(page, "1440x900", desktop=True)
+    hub_plus(page, "1440x900")
+    sidebar_plus(page)
+    ctx.close()
 
     # ---------- iPhone, PWA installée ----------
     ctx = mobile_context(p, browser, ck, standalone=True)
@@ -108,7 +395,8 @@ def suite(p):
 
     # Accueil : une tuile vers une racine d'onglet est une navigation d'onglet, en replace (le
     # swipe-back iOS ne ramène pas à l'accueil en pleine partie) ; Puzzle Rush et chess.com
-    # (/rush, /import) sont des descentes, empilées.
+    # (/rush, /import) sont des descentes, empilées. Les tuiles Stats, Analyse et Archive gardent
+    # leur replace d'anciennes racines d'onglet : l'accueil est refondu au lot 4.
     for name, loc, expected in (
         ("CTA Jouer", page.get_by_role("button", name="Jouer", exact=True), "#/jouer"),
         ("carte Problèmes", page.locator("main a", has_text="Résolvez"), "#/puzzles"),
@@ -121,7 +409,7 @@ def suite(p):
         loc.first.click()
         page.wait_for_timeout(600)
         check(f"[accueil] {name} -> {expected}", hash_of(page) == expected, f"({hash_of(page)})")
-        check(f"[accueil] {name} : navigation d'onglet, history.length stable", hist(page) == before, f"({before} -> {hist(page)})")
+        check(f"[accueil] {name} : replace, history.length stable", hist(page) == before, f"({before} -> {hist(page)})")
     go(page, "#/")
     before = hist(page)
     page.locator("main a", has_text="Importer tes parties").click()
@@ -144,9 +432,6 @@ def suite(p):
     page.go_back()
     page.wait_for_timeout(500)
     check("[push] retour arrière -> accueil", hash_of(page) == "#/")
-    go(page, "#/import")
-    actives = active_tab(page)
-    check("[glob-6] /import allume Analyse", len(actives) == 1 and "Analyse" in actives[0], f"({actives})")
     go(page, "#/apprendre/")
     actives = active_tab(page)
     check("[glob-6] barre finale : #/apprendre/ allume Apprendre", len(actives) == 1 and "Apprendre" in actives[0], f"({actives})")
@@ -162,46 +447,50 @@ def suite(p):
     page.wait_for_timeout(500)
     check("[glob-7] retour arrière ne rebondit pas sur la route inconnue", hash_of(page) == "#/stats", f"({hash_of(page)})")
 
-    # GLOB-9 minimal : 7 cibles de 44 px, nav nommée, icônes masquées aux lecteurs d'écran.
+    # GLOB-9 minimal : 5 cibles de 44 px, nav nommée, icônes masquées aux lecteurs d'écran.
     links = page.locator("nav a").locator("visible=true")
-    check("[glob-9] 7 onglets visibles", links.count() == 7, f"({links.count()})")
+    check("[glob-9] 5 onglets visibles", links.count() == 5, f"({links.count()})")
     boxes = [links.nth(i).bounding_box() for i in range(links.count())]
     check("[glob-9] cibles >= 44x44", all(b and b["height"] >= 44 and b["width"] >= 44 for b in boxes),
           f"({[(round(b['width']), round(b['height'])) for b in boxes if b]})")
     check("[glob-9] nav basse nommée", page.locator("nav[aria-label]").locator("visible=true").count() == 1)
-    check("[glob-9] icônes aria-hidden", page.locator("nav a [aria-hidden='true']").locator("visible=true").count() == 7)
+    check("[glob-9] icônes aria-hidden", page.locator("nav a svg[aria-hidden='true']").locator("visible=true").count() == 5)
     shot(page, "shell_nav_mobile")
 
-    # Frontière d'erreur : crash de rendu d'Analyse -> écran de secours, nav utilisable,
-    # reset au changement de route, « Revenir à l'accueil », « Recharger ».
+    # Frontière d'erreur : crash de rendu d'Analyse (atteinte par le hub Plus, comme un
+    # utilisateur) -> écran de secours, nav utilisable, reset au changement de route,
+    # « Revenir à l'accueil », « Recharger ».
+    def to_analyse():
+        tab(page, "Plus").click()
+        page.wait_for_timeout(300)
+        hub_link(page, "Analyse").click()
+
     go(page, "#/")
     with ck.expect_pageerror("E2E_BOOM_URLSEARCHPARAMS"):
         page.evaluate("() => { window.__E2E_BOOM = true }")
-        tab(page, "Analyse").click()
+        to_analyse()
         ck.appears("[boundary] écran de secours affiché", page, FALLBACK, timeout=5000)
         page.evaluate("() => { window.__E2E_BOOM = false }")
         page.wait_for_timeout(200)
-    check("[boundary] nav toujours utilisable (7 onglets)", page.locator("nav a").locator("visible=true").count() == 7)
+    check("[boundary] nav toujours utilisable (5 onglets)", page.locator("nav a").locator("visible=true").count() == 5)
     errs = page.evaluate("() => window.__errs")
     check("[boundary] erreur conservée en console.error", any("E2E_BOOM" in e for e in errs), f"({len(errs)} messages)")
     shot(page, "shell_boundary")
-    tab(page, "Stats").click()
+    tab(page, "Plus").click()
     page.wait_for_timeout(500)
-    check("[boundary] changement de route : page suivante rendue", page.locator("h1", has_text="Statistiques").is_visible())
+    check("[boundary] changement de route : page suivante rendue", page.locator("h1", has_text="Plus").is_visible())
     check("[boundary] changement de route : secours disparu", page.locator(FALLBACK).count() == 0)
     with ck.expect_pageerror("E2E_BOOM_URLSEARCHPARAMS"):
         page.evaluate("() => { window.__E2E_BOOM = true }")
-        tab(page, "Analyse").click()
+        to_analyse()
         ck.appears("[boundary] second crash -> secours", page, FALLBACK, timeout=5000)
         page.evaluate("() => { window.__E2E_BOOM = false }")
         page.wait_for_timeout(200)
-    tab(page, "Analyse").click()
-    ck.appears("[boundary] re-tap de l'onglet courant relance la page", page, "[id^='chessboard-']", timeout=5000)
+    to_analyse()
+    ck.appears("[boundary] Plus puis Analyse relance la page", page, "[id^='chessboard-']", timeout=5000)
     with ck.expect_pageerror("E2E_BOOM_URLSEARCHPARAMS"):
         page.evaluate("() => { window.__E2E_BOOM = true }")
-        tab(page, "Stats").click()
-        page.wait_for_timeout(300)
-        tab(page, "Analyse").click()
+        to_analyse()
         ck.appears("[boundary] troisième crash -> secours", page, FALLBACK, timeout=5000)
         page.evaluate("() => { window.__E2E_BOOM = false }")
         page.wait_for_timeout(200)
@@ -211,7 +500,7 @@ def suite(p):
     check("[boundary] accueil rendu après secours", page.locator("text=Résolvez !").is_visible())
     with ck.expect_pageerror("E2E_BOOM_URLSEARCHPARAMS"):
         page.evaluate("() => { window.__E2E_BOOM = true }")
-        tab(page, "Analyse").click()
+        to_analyse()
         ck.appears("[boundary] crash avant Recharger", page, FALLBACK, timeout=5000)
         page.wait_for_timeout(200)
     page.get_by_role("button", name="Recharger").click()
@@ -230,6 +519,20 @@ def suite(p):
         ck.appears("[boundary] crash sur l'accueil -> secours", page, FALLBACK, timeout=5000)
         page.wait_for_timeout(200)
         check("[boundary] secours sans bloc technique en anglais", page.locator("main", has_text="Détail technique").count() == 0)
+    page.evaluate(RATING_ROW, None)
+    # Re-tap de l'onglet courant (Accueil sur l'accueil) : seul geste qui réarme la frontière sans
+    # changer de chemin. L'ancien re-tap d'Analyse n'a plus d'onglet depuis le lot 2.
+    tab(page, "Accueil").click()
+    page.wait_for_timeout(800)
+    check("[boundary] re-tap de l'onglet courant relance la page",
+          hash_of(page) == "#/" and page.locator("text=Résolvez !").is_visible() and page.locator(FALLBACK).count() == 0,
+          f"({hash_of(page)})")
+    go(page, "#/stats")
+    page.evaluate(RATING_ROW, {"key": "rapid", "value": {"e2e": "boom"}})
+    with ck.expect_pageerror(("Objects are not valid as a React child", "react.dev/errors/31")):
+        tab(page, "Accueil").click()
+        ck.appears("[boundary] second crash sur l'accueil -> secours", page, FALLBACK, timeout=5000)
+        page.wait_for_timeout(200)
     page.evaluate(RATING_ROW, None)
     page.get_by_role("button", name="Revenir à l'accueil").click()
     page.wait_for_timeout(800)
@@ -256,17 +559,15 @@ def suite(p):
         check("[boundary] navigate('.', replace) de la page : state consommé, chemin inchangé",
               hash_of(page) == "#/analyse" and page.evaluate("() => history.state?.usr == null"), f"({hash_of(page)})")
         page.evaluate("() => { window.__E2E_BOOM = false }")
-    tab(page, "Analyse").click()
-    ck.appears("[boundary] re-tap après crash au chargement relance Analyse", page, "[id^='chessboard-']", timeout=5000)
+    to_analyse()
+    ck.appears("[boundary] Plus puis Analyse après crash au chargement relance Analyse", page, "[id^='chessboard-']", timeout=5000)
 
     # Le check précédent passe aussi avec `resetKey={location.key}` (rendu rejoué avec la
     # transition). Celui-ci échoue avec : navigation de même chemin en replace APRÈS l'affichage
     # du secours (nouvelle `location.key`, `pathname` inchangé), le secours doit rester.
     with ck.expect_pageerror("E2E_BOOM_URLSEARCHPARAMS"):
         page.evaluate("() => { window.__E2E_BOOM = true }")
-        tab(page, "Stats").click()
-        page.wait_for_timeout(300)
-        tab(page, "Analyse").click()
+        to_analyse()
         ck.appears("[boundary] crash avant navigation de même chemin", page, FALLBACK, timeout=5000)
         page.evaluate("() => { window.__E2E_BOOM = false }")
         page.wait_for_timeout(200)
@@ -305,11 +606,23 @@ def suite(p):
     # ---------- Desktop : nav latérale, mêmes règles ----------
     ctx = desktop_context(browser, ck)
     page = ctx.new_page()
+    page.add_init_script(BOOM)
     tabs_do_not_stack(page, "touch-6 desktop")
     check("[glob-9] nav latérale nommée", page.locator("nav[aria-label]").locator("visible=true").count() == 1)
     side = page.locator("nav a").locator("visible=true")
     heights = [round(side.nth(i).bounding_box()["height"]) for i in range(side.count())]
-    check("[glob-9] nav latérale : 7 cibles de 44 px de haut au moins", len(heights) == 7 and min(heights) >= 44, f"({heights})")
+    check("[glob-9] nav latérale : 5 cibles de 44 px de haut au moins", len(heights) == 5 and min(heights) >= 44, f"({heights})")
+    # Re-tap d'une sous-destination courante (Analyse sur /analyse) : comme un onglet, il réarme
+    # la frontière sans changer de chemin.
+    go(page, "#/plus")
+    with ck.expect_pageerror("E2E_BOOM_URLSEARCHPARAMS"):
+        page.evaluate("() => { window.__E2E_BOOM = true }")
+        page.locator("nav [data-nav-sub] a", has_text="Analyse").click()
+        ck.appears("[boundary desktop] crash d'Analyse -> secours", page, FALLBACK, timeout=5000)
+        page.evaluate("() => { window.__E2E_BOOM = false }")
+        page.wait_for_timeout(200)
+    page.locator("nav [data-nav-sub] a", has_text="Analyse").click()
+    ck.appears("[boundary desktop] re-tap de la sous-destination courante relance Analyse", page, "[id^='chessboard-']", timeout=5000)
     ctx.close()
     browser.close()
 

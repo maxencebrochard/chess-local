@@ -20,6 +20,16 @@
   outline-offset: 3px;
 }
 
+/* Pictogrammes de la navigation (NavIcon) : contour seul au repos, contour et aplat léger de la
+   couleur du texte quand l'onglet est actif. */
+.nav-icon [data-fill] {
+  fill: transparent;
+}
+.nav-icon-active [data-fill] {
+  fill: currentColor;
+  fill-opacity: 0.22;
+}
+
 /* Le document ne défile JAMAIS : seule la zone de contenu (`<main>`, les calques plein écran)
    défile. Sinon, en PWA standalone iOS, un geste en butée de `<main>` (vers le haut comme vers
    le bas) se chaînait vers le document et décalait toute l'app : en-tête sous l'heure, nav

@@ -237,7 +237,7 @@ Réglage hors persist Zustand : `localStorage['chess-local-threat-check']` (`{bo
 Indisponible en bullet ; en mode bot, la pendule du joueur attend l'analyse et la réponse et la partie n'est pas classée ; en mode entraîneur, seule une menace révélée déclasse la partie.
 `Board.onSquareTap` (échiquier non jouable, prémouvement coupé) reçoit les touchers pendant la question ; `threatPly` de l'instantané de partie évite de reposer une question répondue.
 Poser une question ramène au direct si le joueur consultait l’historique pendant l’analyse ; l’échiquier entraîneur réserve la hauteur des commandes pour garder ses quatre coins accessibles sur petit écran.
-Chaque réponse écrit une ligne `learnSessions` domaine `threat-check` (hors Elo, ignorée par `pickNextDomain` et la révision), résumée dans Stats.
+Chaque réponse écrit une ligne `learnSessions` domaine `threat-check` (hors Elo, ignorée par `pickNextDomain` et la révision), résumée dans Statistiques (`/stats`, onglet Plus).
 
 ### Persistance
 
@@ -347,7 +347,13 @@ Ne pas remettre `text-white` sur un `bg-accent` opaque ; les variantes transluci
 `EmptyState` distingue absence de données et chargement, avec une explication et un lien d’action.
 Ces composants sont appliqués aux tuiles Accueil/Apprendre, aux sommaires communs de cours, à la progression du parcours et aux états vides Archive/attaques/défenses personnelles.
 La suite `ux_foundation` vérifie contraste rendu, focus, dimensions, titres longs, retours, états vides et chargement aux trois formats ; ses captures restent dans `e2e/shots/ux-lot1/`.
-La navigation à cinq onglets et la réorganisation d’Apprendre restent différées aux lots suivants.
+Le lot 2 livre la navigation à cinq onglets (`NAV` de `src/App.tsx`) : Accueil, Jouer, Puzzles, Apprendre et Plus ; la réorganisation d’Apprendre reste différée au lot 5.
+Le `match` de chaque onglet suit le « Placement cible de chaque route » du plan : `/mats` allume Puzzles, `/moment-critique` Apprendre, et `/analyse` (sous-chemins compris), `/archive`, `/import`, `/stats` et `/insights` allument Plus ; un seul `aria-current` dans la nav, toujours sur un onglet.
+Les routes restent identiques et les anciens liens fonctionnent ; les onglets restent en `replace`, les liens du hub `/plus` (`src/pages/More.tsx`) sont des descentes en push.
+Les destinations de Plus vivent dans `PLUS_GROUPS` de `src/lib/navigation.ts`, partagé par le hub et la nav latérale ; Réglages et Mes données ouvrent `/stats` avec `state.section` (`reglages` ou `donnees`), que Stats lit, fait défiler puis efface, comme l’ancien `state.backup` de la carte de migration native.
+La nav latérale déplie la sous-liste de Plus dès que l’onglet Plus est allumé (dérivée de la route, sans état), en `replace` et sans `aria-current` : sélection visuelle par `data-selected`.
+Les pictogrammes de nav et du hub sont des SVG inline dessinés pour l’app (`src/components/NavIcon.tsx`) : grille 24, trait 1,75, `currentColor`, `aria-hidden`, aplat à 22 % des formes `data-fill` quand l’onglet est actif (`.nav-icon-active` de `src/index.css`) ; la nav basse garde 48 px de haut, libellés en 12 px.
+Les tests visent les onglets par `nav a[data-nav-tab]` et les cartes du hub par `main a[data-plus='<icône>']` ; la suite `shell` vérifie onglets, familles de routes, hub, sous-liste et pictogrammes aux trois formats.
 Texte secondaire en `text-neutral-400` au plus sombre : `text-neutral-500` ne reste que sur les chevrons décoratifs `aria-hidden`.
 Cibles tactiles de 44 px au moins (`min-h-11`, `h-11 w-11`) ; les sous-pages d'Apprendre (cours, ouvertures, mats, finales et finales au chrono, attaque, défense, conversion, attaques manquées et défenses ratées) et la séance du jour ont leur retour dans `PageHeader`.
 `.safe-top-band` (`App.tsx`, z-45) masque sous l'heure et la Dynamic Island ce qui défile dans `<main>` et dans les calques z-40 ; les voiles de modale sont en z-50 pour l'assombrir, et un calque z-50 ne fait pas défiler son contenu sous sa marge haute.

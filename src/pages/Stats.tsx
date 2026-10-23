@@ -31,6 +31,7 @@ import { PieceIcon } from '../components/PieceIcon'
 import { PIECE_SETS } from '../lib/pieces'
 import { isNative } from '../lib/native'
 import { play } from '../lib/sounds'
+import type { StatsSection } from '../lib/navigation'
 
 // Touches qui changent le volume du curseur : seules elles déclenchent l'aperçu sonore.
 const VOLUME_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'])
@@ -116,6 +117,7 @@ export default function Stats() {
   const [threats, setThreats] = useState<ThreatStats | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const dataRef = useRef<HTMLHeadingElement>(null)
+  const settingsRef = useRef<HTMLHeadingElement>(null)
   const location = useLocation()
   const navigate = useNavigate()
   const settings = useSettings()
@@ -131,20 +133,31 @@ export default function Stats() {
     db.learnSessions.where('domain').equals(THREAT_DOMAIN).toArray().then((rows) => setThreats(threatStatsOf(rows))),
   ]), [])
 
-  // Arrivée depuis la carte de migration de l'app native : directement sur « Tes données », une
-  // fois rendues les sections du dessus (sinon le titre redescendrait sous l'écran). Le state est
-  // effacé aussitôt, pour qu'un retour sur la page ne refasse pas défiler.
-  const toBackup = !!(location.state as { backup?: boolean } | null)?.backup
+  // Section demandée par Plus, la nav latérale ou la carte de migration de l'app native
+  // (`backup`, ancien nom de « Tes données ») : retenue, puis le state est effacé aussitôt pour
+  // qu'un retour sur la page ne refasse pas défiler. Le défilement attend que les sections du
+  // dessus soient rendues (sinon le titre redescendrait sous l'écran). `location.key` : une même
+  // section redemandée depuis /stats (nav latérale, en replace) refait défiler.
+  const [loaded, setLoaded] = useState(false)
+  const navState = location.state as { backup?: boolean; section?: StatsSection } | null
+  const wanted: StatsSection | null = navState?.section ?? (navState?.backup ? 'donnees' : null)
+  const pendingSection = useRef<StatsSection | null>(null)
   useEffect(() => {
-    if (toBackup) navigate('.', { replace: true, state: null })
-    void reload().then(() => {
-      if (toBackup) requestAnimationFrame(() => dataRef.current?.scrollIntoView({ block: 'start' }))
-    })
+    void reload().then(() => setLoaded(true))
     setLastExport(readLastExport())
     void storageProtected().then(setProtectedState)
-    // Lu au montage seulement, comme le state de navigation d'Analyse.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reload])
+  useEffect(() => {
+    if (!wanted) return
+    pendingSection.current = wanted
+    navigate('.', { replace: true, state: null })
+  }, [wanted, location.key, navigate])
+  useEffect(() => {
+    const section = pendingSection.current
+    if (!loaded || !section) return
+    pendingSection.current = null
+    requestAnimationFrame(() => (section === 'donnees' ? dataRef : settingsRef).current?.scrollIntoView({ block: 'start' }))
+  }, [loaded, location.key])
 
   const ratingOf = (key: string) => ratings.find((r) => r.key === key)
   const botGames = games.filter((g) => g.mode === 'bot')
@@ -341,7 +354,7 @@ export default function Stats() {
         )}
       </div>
 
-      <h2 className="mb-3 text-lg font-bold">Réglages</h2>
+      <h2 ref={settingsRef} data-testid="settings-heading" className="mb-3 scroll-mt-4 text-lg font-bold">Réglages</h2>
       <div className="mb-6 space-y-3 rounded-lg bg-surface-2 p-4">
         <div>
           <p className="mb-2 text-sm font-semibold text-neutral-300">Thème de l'échiquier</p>
@@ -451,7 +464,7 @@ export default function Stats() {
         </p>
         {isNative && (
           <p data-testid="native-migration-help" className="text-sm text-neutral-300">
-            Venir de la PWA : dans la PWA, Stats, Tes données, Exporter tout, puis Enregistrer dans Fichiers. Ici,
+            Venir de la PWA : dans la PWA, Plus, Mes données, Exporter tout, puis Enregistrer dans Fichiers. Ici,
             Restaurer ce fichier remplace ce que tu as fait dans l'app.
           </p>
         )}

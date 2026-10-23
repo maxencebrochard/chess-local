@@ -365,7 +365,7 @@ def suite(p):
     tap_move(page, "e2", "e4")
     wait_plies(page, 2, 15000)
     page.wait_for_timeout(1500)  # la pendule blanche descend sous 10:00
-    page.locator("nav a", has_text="Archive").last.click()
+    page.locator("nav a[data-nav-tab]", has_text="Plus").last.click()
     page.wait_for_timeout(800)
     page.locator("nav a", has_text="Jouer").last.click()
     page.wait_for_timeout(1000)
@@ -412,7 +412,7 @@ def suite(p):
     setup(page, mode="coach", bot="Noa", color="Blancs")
     tap_move(page, "e2", "e4")
     wait_plies(page, 2, 20000)
-    page.locator("nav a", has_text="Archive").last.click()
+    page.locator("nav a[data-nav-tab]", has_text="Plus").last.click()
     page.wait_for_timeout(800)
     page.locator("nav a", has_text="Jouer").last.click()
     page.wait_for_timeout(1000)
