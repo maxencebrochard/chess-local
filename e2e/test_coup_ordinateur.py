@@ -242,10 +242,17 @@ def data_fen(page, sel):
 def position_game_suite(p, browser):
     ctx = native_audio_context(p, browser)
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/finales/lucena")
+    # Audio déverrouillé AVANT la partie : chargée à froid, son game-start (demandé au montage,
+    # contexte encore suspendu) partirait au toucher de `ready` une fois décodé, parfois après
+    # le repère des sons du premier coup. Ouverte ensuite sans rechargement, il part au montage.
+    page.goto(f"{BASE}/#/finales")
+    ready(page, "[finales]")
+    page.evaluate("() => { location.hash = '#/finales/lucena' }")
     game = "[data-testid='position-game']"
     if ck.appears("[finales] partie affichée", page, game, timeout=20000):
-        ready(page, "[finales]")
+        check("[finales] son de début de partie au montage",
+              wait_until(page, lambda: [e["name"] for e in heard_since(page, 0)] == ["game-start"], timeout=3000),
+              fmt_sounds(heard_since(page, 0)))
         wait_until(page, lambda: page.locator(game).get_attribute("data-thinking") == "0")
         board = chess.Board(data_fen(page, game))
         after = play_and_reply("[finales PositionGame]", page, board)
