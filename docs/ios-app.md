@@ -109,7 +109,7 @@ Un réglage dédié pourra venir avec la migration de réglages correspondante s
 La PWA (`https://maxencebrochard.github.io/chess-local/`) et l'app (`capacitor://localhost`) n'ont pas la même origine : l'app démarre avec une base vide, et aucun code ne peut lire le stockage de l'autre.
 La sauvegarde complète existante est donc le chemin, déjà vérifiée par les suites `backup` et `upgrade` : une transaction, validation complète avant écriture, réglages nettoyés.
 
-1. Dans la PWA, Stats, Tes données, « Exporter tout », puis « Enregistrer dans Fichiers ».
+1. Dans la PWA, Plus, Mes données, « Exporter tout », puis « Enregistrer dans Fichiers ».
 2. Dans l'app, l'accueil affiche « Récupérer tes données » jusqu'à une restauration réussie ou « Non merci » (la croix), même si un puzzle a déjà été joué dans l'app.
    La carte reste compacte pour que Jouer reste entièrement visible au-dessus de la navigation sur un petit iPhone.
 3. La carte ouvre Stats sur Tes données, où l'app seule affiche la marche à suivre ; « Restaurer » ouvre le sélecteur de fichiers d'iOS, puis l'écran de confirmation habituel affiche ce qui sera restauré.
