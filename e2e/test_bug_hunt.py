@@ -384,7 +384,8 @@ def case_finale_fuite(p, browser):
         ctx.close()
         return
     shot(page, "bug_hunt_finale_393x852")
-    page.get_by_role("button", name="✕", exact=True).click()
+    # Le ✕ de la séance porte le nom accessible « Quitter la séance » depuis l'audit UI.
+    page.get_by_role("button", name="Quitter la séance", exact=True).click()
     page.locator("nav a:visible", has_text="Accueil").click()
     ck.appears("[finale] accueil affiché", page, "main :text('Problèmes')", timeout=10000)
     held = page.evaluate("() => window.__releaseUci()")
