@@ -6,6 +6,7 @@ import { db } from './db'
 import type { ReviewPayload } from './revision'
 import type { BlockKind, StepResult } from './seance'
 import type { PuzzleData } from '../components/PuzzlePlayer'
+import type { DrillSnapshot } from '../components/OpeningDrill'
 
 // Une étape de la séance, sérialisable (sessionStorage) : les positions d'attaque, finales et
 // variantes se résolvent au rendu depuis les banques bundlées.
@@ -42,6 +43,7 @@ export interface StoredSeance {
   stepStartedAt: number
   opened: number[] // étapes attaque et finale déjà ouvertes : leur partie se reprend telle quelle
   ratingStart: number
+  drill?: DrillSnapshot // variante jugée laissée pour l'analyseur : son verdict, repris au retour
 }
 
 export function readStoredSeance(now = Date.now()): StoredSeance | null {

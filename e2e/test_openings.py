@@ -364,6 +364,7 @@ def suite(p):
             play_uci(page, hint)
             wait_plies(page, n + 2, 5000)
         ck.appears("[hasard] fin de variante", page, "[data-result]", timeout=10000)
+        drill_round_trip(page, "[hasard:analyse]")
         page.locator("button", has_text="Variante suivante").click()
         page.wait_for_timeout(500)
         second = page.get_attribute(DRILL, "data-variant-uci")
@@ -399,6 +400,37 @@ def suite(p):
         check("[desktop] board entièrement visible", box is not None and box["y"] + box["height"] <= 900, f"({box})")
     ctx.close()
     browser.close()
+
+
+COUNT_DRILLS_JS = """() => new Promise((res) => { const r = indexedDB.open('chess-local'); r.onsuccess = () => {
+  const q = r.result.transaction('learnSessions').objectStore('learnSessions').getAll();
+  q.onsuccess = () => res(q.result.filter((x) => x.domain === 'opening-drill').length) } })"""
+
+
+def drill_round_trip(page, tag):
+    """Drill jugé : « Analyser » ouvre la ligne jouée, « Retour à l'exercice » rend le même drill
+    sur le même verdict (coups, fautes, compteur de séance), sans nouvelle ligne `opening-drill`."""
+    keys = ("data-uci", "data-variant-uci", "data-mode")
+    before = {k: page.get_attribute(DRILL, k) for k in keys}
+    result = page.locator("[data-result]").inner_text()
+    header = page.locator(f"{DRILL} header").inner_text()
+    url = page.url
+    page.wait_for_timeout(500)  # écriture du verdict en cours
+    n_rows = page.evaluate(COUNT_DRILLS_JS)
+    page.locator("[data-result] button", has_text="Analyser").click()
+    if not ck.appears(f"{tag} « Retour à l'exercice » dans l'analyseur", page, "button:has-text(\"Retour à l'exercice\")", timeout=10000):
+        return
+    check(f"{tag} analyseur ouvert", page.evaluate("() => location.hash") == "#/analyse")
+    page.get_by_role("button", name="Retour à l'exercice").click()
+    if not ck.appears(f"{tag} retour : drill sur son verdict", page, f"{DRILL} [data-result]", timeout=10000):
+        return
+    after = {k: page.get_attribute(DRILL, k) for k in keys}
+    check(f"{tag} retour : même fiche", page.url == url, f"({page.url} vs {url})")
+    check(f"{tag} retour : même variante, mêmes coups", after == before, f"({after} vs {before})")
+    check(f"{tag} retour : même verdict", page.locator("[data-result]").inner_text() == result, f"({page.locator('[data-result]').inner_text()!r})")
+    check(f"{tag} retour : même compteur de séance", page.locator(f"{DRILL} header").inner_text() == header)
+    page.wait_for_timeout(300)
+    check(f"{tag} retour : aucune écriture de plus", page.evaluate(COUNT_DRILLS_JS) == n_rows)
 
 
 ck.run(suite)

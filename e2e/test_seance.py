@@ -682,6 +682,18 @@ def part_variant_endgame(p, browser):
         if okp and ck.appears("[variante] « Variante maîtrisée »", page, "[data-result] >> text=Variante maîtrisée", timeout=10000):
             rows = [(r["itemId"], r["success"]) for r in domain_rows(page, "opening-drill")]
             check("[écritures] tentative `full` réussie écrite comme l'entraîneur", rows == [(f"full:w:{GORING}", 0), (f"full:w:{GORING}", 1)], f"({rows})")
+            # Analyser la variante jugée puis revenir : même étape, même verdict, aucune écriture.
+            uci, result, h1 = page.get_attribute("[data-drill]", "data-uci"), page.locator("[data-result]").inner_text(), page.locator("[data-drill] header h1").inner_text()
+            page.locator("[data-result] button", has_text="Analyser").click()
+            if ck.appears("[variante:analyse] « Retour à la séance »", page, "button:has-text('Retour à la séance')", timeout=15000):
+                check("[variante:analyse] analyseur ouvert", page.evaluate("() => location.hash") == "#/analyse")
+                page.locator("button", has_text="Retour à la séance").click()
+                if ck.appears("[variante:analyse] retour : variante sur son verdict", page, "[data-drill] [data-result]", timeout=10000):
+                    check("[variante:analyse] retour : même étape", page.locator("[data-drill] header h1").inner_text() == h1, f"({page.locator('[data-drill] header h1').inner_text()!r})")
+                    check("[variante:analyse] retour : mêmes coups et même verdict", page.get_attribute("[data-drill]", "data-uci") == uci
+                          and page.locator("[data-result]").inner_text() == result)
+                    page.wait_for_timeout(400)
+                    check("[variante:analyse] retour : aucune écriture de plus", len(domain_rows(page, "opening-drill")) == len(rows))
             btn = page.locator("[data-result] button", has_text="Suivant")
             check("[variante] bouton « Suivant »", btn.count() > 0)
             if btn.count():

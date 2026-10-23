@@ -2,10 +2,11 @@
 // et incrément, records par cadence), puis une famille de finales théoriques ou le mélange ; un
 // tap lance la série contre Stockfish pleine force.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { EndgameClockRun } from '../components/EndgameClockRun'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { ENDGAME_CLOCK_RETURN_SCREEN, EndgameClockRun, type ClockReturn } from '../components/EndgameClockRun'
 import { PageHeader } from '../components/PageHeader'
 import { Engine } from '../lib/engine'
+import { clearExercise, isRestore, readExercise } from '../lib/exerciseReturn'
 import {
   BASES_S, baseLabel, DEFAULT_CADENCE, ENDGAME_CLOCK_DOMAIN, ENDGAME_CLOCK_PREFS_KEY, FAMILIES, INCREMENTS_S, MIX, parseCadence, cadenceKey,
   cadenceLabel, recordKey,
@@ -33,9 +34,13 @@ function writeCadence(c: ClockCadence) {
 
 export default function EndgameClock() {
   const navigate = useNavigate()
-  const [cadence, setCadence] = useState(readCadence)
+  const location = useLocation()
+  // Retour de l'analyseur : bilan de la série close, réaffiché avec sa cadence.
+  const [returned] = useState(() => (isRestore(location.state) ? readExercise<ClockReturn>(ENDGAME_CLOCK_RETURN_SCREEN) : null))
+  const [cadence, setCadence] = useState(() => returned?.cadence ?? readCadence())
   const [stats, setStats] = useState<MatsStats | null>(null)
-  const [run, setRun] = useState<string | null>(null)
+  const [run, setRun] = useState<string | null>(returned?.serie ?? null)
+  const [restored, setRestored] = useState(returned?.summary)
   const engineRef = useRef<Engine | null>(null)
 
   function refresh() {
@@ -44,6 +49,8 @@ export default function EndgameClock() {
 
   useEffect(() => {
     refresh()
+    if (location.state) navigate('.', { replace: true, state: null })
+    clearExercise()
     // Le moteur démarre dès l'accueil (1 à 2 s de WASM sur iPhone) : la première réponse est prête.
     getEngine()
     return () => {
@@ -82,7 +89,11 @@ export default function EndgameClock() {
         stats={stats?.byKey[recordKey(run, cadence)] ?? null}
         getEngine={getEngine}
         onDone={refresh}
-        onMenu={() => setRun(null)}
+        onMenu={() => {
+          setRestored(undefined)
+          setRun(null)
+        }}
+        restored={restored}
       />
     )
   }

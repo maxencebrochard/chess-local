@@ -791,6 +791,17 @@ def seeded_page(p, browser):
             page.screenshot(path=f"{SHOTS}/repertoire_drill_ok_852.png")
             rows = wait_rows(page, 2)
             check(f"{tag} séance : réussite enregistrée (next:w:<UCI de 303>, 1)", len(rows) == 2 and (rows[-1]["itemId"], rows[-1]["success"]) == (f"next:w:{' '.join(second['prefix'])}", 1), f"({rows})")
+            # Analyser après le verdict, puis retour : la séance reprend sur la même sortie et le même verdict.
+            uci, result, head = attr(page, "[data-drill]", "data-uci"), page.locator("[data-result]").inner_text(), page.locator("[data-drill]").inner_text()[:200]
+            page.locator("[data-result] button", has_text="Analyser").click()
+            if ck.appears(f"{tag} séance : « Retour à l'exercice » dans l'analyseur", page, "button:has-text(\"Retour à l'exercice\")", timeout=10000):
+                check(f"{tag} séance : analyseur ouvert", page.evaluate("() => location.hash") == "#/analyse")
+                page.get_by_role("button", name="Retour à l'exercice").click()
+                if ck.appears(f"{tag} séance : retour sur la sortie 2 jugée", page, f"[data-drill] h1:has-text('Sortie 2/{len(order)}')", timeout=10000):
+                    check(f"{tag} séance : retour, même position et même verdict", attr(page, "[data-drill]", "data-uci") == uci
+                          and page.locator("[data-result='ok']").count() == 1 and page.locator("[data-result]").inner_text() == result, f"({attr(page, '[data-drill]', 'data-uci')})")
+                    check(f"{tag} séance : retour, même compteur de séance", page.locator("[data-drill]").inner_text()[:200] == head)
+                    check(f"{tag} séance : retour sans nouvelle écriture", len(wait_rows(page, 3, 1200)) == 2)
         page.locator("[data-drill] button[aria-label='Fermer le drill']").click()
         page.wait_for_timeout(500)
         states = {d[0]: d[2] for d in ui_devs(page)}

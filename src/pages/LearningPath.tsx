@@ -8,10 +8,11 @@ import { CourseBody } from '../components/CourseSheet'
 import { usePathState } from '../components/usePathState'
 import { Cta } from '../components/Cta'
 import { ProgressBar } from '../components/ProgressBar'
-import { OpeningDrill } from '../components/OpeningDrill'
+import { OpeningDrill, type DrillSnapshot } from '../components/OpeningDrill'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
 import { courseFor } from '../lib/courses'
 import { Engine } from '../lib/engine'
+import { isRestore } from '../lib/exerciseReturn'
 import { ENDGAMES } from '../lib/learn'
 import {
   exerciseGoal, isScored, LEVELS, levelOf, PLACEMENT_ID, PLACEMENT_PER_LEVEL,
@@ -265,6 +266,7 @@ interface StoredRun {
   items: RunItem[]
   idx: number
   results: boolean[] // verdicts des items 0..n-1, dans l'ordre
+  drill?: { idx: number; snapshot: DrillSnapshot } // variante jugée laissée pour l'analyseur, reprise sur son verdict
 }
 
 function readRun(key: string): StoredRun | null {
@@ -272,9 +274,10 @@ function readRun(key: string): StoredRun | null {
     const raw = sessionStorage.getItem(PATH_SESSION_KEY)
     const run = raw ? (JSON.parse(raw) as StoredRun) : null
     if (!run || run.key !== key || !Array.isArray(run.items) || run.items.length === 0 || !Array.isArray(run.results)) return null
-    // Une variante déjà jugée ne se rejoue pas (le drill repartirait du premier coup) : la série
-    // reprend à l'item suivant, comme la révision espacée.
-    if (run.items[run.idx]?.kind === 'variant' && run.results.length > run.idx && run.idx + 1 < run.items.length) return { ...run, idx: run.idx + 1 }
+    // Une variante jugée reprend sur son verdict (drill laissé par « Analyser »). Sans ce verdict,
+    // le drill repartirait du premier coup : la série reprend à l'item suivant, comme la révision.
+    const judgedVariant = run.items[run.idx]?.kind === 'variant' && run.results.length > run.idx
+    if (judgedVariant && run.drill?.idx !== run.idx && run.idx + 1 < run.items.length) return { ...run, idx: run.idx + 1 }
     return run
   } catch {
     return null
@@ -309,6 +312,7 @@ function StepPage({ step }: { step: PathStep }) {
   const location = useLocation()
   const { state, reload } = usePathState()
   const [run, setRun] = useState<StoredRun | null>(() => readRun(step.id))
+  const [fromAnalysis] = useState(() => isRestore(location.state))
   const [ended, setEnded] = useState<{ score: number; passed: boolean } | null>(null)
   const [preparing, setPreparing] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -387,6 +391,7 @@ function StepPage({ step }: { step: PathStep }) {
         key={run.nonce}
         run={run}
         setRun={setRun}
+        fromAnalysis={fromAnalysis}
         exercise={ex}
         title={`${step.icon} ${step.title}`}
         backTo={stepPath(step.id)}
@@ -546,9 +551,10 @@ function PartNumber({ n, done }: { n: number; done: boolean }) {
 }
 
 // ---------- Série notée (puzzles, variantes, test de placement) ----------
-function Runner({ run, setRun, exercise, title, backTo, isOver, onOver, onQuit, levelOfItem }: {
+function Runner({ run, setRun, fromAnalysis, exercise, title, backTo, isOver, onOver, onQuit, levelOfItem }: {
   run: StoredRun
   setRun: (r: StoredRun) => void
+  fromAnalysis: boolean // retour de l'analyseur : le dernier verdict s'affiche, pas l'écran d'enregistrement
   exercise: PathExercise | null // null : test de placement (puzzles seuls)
   title: string
   backTo: string
@@ -563,7 +569,9 @@ function Runner({ run, setRun, exercise, title, backTo, isOver, onOver, onQuit, 
   // Verdicts posés de façon synchrone : un second verdict du même item (Réessayer du drill) est ignoré.
   const judged = useRef(new Set(run.results.map((_, i) => i)))
   const over = useRef(false)
-  const [saveState, setSaveState] = useState<'idle' | 'ready' | 'saving' | 'error'>(() => isOver(run.results) ? 'ready' : 'idle')
+  // Série finie mais non enregistrée (rechargement) : l'écran d'enregistrement. Au retour de
+  // l'analyseur, le dernier verdict revient d'abord, et « Voir le résultat » enregistre.
+  const [saveState, setSaveState] = useState<'idle' | 'ready' | 'saving' | 'error'>(() => isOver(run.results) && !fromAnalysis ? 'ready' : 'idle')
 
   useEffect(
     () => () => {
@@ -687,7 +695,12 @@ function Runner({ run, setRun, exercise, title, backTo, isOver, onOver, onQuit, 
         onRetry={() => setRetry((t) => t + 1)}
         onNext={() => (run.results.length > run.idx ? advance() : void replaceVariant())}
         onClose={onQuit}
-        onAnalyse={(moves) => analyse('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', moves, exercise.color, openingFamilyFr(fam.key))}
+        snapshot={run.drill?.idx === run.idx && retry === 0 && verdict !== undefined ? run.drill.snapshot : null}
+        onAnalyse={(moves, snapshot) => {
+          // Le verdict part avec la série : le retour le réaffiche tel quel.
+          writeRun({ ...run, drill: { idx: run.idx, snapshot } })
+          analyse('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', moves, exercise.color, openingFamilyFr(fam.key))
+        }}
         nextLabel={run.results.length > run.idx && isOver(run.results) ? 'Voir le résultat' : 'Suivant'}
       />
     )
@@ -798,6 +811,7 @@ function PlacementPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [run, setRun] = useState<StoredRun | null>(() => readRun(PLACEMENT_ID))
+  const [fromAnalysis] = useState(() => isRestore(location.state))
   const [result, setResult] = useState<number | null>(null)
   const [preparing, setPreparing] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -858,6 +872,7 @@ function PlacementPage() {
         key={run.nonce}
         run={run}
         setRun={setRun}
+        fromAnalysis={fromAnalysis}
         exercise={null}
         title="🧪 Test de placement"
         backTo={stepPath(PLACEMENT_ID)}

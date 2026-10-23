@@ -438,6 +438,51 @@ def play_out(page, me_moves, max_moves=40):
     return run_state(page)["phase"]
 
 
+PLACEMENT_JS = """() => {
+  const rows = []
+  for (let r = 8; r >= 1; r--) {
+    let row = '', empty = 0
+    for (const f of 'abcdefgh') {
+      const el = document.querySelector(`[data-board] [data-square='${f}${r}'] [data-piece]`)
+      const pc = el ? el.getAttribute('data-piece') : null
+      if (!pc) { empty++; continue }
+      if (empty) { row += empty; empty = 0 }
+      row += pc[0] === 'w' ? pc[1] : pc[1].toLowerCase()
+    }
+    if (empty) row += empty
+    rows.push(row)
+  }
+  return rows.join('/')
+}"""
+
+
+def summary_round_trip(page, before):
+    """Bilan d'une série close : « Analyser avec Stockfish » ouvre la dernière position jouée, et
+    « Retour au bilan » rend le même bilan (position, motif), pendule arrêtée, sans écriture."""
+    if not ck.appears("[analyse] bouton du bilan", page, "[data-run-over] button:has-text('Analyser avec Stockfish')", timeout=3000):
+        return
+    state = run_state(page)
+    reason = page.locator("[data-run-over]").inner_text()
+    page.locator("[data-run-over] button", has_text="Analyser avec Stockfish").click()
+    if not ck.appears("[analyse] « Retour au bilan » dans l'analyseur", page, "button:has-text('Retour au bilan')", timeout=10000):
+        return
+    check("[analyse] analyseur ouvert", page.evaluate("() => location.hash") == "#/analyse")
+    target = chess.Board(state["fen"]).board_fen()
+    check("[analyse] dernière position de la série transmise", wait(page, f"({PLACEMENT_JS})() === {json.dumps(target)}", timeout=5000),
+          f"({page.evaluate(PLACEMENT_JS)} vs {target})")
+    page.get_by_role("button", name="Retour au bilan").click()
+    if not ck.appears("[analyse] retour : bilan restauré", page, "[data-run='endgame-clock'][data-phase='over'] [data-run-over]", timeout=10000):
+        return
+    after = run_state(page)
+    check("[analyse] retour : même position et même pendule", (after["fen"], after["pos"], after["ms"]) == (state["fen"], state["pos"], state["ms"]),
+          f"({after} vs {state})")
+    check("[analyse] retour : même bilan", page.locator("[data-run-over]").inner_text() == reason)
+    page.wait_for_timeout(1200)
+    check("[analyse] retour : pendule arrêtée", run_state(page)["ms"] == state["ms"] and run_state(page)["running"] == "false", f"({run_state(page)})")
+    got = rows(page)["rows"]
+    check("[analyse] retour : aucune écriture de plus", len(got) == len(before), f"({got} vs {before})")
+
+
 def games_suite(p, browser):
     ctx = mobile_context(p, browser, ck, standalone=True)
     page = ctx.new_page()
@@ -487,6 +532,7 @@ def games_suite(p, browser):
         reason = page.locator("[data-run-over]").inner_text() if page.locator("[data-run-over]").count() else ""
         check("[raté] gain manqué : la série s'arrête sur la nulle", phase == "over" and ("Il fallait gagner" in reason or "Le gain s'est envolé" in reason), f"({phase}, {reason[:160]})")
         shot(page, "finales_chrono_rate_393x852", full_page=True)
+        summary_round_trip(page, rows(page, 2)["rows"])
 
         # Nulle tenue : défense devant le pion.
         page.get_by_role("button", name="Menu").click()

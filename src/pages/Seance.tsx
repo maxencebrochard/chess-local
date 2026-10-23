@@ -8,7 +8,7 @@ import { Chess, DEFAULT_POSITION } from 'chess.js'
 import { Cta } from '../components/Cta'
 import { PageHeader } from '../components/PageHeader'
 import { MistakeExercise } from '../components/MistakeExercise'
-import { OpeningDrill } from '../components/OpeningDrill'
+import { OpeningDrill, type DrillSnapshot } from '../components/OpeningDrill'
 import { PositionGame } from '../components/PositionGame'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
 import { ATTACKS, attackGameProps, gameKey, loadLevel } from '../lib/attack'
@@ -55,6 +55,8 @@ export default function Seance() {
   const [loading, setLoading] = useState(true)
   const [restored, setRestored] = useState(false) // retour de l'analyse
   const [retryTick, setRetryTick] = useState(0)
+  // Verdict d'une variante restauré au retour de l'analyseur, pour la clé de drill d'alors.
+  const [drillSnap, setDrillSnap] = useState<{ key: string; snapshot: DrillSnapshot } | null>(null)
   const [saveError, setSaveError] = useState(false)
   const engineRef = useRef<Engine | null>(null)
   // Étapes déjà jugées, posées de façon synchrone : un second verdict (Réessayer, Rejouer) n'écrit
@@ -84,16 +86,20 @@ export default function Seance() {
     const saved = readStoredSeance()
     if (saved) {
       recorded.current = new Set(saved.results.map((r) => r.idx))
-      // Une variante déjà jugée ne se restaure pas sur son verdict (le drill repartirait du premier
-      // coup) : la séance reprend à l'étape suivante, ou à son bilan.
+      // Une variante jugée reprend sur son verdict (drill laissé par « Analyser »). Sans ce verdict
+      // (séance d'une version antérieure), le drill repartirait du premier coup : la séance reprend
+      // alors à l'étape suivante, ou à son bilan.
       const judgedVariant = drillOf(saved.steps[saved.idx]) !== null && saved.results.some((r) => r.idx === saved.idx)
+      const skip = judgedVariant && !saved.drill
       setLoading(false)
-      if (judgedVariant && saved.idx + 1 >= saved.steps.length) {
+      if (skip && saved.idx + 1 >= saved.steps.length) {
         void end(saved)
         return
       }
+      if (judgedVariant && saved.drill) setDrillSnap({ key: `${saved.idx}-0`, snapshot: saved.drill })
+      const { drill: _drill, ...rest } = saved
       setRestored(restore)
-      setRun(judgedVariant ? { ...saved, idx: saved.idx + 1, phase: 'play', stepStartedAt: Date.now() } : saved)
+      setRun(skip ? { ...rest, idx: saved.idx + 1, phase: 'play', stepStartedAt: Date.now() } : rest)
       return
     }
     void prepare()
@@ -211,7 +217,9 @@ export default function Seance() {
     navigate('/', { replace: true })
   }
 
-  function analyse(s: Step, moves?: string[]) {
+  function analyse(s: Step, moves?: string[], drill?: DrillSnapshot) {
+    // Le verdict de la variante part avec la séance : le retour le réaffiche tel quel.
+    if (drill && run) writeStoredSeance({ ...run, drill })
     const p = puzzleOf(s)
     const m = s.kind === 'revision' ? mistakeOf(s.payload) : null
     const d = drillOf(s)
@@ -367,6 +375,7 @@ export default function Seance() {
         plyTarget={null}
         getEngine={getEngine}
         session={{ ok: 0, total: 0 }}
+        snapshot={drillSnap?.key === key ? drillSnap.snapshot : null}
         title={`☀️ Séance ${progress}`}
         subtitle={review ? `${blockLabel} · ${statusLabel(review.item)}` : blockLabel}
         onResult={(ok) =>
@@ -383,7 +392,7 @@ export default function Seance() {
         onRetry={retry}
         onNext={next}
         onClose={quit}
-        onAnalyse={(moves) => analyse(step!, moves)}
+        onAnalyse={(moves, snapshot) => analyse(step!, moves, snapshot)}
         nextLabel={nextLabel}
         resultNote={result?.note ?? null}
       />

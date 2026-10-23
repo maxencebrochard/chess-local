@@ -308,6 +308,7 @@ def chrono_suite(p, browser):
     dump = mats_rows(page)
     check("[chrono] UNE ligne pour la série (mise à jour, pas de doublon)", len(dump["rows"]) == 1, f"({dump['rows']})")
     shot(page, "mats_chrono_bilan_393x852", full_page=True)
+    summary_round_trip(page, "[chrono:analyse]", "chrono-krr", won, 1)
 
     # Drapeau : 15 s sans jouer.
     page.get_by_role("button", name="Menu").click()
@@ -330,6 +331,32 @@ def chrono_suite(p, browser):
     ctx.close()
 
 
+def summary_round_trip(page, tag, drill_id, record, n_rows):
+    """Bilan d'une série contre la montre close : « Analyser avec Stockfish » ouvre la dernière
+    position, « Retour au bilan » rend le même bilan (position, score, record), pendule arrêtée,
+    sans nouvelle ligne `mats`."""
+    if not ck.appears(f"{tag} bouton du bilan", page, "[data-run-over] button:has-text('Analyser avec Stockfish')", timeout=3000):
+        return
+    fen = attr(page, "[data-run]", "data-fen")
+    score = attr(page, "[data-score]", "data-score")
+    ms = attr(page, "[role=timer]", "data-ms")
+    page.locator("[data-run-over] button", has_text="Analyser avec Stockfish").click()
+    if not ck.appears(f"{tag} « Retour au bilan » dans l'analyseur", page, "button:has-text('Retour au bilan')", timeout=10000):
+        return
+    check(f"{tag} analyseur ouvert", page.evaluate("() => location.hash") == "#/analyse")
+    page.get_by_role("button", name="Retour au bilan").click()
+    if not ck.appears(f"{tag} retour : bilan restauré", page, "[data-run][data-phase='over'] [data-run-over]", timeout=10000):
+        return
+    check(f"{tag} retour : fiche du schéma dans l'URL", f"d={drill_id}" in page.url, f"({page.url})")
+    check(f"{tag} retour : même position", attr(page, "[data-run]", "data-fen") == fen, f"({attr(page, '[data-run]', 'data-fen')} vs {fen})")
+    check(f"{tag} retour : même score", attr(page, "[data-score]", "data-score") == score)
+    check(f"{tag} retour : même annonce de record", (page.locator("text=Nouveau record").count() == 1) == bool(record))
+    page.wait_for_timeout(1200)
+    check(f"{tag} retour : pendule arrêtée au même temps", attr(page, "[role=timer]", "data-ms") == ms, f"({attr(page, '[role=timer]', 'data-ms')} vs {ms})")
+    dump = mats_rows(page)
+    check(f"{tag} retour : aucune écriture de plus", len(dump["rows"]) == n_rows, f"({dump['rows']})")
+
+
 def puzzle_suite(p, browser, index, puzzles):
     ctx = mobile_context(p, browser, ck, standalone=False)
     page = ctx.new_page()
@@ -341,6 +368,7 @@ def puzzle_suite(p, browser, index, puzzles):
     ck.appears("[mat en 1] série lancée", page, "[data-run='puzzle']", timeout=5000)
     pid = attr(page, "[data-run]", "data-puzzle")
     pz = puzzles.get(pid)
+    pz2 = None
     check("[mat en 1] puzzle mat en 1, 12 pièces au plus", pz is not None and "mateIn1" in pz[4].split() and len(re.sub(r"[^a-zA-Z]", "", pz[1].split()[0])) <= 12, f"({pid})")
     shot(page, "mats_rush_393x660")
     if pz:
@@ -380,13 +408,22 @@ def puzzle_suite(p, browser, index, puzzles):
     rows = mats_rows(page, 1)["rows"]
     check("[mat en 1] série enregistrée", any(r["itemId"] == "mate-1:3min" and r["score"] == 1 for r in rows), f"({rows})")
     shot(page, "mats_rush_bilan_393x660", full_page=True)
+    missed_before = page.locator("button:has-text('Voir la solution')").inner_text()
     page.locator("button:has-text('Voir la solution')").click()
-    page.wait_for_timeout(1500)
-    check("[mat en 1] solution ouverte dans l'analyse", "#/analyse" in page.url, f"({page.url})")
-    back = page.get_by_role("button", name=re.compile("Retour"))
-    if ck.appears("[mat en 1] bouton retour de l'analyse", page, "button:has-text('Retour')", timeout=5000):
-        back.first.click()
-        ck.appears("[mat en 1] retour sur la fiche Mat en 1", page, "[data-sheet='mate-1']", timeout=5000)
+    if ck.appears("[mat en 1] « Retour au bilan » dans l'analyseur", page, "button:has-text('Retour au bilan')", timeout=10000):
+        check("[mat en 1] solution ouverte dans l'analyse", "#/analyse" in page.url, f"({page.url})")
+        page.get_by_role("button", name="Retour au bilan").click()
+        # Série close : le retour rend son bilan (pas la fiche), sans relancer de chrono.
+        if ck.appears("[mat en 1] retour : bilan restauré", page, "[data-run='puzzle'][data-phase='over'] [data-run-over]", timeout=30000):
+            check("[mat en 1] retour : même mat manqué listé", page.locator("button:has-text('Voir la solution')").count() == 1
+                  and page.locator("button:has-text('Voir la solution')").inner_text() == missed_before)
+            check("[mat en 1] retour : même score", attr(page, "[data-score]", "data-score") == "1")
+            check("[mat en 1] retour : même erreur comptée", page.locator("[aria-label='1 erreur sur 3']").count() == 1)
+            page.wait_for_timeout(600)
+            rows = mats_rows(page)["rows"]
+            check("[mat en 1] retour : aucune écriture de plus", len([r for r in rows if r["itemId"] == "mate-1:3min"]) == 1, f"({rows})")
+            page.get_by_role("button", name="Menu").click()
+            ck.appears("[mat en 1] Menu : fiche Mat en 1", page, "[data-sheet='mate-1']", timeout=5000)
 
     # Géométrie : escalier, en survie.
     page.goto(f"{BASE}/#/mats?d=geo-escalier")

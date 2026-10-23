@@ -5,13 +5,14 @@
 // l'entraîneur d'ouvertures (tentatives `opening-drill`, itemId `next:<camp>:<UCI>`).
 // Camp et cadence vivent dans l'URL (?camp=&cadence=) : retour depuis l'Analyse sur la même vue.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Cta } from '../components/Cta'
-import { OpeningDrill, type DrillItem } from '../components/OpeningDrill'
+import { OpeningDrill, type DrillItem, type DrillSnapshot } from '../components/OpeningDrill'
 import { Segmented } from '../components/Segmented'
 import { extractGameId, fetchRecentGames, normalizeUsername, outcomeFor, type ChesscomGame } from '../lib/chesscom'
 import { db } from '../lib/db'
 import { Engine } from '../lib/engine'
+import { clearExercise, isRestore, readExercise, stashExercise } from '../lib/exerciseReturn'
 import { validRow } from '../lib/insights'
 import {
   computeRepertoire, drillLines, type Color, type Deviation, type OpeningReport, type RepGame,
@@ -121,8 +122,17 @@ function resultsText(t: { wins: number; draws: number; losses: number }): string
   return `${t.wins} V · ${t.draws} N · ${t.losses} D`
 }
 
+// Séance de sorties laissée pour l'analyseur (exerciseReturn.ts), reprise au retour.
+const RETURN_SCREEN = 'repertoire'
+type RepDrill = { queue: Deviation[]; at: number; key: number; retry: boolean; snapshot?: DrillSnapshot }
+interface ReturnState {
+  drill: RepDrill
+  session: { ok: number; total: number }
+}
+
 export default function MyRepertoire() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [params, setParams] = useSearchParams()
   const color: Color = params.get('camp') === 'b' ? 'b' : 'w'
   const cadence = (CADENCES.find((c) => c.id === params.get('cadence'))?.id ?? 'all') as CadenceId
@@ -138,18 +148,23 @@ export default function MyRepertoire() {
   const [saveError, setSaveError] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   // Séance : file des sorties (figée au départ), position dans la file, clé du drill.
-  const [drill, setDrill] = useState<{ queue: Deviation[]; at: number; key: number; retry: boolean } | null>(null)
-  const [session, setSession] = useState({ ok: 0, total: 0 })
+  // Retour de l'analyseur : la séance reprend sur la même sortie, verdict compris.
+  const [returned] = useState(() => (isRestore(location.state) ? readExercise<ReturnState>(RETURN_SCREEN) : null))
+  const [drill, setDrill] = useState<RepDrill | null>(returned?.drill ?? null)
+  const [session, setSession] = useState(returned?.session ?? { ok: 0, total: 0 })
   const engineRef = useRef<Engine | null>(null)
   const alive = useRef(true)
 
   useEffect(() => {
     alive.current = true
+    if (location.state) navigate(location.pathname + location.search, { replace: true, state: null })
+    clearExercise()
     return () => {
       alive.current = false
       engineRef.current?.quit()
       engineRef.current = null
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Bilans d'Insights de ce compte : la source hors ligne, avec l'évaluation des sorties.
@@ -297,18 +312,20 @@ export default function MyRepertoire() {
         plyTarget={null}
         getEngine={() => (engineRef.current ??= new Engine())}
         session={session}
+        snapshot={drill.snapshot}
         title={`🗺️ Sortie ${drill.at + 1}/${n}`}
         subtitle={`Tu as joué ${played} dans ${plural(current.games, 'partie')}${session.total ? ` · ${session.ok}/${session.total} réussies` : ''}`}
         nextLabel={n > 1 ? 'Sortie suivante' : 'Recommencer'}
         onResult={(ok) => void onResult(current, drill.retry, ok)}
-        onRetry={() => setDrill({ ...drill, key: drill.key + 1, retry: true })}
-        onNext={() => setDrill({ ...drill, at: (drill.at + 1) % n, key: drill.key + 1, retry: false })}
+        onRetry={() => setDrill({ ...drill, key: drill.key + 1, retry: true, snapshot: undefined })}
+        onNext={() => setDrill({ ...drill, at: (drill.at + 1) % n, key: drill.key + 1, retry: false, snapshot: undefined })}
         onClose={() => setDrill(null)}
-        onAnalyse={(moves) =>
+        onAnalyse={(moves, snapshot) => {
+          stashExercise(RETURN_SCREEN, { drill: { ...drill, snapshot }, session } satisfies ReturnState)
           navigate('/analyse', {
-            state: { fen: START_FEN, uci: moves, orientation: current.color, label: openingFr(current.opening), ...back() },
+            state: { fen: START_FEN, uci: moves, orientation: current.color, label: openingFr(current.opening), ...back(), returnLabel: "Retour à l'exercice" },
           })
-        }
+        }}
       />
     )
   }

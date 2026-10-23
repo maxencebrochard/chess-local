@@ -357,6 +357,7 @@ def rush_suite(p, browser):
     check("[rush] UNE ligne rushScores pour le run (PUZ-14)", len(rows) == 1 and rows[0]["score"] == 1 and rows[0]["mode"] == "survival",
           f"({[(r['mode'], r['score']) for r in rows]})")
     shot(page, "rush_done_852")
+    rush_analysis_round_trip(page, [pz, pz2, pz3, pz4])
 
     # PUZ-11 : même score au run suivant = record égalé, pas « Nouveau record ».
     page.locator("main button", has_text="Rejouer").tap()
@@ -382,6 +383,39 @@ def rush_suite(p, browser):
     scores = wait_rush_scores(page, 3)
     check("[rush] quitter en plein run enregistre le score (PUZ-12)", scores == [1, 1, 1], f"({scores})")
     ctx.close()
+
+
+def rush_entries(page):
+    """Puzzles listés au bilan du Rush : [(id, marque)]."""
+    return page.evaluate("""() => [...document.querySelectorAll('[data-rush-entry]')]
+        .map((b) => [b.getAttribute('data-rush-entry'), b.querySelector('span').textContent.trim()])""")
+
+
+def rush_analysis_round_trip(page, served):
+    """Bilan du Rush (série close) : chaque puzzle s'ouvre dans l'analyseur, et « Retour au bilan »
+    rend le même bilan (score, record, liste) sans nouvelle ligne rushScores ni run relancé."""
+    if any(pz is None for pz in served):
+        return check("[rush:analyse] quatre puzzles joués", False)
+    expected = [[pz[0], mark] for pz, mark in zip(served, ["✗", "✗", "✓", "✗"])]
+    entries = rush_entries(page)
+    check("[rush:analyse] bilan : les puzzles de la série dans l'ordre, avec leur verdict", entries == expected, f"({entries})")
+    target = served[3]
+    if not ck.appears("[rush:analyse] puzzle du bilan cliquable", page, f"[data-rush-entry='{target[0]}']", timeout=3000):
+        return
+    page.locator(f"[data-rush-entry='{target[0]}']").tap()
+    if not ck.appears("[rush:analyse] « Retour au bilan » dans l'analyseur", page, "button:has-text('Retour au bilan')", timeout=10000):
+        return
+    check("[rush:analyse] analyseur ouvert", page.evaluate("() => location.hash") == "#/analyse")
+    check("[rush:analyse] position du puzzle transmise (après l'amorce)", wait_placement(page, board_after(target, 1).board_fen()))
+    page.get_by_role("button", name="Retour au bilan").click()
+    if ck.appears("[rush:analyse] retour : bilan restauré", page, "[data-rush-entries]", timeout=8000):
+        check("[rush:analyse] retour sur #/rush", page.evaluate("() => location.hash") == "#/rush")
+        check("[rush:analyse] même liste après le retour", rush_entries(page) == expected, f"({rush_entries(page)})")
+        check("[rush:analyse] même score et même record", page.locator("main .text-6xl").first.inner_text().strip() == "1"
+              and page.locator("text=Nouveau record").count() == 1)
+    page.wait_for_timeout(500)
+    rows = db_dump(page)["rushScores"]
+    check("[rush:analyse] aucune écriture de plus (une ligne rushScores)", len(rows) == 1, f"({[(r['mode'], r['score']) for r in rows]})")
 
 
 def rush_clock_suite(p, browser):
@@ -417,6 +451,8 @@ def puzzles_suite(p, browser):
         return
     shot(page, "puzzles_solving_852")
     check("[puzzles] « Passer » n'est pas le bouton vert (PUZ-5)", "bg-accent" not in btn_class(page, "Passer"))
+    # Équité : un puzzle classé non résolu ne s'ouvre pas dans l'analyseur (verdict d'abord).
+    check("[puzzles] pas d'« Analyser » avant le verdict", page.locator("main button", has_text="Analyser").count() == 0)
 
     # Résolution complète : série 1, Elo en hausse, une tentative réussie.
     check("[puzzles] solution acceptée", solve(page, pz))
@@ -448,6 +484,9 @@ def puzzles_suite(p, browser):
     check("[puzzles] série conservée au retour d'analyse (PUZ-3)", streak_shown(page) == 1, f"({streak_shown(page)})")
     check("[puzzles] même puzzle au retour d'analyse (PUZ-3)",
           page.locator("text=Résolu").count() == 1 and wait_puzzle(page, [pz], timeout=3000) is not None)
+    d = db_dump(page)
+    check("[puzzles] retour d'analyse sans nouvelle écriture", len(d["puzzleAttempts"]) == 1 and puzzle_rating(page) == r_solved,
+          f"({len(d['puzzleAttempts'])} tentatives, Elo {puzzle_rating(page)})")
 
     # PUZ-2 et PUZ-6 : bon 1er coup, coup faux au 2e (en DRAG tactile : le drop d'un coup faux est
     # désormais accepté par react-chessboard) : solution correcte, coup faux montré, verrou.

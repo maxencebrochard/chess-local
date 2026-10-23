@@ -1,14 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Cta } from '../components/Cta'
 import { FAIL_FLASH_MS, PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
 import { db } from '../lib/db'
 import { loadPuzzles } from '../lib/puzzles'
+import { clearExercise, isRestore, readExercise, stashExercise } from '../lib/exerciseReturn'
 
 type RushMode = '3min' | '5min' | 'survival'
 type RushState = 'menu' | 'running' | 'done'
 const MODE_MS: Record<RushMode, number | null> = { '3min': 180_000, '5min': 300_000, survival: null }
 const NEXT_DELAY_MS = 400 // après un succès ; après un échec c'est la durée du flash rouge
 const NO_BEST: Record<RushMode, number> = { '3min': 0, '5min': 0, survival: 0 }
+
+// Puzzles de la série dans l'ordre : réussi, raté, ou laissé en cours (null) par le chrono ou Arrêter.
+type RushEntry = { puzzle: PuzzleData; ok: boolean | null }
+
+// Bilan d'une série close laissé pour l'analyseur (exerciseReturn.ts) : l'analyse ne s'ouvre
+// qu'une fois la série finie (chrono arrêté, score écrit), et le retour réaffiche ce bilan.
+const RETURN_SCREEN = 'rush'
+interface ReturnState {
+  mode: RushMode
+  score: number
+  newRecord: boolean
+  entries: RushEntry[]
+}
 
 // Difficulté croissante façon chess.com : démarre facile, monte avec le score.
 function targetRating(score: number): number {
@@ -23,14 +38,18 @@ function pickRushPuzzle(all: PuzzleData[], score: number, used: Set<string>): Pu
 }
 
 export default function PuzzleRush() {
-  const [mode, setMode] = useState<RushMode>('3min')
-  const [state, setState] = useState<RushState>('menu')
-  const [score, setScore] = useState(0)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [returned] = useState(() => (isRestore(location.state) ? readExercise<ReturnState>(RETURN_SCREEN) : null))
+  const [mode, setMode] = useState<RushMode>(returned?.mode ?? '3min')
+  const [state, setState] = useState<RushState>(returned ? 'done' : 'menu')
+  const [score, setScore] = useState(returned?.score ?? 0)
+  const [entries, setEntries] = useState<RushEntry[]>(returned?.entries ?? [])
   const [strikes, setStrikes] = useState(0)
   const [timeLeft, setTimeLeft] = useState(0)
   const [puzzle, setPuzzle] = useState<PuzzleData | null>(null)
   const [best, setBest] = useState<Record<RushMode, number>>(NO_BEST)
-  const [newRecord, setNewRecord] = useState(false)
+  const [newRecord, setNewRecord] = useState(returned?.newRecord ?? false)
   const [allPuzzles, setAllPuzzles] = useState<PuzzleData[] | null>(null)
   const [loadError, setLoadError] = useState(false)
   // Miroirs hors rendu : verdicts, chrono et démontage lisent l'état à l'instant T, sans passer
@@ -38,6 +57,8 @@ export default function PuzzleRush() {
   const stateRef = useRef<RushState>('menu')
   const modeRef = useRef<RushMode>('3min')
   const usedRef = useRef(new Set<string>())
+  const entriesRef = useRef<RushEntry[]>([])
+  const puzzleRef = useRef<PuzzleData | null>(null) // puzzle affiché, pour le bilan d'une fin au chrono
   const scoreRef = useRef(0)
   const strikesRef = useRef(0)
   const bestRef = useRef<Record<RushMode, number>>(NO_BEST)
@@ -51,6 +72,9 @@ export default function PuzzleRush() {
 
   useEffect(() => {
     load()
+    if (location.state) navigate('.', { replace: true, state: null })
+    clearExercise()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -109,9 +133,11 @@ export default function PuzzleRush() {
     setScore(0)
     setStrikes(0)
     setNewRecord(false)
+    entriesRef.current = []
+    setEntries([])
     endAtRef.current = Date.now() + (MODE_MS[m] ?? 0)
     setTimeLeft(MODE_MS[m] ?? 0)
-    setPuzzle(pickRushPuzzle(allPuzzles, 0, usedRef.current) ?? null)
+    showPuzzle(pickRushPuzzle(allPuzzles, 0, usedRef.current) ?? null)
     stateRef.current = 'running'
     setState('running')
   }
@@ -122,6 +148,8 @@ export default function PuzzleRush() {
     if (stateRef.current !== 'running') return null
     stateRef.current = 'done'
     clearNextTimer()
+    const current = puzzleRef.current
+    if (current && !usedRef.current.has(current.id)) entriesRef.current = [...entriesRef.current, { puzzle: current, ok: null }]
     const m = modeRef.current
     const s = scoreRef.current
     const record = s > bestRef.current[m]
@@ -134,7 +162,29 @@ export default function PuzzleRush() {
     const record = closeRun()
     if (record === null) return
     setNewRecord(record)
+    setEntries(entriesRef.current)
     setState('done')
+  }
+
+  function showPuzzle(p: PuzzleData | null) {
+    puzzleRef.current = p
+    setPuzzle(p)
+  }
+
+  // Série close : son bilan est gardé pour le retour, puis l'analyseur ouvre le puzzle.
+  function analyse(p: PuzzleData) {
+    stashExercise(RETURN_SCREEN, { mode, score, newRecord, entries } satisfies ReturnState)
+    navigate('/analyse', {
+      state: {
+        fen: p.fen,
+        uci: p.moves,
+        viewIndex: 0, // après le coup d'amorce adverse
+        orientation: p.fen.split(' ')[1] === 'w' ? 'b' : 'w',
+        label: `Puzzle ${p.id} (${p.rating})`,
+        returnTo: '/rush',
+        returnLabel: 'Retour au bilan',
+      },
+    })
   }
 
   function scheduleNext(ms: number) {
@@ -143,7 +193,7 @@ export default function PuzzleRush() {
       nextTimerRef.current = null
       if (stateRef.current !== 'running' || !allPuzzles) return
       const next = pickRushPuzzle(allPuzzles, scoreRef.current, usedRef.current)
-      if (next) setPuzzle(next)
+      if (next) showPuzzle(next)
       else finish() // plus aucun puzzle disponible
     }, ms)
   }
@@ -152,6 +202,7 @@ export default function PuzzleRush() {
     if (stateRef.current !== 'running' || !puzzle || !allPuzzles) return
     if (usedRef.current.has(puzzle.id)) return // un seul verdict par puzzle
     usedRef.current.add(puzzle.id)
+    entriesRef.current = [...entriesRef.current, { puzzle, ok: success }]
     if (success) {
       scoreRef.current += 1
       setScore(scoreRef.current)
@@ -213,11 +264,30 @@ export default function PuzzleRush() {
         <p className="mb-1 text-6xl font-black text-accent">{score}</p>
         <p className="mb-6 text-neutral-400">puzzles résolus · record {Math.max(best[mode], score)}</p>
         <div className="flex justify-center gap-3">
-          <Cta onClick={() => start(mode)}>Rejouer</Cta>
+          <Cta onClick={() => start(mode)} disabled={!allPuzzles}>Rejouer</Cta>
           <Cta variant="secondary" onClick={() => setState('menu')}>
             Menu
           </Cta>
         </div>
+        {entries.length > 0 && (
+          <div data-rush-entries className="mt-6 space-y-1 text-left">
+            <p className="text-sm font-semibold text-neutral-400">Puzzles de la série</p>
+            {entries.map(({ puzzle: p, ok }) => (
+              <button
+                key={p.id}
+                data-rush-entry={p.id}
+                onClick={() => analyse(p)}
+                className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm hover:bg-surface-3"
+              >
+                <span className={`w-5 text-center font-black ${ok ? 'text-accent' : ok === false ? 'text-red-400' : 'text-neutral-400'}`}>
+                  {ok ? '✓' : ok === false ? '✗' : '⏱'}
+                </span>
+                <span className="flex-1">Puzzle {p.id} · {p.rating}</span>
+                <span className="font-semibold text-accent">♞ Analyser</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     )
   }
