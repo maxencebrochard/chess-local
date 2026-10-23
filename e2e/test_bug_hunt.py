@@ -181,7 +181,7 @@ def case_reset(p, browser):
     page.click("[data-testid=reset-confirm]")
     ck.appears("[reset] deuxième confirmation", page, "[data-testid=reset-final-sheet]")
     page.click("[data-testid=reset-final-confirm]")
-    ck.appears("[reset] l'app redémarre sur l'accueil", page, "main :text('Problèmes')", timeout=20000)
+    ck.appears("[reset] l'app redémarre sur l'accueil", page, "[data-testid=home]", timeout=20000)
     left = page.evaluate("() => ['chess-local-play-game', 'chess-local-puzzle-session', 'chess-local-mats'].filter((k) => localStorage.getItem(k) !== null)")
     check("[reset] après « Tout effacer » : aucune de ces clés ne reste", left == [], f"({left})")
     page.goto(f"{BASE}/#/jouer")
@@ -385,7 +385,7 @@ def case_finale_fuite(p, browser):
     # Le ✕ de la séance porte le nom accessible « Quitter la séance » depuis l'audit UI.
     page.get_by_role("button", name="Quitter la séance", exact=True).click()
     page.locator("nav a:visible", has_text="Accueil").click()
-    ck.appears("[finale] accueil affiché", page, "main :text('Problèmes')", timeout=10000)
+    ck.appears("[finale] accueil affiché", page, "[data-testid=home]", timeout=10000)
     held = page.evaluate("() => window.__releaseUci()")
     page.wait_for_timeout(3000)
     st = page.evaluate("() => ({ live: window.__workersLive, made: window.__workersMade })")

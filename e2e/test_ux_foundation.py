@@ -62,7 +62,7 @@ def suite(p):
     for fmt, height in [("iphone852",852),("iphone660",660),("desktop",900)]:
         ctx = desktop_context(browser, ck, service_workers="block") if fmt == "desktop" else mobile_context(p, browser, ck, standalone=True, viewport={"width":393,"height":height}, service_workers="block")
         page = ctx.new_page()
-        for path, name, marker in [("/","accueil","h1"),("/apprendre","apprendre","h1"),
+        for path, name, marker in [("/","accueil","[data-testid=home][data-review-ready]:not([data-home-primary=pending]) [data-home-cta]"),("/apprendre","apprendre","h1"),
                 ("/apprendre/bases","bases","h1:text('Les bases')"),("/apprendre/finales","finales","h1:text('Cours de finales')"),
                 ("/apprendre/roque","roque","h1:text('Démolir le roque')"),("/archive","archive","text=Aucune partie enregistrée"),
                 ("/attaques-manquees","attaques","[data-testid=attack-empty]"),("/defenses-ratees","defenses","[data-testid=defense-empty]"),
@@ -74,7 +74,9 @@ def suite(p):
                 continue
             inspect(page, fmt, name)
             if name == "accueil":
-                cta = page.get_by_role("button",name="Jouer",exact=True)
+                # Lot 4 : le CTA principal de l'accueil est celui de sa carte (séance du jour sur base vide).
+                page.locator("[data-testid=home]:not([data-home-primary=pending])").wait_for(timeout=10000)
+                cta = page.locator("[data-home-cta]")
                 m = cta.evaluate(CONTRAST)
                 ck.check(f"{fmt} : CTA vert AA", m["ratio"] >= 4.5, f"{m['ratio']:.2f}:1")
                 # Mesurer la couleur finale, pas une frame de transition entre les deux textes.

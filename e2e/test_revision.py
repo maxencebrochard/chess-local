@@ -425,7 +425,12 @@ def part_home_and_session(p, browser):
               "faute J-10, faute classée sans ligne, variante J-3 ; exclus : aujourd'hui, boîte 1 à J-2, acquis, jamais raté, "
               "J-45 oublié, faute réussie hier, suite, orpheline)", badge == str(EXPECTED_DUE), f"({badge!r})")
         sub = page.locator("main a:has-text(\"À réviser aujourd'hui\")").inner_text()
-        check(f"[accueil] détail par type « {EXPECTED_DETAIL} »", EXPECTED_DETAIL in sub, f"({sub!r})")
+        # Séance du jour pas faite : elle reprend les 4 plus urgents (revisionBlockSize), nommés comme
+        # tels ; la ligne détaille par type les seuls autres, sans recompter les premiers.
+        m = re.search(r"4 dans ta séance du jour, en plus : (.+)", sub)
+        extra = sum(int(n) for n in re.findall(r"(\d+) ", m.group(1))) if m else -1
+        check(f"[accueil] 4 dans la séance, détail par type des {EXPECTED_DUE - 4} autres", m is not None and extra == EXPECTED_DUE - 4
+              and page.locator("main [data-review-in-seance]").get_attribute("data-review-in-seance") == "4", f"({sub!r})")
         check("[accueil] aucun débordement horizontal (393x852)", overflow_x(page) == 0, f"({overflow_x(page)} px)")
         shot(page, "revision_home_852")
         hist_before = page.evaluate("() => history.length")
@@ -551,9 +556,9 @@ def part_layouts(p, browser):
         page.goto(f"{BASE}/#/")
         if ck.appears(f"[{tag}] carte sur l'accueil", page, "main a:has-text(\"À réviser aujourd'hui\")", timeout=10000):
             check(f"[{tag}] accueil sans débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
-            # L'accueil tient sans défiler, CTA Jouer compris : la carte ne pousse rien sous le pli.
-            sc = page.evaluate("() => { const m = document.querySelector('main'); return m.scrollHeight - m.clientHeight }")
-            check(f"[{tag}] accueil sans défilement vertical (Jouer visible en entier)", sc <= 0, f"({sc} px de trop)")
+            # Action principale et ligne de révision visibles sans défiler ; la progression peut défiler (plan UX, lot 4).
+            cta = page.locator("[data-home-cta]").bounding_box()
+            check(f"[{tag}] CTA principal visible en entier", cta is not None and cta["y"] >= 0 and cta["y"] + cta["height"] <= page.viewport_size["height"], f"({cta})")
             card = page.locator("main a", has_text="À réviser aujourd'hui").bounding_box()
             check(f"[{tag}] carte entièrement visible", card is not None and card["y"] >= 0 and card["y"] + card["height"] <= page.viewport_size["height"], f"({card})")
             shot(page, f"revision_home_{tag}")

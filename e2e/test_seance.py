@@ -484,9 +484,11 @@ def part_main(p, browser):
     page.goto(f"{BASE}/#/")
     ck.appears("[accueil] série chargée", page, "[data-seance-ready]", timeout=10000, state="attached")
     tile = page.locator("[data-seance-tile]")
-    if check("[accueil] tuile « Séance du jour »", tile.count() == 1 and "Séance du jour" in tile.inner_text()):
+    if check("[accueil] carte principale « Ta séance du jour », CTA Commencer", tile.count() == 1 and tile.inner_text().strip() == "Commencer"
+             and "Ta séance du jour" in page.locator("[data-home-card]").inner_text()):
         status = page.locator("[data-seance-status]").inner_text()
-        check("[accueil] sous-titre : « 10 à 15 min guidées · 🔥 2 jours » (hier et avant-hier)", status == "10 à 15 min guidées · 🔥 2 jours", f"({status!r})")
+        # Dus : faute 1 et puzzle R1, tous deux repris par la séance (lot 4 : aucune révision comptée deux fois).
+        check("[accueil] statut : « Commence par 2 révisions dues · 🔥 2 jours » (hier et avant-hier)", status == "Commence par 2 révisions dues · 🔥 2 jours", f"({status!r})")
         check("[accueil] aucun débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
         shot(page, "seance_home_852")
         hist = page.evaluate("() => history.length")
@@ -625,6 +627,8 @@ def part_main(p, browser):
     ck.appears("[accueil] série rechargée", page, "[data-seance-ready]", timeout=8000, state="attached")
     status = page.locator("[data-seance-status]").inner_text() if page.locator("[data-seance-status]").count() else ""
     check("[accueil] « ✓ Faite aujourd'hui · 🔥 3 jours »", status == "✓ Faite aujourd'hui · 🔥 3 jours", f"({status!r})")
+    check("[accueil] séance faite : la séance rapide tient la carte, « Refaire » en ligne",
+          page.locator("[data-home-cta]").inner_text().strip() == "Séance rapide" and "Refaire une séance du jour" in page.locator("[data-seance-tile]").inner_text())
 
     # --- nouvelle séance, quittée en cours : « Reprendre », puis réinitialisation ---
     page.locator("[data-seance-tile]").click()
@@ -635,7 +639,8 @@ def part_main(p, browser):
         click_text_button(page, "Quitter la séance") or page.get_by_label("Quitter la séance").click()
     ck.appears("[reprendre] accueil après ✕", page, "[data-seance-tile]", timeout=8000)
     status = page.locator("[data-seance-status]").inner_text() if page.locator("[data-seance-status]").count() else ""
-    check("[reprendre] tuile « Reprendre · étape 1/N »", re.fullmatch(r"Reprendre · étape 1/\d+", status) is not None, f"({status!r})")
+    check("[reprendre] carte « Étape 1 sur N · … », CTA Reprendre la séance", re.fullmatch(r"Étape 1 sur \d+ · .+", status) is not None
+          and page.locator("[data-seance-tile]").inner_text().strip() == "Reprendre la séance", f"({status!r})")
     check("[reprendre] séance gardée en sessionStorage", stored(page) is not None)
     page.goto(f"{BASE}/#/donnees")
     if ck.appears("[reset] bouton Réinitialiser (Mes données)", page, "[data-testid=reset-btn]", timeout=10000, state="attached"):
@@ -646,7 +651,7 @@ def part_main(p, browser):
         page.click("[data-testid=reset-confirm]")
         ck.appears("[reset] deuxième confirmation", page, "[data-testid=reset-final-sheet]")
         page.click("[data-testid=reset-final-confirm]")
-        ck.appears("[reset] l'app redémarre sur l'accueil", page, "main :text('Problèmes')", timeout=20000)
+        ck.appears("[reset] l'app redémarre sur l'accueil", page, "[data-testid=home]", timeout=20000)
         check("[reset] clé de séance effacée", stored(page) is None)
         check("[reset] clé étrangère conservée", page.evaluate("() => sessionStorage.getItem('autre-cle')") == "x")
     ctx.close()
@@ -727,8 +732,8 @@ def part_layouts(p, browser):
         if ck.appears(f"[{tag}] tuile sur l'accueil", page, "[data-seance-tile]", timeout=10000):
             ck.appears(f"[{tag}] carte révision aussi présente", page, "main a:has-text(\"À réviser aujourd'hui\")", timeout=10000)
             check(f"[{tag}] accueil sans débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
-            sc = page.evaluate("() => { const m = document.querySelector('main'); return m.scrollHeight - m.clientHeight }")
-            check(f"[{tag}] accueil sans défilement vertical (Jouer visible en entier)", sc <= 0, f"({sc} px de trop)")
+            box = page.locator("[data-seance-tile]").bounding_box()
+            check(f"[{tag}] CTA de la séance visible sans défiler", box is not None and box["y"] >= 0 and box["y"] + box["height"] <= page.viewport_size["height"], f"({box})")
             shot(page, f"seance_home_{tag}")
             page.locator("[data-seance-tile]").click()
         if ck.appears(f"[{tag}] accueil de séance", page, "[data-seance-intro]", timeout=20000):

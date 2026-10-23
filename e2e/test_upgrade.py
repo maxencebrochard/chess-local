@@ -66,20 +66,20 @@ from run import ROOT, SUBPATH, free_port, port_is_listening
 #                         l'ordinateur, pages chargées à la demande (Q3) ; même schéma version(3).
 # On conserve les précédents : des appareils peuvent encore les porter.
 OLD_BUILDS = (
-    {"tag": "deployed-2026-07-20", "sha": "388d3edae6fd6ec152ccca70b0573d242d612090", "labels": {"archive_bot": "vs Noa"}},
-    {"tag": "deployed-2026-10-06", "sha": "54bf85a3656123490bec3aa87108a2e18a50f8bd", "labels": {"archive_bot": "contre Noa"}},
+    {"tag": "deployed-2026-07-20", "sha": "388d3edae6fd6ec152ccca70b0573d242d612090", "labels": {"legacy_home": True, "archive_bot": "vs Noa"}},
+    {"tag": "deployed-2026-10-06", "sha": "54bf85a3656123490bec3aa87108a2e18a50f8bd", "labels": {"legacy_home": True, "archive_bot": "contre Noa"}},
     {"tag": "deployed-2026-10-15", "sha": "de63ea79eea4f20d6596c841f8c9579929f602a6",
-     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
+     "labels": {"legacy_home": True, "archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
     {"tag": "deployed-2026-10-16", "sha": "9fb6f489aed18591031a7d664050f86cb4365323",
-     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
+     "labels": {"legacy_home": True, "archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
     {"tag": "deployed-2026-10-22", "sha": "3067b8e5cb2ab480b54736b5a3b3599f5da3dde1",
-     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
+     "labels": {"legacy_home": True, "archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
     {"tag": "deployed-2026-10-22-2", "sha": "c2838e70f886f743b9e30519575c1fda06a7688d",
-     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
+     "labels": {"legacy_home": True, "archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
     {"tag": "deployed-2026-10-23", "sha": "4087ece570be8ca00aaf6b2f10bfcdb9ea73fa07",
-     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
+     "labels": {"legacy_home": True, "archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
     {"tag": "deployed-2026-10-23-2", "sha": "2b15290799a121b20a40da7ad166504752888bc2",
-     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
+     "labels": {"legacy_home": True, "archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
 )
 DB_NAME = "chess-local"
 SETTINGS_KEY = "chess-local-settings"
@@ -390,10 +390,21 @@ def displayed_ok(tag, page, base, exp, labels):
     elo_cards = {"Rapide": str(exp["rapid"]), "Blitz": str(exp["blitz"]), "Bullet": str(exp["bullet"]), "Puzzles": str(exp["puzzle"])}
 
     page.goto(f"{base}/#/")
-    ck.appears(f"{tag} accueil chargé", page, "text=Résolvez !", timeout=15000)
-    expect(f"{tag} accueil : résolus, classement puzzles, nombre de parties",
-           wait_until(page, has_all([f"{exp['solved']} résolus · classement {exp['puzzle']}", f"{exp['games']} partie"])))
-    expect(f"{tag} accueil : 4 cartes Elo", wait_until(page, cards_match(page.locator("main a[href='#/stats']"), elo_cards)))
+    ck.appears(f"{tag} accueil chargé", page, "main h1:has-text('ChessLocal')", timeout=15000)
+    if labels.get("legacy_home"):
+        expect(f"{tag} accueil : résolus, classement puzzles, nombre de parties",
+               wait_until(page, has_all([f"{exp['solved']} résolus · classement {exp['puzzle']}", f"{exp['games']} partie"])))
+        expect(f"{tag} accueil : 4 cartes Elo", wait_until(page, cards_match(page.locator("main a[href='#/stats']"), elo_cards)))
+    else:
+        # Accueil quotidien (lot 4) : plus de classement ; l'activité de la semaine relit les mêmes
+        # tables (données créées pendant la suite, donc cette semaine). Les classements restent
+        # vérifiés sur Puzzles, Stats et Apprendre ci-dessous.
+        week = [f" {exp['solved']} puzzle"] if exp["solved"] else []
+        week += [f" {exp['games']} partie"] if exp["games"] else []
+        # Sans puzzle réussi ni partie, l'activité affichée serait vide : le check ne prouverait rien.
+        expect(f"{tag} accueil : activité de la semaine (puzzles réussis, parties)",
+               wait_until(page, lambda: (bool(week) and all(w in page.locator("[data-testid=home-bilan]").inner_text() for w in week),
+                                         f"(affiché {page.locator('[data-testid=home-bilan]').inner_text()!r}, attendu {week})")))
 
     page.goto(f"{base}/#/puzzles")
     ck.appears(f"{tag} puzzles chargés", page, "text=Classement puzzles", timeout=45000)

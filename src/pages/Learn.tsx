@@ -64,11 +64,12 @@ export default function Learn() {
   const [returnTo, setReturnTo] = useState<string | null>(null)
   const [returnLabel, setReturnLabel] = useState('Retour au cours')
   const [lessonsDone, setLessonsDone] = useState<number | null>(null)
-  // Séance demandée par un groupe d'Entraînement, Réviser mes parties ou Insights (`state.domain`,
-  // `state.tactic`) : écran de préparation à la place du hub, qui ne doit pas clignoter.
+  // Séance demandée par un groupe d'Entraînement, Réviser mes parties, Insights ou la Séance rapide
+  // de l'accueil (`state.domain`, `state.tactic`, `state.quick`) : écran de préparation à la place
+  // du hub, qui ne doit pas clignoter.
   const [preparing, setPreparing] = useState(() => {
-    const st = location.state as { domain?: unknown; tactic?: unknown } | null
-    return Boolean(st?.domain || st?.tactic)
+    const st = location.state as { domain?: unknown; tactic?: unknown; quick?: unknown } | null
+    return Boolean(st?.domain || st?.tactic || st?.quick)
   })
   const [review, setReview] = useState<ReviewQueue | null>(null)
   // Séance de finale ouverte par une étape du parcours : toute réussite (même après Réessayer)
@@ -115,11 +116,15 @@ export default function Learn() {
   // Venue d'Insights (plan d'entraînement) : séance Tactiques sur le thème demandé, avec retour.
   // Venue d'un groupe d'Entraînement ou de Réviser mes parties : séance du domaine, avec retour.
   useEffect(() => {
-    const state = location.state as { restore?: boolean; endgame?: string; tactic?: string; domain?: LearnDomain; returnTo?: string; returnLabel?: string; pathStep?: string } | null
+    const state = location.state as { restore?: boolean; quick?: boolean; endgame?: string; tactic?: string; domain?: LearnDomain; returnTo?: string; returnLabel?: string; pathStep?: string } | null
     if (state?.domain && state.domain in DOMAIN_META) {
       const { domain, returnTo: back, returnLabel: label } = state
       navigate('.', { replace: true, state: null })
       void start(domain, undefined, back ?? null, label)
+    } else if (state?.quick) {
+      // « Séance rapide » de l'accueil, une fois la séance du jour faite : le bouton Séance rapide d'ici.
+      navigate('.', { replace: true, state: null })
+      void start()
     } else if (state?.tactic) {
       const { tactic, returnTo: back, returnLabel: label } = state
       navigate('.', { replace: true, state: null })

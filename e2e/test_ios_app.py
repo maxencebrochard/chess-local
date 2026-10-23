@@ -71,8 +71,10 @@ def chunk_requests(ctx):
 
 
 def play_visible(page, label):
+    # Action principale de l'accueil (lot 4 : carte de la séance du jour, sous la carte de migration).
     # Le viewport seul ne suffit pas : la navigation basse peut recouvrir le bas du bouton.
-    bounds = page.get_by_role("button", name="Jouer").evaluate("""el => {
+    page.locator("[data-testid=home]:not([data-home-primary=pending])").wait_for(timeout=10000)
+    bounds = page.locator("[data-home-cta]").evaluate("""el => {
       const r = el.getBoundingClientRect()
       const visible = [r.top + 1, r.bottom - 1].every(y =>
         el.contains(document.elementFromPoint(r.x + r.width / 2, y)))
@@ -155,7 +157,7 @@ def part_web(p, browser):
         check("web : refus sans erreur", piece_on(page, "g8") == "bN")
         check("web : aucun runtime Capacitor", page.evaluate("() => window.Capacitor === undefined && window.__haptics === undefined"))
     page.goto(f"{BASE}/#/")
-    ck.appears("web : accueil", page, "text=Résolvez !")
+    ck.appears("web : accueil", page, "[data-testid=home]")
     page.wait_for_timeout(500)
     check("web : pas de carte de migration sur base vide", page.locator(CARD).count() == 0)
     page.goto(f"{BASE}/#/donnees")
@@ -463,7 +465,7 @@ def part_migration(p, browser, tmp):
         shot(page, "ios_migration_393x852")
         box = page.locator(CARD).bounding_box()
         check("app : carte dans la largeur de l'écran", box is not None and box["x"] >= 0 and box["x"] + box["width"] <= 393, str(box))
-        play_visible(page, "app : Jouer entièrement à l'écran sous la carte")
+        play_visible(page, "app : action principale entièrement à l'écran sous la carte")
         hist = page.evaluate("() => history.length")
         page.click("[data-testid=native-migration-go]")
         ck.appears("app : page Mes données", page, "[data-testid=restore-btn]")
@@ -494,10 +496,15 @@ def part_migration(p, browser, tmp):
             st = settings_state(page)
             check("app : réglages repris de la PWA", st is not None and st.get("themeId") == "purple" and st == settings_before, str(st))
             page.goto(f"{BASE}/#/")
-            ck.appears("app : accueil après restauration", page, "text=Résolvez !")
+            ck.appears("app : accueil après restauration", page, "[data-testid=home]")
             page.wait_for_timeout(600)
             check("app : carte disparue une fois les données restaurées", page.locator(CARD).count() == 0)
-            check("app : chiffres de la PWA à l'accueil", page.locator("text=1432").count() >= 1 and page.locator("text=1615").count() >= 1)
+            # L'accueil quotidien (lot 4) n'affiche plus de classement : les chiffres se relisent dans Statistiques.
+            page.goto(f"{BASE}/#/stats")
+            ck.appears("app : Statistiques après restauration", page, "main :text('Statistiques')")
+            ck.appears("app : chiffres de la PWA dans Statistiques", page, "main :text('1432')", timeout=10000)
+            check("app : second classement de la PWA dans Statistiques", page.locator("main :text('1615')").count() >= 1)
+            page.goto(f"{BASE}/#/")
     ctx.close()
 
     # 3. Nouveau départ : « Non merci » est retenu après rechargement, la réinitialisation l'efface.
@@ -509,7 +516,7 @@ def part_migration(p, browser, tmp):
         page.click("[data-testid=native-migration-dismiss]")
         check("non merci : carte masquée", page.locator(CARD).count() == 0)
         page.reload()
-        ck.appears("non merci : accueil rechargé", page, "text=Résolvez !")
+        ck.appears("non merci : accueil rechargé", page, "[data-testid=home]")
         page.wait_for_timeout(600)
         check("non merci : retenu après rechargement", page.locator(CARD).count() == 0)
         page.goto(f"{BASE}/#/donnees")
@@ -525,7 +532,7 @@ def part_migration(p, browser, tmp):
                 page.click("[data-testid=reset-confirm]")
             if ck.appears("réinitialisation : confirmation finale", page, "[data-testid=reset-final-confirm]"):
                 page.click("[data-testid=reset-final-confirm]")
-            if ck.appears("non merci : accueil après réinitialisation", page, "text=Résolvez !"):
+            if ck.appears("non merci : accueil après réinitialisation", page, "[data-testid=home]"):
                 check("réinitialisation : clé de refus effacée", page.evaluate("() => localStorage.getItem('chess-local-native-migration') === null"))
                 ck.appears("réinitialisation : la carte revient", page, CARD)
     ctx.close()
@@ -541,7 +548,7 @@ def part_migration(p, browser, tmp):
         if ck.appears(f"{label} : carte", page, CARD):
             shot(page, f"ios_migration_{label}")
             check(f"{label} : pas de débordement horizontal", page.evaluate("() => document.documentElement.scrollWidth <= innerWidth"))
-            play_visible(page, f"{label} : Jouer entièrement à l'écran")
+            play_visible(page, f"{label} : action principale entièrement à l'écran")
         ctx.close()
 
 

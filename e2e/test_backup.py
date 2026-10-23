@@ -642,7 +642,7 @@ def part_reset(p, browser):
     page.click("[data-testid=reset-confirm]")
     ck.appears("[reset] deuxième confirmation (2e passage)", page, "[data-testid=reset-final-sheet]")
     page.click("[data-testid=reset-final-confirm]")
-    ck.appears("[reset] l'app redémarre sur l'accueil", page, "main :text('Problèmes')", timeout=20000)
+    ck.appears("[reset] l'app redémarre sur l'accueil", page, "[data-testid=home]", timeout=20000)
     ok = check("[reset] base recréée vide", wait_schema(page) and all(len(v) == 0 for v in snapshot(page).values()))
     # Après l'effacement, le script d'init du contexte ré-injecte SES défauts (vert/rapide) au
     # rechargement : purple/deep encore là prouverait que localStorage n'a pas été vidé.

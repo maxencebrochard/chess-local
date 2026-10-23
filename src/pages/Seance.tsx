@@ -3,7 +3,7 @@
 // le lecteur de son écran d'origine et noté là où cet écran note. Plan dans lib/seance.ts,
 // chargement et persistance dans lib/seanceRun.ts ; un rendu par type de bloc (RENDER).
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Chess, DEFAULT_POSITION } from 'chess.js'
 import { Cta } from '../components/Cta'
 import { PageHeader } from '../components/PageHeader'
@@ -355,11 +355,6 @@ export default function Seance() {
             Réessayer
           </Cta>
         )}
-        <div className="mt-4 text-center">
-          <Link to="/" replace className="inline-flex min-h-11 items-center text-sm font-semibold text-accent underline underline-offset-2">
-            Retour à l'accueil
-          </Link>
-        </div>
       </div>
     )
   }
