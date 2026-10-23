@@ -163,7 +163,7 @@ function LevelSection({ state, li, onOpen }: { state: PathState; li: number; onO
         <h2 className="text-lg font-black" style={{ color: level.color }}>
           {level.title}
         </h2>
-        <span className="text-sm font-semibold text-neutral-500">≈ {level.elo}</span>
+        <span className="text-sm font-semibold text-neutral-400">≈ {level.elo}</span>
         <span className="ml-auto flex items-center gap-2">
           {lv.acquired && (
             <span data-testid="level-acquired" className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-bold text-neutral-300">
@@ -191,7 +191,7 @@ function LevelSection({ state, li, onOpen }: { state: PathState; li: number; onO
               🎓
             </span>
           </span>
-          <span className={`text-sm font-bold ${lv.complete ? 'text-white' : 'text-neutral-500'}`}>
+          <span className={`text-sm font-bold ${lv.complete ? 'text-white' : 'text-neutral-400'}`}>
             {lv.complete ? `Niveau ${level.title.toLowerCase()} terminé` : `Fin du niveau ${level.title.toLowerCase()}`}
           </span>
         </li>
@@ -236,7 +236,7 @@ function StepRow({ s, color, n, first, onOpen }: { s: StepState; color: string; 
           {(s.stars !== null || s.acquired) && (
             <span className="mt-1 flex items-center gap-2">
               {s.stars !== null && <Stars n={s.stars} />}
-              {s.acquired && !s.done && <span className="text-[11px] font-semibold text-neutral-500">acquise au test</span>}
+              {s.acquired && !s.done && <span className="text-[11px] font-semibold text-neutral-400">acquise au test</span>}
             </span>
           )}
         </span>
@@ -409,7 +409,7 @@ function StepPage({ step }: { step: PathStep }) {
         <span className="rounded-full px-2.5 py-0.5 text-xs font-black text-neutral-900" style={{ backgroundColor: level.color }}>
           {level.title}
         </span>
-        <span className="text-xs font-semibold text-neutral-500">
+        <span className="text-xs font-semibold text-neutral-400">
           Étape {s.index - levelSteps[0].index + 1}/{levelSteps.length}
         </span>
       </div>
@@ -700,12 +700,12 @@ function Runner({ run, setRun, exercise, title, backTo, isOver, onOver, onQuit, 
     <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
       <div data-run={run.key} data-puzzle-id={p.id} data-run-idx={run.idx} className="mx-auto flex min-h-full max-w-2xl flex-col">
         <header className="flex items-center px-3 py-1">
-          <button onClick={onQuit} aria-label="Quitter la série" className="cursor-pointer p-1.5 text-2xl text-neutral-400 hover:text-white">
+          <button onClick={onQuit} aria-label="Quitter la série" className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white">
             ✕
           </button>
           <h1 className="min-w-0 flex-1 truncate text-center text-lg font-black">
             {title}
-            <span className="ml-2 text-sm font-semibold text-neutral-500">
+            <span className="ml-2 text-sm font-semibold text-neutral-400">
               {run.idx + 1}/{run.items.length}
             </span>
           </h1>
@@ -900,7 +900,7 @@ function PlacementPage() {
       <Cta className="w-full" disabled={preparing} onClick={() => void start()}>
         {preparing ? 'Préparation…' : 'Commencer le test'}
       </Cta>
-      <p className="mt-3 text-center text-xs text-neutral-500">Un test raté ne fait rien perdre : seul le meilleur résultat compte.</p>
+      <p className="mt-3 text-center text-xs text-neutral-400">Un test raté ne fait rien perdre : seul le meilleur résultat compte.</p>
     </div>
   )
 }

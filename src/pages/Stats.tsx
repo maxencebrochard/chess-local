@@ -458,7 +458,7 @@ export default function Stats() {
             data-testid="export-btn"
             onClick={() => void onExport()}
             disabled={working !== null}
-            className="cursor-pointer rounded bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
+            className="min-h-11 cursor-pointer rounded bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:cursor-default disabled:opacity-40"
           >
             {working === 'export' ? '⏳ Export…' : '⬇ Exporter tout'}
           </button>
@@ -466,7 +466,7 @@ export default function Stats() {
             data-testid="restore-btn"
             onClick={() => fileRef.current?.click()}
             disabled={working !== null}
-            className="cursor-pointer rounded bg-surface-3 px-3 py-1.5 text-sm font-semibold hover:bg-surface-3/70 disabled:cursor-default disabled:opacity-40"
+            className="min-h-11 cursor-pointer rounded bg-surface-3 px-3 py-1.5 text-sm font-semibold hover:bg-surface-3/70 disabled:cursor-default disabled:opacity-40"
           >
             {working === 'inspect' ? '⏳ Lecture du fichier…' : '⬆ Restaurer'}
           </button>
@@ -477,7 +477,7 @@ export default function Stats() {
           data-testid="reset-btn"
           onClick={() => void onResetStart()}
           disabled={working !== null}
-          className="cursor-pointer text-xs text-red-400 hover:text-red-300 disabled:cursor-default disabled:opacity-40"
+          className="min-h-11 cursor-pointer text-left text-xs text-red-400 hover:text-red-300 disabled:cursor-default disabled:opacity-40"
         >
           Réinitialiser l'app (tout effacer sur cet appareil)…
         </button>

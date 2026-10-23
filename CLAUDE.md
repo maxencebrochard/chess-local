@@ -277,7 +277,7 @@ Les sons existants restent propriétaires de l'exécution ; le son automatique d
 La vidéo de référence et les extractions intermédiaires restent exclusivement dans un dossier temporaire hors dépôt.
 Les MP3 finaux et les SVG Atelier redessinés sont autorisés par Max (17 octobre 2026), provenance dans les LICENSES.md.
 `PieceIcon` centre les silhouettes via les marges mesurées par `scripts/center-pieces.py`, communes au plateau et aux aperçus.
-`Play` remet le contenu en haut à l’entrée en partie pour ne pas hériter du défilement de la configuration sur petit écran (`piece_viewport`).
+`Play` remet `<main>` en haut par un seul effet, à chaque passage réglages ↔ partie et à chaque nouvelle partie, pour ne pas hériter du défilement de la configuration sur petit écran (`piece_viewport`).
 `e2e/test_piece_centers.py` contrôle les pixels peints à ±2 % de case ; ne pas compter deux fois le transform CSS lors de la rasterisation des SVG intégrés.
 
 ### Données
