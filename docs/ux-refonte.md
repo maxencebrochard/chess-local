@@ -1266,7 +1266,7 @@ La suite `accueil` (`e2e/test_accueil.py`) bundle `homePlan.ts` sous Node (prior
 
 | Suite production | Checks réussis |
 |---|---:|
-| `accueil` | 142 |
+| `accueil` | 154 |
 | `seance` | 200 |
 | `revision` | 322 |
 | `parcours` | 405 |
