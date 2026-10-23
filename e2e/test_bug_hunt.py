@@ -7,6 +7,8 @@
   (la dame promue comptait comme une pièce donnée).
 - repetition : le camp gagnant qui provoque la triple répétition reçoit « Gain manqué », et la courbe
   du bilan finit à 50 % (le coup n'était pas sanctionné, la courbe restait sur l'avantage).
+- repetition_continuee : la même répétition non réclamée, suivie d'autres coups, n'est pas une nulle :
+  ni Gain manqué ni courbe à 50 %, et les positions suivantes sont évaluées.
 - coup_force : un seul coup légal n'est pas un « Très bon » coup.
 - liste_noirs : sur ordinateur, quand les Noirs ont le trait au départ, la liste des coups laisse la
   case blanche vide et dessine le premier coup en figurine noire.
@@ -83,12 +85,15 @@ GREEK_GIFT = """[FEN "rnbq1rk1/pppn1ppp/4p3/3pP3/1b1P4/2NB1N2/PPP2PPP/R1BQK2R w 
 
 7. Bxh7+ Kxh7 8. Ng5+ *"""
 
-# Les Blancs, une dame de plus, tournent en rond : 9. Dd3 est la troisième occurrence de la même
+# Les Blancs, une dame de plus, tournent en rond : 5. Dd3 est la troisième occurrence de la même
 # position (le départ, dame en d1, n'est jamais revu : c'est bien ce coup qui fait la nulle).
 REPETITION = """[FEN "6k1/5ppp/8/8/8/8/5PPP/3Q2K1 w - - 0 1"]
 [SetUp "1"]
 
 1. Qd3 Kh8 2. Qd2 Kg8 3. Qd3 Kh8 4. Qd2 Kg8 5. Qd3 *"""
+
+# La même répétition, non réclamée : la partie continue et les Blancs gardent leur dame de plus.
+REPETITION_CONTINUED = REPETITION.replace("5. Qd3 *", "5. Qd3 Kh8 6. h3 Kg8 *")
 
 # Noirs au trait, en échec, un seul coup légal (Rd7), position équilibrée (vérifié avec python-chess
 # et Stockfish 18 natif, profondeur 10 : -0,07 pour les Noirs).
@@ -137,13 +142,16 @@ def run_review(page, tag):
     return ck.appears(f"[{tag}] bilan calculé (résumé affiché)", page, "text=Démarrer le bilan", timeout=240000)
 
 
-def graph_last_pct(page):
-    """Win% blanc du dernier point de la courbe du résumé (y = 32 - pct * 0,32 dans le SVG)."""
+def graph_pcts(page):
+    """Win% blanc de chaque point de la courbe du résumé, position initiale comprise (y = 32 - pct * 0,32 dans le SVG)."""
     d = page.evaluate("() => [...document.querySelectorAll('svg.cursor-pointer path')].find((p) => p.getBoundingClientRect().width > 0)?.getAttribute('d') ?? ''")
     pts = re.findall(r"L(-?[\d.]+),(-?[\d.]+)", d)
-    if len(pts) < 2:
-        return None
-    return round((32 - float(pts[-2][1])) / 0.32, 1)  # le dernier L est le coin bas droit de l'aire
+    return [round((32 - float(y)) / 0.32, 1) for _, y in pts[:-1]]  # le dernier L est le coin bas droit de l'aire
+
+
+def graph_last_pct(page):
+    pcts = graph_pcts(page)
+    return pcts[-1] if len(pcts) >= 2 else None
 
 
 def case_reset(p, browser):
@@ -202,7 +210,8 @@ def case_promotion(p, browser):
     load_text(page, PROMOTION)
     if run_review(page, "promotion"):
         t = page.evaluate(TALLIES)
-        check("[promotion] b8=D+ est classé chez les Blancs", sum(v[0] for v in t.values()) == 1, f"({t})")
+        best = t.get("Très bon", [0, 0])[0] + t.get("Meilleur", [0, 0])[0]
+        check("[promotion] b8=D+ est le meilleur coup du moteur (Très bon ou Meilleur)", best == 1, f"({t})")
         check("[promotion] b8=D+ (seul un pion donné) n'est pas Brillant", t.get("Brillant", [0, 0])[0] == 0, f"({t})")
     ctx.close()
 
@@ -216,6 +225,19 @@ def case_repetition(p, browser):
         check("[répétition] 5. Dd3 (triple répétition avec une dame de plus) : Gain manqué", t.get("Gain manqué", [0, 0])[0] >= 1, f"({t})")
         last = graph_last_pct(page)
         check("[répétition] la courbe finit à 50 % (nulle)", last is not None and abs(last - 50) < 1, f"(dernier point : {last} %)")
+    ctx.close()
+
+
+def case_repetition_continuee(p, browser):
+    ctx = mobile_context(p, browser, ck, standalone=True)
+    page = open_analysis(ctx)
+    load_text(page, REPETITION_CONTINUED)
+    if run_review(page, "répétition continuée"):
+        t = page.evaluate(TALLIES)
+        check("[répétition continuée] nulle non réclamée : pas de Gain manqué", t.get("Gain manqué", [0, 0]) == [0, 0], f"({t})")
+        pcts = graph_pcts(page)
+        check("[répétition continuée] la courbe reste aux Blancs après 5. Dd3", len(pcts) == 13 and pcts[9] > 75, f"({pcts})")
+        check("[répétition continuée] les coups suivants sont évalués (dernier point aux Blancs)", len(pcts) == 13 and pcts[-1] > 75, f"({pcts})")
     ctx.close()
 
 
@@ -374,7 +396,8 @@ def case_finale_fuite(p, browser):
 
 
 CASES = [
-    ("reset", case_reset), ("brillant", case_brillant), ("promotion", case_promotion), ("repetition", case_repetition), ("coup_force", case_coup_force),
+    ("reset", case_reset), ("brillant", case_brillant), ("promotion", case_promotion), ("repetition", case_repetition),
+    ("repetition_continuee", case_repetition_continuee), ("coup_force", case_coup_force),
     ("liste_noirs", case_liste_noirs), ("eval_mat_noir", case_eval_mat_noir), ("variante", case_variante),
     ("date_pgn", case_date_pgn), ("finale_fuite", case_finale_fuite),
 ]

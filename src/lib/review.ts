@@ -105,15 +105,17 @@ export async function reviewGame(
   const chess = new Chess(customStart)
   const evals: { lines: EngineLine[] }[] = []
   // Fin de partie de chaque position, lue sur cette instance qui a l'historique : une instance
-  // recréée depuis la FEN ne voit pas la triple répétition.
+  // recréée depuis la FEN ne voit pas la triple répétition. Répétition et 50 coups ne finissent
+  // la partie qu'au dernier demi-coup : ailleurs, la nulle n'a pas été réclamée et la partie continue.
   const ends: ('mate' | 'draw' | null)[] = []
   for (let i = 0; i <= total; i++) {
     if (i > 0) chess.move(verbose[i - 1].san)
-    ends.push(chess.isCheckmate() ? 'mate' : chess.isGameOver() ? 'draw' : null)
+    const claimed = i === total && (chess.isThreefoldRepetition() || chess.isDrawByFiftyMoves())
+    ends.push(chess.isCheckmate() ? 'mate' : chess.isStalemate() || chess.isInsufficientMaterial() || claimed ? 'draw' : null)
     // Bilan annulé (ligne modifiée, réimport, page quittée) : on s'arrête à la granularité
     // d'une recherche, sans jamais rendre de résultat partiel.
     if (signal?.aborted) throw new DOMException('Bilan annulé', 'AbortError')
-    if (chess.isGameOver()) {
+    if (ends[i]) {
       evals.push({ lines: [] })
     } else {
       if (pause) {
