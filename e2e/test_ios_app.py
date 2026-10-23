@@ -1,4 +1,5 @@
-"""App iOS (coquille Capacitor, docs/ios-app.md) : haptique native et migration des données.
+"""App iOS (coquille Capacitor, docs/ios-app.md) : haptique native, assets servis avec un statut 0 et
+migration des données.
 
 Le runtime natif est simulé par `CAPACITOR_IOS` (contrat de la native-bridge de Capacitor) ; sans
 lui, c'est la PWA, qui doit rester strictement identique : ni `window.Capacitor`, ni chunk
@@ -13,6 +14,9 @@ from helpers import (
     BASE,
     CAPACITOR_IOS,
     HOLD_BESTMOVE,
+    ROOT_DIR,
+    SOUND_FILES,
+    WEBKIT_AUDIO,
     Checker,
     desktop_context,
     drag_piece,
@@ -20,9 +24,12 @@ from helpers import (
     mobile_context,
     piece_on,
     shot,
+    sound_log,
+    sounds_heard,
     sq_center,
     tap_move,
     tap_square,
+    wait_sounds_ready,
 )
 
 ck = Checker("ios_app")
@@ -337,6 +344,91 @@ def part_premove(p, browser):
     ctx.close()
 
 
+# ---------- App native : assets locaux servis avec un statut 0 ----------
+
+
+# Le gestionnaire du schéma capacitor:// répond aux assets de l'app avec leur corps, mais un statut 0
+# (`ok` faux, type `basic`), comme vu dans la console de l'iPhone réel : « move-self.mp3 : HTTP 0 ».
+# Seules les réponses réussies passent à 0 ; un vrai 404 garde son statut.
+STATUS0 = r"""(() => {
+  window.__status0 = []
+  const native = window.fetch
+  window.fetch = async function (...a) {
+    const res = await native.apply(this, a)
+    const path = new URL(res.url, location.href).pathname
+    if (res.ok && res.type === 'basic' && /\/(sounds\/[^/]+\.mp3|puzzles\.json)$/.test(path)) {
+      for (const [k, v] of [['status', 0], ['ok', false], ['statusText', '']]) Object.defineProperty(res, k, { value: v })
+      window.__status0.push(path.split('/').pop())
+    }
+    return res
+  }
+})()"""
+
+QUIET_PUZZLE = ["IOS0", "6k1/5ppp/8/8/8/8/5PPP/R5K1 b - - 0 1", "h7h6 a1a7 g8h7 a7f7", 1000, "endgame"]
+NAV = "nav[aria-label='Navigation principale'] a:visible"
+
+
+def status0_context(p, browser):
+    ctx = native_context(p, browser, settings={"playSounds": True}, service_workers="block")
+    ctx.add_init_script(WEBKIT_AUDIO)
+    ctx.add_init_script(STATUS0)
+    return ctx
+
+
+def sound_warnings(page):
+    warns = []
+    page.on("console", lambda m: warns.append(m.text) if m.type == "warning" and "Son non chargé" in m.text else None)
+    return warns
+
+
+def part_status0(p, browser):
+    body = json.dumps([QUIET_PUZZLE])
+
+    # 1. Statut 0 sur une réponse servie : sons et puzzles se chargent.
+    ctx = status0_context(p, browser)
+    ctx.route("**/puzzles.json", lambda route: route.fulfill(status=200, content_type="application/json", body=body))
+    page = ctx.new_page()
+    warns = sound_warnings(page)
+    page.goto(f"{BASE}/#/")
+    if ck.appears("statut 0 : navigation", page, NAV):
+        page.locator(NAV, has_text="Puzzles").first.tap()
+        check("statut 0 : tous les sons décodés", wait_sounds_ready(page), str(page.evaluate("() => [...(window.__decoded ?? [])]")))
+        if ck.appears("statut 0 : puzzle chargé et amorce jouée", page, "[data-square=h6] [data-piece=bP]"):
+            page.wait_for_timeout(300)
+            start = len(sound_log(page))
+            drag_piece(page, "a1", "a7")
+            check("statut 0 : coup du puzzle accepté", piece_on(page, "a7") == "wR")
+            heard = sounds_heard(page, start, settle=800)
+            check("statut 0 : le coup joue son son, audible", [e["name"] for e in heard][:1] == ["move-self"] and heard[0]["audible"], str(heard))
+        zeroed = page.evaluate("() => window.__status0")
+        check("statut 0 : réponses réellement servies avec un statut 0",
+              "puzzles.json" in zeroed and set(SOUND_FILES) <= set(zeroed), str(zeroed))
+        check("statut 0 : aucun avertissement « Son non chargé »", warns == [], str(warns))
+    ctx.close()
+
+    # 2. Un vrai 404 reste refusé, même avec un corps exploitable.
+    with open(os.path.join(ROOT_DIR, "public", "sounds", "capture.mp3"), "rb") as f:
+        mp3 = f.read()
+    ctx = status0_context(p, browser)
+    ctx.route("**/puzzles.json", lambda route: route.fulfill(status=404, content_type="application/json", body=body))
+    ctx.route("**/sounds/capture.mp3", lambda route: route.fulfill(status=404, content_type="audio/mpeg", body=mp3))
+    page = ctx.new_page()
+    warns = sound_warnings(page)
+    page.goto(f"{BASE}/#/")
+    if ck.appears("404 : navigation", page, NAV):
+        page.locator(NAV, has_text="Puzzles").first.tap()
+        ck.appears("404 : puzzles indisponibles", page, "text=Puzzles indisponibles")
+        check("404 : aucun puzzle affiché", page.locator("[data-square=h6] [data-piece=bP]").count() == 0)
+        try:
+            page.wait_for_function("(n) => window.__decoded && window.__decoded.size >= n", arg=len(SOUND_FILES) - 1, timeout=15000)
+        except Exception:
+            pass
+        decoded = page.evaluate("() => [...(window.__decoded ?? [])]")
+        check("404 : son refusé, jamais décodé", "capture.mp3" not in decoded and len(decoded) == len(SOUND_FILES) - 1, str(decoded))
+        check("404 : avertissement du son refusé", any("(capture)" in w and "HTTP 404" in w for w in warns), str(warns))
+    ctx.close()
+
+
 # ---------- Migration PWA -> app ----------
 
 
@@ -454,6 +546,7 @@ def suite(p):
     part_web(p, browser)
     part_haptics(p, browser)
     part_premove(p, browser)
+    part_status0(p, browser)
     with tempfile.TemporaryDirectory() as tmp:
         part_migration(p, browser, tmp)
     browser.close()
