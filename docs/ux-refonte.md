@@ -165,7 +165,7 @@ Les 22 domaines écrits aujourd’hui sont listés dans `src/lib/db.ts` ; aucun 
 | `threat-check` | Alerte menace de Jouer | Jouer |
 
 Les clés locales propres à une activité sont `chess-local-attack`, `chess-local-defense`, `chess-local-conversion`, `chess-local-endgame-clock`, `chess-local-mats`, `chess-local-threat-check`, `chess-local-visualisation`, `chess-local-insights-v1`, `chess-local-position-game-v1`, `chess-local-play-game` et `chess-local-puzzle-session`.
-Les séances en cours sont dans `learn-session-v1`, `revision-session-v1`, `path-session-v1` et `seance-session-v1`.
+Les séances en cours sont dans `learn-session-v1`, `revision-session-v1`, `path-session-v1` et `seance-session-v1`, l’exercice laissé pour l’analyseur dans `exercise-return-v1`.
 Toutes figurent dans `APP_LOCAL_KEYS` ou `SESSION_KEYS` de `src/lib/backup.ts` : aucun écart de purge n’est constaté.
 
 ### Regroupement exhaustif après lot 0
