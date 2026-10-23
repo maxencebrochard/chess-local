@@ -4,16 +4,15 @@ L'encre du glyphe vient de `measureText` (boîte réellement peinte, pas la boî
 L'encre des pièces vient des pixels opaques du dessin rendu, rastérisé comme dans `test_piece_centers.py`.
 Chaque coordonnée est confrontée à la pièce posée sur sa case et aux douze pièces du jeu à la même place :
 une case vide aujourd'hui peut porter n'importe quelle pièce demain.
-Seuls `FREE_CORNERS` laissent un coin libre sous toutes leurs silhouettes ; les autres jeux dessinent jusqu'au bord
-de la case (bande libre de 4 à 8 % de case mesurée), où aucun glyphe lisible ne tient : leur pièce doit alors
-être peinte au-dessus de la coordonnée, jamais l'inverse.
+Tous les jeux doivent laisser les coins libres : ceux qui dessinent jusqu'au bord de la case sont réduits au rendu
+(`scale` de `src/lib/pieces.ts`).
+En cas de contact malgré tout, la pièce doit être peinte au-dessus de la coordonnée, jamais l'inverse.
 """
 from helpers import BASE, Checker, desktop_context, mobile_context, shot
 
 ck = Checker("coordinates")
 
 SETS = ['atelier', 'wikimedia', 'celtique', 'chessnut', 'fantasy', 'spatial', 'classique']
-FREE_CORNERS = {'atelier', 'wikimedia'}
 
 # Une marge d'un pixel CSS : un glyphe collé à l'encre se lit comme un chevauchement.
 MEASURE = """async () => {
@@ -108,7 +107,7 @@ def rest(page):
     page.evaluate('delete window.__coordRest')
 
 
-def measure(page, name, label, bottom, left, full_set):
+def measure(page, label, bottom, left, full_set):
     rest(page)
     result = page.evaluate(MEASURE)
     glyphs = result['glyphs']
@@ -128,8 +127,6 @@ def measure(page, name, label, bottom, left, full_set):
     ck.check(f'{label} : taille des coordonnées à 19 % de la case (9 à 15 px)', not bad_size, str(bad_size[:4]))
     above = [(g['text'], g['square'], g['piece'], g['above']) for g in glyphs if g['above']]
     ck.check(f'{label} : la pièce est peinte au-dessus de la coordonnée', not above, str(above))
-    if name not in FREE_CORNERS:
-        return
     on_piece = [g for g in glyphs if g['piece'] and g['piece'] in g['hits']]
     any_piece = [g for g in glyphs if g['hits']]
     if any_piece:
@@ -144,16 +141,16 @@ def positions(page, label):
     """Départ côté blanc (les douze pièces), même position retournée, puis la défense signalée (élève noir)."""
     page.goto(f'{BASE}/#/analyse')
     if ck.appears(f'{label} : analyse', page, '[data-square=e2] [data-piece]'):
-        measure(page, label.split()[0], f'{label} / blancs en bas', '1', 'a', True)
+        measure(page, f'{label} / blancs en bas', '1', 'a', True)
         page.locator("button[title=\"Retourner l'échiquier\"]:visible, button:visible:has-text('Options')").first.click()
         sheet = page.get_by_role('button', name="⇅ Retourner l'échiquier").filter(visible=True)
         if sheet.count():
             sheet.click()
         if ck.appears(f'{label} : échiquier retourné', page, '[data-square=h8] > span > span:text-is("8")', timeout=5000):
-            measure(page, label.split()[0], f'{label} / noirs en bas', '8', 'h', True)
+            measure(page, f'{label} / noirs en bas', '8', 'h', True)
     page.goto(f'{BASE}/#/defense/def-0DZDW')
     if ck.appears(f'{label} : défense côté noir', page, '[data-square=h8] [data-piece]'):
-        measure(page, label.split()[0], f'{label} / défense def-0DZDW', '8', 'h', False)
+        measure(page, f'{label} / défense def-0DZDW', '8', 'h', False)
 
 
 def suite(p):

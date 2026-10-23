@@ -6,7 +6,7 @@ import { ClassIcon } from './ClassIcon'
 import { ATTACK_RED } from './AttackLegend'
 import { attackCounts } from '../lib/kingAttack'
 import { PieceIcon } from './PieceIcon'
-import { DEFAULT_PIECE_SET, PIECE_CODES, isPieceSet, preloadPieceSet } from '../lib/pieces'
+import { DEFAULT_PIECE_SET, PIECE_CODES, isPieceSet, pieceScale, preloadPieceSet } from '../lib/pieces'
 import { playMoveSound, sounds } from '../lib/sounds'
 import { premoveTargets } from '../lib/premove'
 import { haptic } from '../lib/native'
@@ -470,8 +470,9 @@ function piecesFor(set: string): PieceRenderObject {
   let pieces = piecesCache.get(set)
   if (!pieces) {
     pieces = {}
+    const scale = pieceScale(set)
     for (const code of PIECE_CODES) {
-      pieces[code] = () => <div className="board-piece"><PieceIcon set={set} code={code} /></div>
+      pieces[code] = () => <div className="board-piece"><PieceIcon set={set} code={code} scale={scale} /></div>
     }
     piecesCache.set(set, pieces)
   }
