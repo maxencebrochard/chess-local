@@ -1268,7 +1268,6 @@ Une séance impossible à construire (puzzles injoignables, aucune faute) revien
 | `/mats` ouvert depuis Tactique et calcul | « Retour à Tactique et calcul », en plus du sélecteur des modes |
 
 Calcul et visualisation, Mon répertoire et Mes structures n’avaient pas d’en-tête commun : ils passent sur `PageHeader`.
-L’ancien state `from: 'apprendre'` de Mats éclair reste accepté et ramène à Apprendre.
 
 ### Liste des moments critiques
 
@@ -1367,7 +1366,7 @@ Les anciens boutons « Puzzle Rush » et « Mats éclair » sous l’échiquier 
 | Run de Rush | Croix « Arrêter » (score enregistré), puis Rejouer ou Menu | Immersif, sans sélecteur |
 | Fiche d’un schéma de Mats éclair (`?d=`) | Flèche « Retour à Mats éclair », retour arrière | Catalogue, sans sélecteur |
 | Série de Mats éclair | Croix et Menu existants | Immersif, sans sélecteur |
-| Mats éclair ouvert par le raccourci d’Apprendre | « Retour à Apprendre » en plus du sélecteur | `state.from: 'apprendre'`, conservé par les fiches |
+| Mats éclair ouvert par le raccourci de Tactique et calcul (lot 5) | « Retour à Tactique et calcul » en plus du sélecteur | `state.from: 'tactique'`, conservé par les fiches |
 | Erreur ou chargement de `/puzzles` | Sélecteur conservé à sa place | Mats éclair contre la montre reste joignable sans `puzzles.json` |
 
 L’accueil de Mats éclair perd son retour fixe vers Apprendre, devenu faux depuis le lot 2 (Mats appartient à Puzzles) ; le raccourci d’Apprendre est conservé et seul lui ajoute ce retour.

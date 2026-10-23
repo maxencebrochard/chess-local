@@ -18,7 +18,7 @@ Usage : npm run test:e2e -- --suite apprendre
 import json
 
 from helpers import BASE, SHOTS, Checker, desktop_context, mobile_context, overflow_x, wait_js
-from moment_fixtures import FENS_A, FENS_B, FOUND_B, GAME_A, GAME_B, GAME_C, MISS_B, MOMENT_A, NOW, SESSIONS  # noqa: F401
+from moment_fixtures import FENS_A, FENS_B, FOUND_B, GAME_A, GAME_B, GAME_BROKEN, GAME_C, MISS_B, MOMENT_A, NOW, SESSIONS  # noqa: F401
 
 ck = Checker("apprendre")
 check = ck.check
@@ -434,7 +434,7 @@ def moments(p, browser):
     if not check("[moments] base prête", wait_schema(page)):
         ctx.close()
         return
-    seed_db(page, {"reviews": [GAME_A, GAME_B, GAME_C], "learnSessions": SESSIONS})
+    seed_db(page, {"reviews": [GAME_A, GAME_B, GAME_C, GAME_BROKEN], "learnSessions": SESSIONS})
     go(page, "/apprendre/mes-parties")
     tap(page, "[data-testid=moments-card]")
     if not ck.appears("[moments] liste affichée", page, "[data-testid=moment-item]", timeout=20000):
@@ -443,6 +443,12 @@ def moments(p, browser):
     games = page.evaluate("() => [...document.querySelectorAll('[data-testid=moments-game]')].map((g) => [g.dataset.key, [...g.querySelectorAll('[data-testid=moment-item]')].map((m) => [m.dataset.fen, m.dataset.best, m.dataset.status])])")
     check("[moments] deux parties, la plus récente d'abord, sans la partie sans bascule",
           [g[0] for g in games] == ["chesscom:555", "local:7"], f"({[g[0] for g in games]})")
+    broken = page.locator("[data-testid=moments-game][data-key='local:9'] [data-testid=moment-item]")
+    if not check("[moments] bilan abîmé (coup illégal) ignoré, les autres parties restent", broken.count() == 0, f"({broken.count()} moment(s))"):
+        # Sans exclusion, son moment s'affiche et le rejeu du bilan lève au clic (pageerror).
+        broken.first.click()
+        go(page, "/apprendre/moments-critiques")
+        ck.appears("[moments] liste réaffichée après le bilan abîmé", page, "[data-testid=moment-item]", timeout=20000)
     if len(games) == 2:
         check("[moments] chess.com : coup unique trouvé puis bascule, positions exactes",
               [m[:2] for m in games[0][1]] == [[FOUND_B, "b8c6"], [MISS_B, "g8f6"]], f"({games[0][1]})")
