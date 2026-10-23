@@ -411,7 +411,7 @@ def displayed_ok(tag, page, base, exp, labels):
            wait_until(page, has_all([f"Archive ({exp['games']})"] + ([labels["archive_bot"]] if exp["games"] else []))))
 
     page.goto(f"{base}/#/stats")
-    ck.appears(f"{tag} stats chargées", page, "text=Statistiques", timeout=15000)
+    ck.appears(f"{tag} stats chargées", page, "main :text('Statistiques')", timeout=15000)
     # Radicaux au singulier : présents dans « 1 nulles » des anciens builds comme dans « 1 nulle » du build courant.
     expect(f"{tag} stats : bilan parties et puzzles",
            wait_until(page, has_all([f"{exp['wins']} gagnée", f"{exp['draws']} nulle", f"{exp['losses']} perdue",
@@ -1007,7 +1007,7 @@ def upgrade_from(p, build, dist, new_dir, new_label, work):
             ck.appears("[restauration] message de fin de restauration", page,
                        "[data-testid=backup-msg][data-kind=success] >> text=Sauvegarde restaurée", timeout=15000)
             page.reload()
-            ck.appears("[restauration] app rechargée", page, "text=Statistiques", timeout=15000)
+            ck.appears("[restauration] app rechargée", page, "main :text('Statistiques')", timeout=15000)
             restored = snapshot(page)
             compare_snapshots("[restauration]", before, restored)
             phase("affichage après restauration", displayed_ok, "[restauration]", page, base, exp, NEW_LABELS)
