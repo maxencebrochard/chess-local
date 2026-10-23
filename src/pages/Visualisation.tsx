@@ -6,6 +6,7 @@ import { Board, type BoardArrow } from '../components/Board'
 import { FigText } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
 import { RunHeader, RunSummary, Sparkline } from '../components/mates/RunParts'
+import { loadChunk } from '../lib/lazyPage'
 import { RunRecorder } from '../lib/mates'
 import {
   checkMate, checkSquares, correction, DISPLAY_LABEL, finalPosition, KIND_LABEL, KINDS, LEVELS, lineMoves, loadBank,
@@ -27,7 +28,8 @@ export default function Visualisation() {
 
   function load() {
     setLoadError(false)
-    loadBank().then(setBank).catch(() => setLoadError(true))
+    // loadChunk : chunk de la banque périmée après un déploiement, même protection que les pages.
+    loadChunk(loadBank).then(setBank).catch(() => setLoadError(true))
   }
 
   function refresh() {

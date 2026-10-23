@@ -321,6 +321,14 @@ def suite(p):
         page.clock.install(time=now)
         page.clock.pause_at(now + timedelta(seconds=1))
         page.goto(f"{BASE}/#/puzzles")
+        # Puzzles est une page paresseuse : React dévoile le contenu suspendu sur une minuterie,
+        # que l'horloge figée retient. Avancer par petits pas jusqu'à l'échiquier, sans déborder
+        # sur le délai de l'amorce (1 s, mesuré ensuite).
+        for _ in range(100):
+            if page.locator("[data-square=g1]").count():
+                break
+            page.clock.run_for(50)
+            page.wait_for_timeout(50)
         ck.appears("puzzle chargé", page, "[data-square=g1]")
         page.clock.run_for(1000)
         page.wait_for_timeout(50)

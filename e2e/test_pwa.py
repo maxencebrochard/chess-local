@@ -5,6 +5,7 @@ tout ça. `npm run build` qui passe ne prouve ni les chemins relatifs, ni le pr�
 
 Usage : npm run test:e2e -- --suite pwa
 """
+import json
 import os
 from urllib.parse import urlparse
 
@@ -16,6 +17,18 @@ from run import Server, port_is_listening
 ROUTES = [("", "Problèmes"), ("jouer", "Adversaire"), ("puzzles", "Classement puzzles"), ("rush", "Survie"),
           ("apprendre", "Séance"), ("analyse", "Options"), ("archive", "Archive"), ("stats", "Statistiques"),
           ("import", "Importer depuis")]
+# Pages chargées à la demande (App.tsx) que ROUTES ne visite pas : hors ligne, chacune doit
+# trouver sa chunk dans le précache.
+LAZY_ROUTES = [("ouvertures", "Entraîneur d'ouvertures"), ("apprendre/finales", "Cours de finales"),
+               ("apprendre/roque", "Démolir le roque"), ("mats", "Mats éclair"), ("attaques-manquees", "Mes attaques manquées"),
+               ("analyse/jouer", "Aucune position à jouer"), ("finales", "Finales jusqu'au bout"),
+               ("attaque", "Entraîneur d'attaque"), ("insights", "Insights"), ("revision", "réviser"),
+               ("repertoire", "Mon répertoire"), ("apprendre/bases", "Les bases"), ("apprendre/parcours", "Parcours d'apprentissage"),
+               ("apprendre/structures", "Structures de pions"), ("structures", "Mes structures de pions"),
+               ("apprendre/defense", "Tenir sous l'attaque"), ("defenses-ratees", "Mes défenses ratées"),
+               ("moment-critique", "Aucun moment critique"), ("finales/chrono", "Finales au chrono"),
+               ("defense", "Entraîneur de défense"), ("visualisation", "Calcul et visualisation"),
+               ("convertir", "Convertir l'avantage"), ("seance", "Séance du jour")]
 SUBPATH = urlparse(BASE).path.rstrip("/") + "/"  # "/chess-local/"
 PRECACHED = ["engine/stockfish-18-lite-single.wasm", "engine/stockfish-18-lite-single.js", "puzzles.json",
              "sounds/move-self.mp3", "pieces/celtique/wK.svg", "index.html"] + [f"pieces/wikimedia/{c}{p}.svg" for c in "wb" for p in "KQRBNP"] + [f"pieces/atelier/{c}{p}.svg" for c in "wb" for p in "KQRBNP"]
@@ -123,6 +136,10 @@ def offline_phase(p, browser):
 
         page.reload()
         ck.appears("[hors ligne] l'app redémarre sans serveur", page, "main :text('Problèmes')", timeout=20000)
+        # Pages paresseuses (App.tsx) : chaque chunk de route doit venir du précache.
+        for route, marker in ROUTES[1:] + LAZY_ROUTES:
+            page.goto(f"{own.base}/#/{route}")
+            ck.appears(f"[hors ligne] /#/{route} affiche sa page", page, f"main :text({json.dumps(marker, ensure_ascii=False)})", timeout=15000)
         page.goto(f"{own.base}/#/puzzles")
         ck.appears("[hors ligne] les 120 000 puzzles se chargent", page, "text=Trouve le meilleur coup", timeout=45000)
         check("[hors ligne] un échiquier de puzzle est affiché", page.locator("[data-square='e4']").count() == 1)

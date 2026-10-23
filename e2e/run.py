@@ -44,7 +44,7 @@ VITE = os.path.join(BIN, "vite")
 HOST = "127.0.0.1"  # contexte sécurisé (service worker, presse-papiers) sans dépendre de la résolution de « localhost »
 SUBPATH = "/chess-local/"  # le build est servi sous le même sous-chemin que GitHub Pages
 APP_MARKER = "<title>ChessLocal"
-PROD_ONLY = {"pwa", "upgrade"}  # suites qui n'ont de sens que sur le build local (service worker, manifest, hors ligne, montée de version)
+PROD_ONLY = {"pwa", "upgrade", "perf"}  # suites qui n'ont de sens que sur le build local (service worker, manifest, hors ligne, montée de version, budgets de perf)
 
 # Hors de ~/Library/Caches : le cache Playwright par défaut y a été vidé quatre fois par des
 # nettoyages de disque, et toutes les suites tombaient d'un coup.
