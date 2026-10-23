@@ -434,6 +434,55 @@ def part_done_today(p, browser):
     ctx.close()
 
 
+def learn_rows(page):
+    return page.evaluate(
+        "async () => {"
+        f"  const db = await ({OPEN_DB})()"
+        """
+          const rows = await new Promise((res, rej) => {
+            const r = db.transaction('learnSessions').objectStore('learnSessions').getAll()
+            r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error)
+          })
+          db.close()
+          return rows.filter((r) => r.domain !== 'seance')
+        }"""
+    )
+
+
+def part_quick_pending(p, browser):
+    """« Séance rapide » alors qu'un résultat d'Apprendre attend son enregistrement (écriture refusée
+    puis onglet Accueil) : la séance en attente est reprise telle quelle, jamais remplacée."""
+    data = {"learnSessions": [ls(1, "seance", "puzzles", ago(0), True, score=4)]}
+    ctx, page = seeded(p, browser, data)
+    if not open_home(page, "attente") or not check("[attente] carte : séance rapide", primary(page) == "quick", f"({primary(page)})"):
+        ctx.close()
+        return
+    cta(page).click()
+    if not ck.appears("[attente] séance d'Apprendre lancée", page, "[aria-label='Quitter la séance']", timeout=20000):
+        ctx.close()
+        return
+    saved = page.evaluate("""() => {
+      const s = JSON.parse(sessionStorage.getItem('learn-session-v1'))
+      s.pendingResult = true
+      s.phase = 'play'
+      sessionStorage.setItem('learn-session-v1', JSON.stringify(s))
+      return s
+    }""")
+    before = learn_rows(page)
+    if open_home(page, "attente") and check("[attente] retour à l'accueil : séance rapide", primary(page) == "quick", f"({primary(page)})"):
+        cta(page).click()
+        if ck.appears("[attente] résultat en attente repris", page, "[data-testid=learn-save]:has-text('Ton résultat est conservé')", timeout=10000):
+            stored = page.evaluate("() => JSON.parse(sessionStorage.getItem('learn-session-v1'))")
+            check("[attente] même séance conservée", stored["session"] == saved["session"] and stored["itemIdx"] == saved["itemIdx"] and stored.get("pendingResult") is True)
+            check("[attente] rien d'écrit avant l'enregistrement", learn_rows(page) == before)
+            page.get_by_role("button", name="Enregistrer le résultat", exact=True).click()
+            ck.appears("[attente] résultat enregistré", page, "[data-exercise-verdict]:has-text('Réussi')", timeout=10000)
+            rows = learn_rows(page)
+            check("[attente] une seule ligne écrite, réussie, du domaine de la séance",
+                  len(rows) == len(before) + 1 and rows[-1]["domain"] == saved["session"]["domain"] and rows[-1]["success"] == 1, f"({rows})")
+    ctx.close()
+
+
 def part_resume_seance(p, browser):
     ctx, page = seeded(p, browser, {"mistakes": [MISTAKE]}, game=STORED_GAME)
     page.goto(f"{BASE}/#/seance")
@@ -540,6 +589,7 @@ def suite(p):
     part_new_profile(p, browser)
     part_due(p, browser)
     part_done_today(p, browser)
+    part_quick_pending(p, browser)
     part_resume_seance(p, browser)
     part_resume_game(p, browser)
     part_unavailable(p, browser)

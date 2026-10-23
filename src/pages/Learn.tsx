@@ -117,19 +117,25 @@ export default function Learn() {
   // Venue d'un groupe d'Entraînement ou de Réviser mes parties : séance du domaine, avec retour.
   useEffect(() => {
     const state = location.state as { restore?: boolean; quick?: boolean; endgame?: string; tactic?: string; domain?: LearnDomain; returnTo?: string; returnLabel?: string; pathStep?: string } | null
-    if (state?.domain && state.domain in DOMAIN_META) {
+    let saved: StoredSession | null = null
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY)
+      if (raw) saved = JSON.parse(raw) as StoredSession
+    } catch {}
+    const pending = saved?.pendingResult !== undefined
+    if (state?.domain && state.domain in DOMAIN_META && !pending) {
       const { domain, returnTo: back, returnLabel: label } = state
       navigate('.', { replace: true, state: null })
       void start(domain, undefined, back ?? null, label)
-    } else if (state?.quick) {
+    } else if (state?.quick && !pending) {
       // « Séance rapide » de l'accueil, une fois la séance du jour faite : le bouton Séance rapide d'ici.
       navigate('.', { replace: true, state: null })
       void start()
-    } else if (state?.tactic) {
+    } else if (state?.tactic && !pending) {
       const { tactic, returnTo: back, returnLabel: label } = state
       navigate('.', { replace: true, state: null })
       void start('tactic', tactic, back ?? null, label)
-    } else if (state?.endgame) {
+    } else if (state?.endgame && !pending) {
       const s = buildEndgameSession(state.endgame)
       if (s) {
         setSession(s)
@@ -145,22 +151,18 @@ export default function Learn() {
       }
       navigate('.', { replace: true, state: null })
     } else {
-      const raw = sessionStorage.getItem(SESSION_KEY)
-      if (raw) {
-        try {
-          const saved = JSON.parse(raw) as StoredSession
-          if (!state?.restore && saved.pendingResult === undefined) return
-          setPendingResult(saved.pendingResult)
-          setReason(saved.reason ?? null)
-          setSession(saved.session)
-          setItemIdx(saved.itemIdx)
-          setPhase(saved.phase)
-          setResults(saved.results)
-          scoredItems.current = new Set(saved.scoredItems)
-          setReturnTo(saved.returnTo ?? null)
-          setReturnLabel(saved.returnLabel ?? 'Retour au cours')
-          setPathStep(saved.pathStep ?? null)
-        } catch {}
+      if (saved && (state?.restore || pending)) {
+        setPreparing(false)
+        setPendingResult(saved.pendingResult)
+        setReason(saved.reason ?? null)
+        setSession(saved.session)
+        setItemIdx(saved.itemIdx)
+        setPhase(saved.phase)
+        setResults(saved.results)
+        scoredItems.current = new Set(saved.scoredItems)
+        setReturnTo(saved.returnTo ?? null)
+        setReturnLabel(saved.returnLabel ?? 'Retour au cours')
+        setPathStep(saved.pathStep ?? null)
       }
       // Sans state, rien à effacer : naviguer ici ramènerait sur Apprendre un onglet tapé entre-temps.
       if (state) navigate('.', { replace: true, state: null })
