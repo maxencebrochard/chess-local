@@ -187,6 +187,17 @@ def go(page, path):
     page.wait_for_timeout(700)
 
 
+def scroll_main_down(page):
+    """Fait défiler <main> en bas une fois la page paresseuse montée : sous charge, 700 ms ne
+    suffisent pas toujours et un scrollTop posé sur un <main> encore court reste à 0. Si la page
+    ne devient jamais défilable, la précondition qui suit échoue proprement."""
+    try:
+        page.wait_for_function("() => { const m = document.querySelector('main'); return m && m.scrollHeight > m.clientHeight + 100 }", timeout=15000)
+    except Exception:
+        return
+    page.evaluate("() => { document.querySelector('main').scrollTop = 9999 }")
+
+
 def hash_of(page):
     return page.evaluate("() => location.hash")
 
@@ -197,7 +208,16 @@ def tabs_do_not_stack(page, tag):
     before = hist(page)
     for label, expected in TABS:
         tab(page, label).click()
-        page.wait_for_timeout(400)
+        # La navigation est une transition : l'ancien onglet reste allumé tant que la chunk de la
+        # page n'est pas chargée. Sous charge, 400 ms ne suffisent pas ; borne à 10 s.
+        try:
+            page.wait_for_function(
+                """([hash, label]) => location.hash === hash && [...document.querySelectorAll('nav a[aria-current]')]
+                  .some((a) => a.offsetParent !== null && a.innerText.includes(label))""",
+                arg=[expected, label], timeout=10000)
+        except Exception:
+            pass
+        page.wait_for_timeout(100)
         check(f"[{tag}] onglet {label} -> {expected}", hash_of(page) == expected, f"({hash_of(page)})")
         check(f"[{tag}] onglet {label} : history.length stable", hist(page) == before, f"({before} -> {hist(page)})")
         actives = active_tab(page)
@@ -581,7 +601,7 @@ def suite(p):
     ctx = mobile_context(p, browser, ck)
     page = ctx.new_page()
     go(page, "#/stats")
-    page.evaluate("() => { document.querySelector('main').scrollTop = 9999 }")
+    scroll_main_down(page)
     page.wait_for_timeout(200)
     st = scroll_state(page)
     check("[touch-4] précondition : Stats défile et est défilée", st["mainScrollable"] and st["mainScrollTop"] > 0, f"({st})")
@@ -592,7 +612,7 @@ def suite(p):
     # Même chemin, requête seule changée (fiche de Mats éclair depuis le hub) : un écran nouveau,
     # remis en haut aussi. Par le hash, comme un lien ou un retour arrière.
     go(page, "#/mats")
-    page.evaluate("() => { document.querySelector('main').scrollTop = 9999 }")
+    scroll_main_down(page)
     page.wait_for_timeout(200)
     st = scroll_state(page)
     check("[touch-4] précondition : /mats défile et est défilé", st["mainScrollable"] and st["mainScrollTop"] > 0, f"({st})")
