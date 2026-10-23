@@ -21,7 +21,7 @@ import {
   type StoredGame,
 } from '../lib/positionGame'
 import { figurine, winPct } from '../lib/review'
-import { playMoveSound, sounds } from '../lib/sounds'
+import { playComputerMove, playMoveSound, sounds } from '../lib/sounds'
 
 // Temps de réflexion de Stockfish par coup : borné pour ne pas faire attendre.
 const ENGINE_MOVETIME_MS = 700
@@ -256,7 +256,8 @@ export function PositionGame(props: PositionGameProps) {
     const c = chessRef.current
     // Son joué ici et non par l'échiquier : un coup qui arrive pendant qu'on relit l'historique
     // ramène la position en direct d'un saut, que l'échiquier laisserait muet.
-    playMoveSound(move, move.color !== player)
+    if (move.color === player) playMoveSound(move, false)
+    else playComputerMove(move)
     setFen(c.fen())
     setHistory(c.history({ verbose: true }))
     setViewIndex(-1)

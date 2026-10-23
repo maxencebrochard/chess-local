@@ -77,7 +77,7 @@ Un plugin Stockfish natif répondrait séparément à un besoin de force du mote
 - `src/lib/native.ts` : détection du runtime natif et haptique, no-op synchrone sur le web.
   Le plugin est chargé par import dynamique (`src/lib/nativeHaptics.ts`), seulement en natif : le bundle principal de la PWA n'importe rien de Capacitor.
   `vite.config.ts` préfixe les chunks de `@capacitor/*` et de ce pilote par `assets/native-`, puis les exclut du précache : la PWA ne le télécharge jamais, et c'est le même build qui part sur GitHub Pages et dans l'app.
-- Haptique branchée dans `Board`, pour les seuls gestes de l'utilisateur sur cet échiquier.
+- Haptique branchée dans `Board` pour les gestes de l'utilisateur, et dans `playComputerMove` (`src/lib/sounds.ts`) pour les coups de l'ordinateur.
 - Carte de migration sur l'accueil natif jusqu'à une restauration réussie ou « Non merci ».
 - Suite E2E `ios_app`, qui simule le pont natif de Capacitor.
 
@@ -92,8 +92,11 @@ Un plugin Stockfish natif répondrait séparément à un besoin de force du mote
 | Refus (case interdite) | notification « erreur » | Motif triple distinct d'un impact, comme le son grave de refus |
 | Prémouvement mis en file | tic de sélection | La mise en file reste sans son et la pièce reste au départ ; la sélection conserve son impact léger |
 | Prémouvement exécuté | moyen ou fort | Un seul retour, au moment où le coup est réellement joué |
+| Coup de l'ordinateur (bot, Stockfish, réponse d'un puzzle ou d'un cours, amorce) | impact léger | Signale la réponse sans regarder l'écran, plus discret que la pose du joueur |
+| Coup de l'ordinateur qui prend, fait échec ou promeut | impact moyen | Un cran plus marqué, comme le son de prise ou d'échec |
 
-Aucun retour pour un coup adverse, un coup du moteur ou la navigation de l'analyse.
+Le retour d'un coup de l'ordinateur part avec son son, depuis `playComputerMove`, et ne dépend pas du réglage des sons : le bouton silencieux coupe Web Audio, pas les vibrations.
+Aucun retour pour la navigation de l'analyse, la lecture d'une ligne (« Pourquoi ? », « Voir la suite »), un saut de position ou la reprise d'une partie interrompue.
 Une pièce reposée sur sa case conserve le retour de saisie, sans retour de pose.
 Un coup refusé par la page elle-même (`onMove` qui retourne faux, par exemple une ouverture hors répertoire) ne vibre pas ; un coup faux de puzzle, accepté puis repris, vibre à la pose comme il sonne.
 La saisie par toucher vibre au relâché, moment où react-chessboard signale le toucher ; une sélection par toucher suivie d'un glissé de la même pièce donne deux saisies.
@@ -144,6 +147,8 @@ Premier build réel, sur l'iPhone 17 de Max (iOS 26.6.1), avec Xcode 27.1.
 Par Max, sur l'appareil :
 
 - Haptique : ressenti à chaque geste du tableau ci-dessus, et coupure avec « Vibrations système ».
+- Coups de l'ordinateur (signalés sans son ni vibration le 23 octobre 2026) : impact léger à chaque réponse du bot, de Stockfish et des puzzles, et son adverse audible.
+  En émulation, le son de chaque réponse part sur un contexte audio actif (suite `coup_ordinateur`) ; si l'iPhone reste muet, la console de l'inspecteur Safari affiche « Son abandonné » avec l'état du contexte au moment du coup.
 - Son après le correctif du statut 0 : sons réellement entendus, déverrouillage au premier geste, retour après verrouillage, bouton silencieux, et effet sur la musique d'une autre app.
 - Stockfish : Worker et WASM chargés sous `capacitor://`, analyse et bots jouent ; `?debug-uci` ne s'ajoute pas à l'URL d'une app, ouvrir l'inspecteur Safari (Développement, nom de l'iPhone) en build Debug.
 - Stockage : comportement d'éviction de WebKit dans l'app.

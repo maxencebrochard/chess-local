@@ -17,7 +17,7 @@ import { BOTS, botById, botEngineOptions, botThinkBudget, chooseBotMove, type Bo
 import { Engine } from '../lib/engine'
 import { applyRating, db, getRating, type SavedGame } from '../lib/db'
 import { openingForMoves } from '../lib/openings'
-import { playMoveSound, sounds } from '../lib/sounds'
+import { playComputerMove, playMoveSound, sounds } from '../lib/sounds'
 import { PLAY_GAME_KEY, TIME_CONTROLS, UNLIMITED, type TimeControl } from '../lib/timeControls'
 import { THREAT_DOMAIN, findThreat, loadThreatPrefs, saveThreatPrefs, threatItemId, type Score, type Threat, type ThreatPrefs } from '../lib/threat'
 import { PLAY_COLORS, PLAY_MODES, useSettings, type PlayColor, type PlayMode } from '../store/settings'
@@ -540,7 +540,8 @@ export default function Play() {
       const san = move.san
       // Son joué ici et non par l'échiquier : un coup du bot qui arrive pendant qu'on relit
       // l'historique ramène la position en direct d'un saut, que l'échiquier laisserait muet.
-      playMoveSound(move, !byPlayer)
+      if (byPlayer) playMoveSound(move, false)
+      else playComputerMove(move)
       if (g.tc.baseMs !== null) {
         const justMoved = c.turn() === 'w' ? 'b' : 'w'
         clocksRef.current = { ...clocksRef.current, [justMoved]: clocksRef.current[justMoved] + g.tc.incMs }

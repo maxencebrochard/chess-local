@@ -7,8 +7,10 @@ import type { HapticKind } from './native'
 export function playHaptic(kind: HapticKind): Promise<void> {
   switch (kind) {
     case 'lift':
+    case 'reply':
       return Haptics.impact({ style: ImpactStyle.Light })
     case 'move':
+    case 'reply-strong':
       return Haptics.impact({ style: ImpactStyle.Medium })
     case 'capture':
       return Haptics.impact({ style: ImpactStyle.Heavy })

@@ -273,6 +273,10 @@ La souris conserve son échelle 1,2 et son cadre de destination ; les animations
 `e2e/test_feeling.py` vérifie la géométrie pendant le geste CDP et l'audio horodaté à la pose ; les mesures sonores et limites sont dans `docs/f14-feeling.md`.
 Les conditions du son automatique de coup (`lastMove`, `silent` et anti-empilement partagé) sont documentées auprès de l'effet dans `src/components/Board.tsx`.
 Une page qui joue ses sons de coup elle-même (Jouer, finales jouées) ou affiche un saut de position (réessai de l'analyse) lui passe `silent`, comme les diagrammes ; la position qui suit un `silent` reste muette.
+Tout coup de l'ordinateur (bot, Stockfish, réponse précalculée, amorce) passe par `playComputerMove` de `sounds.ts` : son adverse et, dans l'app native, impact léger (moyen pour une prise, un échec ou une promotion), indépendant du réglage des sons.
+Les pages qui jouent leurs sons (Jouer, PositionGame, finales au chrono, Mats éclair) l'appellent pour le coup adverse ; `Board` l'appelle quand le coup qu'il sonne n'est pas du camp `movableColor`.
+Sans `movableColor` (navigation de l'analyse, lecture d'une ligne), le son reste seul ; un saut de position, un `silent` ou une reprise de partie ne donnent ni son ni haptique.
+La suite `coup_ordinateur` le vérifie pour chaque famille d'écran (son relu par python-chess, journal haptique de `CAPACITOR_IOS`).
 Aucun asset de chess.com, et toute ressource ajoutée doit avoir sa licence ou autorisation documentée dans le `LICENSES.md` de son dossier : le dépôt est public.
 
 ### Prémouvements

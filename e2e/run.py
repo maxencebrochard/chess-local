@@ -351,7 +351,7 @@ class SuiteRun:
 TYPICAL_S = {
     "viewport": 150, "endgame_course": 115, "analysis_robust": 110, "coach": 90, "cours_roque": 85,
     "upgrade": 75, "all_buttons": 70, "learn": 70, "play_lifecycle": 60, "mats": 55, "edge_navigation": 50,
-    "premove": 50, "pieces_sons": 45, "openings": 40, "diagnostic_attaque": 40, "revision": 37,
+    "premove": 50, "pieces_sons": 45, "coup_ordinateur": 45, "openings": 40, "diagnostic_attaque": 40, "revision": 37,
     "insights": 36, "puzzles": 36, "shell": 34, "continuation": 34, "endgames": 33,
 }
 

@@ -38,6 +38,8 @@ check = ck.check
 STORES = 7
 CARD = "[data-testid=native-migration]"
 LIFT, MOVE, CAPTURE = "impact:LIGHT", "impact:MEDIUM", "impact:HEAVY"
+# Coup calme de l'ordinateur : impact léger (suite coup_ordinateur pour toutes les familles d'écran).
+REPLY = "impact:LIGHT"
 REFUSE = "notification:ERROR"
 PREMOVE = ["selectionStart", "selectionChanged", "selectionEnd"]
 
@@ -324,7 +326,7 @@ def part_premove(p, browser):
     except Exception:
         pass
     got = since(page, m)
-    check("jouer : coup du moteur sans retour", got == [] and piece_on(page, "e5") == "bP", f"{got} e5={piece_on(page, 'e5')}")
+    check("jouer : coup calme du moteur, un impact léger", got == [REPLY] and piece_on(page, "e5") == "bP", f"{got} e5={piece_on(page, 'e5')}")
 
     if not check("jouer : deuxième réponse retenue", (tap_move(page, "g1", "f3") or True) and held()):
         ctx.close()
@@ -340,7 +342,7 @@ def part_premove(p, browser):
     except Exception:
         pass
     got = since(page, m)
-    check("prémouvement exécuté : une seule pose", got == [MOVE] and piece_on(page, "d4") == "wP", str(got))
+    check("prémouvement exécuté : réponse du moteur puis une seule pose", got == [REPLY, MOVE] and piece_on(page, "d4") == "wP", str(got))
     ctx.close()
 
 
