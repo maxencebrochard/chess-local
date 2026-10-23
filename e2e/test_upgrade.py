@@ -62,6 +62,8 @@ from run import ROOT, SUBPATH, free_port, port_is_listening
 #                         menace, révision élargie ; même schéma version(3).
 #   deployed-2026-10-23 : convertir l'avantage, finales au chrono, séance du jour, chasse aux bugs,
 #                         audit UI ; même schéma version(3).
+#   deployed-2026-10-23-2 : second déploiement du jour (UTC) : son et haptique des coups de
+#                         l'ordinateur, pages chargées à la demande (Q3) ; même schéma version(3).
 # On conserve les précédents : des appareils peuvent encore les porter.
 OLD_BUILDS = (
     {"tag": "deployed-2026-07-20", "sha": "388d3edae6fd6ec152ccca70b0573d242d612090", "labels": {"archive_bot": "vs Noa"}},
@@ -75,6 +77,8 @@ OLD_BUILDS = (
     {"tag": "deployed-2026-10-22-2", "sha": "c2838e70f886f743b9e30519575c1fda06a7688d",
      "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
     {"tag": "deployed-2026-10-23", "sha": "4087ece570be8ca00aaf6b2f10bfcdb9ea73fa07",
+     "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
+    {"tag": "deployed-2026-10-23-2", "sha": "2b15290799a121b20a40da7ad166504752888bc2",
      "labels": {"archive_bot": "contre Noa"}, "extra_tables": ("reviews",)},
 )
 DB_NAME = "chess-local"
