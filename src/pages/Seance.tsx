@@ -508,7 +508,7 @@ export default function Seance() {
               ☀️ Séance
               <span data-seance-progress className="ml-2 text-sm font-semibold text-neutral-400">{progress}</span>
             </h1>
-            <span className="w-9" />
+            <span className="w-11 shrink-0" />
           </header>
           <p className="px-3 pb-2 text-center text-xs font-semibold text-neutral-400">{subtitle}</p>
           {saveError && <div className="mx-3 mb-2"><SaveAlert /></div>}

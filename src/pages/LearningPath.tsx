@@ -709,7 +709,7 @@ function Runner({ run, setRun, exercise, title, backTo, isOver, onOver, onQuit, 
               {run.idx + 1}/{run.items.length}
             </span>
           </h1>
-          <span className="w-9" />
+          <span className="w-11 shrink-0" />
         </header>
         {lvl && (
           <p className="pb-1 text-center text-xs font-bold tracking-wide uppercase" style={{ color: lvl.color }}>
