@@ -17,8 +17,9 @@ function detect(): boolean {
 export const isNative = detect()
 
 // lift : saisie d'une pièce ; move : pose d'un coup ; capture : pose d'une prise ;
-// refuse : coup refusé ; premove : prémouvement mis en file. Intensités : docs/ios-app.md.
-export type HapticKind = 'lift' | 'move' | 'capture' | 'refuse' | 'premove'
+// refuse : coup refusé ; premove : prémouvement mis en file ; reply : coup de l'ordinateur ;
+// reply-strong : coup de l'ordinateur qui prend, fait échec ou promeut. Intensités : docs/ios-app.md.
+export type HapticKind = 'lift' | 'move' | 'capture' | 'refuse' | 'premove' | 'reply' | 'reply-strong'
 
 type Driver = (kind: HapticKind) => Promise<void>
 let driver: Driver | null = null
@@ -31,7 +32,7 @@ if (isNative) {
   })
 }
 
-// Déclenché pendant le geste, jamais attendu : un retour tardif ou en échec ne bloque rien.
+// Déclenché pendant le geste ou à l'arrivée du coup de l'ordinateur, jamais attendu : un retour tardif ou en échec ne bloque rien.
 export function haptic(kind: HapticKind) {
   if (!driver) return
   void driver(kind).catch(() => {})

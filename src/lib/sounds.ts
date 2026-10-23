@@ -14,6 +14,7 @@
 import type { Move } from 'chess.js'
 import { useSettings } from '../store/settings'
 import { assetResponseOk } from './assetResponse'
+import { haptic } from './native'
 
 const FILES = [
   'move-self',
@@ -146,6 +147,8 @@ export function play(name: SoundName, outdated: () => boolean = () => false) {
   const c = context()
   if (!c) return
   const start = (buf: AudioBuffer | null, ok: boolean) => {
+    // Contexte resté suspendu ou interrompu hors geste : visible dans l'inspecteur Safari de l'app.
+    if (buf && !ok) console.warn(`Son abandonné (${name}) : contexte audio ${stateOf(c)}`)
     if (!buf || !ok || c !== ctx || !gain || outdated()) return
     const { playSounds, soundVolume } = useSettings.getState()
     if (!playSounds || soundVolume <= 0) return
@@ -172,6 +175,17 @@ export function playMoveSound(move: Pick<Move, 'san' | 'flags'>, opponent: boole
   const id = ++moveSoundId
   const requestedAt = performance.now()
   play(moveSoundName(move, opponent), () => id !== moveSoundId || performance.now() - requestedAt > MOVE_SOUND_MAX_DELAY_MS)
+}
+
+// Coup joué par l'ordinateur (bot, Stockfish, réponse précalculée d'un puzzle ou d'un cours) :
+// son adverse et, dans l'app native, retour haptique plus discret que la pose du joueur, un cran
+// plus marqué pour une prise, un échec ou une promotion. Le retour ne dépend pas des sons :
+// le bouton silencieux de l'iPhone coupe Web Audio, pas les vibrations.
+// Seul point d'entrée pour un coup de l'ordinateur ; ne jamais l'appeler sur un saut de position.
+export function playComputerMove(move: Pick<Move, 'san' | 'flags'>) {
+  playMoveSound(move, true)
+  const strong = /[+#]/.test(move.san) || /[cep]/.test(move.flags)
+  haptic(strong ? 'reply-strong' : 'reply')
 }
 
 export function moveSoundName(move: Pick<Move, 'san' | 'flags'>, opponent: boolean): SoundName {

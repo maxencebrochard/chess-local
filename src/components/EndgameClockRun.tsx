@@ -16,7 +16,7 @@ import {
   type ClockCadence, type ClockPosition, type EngineScore, type Verdict,
 } from '../lib/endgameClock'
 import { RunRecorder, type RunStats } from '../lib/mates'
-import { playMoveSound, sounds } from '../lib/sounds'
+import { playComputerMove, playMoveSound, sounds } from '../lib/sounds'
 
 const BOT_MOVETIME_MS = 150
 const ENGINE_TIMEOUT_MS = 6000
@@ -193,7 +193,7 @@ function ClockSeries({ serie, cadence, stats, getEngine, onDone, onMenu, onRepla
       return
     }
     timeouts.current = 0
-    playMoveSound(move, true)
+    playComputerMove(move)
     setFen(c.fen())
     setLastMove(move)
     const v = judgeBoard(c, playerColor, family.objective, pos.fen, playedRef.current)

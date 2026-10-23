@@ -14,7 +14,7 @@ import {
   CADENCE_LABEL, CADENCE_MS, chronoPool, chronoTitle, RunRecorder, runKey,
   type Cadence, type ChronoPosition, type Drill, type RunStats,
 } from '../../lib/mates'
-import { playMoveSound, sounds } from '../../lib/sounds'
+import { playComputerMove, playMoveSound, sounds } from '../../lib/sounds'
 import { usePlayerClock } from '../usePlayerClock'
 
 const BOT_MOVETIME_MS = 150
@@ -209,7 +209,7 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
       return
     }
     timeouts.current = 0
-    playMoveSound(move, true)
+    playComputerMove(move)
     setFen(c.fen())
     setLastMove(move)
     if (!settle(move)) clock.start()

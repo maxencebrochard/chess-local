@@ -7,7 +7,7 @@ import { ATTACK_RED } from './AttackLegend'
 import { attackCounts } from '../lib/kingAttack'
 import { PieceIcon } from './PieceIcon'
 import { DEFAULT_PIECE_SET, PIECE_CODES, isPieceSet, pieceScale, preloadPieceSet } from '../lib/pieces'
-import { playMoveSound, sounds } from '../lib/sounds'
+import { playComputerMove, playMoveSound, sounds } from '../lib/sounds'
 import { premoveTargets } from '../lib/premove'
 import { haptic } from '../lib/native'
 import type { MoveClass } from '../lib/review'
@@ -39,7 +39,7 @@ interface BoardProps {
   // Calque « Compte les attaquants » : cadre sur la zone de chaque roi, rouge quand les attaquants
   // dépassent les défenseurs. Les comptes s'affichent sous l'échiquier (AttackLegend).
   showAttackers?: boolean
-  // Diagramme : aucun son quand la position change.
+  // Diagramme : ni son ni retour haptique quand la position change.
   silent?: boolean
   // Coordonnées sur les cases (vrai par défaut) ; coupées sur les vignettes, où elles masquent les pièces.
   notation?: boolean
@@ -89,7 +89,9 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   // (nouveau puzzle, chargement, plusieurs coups d'un coup), un retour en arrière (coup faux repris)
   // et, seulement si `lastMove` est fourni, un coup différent de celui-ci (`null` rend le coup
   // muet aussi : coup faux affiché en rouge, que suit le son d'échec).
-  // `silent` : la page joue ses sons elle-même, ou affiche un saut de position
+  // Un coup du camp adverse au joueur (`movableColor`) est celui de l'ordinateur : son et
+  // retour haptique viennent alors ensemble de `playComputerMove`.
+  // `silent` : la page joue ses sons (et ceux de l'ordinateur) elle-même, ou affiche un saut de position
   // (réessayer de l'analyse) ; une position vue sous `silent` ne sert jamais de point de départ,
   // la sortie du mode est donc muette elle aussi.
   // Un coup moins de 60 ms après le précédent reste muet, tous échiquiers confondus : deux
@@ -118,7 +120,11 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
     const now = performance.now()
     if (!executedPremove && now - lastBoardSoundAt < 60) return
     lastBoardSoundAt = now
-    playMoveSound(move, move.color !== me)
+    // Camp du joueur déclaré : l'autre camp est l'ordinateur (amorce et réponse d'un puzzle ou
+    // d'un cours, Stockfish d'une finale ou d'EngineContinuation), avec son retour haptique.
+    // Sans camp déclaré (navigation de l'analyse, lecture d'une ligne), le son seul.
+    if (movableColor && move.color !== movableColor) playComputerMove(move)
+    else playMoveSound(move, move.color !== me)
   }
 
   function submitMove(from: string, to: string, promotion?: string, isPremove = false): boolean {
