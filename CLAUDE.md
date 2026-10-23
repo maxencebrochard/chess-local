@@ -194,7 +194,7 @@ La séance réutilise `MistakeExercise` (meilleur coup, mat ou alternative suffi
 Une faute supprimée ou modifiée pendant une séance ne peut pas recevoir de nouveau résultat spécialisé.
 Le compteur de l'accueil ne charge jamais `puzzles.json` ; seule la séance le fait.
 La séance du jour (`/seance`, `src/pages/Seance.tsx`) enchaîne 10 à 15 minutes de blocs courts : révision due, puzzles classés, variante ratée, attaque ou finale.
-Son planificateur est pur (`src/lib/seance.ts`, banc Node de `test_seance.py`) : poids des faiblesses par domaine (70 % Insights si un rapport en cache couvre au moins 5 parties de moins de 30 jours, 30 % résultats des 14 derniers jours lissés, ou ces résultats seuls), budget par minutes estimées de `BLOCK_META`.
+Son planificateur est pur (`src/lib/seance.ts`, banc Node de `test_seance.py`) : poids des faiblesses par domaine (70 % Insights si un rapport en cache de moins de 30 jours couvre au moins 5 parties, 30 % résultats des 14 derniers jours lissés, ou ces résultats seuls), budget par minutes estimées de `BLOCK_META`.
 `src/lib/seanceRun.ts` charge les données et matérialise le plan en étapes sérialisables ; chaque étape joue le lecteur de son écran d'origine (`PuzzlePlayer`, `MistakeExercise`, `OpeningDrill`, `PositionGame` avec `attackGameProps`/`endgameGameProps`) et écrit via ses fonctions (`recordReview`, `recordRatedPuzzle`, `recordDrill`, `recordAttempt`, `recordEndgamePlay`).
 Un nouveau type de bloc s'ajoute par `BLOCK_META`, `planSeance`, `MATERIALIZE` (seanceRun.ts) et `RENDER` (Seance.tsx), tous typés `Record<BlockKind, ...>`.
 Une séance menée au bilan écrit une ligne `learnSessions` du domaine `seance` (série de jours civils consécutifs, sans Elo) ; `pickNextDomain` l'ignore.
