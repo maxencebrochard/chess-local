@@ -142,7 +142,7 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
           ✕
         </button>
         <h1 className="min-w-0 flex-1 truncate text-center text-base font-black md:text-lg">{lesson.title}</h1>
-        <span data-testid="lesson-step" className="w-9 text-right text-sm font-semibold text-neutral-400">
+        <span data-testid="lesson-step" className="w-11 shrink-0 text-right text-sm font-semibold text-neutral-400">
           {stepIdx + 1}/{total}
         </span>
       </header>

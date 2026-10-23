@@ -39,6 +39,7 @@ MUTATIONS = {
     "targets": "const b = document.createElement('button'); b.textContent = 'ok'; b.style.cssText = 'font-size: 12px; padding: 0; width: 43px; height: 44px'; document.querySelector('main').prepend(b)",
     "contrast": "const p = document.createElement('p'); p.textContent = 'Texte peu lisible'; p.style.color = '#4a4744'; document.querySelector('main').prepend(p)",
     "typo": "const p = document.createElement('p'); p.textContent = 'Bravo! Tu as trouvé'; document.querySelector('main').prepend(p)",
+    "center": "const h = document.querySelector('header > h1.text-center'); if (h) h.parentElement.lastElementChild.style.width = '20px'",
     "safe": "const b = document.createElement('button'); b.textContent = 'Sous l\\'encoche'; b.style.cssText = 'position: fixed; top: 4px; left: 120px; z-index: 99; min-height: 44px; min-width: 44px'; document.body.appendChild(b)",
 }
 
@@ -149,7 +150,7 @@ def seed_db(page, data):
 AUDIT_JS = r"""
 ({ mobile, safeTop, safeBottom }) => {
   const vw = innerWidth, vh = innerHeight
-  const out = { truncated: [], targets: [], contrast: [], typo: [], safe: [] }
+  const out = { truncated: [], targets: [], contrast: [], typo: [], safe: [], center: [] }
   const css = (e) => getComputedStyle(e)
   const desc = (e) => {
     let s = e.tagName.toLowerCase()
@@ -355,6 +356,16 @@ AUDIT_JS = r"""
       if (c.b > vh - safeBottom + 0.5 && paintedAt(e, x, (Math.max(c.t, vh - safeBottom) + c.b) / 2)) out.safe.push({ el: desc(e), bottom: Math.round(c.b), zone: 'barre home' })
     }
   }
+  // En-tête « ✕ titre espaceur » : le titre centré doit l'être sur toute la largeur, donc l'espaceur
+  // ou le bouton de droite a la largeur du ✕.
+  for (const h of scope.querySelectorAll('header')) {
+    const t = h.querySelector(':scope > h1.text-center')
+    const first = h.firstElementChild, last = h.lastElementChild
+    if (!t || !visible(t) || first === t || last === t) continue
+    const a = first.getBoundingClientRect(), b = last.getBoundingClientRect(), r = t.getBoundingClientRect()
+    const off = (r.left + r.right) / 2 - (a.left + b.right) / 2
+    if (Math.abs(off) > 1) out.center.push({ el: desc(t), offset: Math.round(off * 10) / 10, left: Math.round(a.width), right: Math.round(b.width) })
+  }
   return out
 }
 """
@@ -406,7 +417,7 @@ def audit(page, profile, name, scroll=True):
             k += 1
         if k > 1:
             page.evaluate("() => document.querySelector('main').scrollTo(0, 0)")
-    merged = {c: [] for c in ("truncated", "targets", "contrast", "typo", "safe")}
+    merged = {c: [] for c in ("truncated", "targets", "contrast", "typo", "safe", "center")}
     for v in views:
         for c in merged:
             for item in v[c]:
@@ -422,6 +433,7 @@ def audit(page, profile, name, scroll=True):
         "contrast": "contraste WCAG AA",
         "typo": "typographie française",
         "safe": "rien sous l'encoche ni sous la barre home",
+        "center": "titre d'en-tête centré",
     }
     for cat, label in labels.items():
         if cat == "targets" and not PROFILES[profile]["mobile"]:
@@ -493,6 +505,15 @@ def tour(page, profile):
         if ck.appears(f"{t} exercice de la séance", page, "[data-board]"):
             page.wait_for_timeout(1000)
             a("apprendre-seance", scroll=False)
+    # Séance de finales : son en-tête porte le « ? » du cours, face au ✕. Même route : détour par l'accueil.
+    goto(page, "/", "main [data-review-ready]")
+    goto(page, "/apprendre", "main :text('Séance')")
+    page.locator("main button", has_text="Finales").first.click()
+    if ck.appears(f"{t} séance de finales", page, "button:has-text(\"C'est parti\")", timeout=30000):
+        page.locator("button:has-text(\"C'est parti\")").click()
+        if ck.appears(f"{t} bouton « Voir le cours » de la séance", page, "header button[aria-label='Voir le cours']"):
+            page.wait_for_timeout(1000)
+            a("apprendre-seance-finales", scroll=False)
 
     for slug in ("finales", "roque"):
         goto(page, f"/apprendre/{slug}", "[data-testid=course-progress]")

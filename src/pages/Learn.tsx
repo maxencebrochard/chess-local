@@ -401,12 +401,13 @@ export default function Learn() {
               <button
                 onClick={() => setShowCourse(true)}
                 title="Voir le cours"
-                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-lg font-black text-neutral-400 hover:text-white"
+                aria-label="Voir le cours"
+                className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-lg font-black text-neutral-400 hover:text-white"
               >
                 ?
               </button>
             ) : (
-              <span className="w-9" />
+              <span className="w-11 shrink-0" />
             )}
           </header>
           <ExerciseView
