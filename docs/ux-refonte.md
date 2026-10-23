@@ -1369,8 +1369,8 @@ Les anciens boutons « Puzzle Rush » et « Mats éclair » sous l’échiquier 
 | Mats éclair ouvert par le raccourci de Tactique et calcul (lot 5) | « Retour à Tactique et calcul » en plus du sélecteur | `state.from: 'tactique'`, conservé par les fiches |
 | Erreur ou chargement de `/puzzles` | Sélecteur conservé à sa place | Mats éclair contre la montre reste joignable sans `puzzles.json` |
 
-L’accueil de Mats éclair perd son retour fixe vers Apprendre, devenu faux depuis le lot 2 (Mats appartient à Puzzles) ; le raccourci d’Apprendre est conservé et seul lui ajoute ce retour.
-Le state d’entrée suit la fiche (`setParams` avec le même state) : la flèche de la fiche ramène à un accueil qui a toujours son retour vers Apprendre.
+L’accueil de Mats éclair perd son retour fixe vers Apprendre, devenu faux depuis le lot 2 (Mats appartient à Puzzles) ; le raccourci d’Apprendre est conservé et seul lui ajoute un retour, vers le groupe Tactique et calcul depuis le lot 5.
+Le state d’entrée suit la fiche (`setParams` avec le même state) : la flèche de la fiche ramène à un accueil qui a toujours ce retour.
 Un lien direct vers `/mats` ou une fiche n’a pas ce retour : le sélecteur et l’onglet Puzzles en sont la sortie déterministe.
 
 ### Présentation
