@@ -285,7 +285,7 @@ export default function MyData() {
             disabled={working !== null}
             className="min-h-11 w-full cursor-pointer rounded-xl border border-red-500/50 px-4 py-2 text-sm font-semibold text-red-400 transition hover:bg-red-500/10 hover:text-red-300 disabled:cursor-default disabled:opacity-40 sm:w-auto"
           >
-            Réinitialiser l'app…
+            Réinitialiser l'app (tout effacer sur cet appareil)…
           </button>
         </div>
       </section>

@@ -1158,9 +1158,10 @@ Le texte d’aide « dans la PWA, Plus, Mes données, Exporter tout » décrit d
 
 ### Valeurs et actions
 
-Les contrôles reprennent ceux de Stats à l’identique (libellés, rôles, `data-testid`), et chacun écrit la même clé qu’avant : `chess-local-settings` au format persist, ou `chess-local-threat-check`.
+Les contrôles reprennent ceux de Stats à l’identique (libellés, rôles, `data-testid`), dont « Réinitialiser l’app (tout effacer sur cet appareil)… », et chacun écrit la même clé qu’avant : `chess-local-settings` au format persist, ou `chess-local-threat-check`.
+Deux libellés changent volontairement : le titre « Tes données » devient « Mes données » (nom de la nav et du hub Plus, même `data-testid=data-heading`), et « Thème de l’échiquier » devient « Thème », déjà rangé sous la section Échiquier.
 L’alerte de menace, jusque-là réglable seulement dans la configuration de Jouer, a ses deux interrupteurs (contre un bot, avec le coach) dans Réglages ; les deux écrans lisent et écrivent la même préférence.
-Mes données ajoute le contenu de l’appareil (`currentCounts`), relu après une restauration.
+Mes données ajoute le bloc en lecture seule « Sur cet appareil » (`data-testid=stored-counts`, `currentCounts`), relu après une restauration : il remplace le compteur que Stats affichait sur le même écran après une restauration, et n’écrit rien.
 Restaurer et Réinitialiser gardent leurs feuilles de confirmation (une pour la restauration, deux pour la réinitialisation, Annuler focalisé, Échap et fond pour annuler, export proposé d’abord) ; aucune modale native n’est introduite.
 La réinitialisation passe d’un lien de 12 px à un bouton rouge détouré dans sa propre section, sous la sauvegarde.
 
