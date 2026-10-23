@@ -591,10 +591,10 @@ def mes_erreurs(p, browser):
     page.locator("[data-square='a7']").click()
     page.wait_for_timeout(150)
     page.locator("[data-square='a6']").click()
-    ck.appears("[erreurs] verdict rendu", page, "text=Raté", timeout=60000)
+    ck.appears("[erreurs] verdict rendu", page, "text=À revoir", timeout=60000)
     btn = page.locator("button", has_text="Pourquoi")
     check("[erreurs] « Pourquoi ? » après le verdict", btn.count() == 1 and btn.is_visible())
-    verdict = page.locator("text=Raté").bounding_box()
+    verdict = page.locator("text=À revoir").bounding_box()
     check("[erreurs] barre du verdict visible sans défiler (852)", verdict is not None and verdict["y"] + verdict["height"] <= 852, f"({verdict})")
     page.screenshot(path=f"{SHOTS}/refutation_mistake_852.png")
     btn.click()
@@ -607,7 +607,7 @@ def mes_erreurs(p, browser):
     check("[erreurs] bon coup enregistré justifié", st["kind"] == "best" and re.search(r"Il empêche ♕xf7#|♕xf7 ne serait plus mat", st["text"]) is not None, f"({st['text']})")
     page.locator("[data-refutation] header button").click()
     page.wait_for_timeout(300)
-    check("[erreurs] « ← Retour » rend l'exercice, verdict intact", page.locator("[data-refutation]").count() == 0 and page.locator("text=Raté").is_visible())
+    check("[erreurs] « ← Retour » rend l'exercice, verdict intact", page.locator("[data-refutation]").count() == 0 and page.locator("text=À revoir").is_visible())
     ctx.close()
 
 
