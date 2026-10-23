@@ -1,0 +1,1 @@
+import{a as e,n as t}from"./jsx-runtime-n5LQ9ujS.js";import{loadPathState as n}from"./learningPathStore-rrQhHXM6.js";var r=e(t(),1);function i(){let[e,t]=(0,r.useState)(null),i=(0,r.useCallback)(async()=>{t(await n())},[]);return(0,r.useEffect)(()=>{i()},[i]),{state:e,reload:i}}export{i as t};
