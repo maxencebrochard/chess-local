@@ -12,9 +12,11 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 
 import chess
 
+from course_helpers import advance, continue_btn, finish_line, observe_dom, open_lesson, play_solution, wait_piece, wait_ready, wait_rows
 from helpers import BASE, Checker, desktop_context, drag_piece, mobile_context, overflow_x, piece_on, shot, tap_move
 
 ck = Checker("cours_defense")
@@ -55,35 +57,6 @@ def feedback(page):
 
 def bubble(page):
     return page.locator(".bg-white").first.inner_text()
-
-
-def continue_btn(page):
-    return page.get_by_role("button", name="Continuer", exact=True)
-
-
-def solution_btn(page):
-    return page.get_by_role("button", name="💡 Solution")
-
-
-def wait_ready(page):
-    page.wait_for_function(
-        "() => [...document.querySelectorAll('button')].some((b) => (b.textContent.includes('Solution') || b.textContent.trim() === 'Continuer') && !b.disabled)",
-        timeout=5000,
-    )
-
-
-def finish_line(page, max_moves=40):
-    """Joue la ligne courante par « Solution » jusqu'au bout. Retourne le nombre de clics."""
-    clicks = 0
-    while not continue_btn(page).is_enabled() and clicks < max_moves:
-        wait_ready(page)
-        if continue_btn(page).is_enabled():
-            break
-        solution_btn(page).click()
-        clicks += 1
-        page.wait_for_timeout(120)
-    page.wait_for_timeout(900)
-    return clicks
 
 
 def in_viewport(page, locator):
@@ -266,10 +239,8 @@ def open_line_at(page, lid, si, ply):
     page.reload()
     ck.appears(f"[{lid}] ligne ouverte", page, f"[data-testid='lesson-step']:has-text('{si + 1}/')")
     for _ in range(ply // 2):
-        wait_ready(page)
-        solution_btn(page).click()
-        page.wait_for_timeout(1000)
-    wait_ready(page)
+        play_solution(ck, page)
+    wait_ready(ck, page)
 
 
 def suite(p):
@@ -321,59 +292,68 @@ def suite(p):
     shot(page, "defense_first_diagram")
     li, line = lines_of(FIRST)[0]
     for _ in range(li):
-        continue_btn(page).click()
-        page.wait_for_timeout(200)
+        advance(ck, page)
     ck.appears("[leçon] ligne ouverte", page, f"[data-testid='lesson-step']:has-text('{li + 1}/{total}')")
     check("[leçon] Continuer grisé tant que la ligne n'est pas jouée", not continue_btn(page).is_enabled())
     _, fen0, m0, uci0 = student_moves(line)[0]
     wrong = bad_move(fen0, m0)
-    tap_move(page, wrong[:2], wrong[2:4], pause=120)
-    fb = feedback(page)
-    expected_bad = "ne tient pas" if line["result"] == "hold" else "laisse filer"
-    check("[leçon] mauvais coup : refus prudent (Stockfish)", "Selon Stockfish" in fb and expected_bad in fb, f"({fb})")
-    check("[leçon] indice du coup au premier échec", bool(m0.get("hint")) and "Indice" in fb and m0["hint"][:20] in fb, f"({fb})")
-    check("[leçon] case du coup refusé en rouge", page.evaluate(f"() => [...document.querySelectorAll(\"[data-square='{wrong[2:4]}'] div\")].some((e) => getComputedStyle(e).backgroundColor.includes('235, 97, 80'))"))
-    page.wait_for_timeout(900)
+    wrong_piece = piece_on(page, wrong[:2])
+    red = f"() => [...document.querySelectorAll(\"[data-square='{wrong[2:4]}'] div\")].some((e) => getComputedStyle(e).backgroundColor.includes('235, 97, 80'))"
+    with observe_dom(page, red) as red_seen:
+        tap_move(page, wrong[:2], wrong[2:4], pause=120)
+        fb = feedback(page)
+        expected_bad = "ne tient pas" if line["result"] == "hold" else "laisse filer"
+        check("[leçon] mauvais coup : refus prudent (Stockfish)", "Selon Stockfish" in fb and expected_bad in fb, f"({fb})")
+        check("[leçon] indice du coup au premier échec", bool(m0.get("hint")) and "Indice" in fb and m0["hint"][:20] in fb, f"({fb})")
+        check("[leçon] case du coup refusé en rouge", red_seen())
+    wait_ready(ck, page)
+    wait_piece(ck, page, wrong[:2], wrong_piece)
     check("[leçon] coup refusé repris", piece_on(page, wrong[:2]) is not None)
     check("[leçon] pas de flèche d'aide après un seul essai", page.locator(ARROWHEADS).count() == 0)
     tap_move(page, wrong[:2], wrong[2:4], pause=120)
-    page.wait_for_timeout(1000)
+    wait_ready(ck, page)
+    wait_piece(ck, page, wrong[:2], wrong_piece)
     check("[leçon] flèche d'aide au 2e essai", page.locator(ARROWHEADS).count() == 1)
     piece = piece_on(page, uci0[:2])
-    drag_piece(page, uci0[:2], uci0[2:4])
-    page.wait_for_timeout(300)
-    check("[leçon] bon coup glissé au doigt, accepté et commenté", (m0.get("text") or "Bien joué")[:25] in feedback(page), f"({feedback(page)})")
-    check("[leçon] pièce arrivée", piece_on(page, uci0[2:4]) == piece, f"({piece_on(page, uci0[2:4])})")
-    page.wait_for_timeout(1100)
+    arrival = f"() => document.querySelector(\"[data-square='{uci0[2:4]}'] [data-piece]\")?.getAttribute('data-piece') === '{piece}'"
+    with observe_dom(page, arrival) as arrived:
+        drag_piece(page, uci0[:2], uci0[2:4])
+        # Sous charge, le lâcher peut être traité après la fin du geste CDP : attendre le rendu, sans pause fixe.
+        end = time.monotonic() + 5
+        while not arrived() and time.monotonic() < end:
+            page.wait_for_timeout(50)
+        check("[leçon] pièce arrivée", arrived(), f"({piece} attendu en {uci0[2:4]}, {piece_on(page, uci0[2:4])} affiché)")
+        check("[leçon] bon coup glissé au doigt, accepté et commenté", (m0.get("text") or "Bien joué")[:25] in feedback(page), f"({feedback(page)})")
+    wait_ready(ck, page)
     if len(line["moves"]) > 1:
         reply = chess.Board(fen0)
         reply.push_uci(uci0)
         rmv = reply.parse_san(line["moves"][1]["san"])
+        wait_piece(ck, page, rmv.uci()[:2], None)
         check("[leçon] réponse de l'attaquant jouée", piece_on(page, rmv.uci()[2:4]) is not None and piece_on(page, rmv.uci()[:2]) is None)
         check("[leçon] réponse annoncée dans la bulle", "répondent" in bubble(page))
     shot(page, "defense_first_line")
-    clicks = finish_line(page)
+    clicks = finish_line(ck, page)
     check("[leçon] ligne jouée jusqu'au bout par Solution", continue_btn(page).is_enabled(), f"({clicks} clics)")
     check("[leçon] message de fin", line["end"][:30] in feedback(page), f"({feedback(page)})")
     shot(page, "defense_first_line_done")
-    continue_btn(page).click()
-    page.wait_for_timeout(200)
+    advance(ck, page)
     for s in lesson["steps"][li + 1:]:
         if s["kind"] == "line":
-            finish_line(page)
+            finish_line(ck, page)
             check(f"[leçon] ligne « {s['text'][:30]} » jouée jusqu'au bout", continue_btn(page).is_enabled())
-        continue_btn(page).click()
-        page.wait_for_timeout(200)
+        advance(ck, page)
     ck.appears("[bilan] À retenir", page, "text=À retenir")
     check("[bilan] points clés affichés", all(k[:30] in page.inner_text("body") for k in lesson["keyPoints"]))
     check("[bilan] pas de S'entraîner (pas d'exercice de finale)", page.locator("button", has_text="S'entraîner").count() == 0)
     check("[bilan] Leçon suivante proposée", page.get_by_role("button", name="Leçon suivante").is_visible())
     shot(page, "defense_summary")
-    page.wait_for_timeout(300)
+    wait_rows(ck, page, ROWS, "[progrès] ligne learnSessions defense écrite")
     check("[progrès] une ligne learnSessions defense", page.evaluate(ROWS) == [f"defense:{FIRST}"], f"({page.evaluate(ROWS)})")
     page.goto(f"{BASE}/#/apprendre/defense/{FIRST}?etape={total}")
     ck.appears("[progrès] bilan rouvert", page, "text=À retenir")
-    page.wait_for_timeout(400)
+    wait_rows(ck, page, ROWS, "[progrès] ligne learnSessions defense relue")
+    page.wait_for_timeout(400)  # Conserver la fenêtre de détection d’une écriture en double.
     check("[progrès] idempotent", page.evaluate(ROWS) == [f"defense:{FIRST}"], f"({page.evaluate(ROWS)})")
 
     # ---------- « Tient aussi » : un coup de keeps autre que celui de la leçon, dans une ligne hold ----------
@@ -390,7 +370,7 @@ def suite(p):
         open_line_at(page, lid, si, i)
         tap_move(page, other[:2], other[2:4], pause=120)
         check("[tient aussi] message « tient aussi »", "tient aussi" in feedback(page), f"({lid} {other} : {feedback(page)})")
-        page.wait_for_timeout(900)
+        wait_ready(ck, page)
 
     # ---------- Zone grise : un coup de `close` reçoit le message neutre ----------
     grey = None
@@ -405,7 +385,7 @@ def suite(p):
         open_line_at(page, lid, si, i)
         tap_move(page, other[:2], other[2:4], pause=120)
         check("[zone grise] message « se défend moins bien »", "se défend moins bien" in feedback(page), f"({lid} {other} : {feedback(page)})")
-        page.wait_for_timeout(900)
+        wait_ready(ck, page)
 
     # ---------- La prise hxg6 ouvre bien la colonne h ----------
     lid = "contre-la-tempete"
@@ -428,16 +408,14 @@ def suite(p):
 
     # ---------- Toutes les leçons se jouent jusqu'au bilan ----------
     for lid in LESSONS:
-        page.goto(f"{BASE}/#/apprendre/defense/{lid}")
-        if not ck.appears(f"[toutes] {lid} ouverte", page, "[data-testid='lesson-step']"):
+        if not open_lesson(ck, page, f"{BASE}/#/apprendre/defense/{lid}", COURSE["lessons"][lid]):
             continue
         ok = True
         for s in COURSE["lessons"][lid]["steps"]:
             if s["kind"] == "line":
-                finish_line(page)
+                finish_line(ck, page)
                 ok = ok and continue_btn(page).is_enabled()
-            continue_btn(page).click()
-            page.wait_for_timeout(150)
+            advance(ck, page)
         ok = ok and page.locator("text=À retenir").is_visible()
         check(f"[toutes] {lid} jouée jusqu'au bilan", ok)
     page.goto(f"{BASE}/#/apprendre/defense")
