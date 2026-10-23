@@ -113,7 +113,7 @@ def suite(p):
     wait_ready(ck, page)
     wait_piece(ck, page, "d5", "bK")
     check("[ligne] réponse adverse jouée (Rd5)", piece_on(page, "d5") == "bK")
-    check("[ligne] réponse annoncée dans la bulle", "répondent" in page.locator(".bg-white").first.inner_text())
+    check("[ligne] réponse annoncée dans la zone de retour", "répondent" in page.locator("[data-exercise-feedback]").first.inner_text())
     shot(page, "course_line")
 
     # Analyser en pleine ligne (leçon non notée) : la position atteinte part dans l'analyseur, et
@@ -310,7 +310,7 @@ def suite(p):
         board = page.locator("[id^='chessboard-']").first
         check(f"[660] {lid} : échiquier entier à l'écran", in_viewport(page, board), f"({board.bounding_box()})")
         check(f"[660] {lid} : Continuer à l'écran", in_viewport(page, continue_btn(page)))
-        check(f"[660] {lid} : bulle visible", page.locator(".bg-white").first.is_visible())
+        check(f"[660] {lid} : texte de l'étape visible", page.locator(".bg-white, [data-exercise-feedback]").first.is_visible())
         check(f"[660] {lid} : pas de défilement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
         shot(page, f"course_660_{name}")
     ctx.close()

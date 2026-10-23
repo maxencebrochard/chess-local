@@ -95,8 +95,9 @@ body {
 
 /* Exercice commun (components/Exercise.tsx) : l'échiquier est le plus grand carré qui tient dans
    la scène en laissant visible la zone de décision de hauteur fixe dessous, borné à 640 px
-   (560 px sur desktop), sous la bande `above` facultative (barre d'éval, 28 px). La zone garde sa hauteur avant et après le verdict : rien ne déplace ni
-   ne redimensionne l'échiquier quand le résultat arrive. */
+   (560 px dès md), sous la bande `above` facultative (28 px). La zone garde sa hauteur avant et
+   après le verdict : rien ne déplace ni ne redimensionne l'échiquier quand le résultat arrive.
+   `--exercise-zone` peut être redéfinie par la scène (prop `zone`) quand son contenu le demande. */
 .exercise-stage {
   --exercise-zone: 8.75rem;
   --exercise-above: 0rem;
@@ -109,6 +110,42 @@ body {
 @media (min-width: 768px) {
   .exercise-column {
     width: max(12rem, min(100cqw - 0.75rem, 100cqh - var(--exercise-zone) - var(--exercise-above), 560px));
+  }
+}
+/* Desktop (lg) : deux colonnes, comme le prévoit le système visuel. À gauche la bande `above` et
+   l'échiquier, le plus grand carré que permet la hauteur (borné à 720 px) ; à droite, de la
+   largeur d'un panneau, la zone de décision puis les options. L'en-tête reste une barre au-dessus
+   des deux colonnes, et la colonne de l'écran s'élargit à leur somme. */
+@media (min-width: 1024px) {
+  .exercise-screen:has(> .exercise-stage) {
+    max-width: 70rem;
+  }
+  .exercise-stage {
+    --exercise-panel: 22rem;
+  }
+  .exercise-column {
+    --exercise-board: max(12rem, min(100cqh - var(--exercise-above) - 1rem, 100cqw - var(--exercise-panel) - 2.25rem, 720px));
+    display: grid;
+    grid-template-columns: var(--exercise-board) var(--exercise-panel);
+    grid-template-rows: auto auto 1fr;
+    column-gap: 1.5rem;
+    align-content: start;
+    width: max-content;
+  }
+  .exercise-left {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+  }
+  /* Le haut de la zone s'aligne sur l'échiquier : la bande `above` remplace son pt-2. */
+  .exercise-column > [data-exercise-feedback] {
+    grid-column: 2;
+    grid-row: 1;
+    padding-top: var(--exercise-above);
+    height: calc(var(--exercise-zone) - 0.5rem + var(--exercise-above));
+  }
+  .exercise-below {
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 .exercise-board {

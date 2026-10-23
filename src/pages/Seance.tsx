@@ -7,10 +7,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Chess, DEFAULT_POSITION } from 'chess.js'
 import { Cta } from '../components/Cta'
 import { PageHeader } from '../components/PageHeader'
-import { MistakeExercise } from '../components/MistakeExercise'
+import { ExerciseFeedback, ExerciseHeader, ExerciseScreen, ExerciseStage, type ExerciseVerdict } from '../components/Exercise'
+import { MistakeConsigne, MistakeExercise } from '../components/MistakeExercise'
 import { OpeningDrill, type DrillSnapshot } from '../components/OpeningDrill'
 import { PositionGame } from '../components/PositionGame'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
+import { RefutationPlayer } from '../components/RefutationPlayer'
+import { puzzlePlayerColor } from '../components/useExerciseContinuation'
 import { ATTACKS, attackGameProps, gameKey, loadLevel } from '../lib/attack'
 import { recordReplaced } from '../lib/attempts'
 import { getRating, type Mistake } from '../lib/db'
@@ -19,6 +22,7 @@ import { ENDGAMES } from '../lib/learn'
 import { recordDrill } from '../lib/openingTrainer'
 import { endgameGameProps, loadStoredGame, resumedGame } from '../lib/positionGame'
 import { recordRatedPuzzle } from '../lib/puzzles'
+import { mistakeVerdictReason, refutedUci } from '../lib/refutation'
 import { displayThemes } from '../lib/puzzleThemes'
 import { recordReview, resolveVariant, returnLabel, statusLabel, variantKey, type ReviewPayload } from '../lib/revision'
 import {
@@ -58,6 +62,11 @@ export default function Seance() {
   // Verdict d'une variante restauré au retour de l'analyseur, pour la clé de drill d'alors.
   const [drillSnap, setDrillSnap] = useState<{ key: string; snapshot: DrillSnapshot } | null>(null)
   const [saveError, setSaveError] = useState(false)
+  // Présentation de l'étape jugée : explication du verdict (une phrase), vérification Stockfish
+  // en cours d'une faute, réfutation « Pourquoi ? » ouverte. Rien n'est écrit.
+  const [reason, setReason] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [why, setWhy] = useState(false)
   const engineRef = useRef<Engine | null>(null)
   // Étapes déjà jugées, posées de façon synchrone : un second verdict (Réessayer, Rejouer) n'écrit
   // jamais deux fois pour la séance.
@@ -183,6 +192,8 @@ export default function Seance() {
     if (run.idx + 1 < run.steps.length) {
       setRetryTick(0)
       setRestored(false)
+      setReason(null)
+      setWhy(false)
       setRun({ ...run, idx: run.idx + 1, phase: 'play', stepStartedAt: Date.now() })
     } else {
       void end(run)
@@ -209,6 +220,7 @@ export default function Seance() {
   }
 
   function retry() {
+    setReason(null)
     setRetryTick((t) => t + 1)
     setRun((r) => (r ? { ...r, phase: 'play' } : r))
   }
@@ -355,7 +367,8 @@ export default function Seance() {
   // ---------- Étape en cours ----------
   const cur = run
   const result = cur.results.find((r) => r.idx === cur.idx) ?? null
-  const progress = `${cur.idx + 1}/${cur.steps.length}`
+  // Progression de la série dans l'en-tête de chaque étape (« n/N » et barre).
+  const seriesProgress = { index: cur.idx + 1, total: cur.steps.length, done: cur.results.length, counterProps: { 'data-seance-progress': '' } }
   const nextLabel = cur.idx + 1 >= cur.steps.length ? 'Voir le bilan' : 'Suivant'
   const key = `${cur.idx}-${retryTick}`
   const blockLabel = `${BLOCK_META[step.kind].emoji} ${BLOCK_META[step.kind].label}`
@@ -376,7 +389,8 @@ export default function Seance() {
         getEngine={getEngine}
         session={{ ok: 0, total: 0 }}
         snapshot={drillSnap?.key === key ? drillSnap.snapshot : null}
-        title={`☀️ Séance ${progress}`}
+        title="☀️ Séance"
+        progress={seriesProgress}
         subtitle={review ? `${blockLabel} · ${statusLabel(review.item)}` : blockLabel}
         onResult={(ok) =>
           judge(
@@ -409,17 +423,13 @@ export default function Seance() {
     const stored = loadStoredGame()
     const same = resume && stored && stored.key === gk && stored.startFen === fen && stored.level !== undefined
     return (
-      <div data-seance-step={step!.kind} className="pt-safe pb-safe fixed inset-0 z-40 bg-surface">
+      // PositionGame porte lui-même son plein écran (ExerciseScreen).
+      <div data-seance-step={step!.kind}>
         {game(resume, judged || restored, same ? stored.level! : loadLevel())}
       </div>
     )
   }
 
-  const chip = (
-    <span data-seance-progress className="flex h-8 shrink-0 items-center rounded-full bg-surface-2 px-2.5 text-xs font-bold tabular-nums text-neutral-200">
-      ☀️ {progress}
-    </span>
-  )
 
   function renderAttack(id: string) {
     const pos = ATTACKS.find((a) => a.id === id)
@@ -433,7 +443,7 @@ export default function Seance() {
           resume={resume}
           restoreFinished={restoreFinished}
           {...BACK}
-          headerAction={chip}
+          progress={seriesProgress}
           onExit={quit}
           onOther={next}
           otherLabel={nextLabel}
@@ -459,7 +469,7 @@ export default function Seance() {
           resume={resume}
           restoreFinished={restoreFinished}
           {...BACK}
-          headerAction={chip}
+          progress={seriesProgress}
           onExit={quit}
           onOther={next}
           otherLabel={nextLabel}
@@ -473,18 +483,16 @@ export default function Seance() {
     })
   }
 
-  // Puzzle (classé ou de révision), faute de partie, attaque manquée, défense ratée : cadre de la
-  // séance autour du lecteur, même gabarit que la révision.
+  // Puzzle (classé ou de révision), faute de partie, attaque manquée, défense ratée : habillage
+  // commun d'exercice autour du lecteur, comme la révision.
   function renderFramed(review: ReviewPayload | null, puzzle: PuzzleData | null) {
     const mistake = review ? mistakeOf(review) : null
     const phase = cur.phase
-    // Les thèmes (« Mat en 1 », « Fourchette ») livreraient la solution : après le verdict seulement.
-    const banner = puzzle
-      ? `Puzzle ${puzzle.id} · ${puzzle.rating}${phase !== 'play' ? ` · ${displayThemes(puzzle.themes).join(', ')}` : ''}`
-      : review?.kind === 'missed-attack' ? 'Attaque manquée' : review?.kind === 'missed-defense' ? 'Défense ratée' : null
     const subtitle = review ? `${blockLabel} · ${statusLabel(review.item)}` : blockLabel
+    const refuted = mistake ? refutedUci(mistake) : null
 
-    function onVerdict(ok: boolean) {
+    function onVerdict(ok: boolean, why: string) {
+      setReason(why)
       if (!review && puzzle) {
         const p = puzzle
         judge(ok, async () => {
@@ -506,66 +514,89 @@ export default function Seance() {
       }
     }
 
+    // Les thèmes (« Mat en 1 », « Fourchette ») livreraient la solution : ils ne passent dans
+    // l'explication qu'après le verdict.
+    const motif = puzzle ? `Motif : ${displayThemes(puzzle.themes).join(', ')}.` : ''
+    const status = <span className="mt-1 block text-xs font-semibold text-neutral-400">{subtitle}</span>
+    const prompt = puzzle ? (
+      <>
+        <span data-seance-banner className="font-semibold">Puzzle {puzzle.id} · {puzzle.rating}</span> : trouve le meilleur coup, trait aux {puzzlePlayerColor(puzzle) === 'w' ? 'Blancs' : 'Noirs'}.
+        {status}
+      </>
+    ) : checking ? 'Je vérifie ton coup avec Stockfish…' : mistake ? (
+      <>
+        {review?.kind === 'missed-attack' ? 'Attaque manquée · ' : review?.kind === 'missed-defense' ? 'Défense ratée · ' : ''}
+        <MistakeConsigne mistake={mistake} active />
+        {status}
+      </>
+    ) : null
+    // Séance restaurée (retour de l'analyse, rechargement) : explication recalculée sans le détail
+    // du coup joué, que seul le verdict connaissait.
+    const fallback = puzzle
+      ? (phase === 'success' ? `Bien vu. ${motif}` : `Pas le coup attendu. ${motif}`)
+      : phase === 'success' ? 'Exercice réussi.' : mistakeVerdictReason(false, false, refuted !== null)
+    const verdict: ExerciseVerdict | null = phase === 'play' ? null : {
+      tone: phase === 'success' ? 'success' : 'review',
+      reason: reason ?? fallback,
+      note: result?.note ? <span data-seance-note>{result.note}</span> : undefined,
+    }
+
     return (
-      <div data-seance-step={step!.kind} className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
-        <div data-seance-item={mistake ? 'mistake' : 'puzzle'} className="mx-auto flex min-h-full max-w-2xl flex-col">
-          <header className="flex items-center px-3 py-1">
-            <button onClick={quit} aria-label="Quitter la séance" className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white">
-              ✕
-            </button>
-            <h1 className="flex-1 text-center text-lg font-black">
-              ☀️ Séance
-              <span data-seance-progress className="ml-2 text-sm font-semibold text-neutral-400">{progress}</span>
-            </h1>
-            <span className="w-11 shrink-0" />
-          </header>
-          <p className="px-3 pb-2 text-center text-xs font-semibold text-neutral-400">{subtitle}</p>
-          {saveError && <div className="mx-3 mb-2"><SaveAlert /></div>}
-          {banner && <p data-seance-banner className="mx-3 mb-2 truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold">{banner}</p>}
-          {puzzle ? (
-            <div className="flex justify-center px-3">
-              <div className="boardbox md:w-[min(56vh,520px)]">
-                <PuzzlePlayer
-                  key={key}
-                  puzzle={puzzle}
-                  onComplete={(ok) => {
-                    if (phase === 'play') onVerdict(ok)
-                  }}
-                />
-              </div>
-            </div>
-          ) : mistake ? (
-            <MistakeExercise key={key} mistake={mistake} active={phase === 'play'} onFinish={onVerdict} getEngine={getEngine} />
-          ) : null}
-          {phase !== 'play' && (
-            // Une seule rangée à 393 px : verdict et note empilés, actions serrées à droite.
-            <div className="flex items-center gap-2 px-3 py-2">
-              <div className="flex min-w-0 shrink-0 flex-col whitespace-nowrap">
-                <span className={`text-lg leading-tight font-black ${phase === 'success' ? 'text-accent' : 'text-red-400'}`}>
-                  {phase === 'success' ? '✓ Réussi !' : '✗ Raté'}
-                </span>
-                {result?.note && (
-                  <span data-seance-note className="text-xs leading-tight font-semibold text-neutral-400">
-                    {result.note}
-                  </span>
-                )}
-              </div>
-              <div className="ml-auto flex items-center gap-1">
-                <button onClick={retry} className="flex cursor-pointer flex-col items-center rounded px-1.5 py-1 text-xs font-semibold text-neutral-300 hover:text-white">
-                  <span className="text-lg leading-none">↺</span>
-                  Réessayer
-                </button>
-                <button onClick={() => analyse(step!)} className="flex cursor-pointer flex-col items-center rounded px-1.5 py-1 text-xs font-semibold text-neutral-300 hover:text-white">
-                  <span className="text-lg leading-none">♞</span>
-                  Analyser
-                </button>
-                <Cta className="ml-1 px-5 py-2 text-base" onClick={next}>
-                  {nextLabel}
-                </Cta>
-              </div>
-            </div>
+      <div data-seance-step={step!.kind}>
+        <ExerciseScreen data-seance-item={mistake ? 'mistake' : 'puzzle'}>
+          <ExerciseHeader
+            title="☀️ Séance"
+            index={cur.idx + 1}
+            total={cur.steps.length}
+            done={cur.results.length}
+            counterProps={seriesProgress.counterProps}
+            onClose={quit}
+            closeLabel="Quitter la séance"
+          />
+          <ExerciseStage
+            feedback={
+              <ExerciseFeedback
+                verdict={verdict}
+                prompt={prompt}
+                onNext={next}
+                nextLabel={nextLabel}
+                onRetry={retry}
+                onAnalyse={() => analyse(step!)}
+                onWhy={refuted ? () => setWhy(true) : undefined}
+              />
+            }
+            below={saveError && <div className="px-1.5"><SaveAlert /></div>}
+          >
+            {puzzle ? (
+              <PuzzlePlayer
+                key={key}
+                puzzle={puzzle}
+                onComplete={(ok) => {
+                  if (phase === 'play') onVerdict(ok, ok ? `Bien vu. ${motif}` : `Pas le coup attendu. ${motif}`)
+                }}
+              />
+            ) : mistake ? (
+              <MistakeExercise
+                key={key}
+                bare
+                mistake={mistake}
+                active={phase === 'play'}
+                getEngine={getEngine}
+                onChecking={setChecking}
+                onFinish={(ok, { best }) => onVerdict(ok, mistakeVerdictReason(ok, best, refuted !== null))}
+              />
+            ) : null}
+          </ExerciseStage>
+          {why && refuted && mistake && (
+            <RefutationPlayer
+              fenBefore={mistake.fenBefore}
+              playedUci={refuted}
+              bestUci={mistake.bestUci}
+              orientation={new Chess(mistake.fenBefore).turn()}
+              onClose={() => setWhy(false)}
+            />
           )}
-        </div>
+        </ExerciseScreen>
       </div>
     )
   }

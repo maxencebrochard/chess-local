@@ -552,7 +552,7 @@ def part_main(p, browser):
         if k == 0:
             # Échec, puis Analyser et retour : même étape, même verdict, même note.
             play_mate(page, ok=False)
-            ck.appears("[puzzles] coup faux : « Raté »", page, "text=✗ Raté", timeout=8000)
+            ck.appears("[puzzles] coup faux : « À revoir »", page, "text=✗ À revoir", timeout=8000)
             ck.appears("[puzzles] note de classement après l'échec", page, "[data-seance-note]:has-text('Classement')", timeout=5000)
             note = page.locator("[data-seance-note]").inner_text()
             check("[puzzles] note « Classement N (-x) » en baisse", re.fullmatch(r"Classement \d+ \(-\d+\)", note) is not None, f"({note!r})")
@@ -563,7 +563,7 @@ def part_main(p, browser):
                 page.wait_for_timeout(800)
                 check("[analyse] retour sur #/seance", page.evaluate("() => location.hash") == "#/seance")
                 check("[analyse] même étape après le retour", progress(page) == f"{n}/{EXPECTED_STEPS}", f"({progress(page)!r})")
-                check("[analyse] verdict et note conservés", page.locator("text=✗ Raté").count() > 0 and page.locator("[data-seance-note]").inner_text() == note)
+                check("[analyse] verdict et note conservés", page.locator("text=✗ À revoir").count() > 0 and page.locator("[data-seance-note]").inner_text() == note)
             # Réessayer : sans enjeu (aucune écriture de plus).
             n_att = len(db_rows(page, "puzzleAttempts"))
             if click_text_button(page, "Réessayer"):
@@ -592,7 +592,7 @@ def part_main(p, browser):
 
     # --- étape 9 : attaque, abandonnée ---
     if ck.appears("[attaque] étape 9/9 : PositionGame", page, "[data-seance-step=attack] [data-testid=position-game]", timeout=15000):
-        check("[attaque] pastille « ☀️ 9/9 » dans l'en-tête", progress(page) == f"☀️ {EXPECTED_STEPS}/{EXPECTED_STEPS}", f"({progress(page)!r})")
+        check("[attaque] compteur « 9/9 » dans l'en-tête", progress(page) == f"{EXPECTED_STEPS}/{EXPECTED_STEPS}", f"({progress(page)!r})")
         fen = page.get_attribute("[data-testid=position-game]", "data-fen")
         shot(page, "seance_step_attack_852")
         click_text_button(page, "Abandonner")
@@ -667,7 +667,7 @@ def part_variant_endgame(p, browser):
         click_text_button(page, "Commencer")
     if ck.appears("[variante] drill plein écran, étape 1/2", page, "[data-drill]", timeout=10000):
         h = page.locator("[data-drill] header h1").inner_text()
-        check("[variante] en-tête « ☀️ Séance 1/2 »", "☀️ Séance 1/2" in h, f"({h!r})")
+        check("[variante] en-tête « ☀️ Séance » et compteur « 1/2 »", h.startswith("☀️ Séance") and h.endswith("1/2"), f"({h!r})")
         check("[variante] la variante Göring", page.get_attribute("[data-drill]", "data-variant-uci") == GORING)
         shot(page, "seance_step_variant_852")
         line = GORING.split(" ")
@@ -699,7 +699,7 @@ def part_variant_endgame(p, browser):
             if btn.count():
                 btn.first.click()
     if ck.appears("[finale] étape 2/2 : PositionGame", page, "[data-seance-step=endgame] [data-testid=position-game]", timeout=15000):
-        check("[finale] pastille « ☀️ 2/2 »", progress(page) == "☀️ 2/2", f"({progress(page)!r})")
+        check("[finale] compteur « 2/2 » dans l'en-tête", progress(page) == "2/2", f"({progress(page)!r})")
         shot(page, "seance_step_endgame_852")
         click_text_button(page, "Abandonner")
         if ck.appears("[finale] confirmation d'abandon", page, "[data-testid=resign-confirm]", timeout=5000):

@@ -341,8 +341,8 @@ def no_overflow(page, tag):
 def bar_fits(page, tag):
     w = page.evaluate(f"""() => {{
       const g = document.querySelector("{GAME}")
-      const bar = g && g.lastElementChild
-      const sub = g && g.querySelector("[data-testid='objective'] p.text-xs")
+      const bar = g && g.querySelector("[data-exercise-feedback] [data-exercise-actions]")
+      const sub = g && g.querySelector("[data-testid='objective-subline']")
       return bar ? [bar.scrollWidth - bar.clientWidth, sub ? sub.scrollWidth - sub.clientWidth : 0] : null
     }}""")
     check(f"[mise en page] {tag} : barre d'actions sans débordement", w is not None and w[0] <= 0, f"({w})")
@@ -350,7 +350,7 @@ def bar_fits(page, tag):
 
 
 def board_height(page):
-    box = page.locator(".boardbox").first.bounding_box()
+    box = page.locator("[data-exercise-board]").first.bounding_box()
     return round(box["height"]) if box else None
 
 
@@ -415,8 +415,9 @@ def suite(p):
         no_overflow(page, "partie 393x852")
         bar_fits(page, "partie 393x852")
         page.get_by_role("button", name="Conseils").tap()
-        check("[partie] « Conseils ▾ » déplie le plan", page.locator(GAME, has_text=first["plan"][:40]).count() == 1)
-        page.get_by_role("button", name="Conseils").tap()
+        check("[partie] « Conseils » ouvre le plan", page.locator(GAME, has_text=first["plan"][:40]).count() == 1)
+        page.get_by_role("button", name="Retour à la partie").tap()
+        check("[partie] la feuille des conseils se ferme", page.locator("[data-testid=info-sheet]").count() == 0)
         play_best(page, color, 10, "options")
         wait_turn(page, color)
         ws = workers(uci_log(page))

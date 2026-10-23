@@ -56,7 +56,8 @@ def advance(ck, page):
 def open_lesson(ck, page, url, lesson, step=1):
     def wait():
         page.goto(url)
-        expect(page.locator("header h1")).to_have_text(lesson["title"], timeout=10000)
+        # Le titre de l’en-tête commun porte aussi le compteur « n/N » (`lesson-step`).
+        expect(page.locator("header h1")).to_have_text(re.compile("^" + re.escape(lesson["title"]) + r"\s*\d+/\d+$"), timeout=10000)
         expect(page.get_by_test_id("lesson-step")).to_have_text(f"{step}/{len(lesson['steps']) + 1}", timeout=10000)
     return _settled(ck, page, f"[cours] leçon « {lesson['title']} » ouverte à l’étape {step}", wait)
 

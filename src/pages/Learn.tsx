@@ -616,7 +616,7 @@ function ExerciseView(props: Omit<ExerciseProps, 'stage'>) {
   const delta = props.ratingDelta
   const verdict: ExerciseVerdict | null = judged
     ? {
-        ok: phase === 'success',
+        tone: phase === 'success' ? 'success' : 'review',
         // Séance restaurée d'un stockage antérieur à l'explication : phrase générique.
         reason: props.reason ?? (phase === 'success' ? 'Exercice réussi.' : 'Rejoue la position pour la fixer.'),
         note: delta !== null && delta !== 0 ? <span data-rating-delta>Classement {delta > 0 ? '+' : ''}{delta}</span> : undefined,
@@ -722,7 +722,7 @@ function PuzzleExercise({ item, phase, onFinish, onPuzzleStep, stage }: Exercise
           if (phase !== 'play') return
           onFinish(ok, ok
             ? tactic ? `Bien vu : le motif était ${item.themeLabel.toLowerCase()}.` : 'Bien joué : tu as trouvé le plan de la position.'
-            : `Pas le coup attendu. Réessaie, ou regarde ${tactic ? 'la suite' : 'le plan'} sous l’échiquier.`)
+            : `Pas le coup attendu. Réessaie, ou regarde ${tactic ? 'la suite' : 'le plan'} de la position.`)
         }}
       />
     ),

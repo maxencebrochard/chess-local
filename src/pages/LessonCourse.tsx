@@ -13,6 +13,7 @@ import { ProgressBar } from '../components/ProgressBar'
 import { Board, type BoardArrow } from '../components/Board'
 import { CoachBubble } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
+import { ExerciseFeedback, ExerciseHeader, type ExerciseVerdict } from '../components/Exercise'
 import { lineUci, type Course, type DiagramStep, type Lesson, type LineStep, type MarkColor } from '../lib/lessonCourse'
 import { ENDGAMES } from '../lib/learn'
 import { replay } from '../lib/positionGame'
@@ -47,7 +48,10 @@ interface ReturnState {
 
 // Taille de l'échiquier d'une leçon : pleine largeur sur téléphone, mais bornée par la hauteur
 // pour que la bulle et les boutons tiennent sous l'échiquier, même sur un petit écran.
-const LESSON_BOARD = 'w-[min(calc(100vw-1.5rem),calc(100dvh-21rem),34rem)]'
+// Sur desktop (lg), l'échiquier occupe la colonne de gauche, sur toute la hauteur disponible.
+const LESSON_BOARD = 'w-[min(calc(100vw-1.5rem),calc(100dvh-21rem),34rem)] lg:w-[min(calc(100dvh-10.5rem),40rem)]'
+// Échiquier d'une étape : sur desktop, il couvre les lignes de la colonne de droite.
+const BOARD_CELL = 'flex justify-center lg:row-span-3'
 
 // ---------- Sommaire ----------
 // `extra` : bloc propre au cours, sous la progression (structures : « Dans mes parties »).
@@ -194,21 +198,22 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
 
   return (
     <div className="pt-safe fixed inset-0 z-40 flex flex-col bg-surface">
-      <header className="flex items-center gap-2 px-3 py-1">
-        <button onClick={close} aria-label="Fermer la leçon" className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white">
-          ✕
-        </button>
-        <h1 className="min-w-0 flex-1 truncate text-center text-base font-black md:text-lg">{lesson.title}</h1>
-        <span data-testid="lesson-step" className="w-11 shrink-0 text-right text-sm font-semibold text-neutral-400">
-          {stepIdx + 1}/{total}
-        </span>
-      </header>
-      <div className="mx-3 mb-2 h-1.5 overflow-hidden rounded-full bg-surface-3">
-        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${((stepIdx + 1) / total) * 100}%` }} />
+      <div className="mx-auto w-full max-w-xl lg:max-w-5xl">
+        <ExerciseHeader
+          title={lesson.title}
+          compact
+          index={stepIdx + 1}
+          total={total}
+          done={stepIdx + (isSummary ? 1 : 0)}
+          counterProps={{ 'data-testid': 'lesson-step' }}
+          onClose={close}
+          closeLabel="Fermer la leçon"
+        />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto flex max-w-xl flex-col gap-3 px-3 pb-3">
+        {/* Desktop (lg) : échiquier à gauche, texte et retour à droite, comme les exercices. */}
+        <div className={`mx-auto flex max-w-xl flex-col gap-3 px-3 pt-2 pb-3 ${isSummary ? '' : 'lg:grid lg:max-w-5xl lg:grid-cols-[auto_22rem] lg:content-start lg:items-start lg:gap-x-6'}`}>
           {step?.kind === 'diagram' && <DiagramView step={step} />}
           {step?.kind === 'line' && (
             <LineView
@@ -268,7 +273,7 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
 
       {!isSummary && (
         <footer className="pb-safe border-t border-black/30 bg-surface-2">
-          <div className="mx-auto flex max-w-xl items-center gap-2 px-3 py-2">
+          <div className="mx-auto flex max-w-xl items-center gap-2 px-3 py-2 lg:max-w-5xl">
             <button
               onClick={() => goTo(stepIdx - 1)}
               disabled={stepIdx === 0}
@@ -319,7 +324,7 @@ function toMarks(marks: DiagramStep['marks']): Record<string, string> {
 function DiagramView({ step }: { step: DiagramStep }) {
   return (
     <>
-      <div className="flex justify-center">
+      <div className={BOARD_CELL}>
         <div className={`${LESSON_BOARD} touch-pan-y`}>
           <Board
             fen={step.fen}
@@ -363,11 +368,16 @@ function LineView({ step, refusals, startPly = 0, onProgress, onDone }: {
     return last ? { from: last.from, to: last.to } : null
   })
   const [wrongSquare, setWrongSquare] = useState<string | null>(null)
-  const [feedback, setFeedback] = useState<Feedback>(() =>
-    start >= step.moves.length
-      ? { tone: 'ok', text: [step.moves[start - 1]?.text, step.end].filter(Boolean).join(' ') || 'Bien joué.' }
-      : { tone: 'info', text: step.text },
-  )
+  // Ligne finie restaurée : le verdict reprend le dernier coup du joueur (indices pairs) en titre.
+  const [feedback, setFeedback] = useState<Feedback>(() => {
+    if (start < step.moves.length) return { tone: 'info', text: step.text }
+    const mine = step.moves[(start - 1) % 2 === 0 ? start - 1 : start - 2]
+    return {
+      tone: 'ok',
+      headline: mine ? `${figurine(mine.san, player)} ${mine.only ? '!' : ''}`.trim() : undefined,
+      text: [step.moves[start - 1]?.text, step.end].filter(Boolean).join(' ') || 'Bien joué.',
+    }
+  })
 
   function setPly(n: number) {
     setPlyState(n)
@@ -478,9 +488,22 @@ function LineView({ step, refusals, startPly = 0, onProgress, onDone }: {
   const hint: BoardArrow[] =
     !finished && !busy && misses >= 2 ? [{ startSquare: ucis[ply].slice(0, 2), endSquare: ucis[ply].slice(2, 4), color: ARROW_HINT }] : []
 
+  // Zone de retour sous l'échiquier, au ton commun des exercices : consigne avant le premier
+  // coup, puis coup trouvé (réussi), coup refusé (à revoir) ou coup juste mais hors méthode
+  // (neutre). Elle grandit avec le texte de la leçon, jamais coupé ; l'échiquier ne bouge pas.
+  const explained = (
+    <>
+      <span data-testid="line-feedback">{feedback.text}</span>
+      {feedback.reply && <span className="mt-1 block text-neutral-400">{feedback.reply}</span>}
+    </>
+  )
+  const verdict: ExerciseVerdict | null = feedback.headline
+    ? { tone: feedback.tone === 'ok' ? 'success' : feedback.tone === 'bad' ? 'review' : 'neutral', label: feedback.headline, reason: explained }
+    : null
+
   return (
     <>
-      <div className="flex justify-center">
+      <div className={BOARD_CELL}>
         <div className={LESSON_BOARD}>
           <Board
             fen={fen}
@@ -494,15 +517,8 @@ function LineView({ step, refusals, startPly = 0, onProgress, onDone }: {
           />
         </div>
       </div>
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <CoachBubble mood={feedback.tone === 'bad' ? 'worried' : feedback.tone === 'ok' ? 'happy' : 'thinking'} headline={feedback.headline}>
-            <span data-testid="line-feedback">{feedback.text}</span>
-            {feedback.reply && <span className="mt-1 block text-neutral-600">{feedback.reply}</span>}
-          </CoachBubble>
-        </div>
-      </div>
-      <div className="flex items-center justify-between text-sm">
+      <ExerciseFeedback fluid verdict={verdict} prompt={explained} actions={{ secondary: [] }} />
+      <div className="flex min-h-11 items-center justify-between text-sm">
         <span className="font-semibold text-neutral-400">
           {finished ? '✓ Ligne terminée' : `À toi : ${player === 'w' ? 'Blancs' : 'Noirs'} · coup ${Math.floor(ply / 2) + 1}/${Math.ceil(step.moves.length / 2)}`}
         </span>
@@ -510,7 +526,7 @@ function LineView({ step, refusals, startPly = 0, onProgress, onDone }: {
           <button
             onClick={solution}
             disabled={busy}
-            className="cursor-pointer rounded-lg bg-surface-2 px-3 py-1.5 font-semibold text-neutral-300 hover:bg-surface-3 disabled:cursor-default disabled:opacity-40"
+            className="min-h-11 cursor-pointer rounded-lg bg-surface-2 px-3 font-semibold text-neutral-300 hover:bg-surface-3 disabled:cursor-default disabled:opacity-40"
           >
             💡 Solution
           </button>

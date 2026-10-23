@@ -788,10 +788,10 @@ Les zones sûres utilisent les helpers CSS existants et ne sont pas codées avec
 | `EmptyState` | Titre, raison, une action possible | Distinguer absence de données et erreur réseau ; aucune réussite factice |
 | `LoadingState` | Conserver la structure, annoncer le chargement avec `role=status` | Pas de pourcentage inventé ni spinner sans texte |
 | `Cta` existant | Action principale / secondaire, cible, contraste, focus et état occupé | Étendre le composant existant au lieu d’un second système de boutons |
-| En-tête et pied d’exercice | Quitter, progression, consigne, verdict et prochaine action | Livrés au lot 7 (`Exercise.tsx`) autour des lecteurs actuels ; ne pas unifier les moteurs métier |
+| En-tête et pied d’exercice | Quitter, progression, consigne, verdict et prochaine action | Livrés aux lots 7 et 8 (`Exercise.tsx`) autour des lecteurs actuels ; ne pas unifier les moteurs métier |
 
 Les composants déjà livrés et leurs usages sont recensés dans le [socle visuel du lot 1](#lot-1--socle-visuel-réalisé).
-`LoadingState` reste une proposition pour les lots suivants ; l’en-tête et le pied d’exercice sont livrés au [lot 7](#lot-7--exercice-commun-première-tranche-réalisée).
+`LoadingState` reste une proposition pour les lots suivants ; l’en-tête et le pied d’exercice sont livrés au [lot 7](#lot-7--exercice-commun-première-tranche-réalisée) et étendus au [lot 8](#lot-8--exercice-commun-seconde-tranche-réalisée).
 Les styles de focus doivent être visibles sur fond sombre et ne pas dépendre du hover.
 Les listes déroulantes et feuilles doivent restituer le focus à leur déclencheur, offrir Échap sur desktop et ne pas laisser le focus derrière un calque modal.
 Les annonces de verdict ne doivent pas répéter chaque coup de l’échiquier à VoiceOver.
@@ -846,7 +846,7 @@ Un déplacement de menu ne justifie pas de renommer un domaine `learnSessions`, 
 Chaque lot porte un périmètre limité et peut être annulé sans migration de données.
 L’ordre indique les dépendances ; les lots 3 à 6 sont séparables une fois le socle et les contrats validés.
 Les checks listés sont les critères d’acceptation de chaque lot.
-Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2), ceux du lot 3 dans sa [vérification](#vérification-du-lot-3), ceux du lot 5 dans sa [vérification](#vérification-du-lot-5), ceux du lot 6 dans sa [vérification](#vérification-du-lot-6), ceux du lot 7 dans sa [vérification](#vérification-du-lot-7) ; ceux des lots suivants restent à établir.
+Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2), ceux du lot 3 dans sa [vérification](#vérification-du-lot-3), ceux du lot 5 dans sa [vérification](#vérification-du-lot-5), ceux du lot 6 dans sa [vérification](#vérification-du-lot-6), ceux du lot 7 dans sa [vérification](#vérification-du-lot-7), ceux du lot 8 dans sa [vérification](#vérification-du-lot-8) ; ceux des lots suivants restent à établir.
 
 | Lot | Périmètre et propriété | Dépendance | Acceptation E2E |
 |---|---|---|---|
@@ -858,7 +858,7 @@ Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-d
 | 5. Apprendre et Entraînement (fait) | Hub guidé, cinq groupes, anciennes entrées conservées | Lot 2 + parcours intégré | Chaque fonction accessible en quatre taps au plus, état vide explicite, suites learn/all_buttons et suites des features déplacées |
 | 6. Puzzles et vitesse (fait) | Hub Puzzles, Rush et Mats, retours contextuels | Lot 2 | Réussite/échec, chrono intact, retour vers le bon hub, suites puzzles/mats/continuation |
 | 7. Exercice commun, première tranche (fait) | En-tête et feedback sur séance Apprendre puis révision | Lots 1 et 5 | Pas de déplacement du board au verdict, réessai non rescoring, analyse puis restauration, suites learn/revision/touch |
-| 8. Exercice commun, seconde tranche | Présentation PositionGame et cours sans changer leur logique | Lot 7 | Quitter, reprise, changement d’activité, objectifs et moteur, suites attaque/defense/endgame_play/endgame_course/cours_roque/premove |
+| 8. Exercice commun, seconde tranche (fait) | Présentation PositionGame et cours sans changer leur logique | Lot 7 | Quitter, reprise, changement d’activité, objectifs et moteur, suites attaque/defense/endgame_play/endgame_course/cours_roque/premove |
 | 9. Fin de partie et Mon bilan | Résultat Jouer, accès analyse, libellé Insights | Lots 2 et 7 | Partie enregistrée avant action, replay, analyse et retour, suites all_buttons/insights/coach |
 | 10. Validation sur appareil | Aucune feature nouvelle, correction des écarts observés | Lots 3 à 9 | iPhone installé, Safari, clavier, VoiceOver, zones sûres, 660/852/desktop, hors ligne et upgrade |
 
@@ -1454,7 +1454,7 @@ Rien de ce qui change au verdict ne le déplace ni ne le redimensionne : la cons
 Une réussite met Suivant en principal ; un échec met Réessayer en principal et Suivant en secondaire, comme le prévoit la maquette.
 Analyser reste secondaire, et « Pourquoi ? » apparaît sur une faute qui a un coup à réfuter.
 « À revoir » est en ambre plutôt qu’en rouge, avec un mot et un symbole : le vert n’est jamais le seul indice.
-L’explication ne dévoile pas la solution d’un échec tant que Réessayer est proposé : « Pas le coup attendu. Réessaie, ou regarde la suite sous l’échiquier. », le motif d’une finale (« L’avantage est parti : la position est nulle. »), le nombre de corrections d’une ouverture, ou, pour une faute, « Ce coup perd encore trop. Réessaie, ou regarde pourquoi le coup de ta partie était une faute. ».
+L’explication ne dévoile pas la solution d’un échec tant que Réessayer est proposé : « Pas le coup attendu. Réessaie, ou regarde la suite sous l’échiquier. » (reformulé au lot 8), le motif d’une finale (« L’avantage est parti : la position est nulle. »), le nombre de corrections d’une ouverture, ou, pour une faute, « Ce coup perd encore trop. Réessaie, ou regarde pourquoi le coup de ta partie était une faute. ».
 Dans la révision, le thème d’un puzzle passe de l’ancien bandeau à l’explication, toujours après le verdict seulement, et la ligne d’état (« Raté il y a 10 jours · étape 1/4 ») rejoint la consigne.
 
 `MistakeExercise` gagne un mode `bare` (seul l’échiquier) : consigne (`MistakeConsigne`), vérification (`onChecking`) et « Pourquoi ? » (`refutedUci`, déplacé dans `lib/refutation.ts` avec `mistakeVerdictReason`) passent au propriétaire.
@@ -1513,3 +1513,105 @@ Points ouverts utiles au lot 8 :
 - la séance du jour (`Seance.tsx`) et les séries du parcours (`LearningPath.tsx`) gardent l’ancienne barre « ✓ Réussi ! / ✗ Raté » : même gabarit à remplacer par `ExerciseFeedback` ;
 - `PositionGame` et les cours ont des fins à plusieurs issues (tenue, effondrement, nulle) : `ExerciseVerdict` n’a que `ok`, une troisième tonalité sera à ajouter plutôt qu’à contourner ;
 - sur desktop, la colonne unique est conservée ; la disposition à deux colonnes du système visuel reste à décider avec PositionGame, dont le panneau est plus riche.
+
+## Lot 8 : exercice commun, seconde tranche réalisée
+
+Les composants du lot 7 habillent désormais tous les écrans d’exercice restants : `PositionGame` et ses pages (attaque, défense, conversion, finales jouées, analyse puis jouer, attaques manquées, défenses ratées, moment critique, structures), `OpeningDrill` (révision, séance du jour, parcours, entraîneur d’ouvertures, répertoire), les étapes de puzzle de la séance du jour et des séries du parcours, et les lignes jouables des cours.
+Aucune logique ne change : objectifs, jugement (`judge`, `verdictText`), moteur, persistance de la partie (`chess-local-position-game-v1`), `recordReplaced` et écritures en base sont ceux d’avant.
+Le sommaire des cours garde le `PageHeader` du lot 1 ; seules les leçons passent à l’en-tête d’exercice.
+
+### Troisième ton : l’issue neutre
+
+`ExerciseVerdict` porte un `tone` au lieu d’un booléen : `success` (« ✓ Réussi », vert), `review` (« ✗ À revoir », ambre) et `neutral` (« ◐ », bleu ciel).
+Le ton neutre décrit une issue qui n’est pas une faute : une nulle, un abandon, une défense tenue au moins la moitié des coups demandés avant de céder, une variante d’ouverture non comptée, ou un coup de cours juste mais hors de la méthode enseignée.
+Un mat subi ou une défense qui cède tôt restent « À revoir ».
+`label` remplace le mot par le titre de l’écran (« Objectif atteint », « Défense réussie », « Variante maîtrisée ») ; le symbole et la couleur suivent toujours le ton, jamais le seul vert.
+Dans `PositionGame`, le ton est dérivé à l’affichage : `data-verdict` garde le jugement de l’objectif (`success`, `fail`, `none`) et `data-tone` le ton.
+Une issue neutre ou réussie met l’action suivante en principal (Autre finale, Suivante, Suivant), un échec franc met Rejouer en principal.
+
+### Partie contre Stockfish
+
+L’en-tête commun remplace la flèche par la croix (nom accessible « Retour » conservé), avec la puce de niveau ou le « ? » du cours à droite.
+La bande de 28 px au-dessus de l’échiquier, réservée au lot 7 pour la barre d’éval, porte l’adversaire (« Stockfish 18 », niveau, « réfléchit… ») et les compteurs (avec aide, coups à tenir, 50 coups).
+La zone de décision porte, avant la fin, l’objectif, sa précision ou le dernier avertissement (deux lignes) et la rangée d’actions de jeu (Abandonner, Nulle, Indice ou Relancer, Annuler, Recommencer) ; après la fin, le verdict, son explication et les actions de fin (Rejouer, Autre finale, Annuler, Analyser, Plan).
+« Avantage décisif tenu » s’y affiche comme un verdict réussi, avec Continuer, Recommencer et Conclure.
+Les coups et la légende « Compte les attaquants » passent sous la zone (`below`), sous le pli à 660 px : l’échiquier et la décision restent prioritaires (principe 8).
+La leçon, les conseils ou le plan s’ouvrent dans une feuille (`InfoSheet`) au lieu de se déplier au-dessus de l’échiquier, qui ne bouge donc plus quand on les lit.
+Les pages de partie deviennent immersives (calque z-40, comme la séance du jour qui les enveloppait déjà) : la navigation n’est plus visible pendant une partie, et la croix ramène à la liste d’origine.
+Les cinq actions de jeu tiennent sous un échiquier de 315 px en 11 px, comme la barre de Jouer, chacune gardant son libellé complet.
+
+### Cours, séance du jour, parcours et drill
+
+Une leçon prend l’en-tête commun (titre, « n/N », barre des étapes) ; la ligne jouable affiche sous l’échiquier une zone `fluid` : consigne, puis coup trouvé (réussi), refusé (à revoir) ou juste hors méthode (neutre), avec la réponse adverse.
+Cette zone grandit avec le texte de la leçon, jamais coupé : l’échiquier, dimensionné sur le viewport et placé au-dessus, ne bouge pas.
+Les diagrammes gardent la bulle du coach et restent défilables depuis leur centre.
+La séance du jour et les séries du parcours remplacent la barre « ✓ Réussi ! / ✗ Raté » par la zone commune : explication (motif du puzzle après le verdict, raison d’une faute), note de classement ou d’échéance, « Pourquoi ? » sur une faute de la séance.
+Les séries du parcours n’ont pas de Réessayer (le premier essai compte) ; leurs points de résultat et le niveau du test de placement occupent la bande au-dessus de l’échiquier.
+`OpeningDrill` prend l’en-tête (progression de la série passée en `progress`), la bande (nom de la variante, relais Stockfish), la zone (message, ligne d’état, Indice) et trois lignes d’explication, avec une zone de 9,75rem.
+
+### Décision : deux colonnes sur desktop
+
+Le système visuel prévoit que « sur desktop, l’échiquier et les actions forment deux colonnes » : c’est retenu pour tous les écrans d’exercice des lots 7 et 8.
+À partir de `lg` (1024 px), la scène devient une grille : à gauche la bande et l’échiquier, le plus grand carré que permet la hauteur (720 px au plus) ; à droite un panneau de 22rem avec la zone de décision, alignée sur le haut de l’échiquier, puis les options (`below`).
+L’en-tête reste une barre au-dessus des deux colonnes et la colonne de l’écran s’élargit à leur somme (70rem).
+Les leçons suivent la même disposition, texte et retour à droite de l’échiquier.
+Entre 768 et 1024 px, la colonne unique reste : en portrait, la hauteur sert mieux l’échiquier que la largeur.
+Le texte d’échec d’un puzzle d’Apprendre ne dit plus « sous l’échiquier », faux sur desktop : « Réessaie, ou regarde la suite de la position. ».
+
+### Vérification du lot 8
+
+`npm run check` : code 0.
+La suite `exercice` (716 checks, aussi verte en développement sous StrictMode) ajoute aux scénarios du lot 7, aux trois formats :
+
+- une partie contre Stockfish (« Mat roi + dame ») : objectif et actions de jeu dans la zone, adversaire dans la bande, libellés non coupés, échiquier immobile au coup, pendant la réflexion, après la réponse, après un rechargement (partie reprise depuis `chess-local-position-game-v1`), au verdict et après Rejouer ;
+- l’abandon : ton neutre « ◐ Objectif manqué », explication, Rejouer en principal, jugement de l’objectif inchangé (`data-verdict=fail`), une seule ligne `endgame-play`, puis Rejouer sans aucune écriture ;
+- Quitter vers `#/finales`, et, à 393 × 852, une attaque entamée puis remplacée par une finale : notée abandonnée une fois, jamais sur un simple coup d’œil ;
+- une ligne de cours : en-tête sous la zone sûre, « 2/3 » dans le titre, coup hors méthode au ton neutre, Solution au ton réussi avec la réponse adverse, explication jamais coupée, échiquier immobile, retour à droite sur desktop ;
+- sur desktop, pour tous les écrans des lots 7 et 8 : zone à droite de l’échiquier et alignée sur son haut, échiquier entier visible et d’au moins 600 px.
+
+| Suite production | Checks réussis |
+|---|---:|
+| `exercice` | 716 |
+| `attaque` | 115 |
+| `defense` | 152 |
+| `convertir` | 100 |
+| `endgame_play` | 86 |
+| `endgame_course` | 111 |
+| `cours_roque` | 112 |
+| `cours_defense` | 125 |
+| `structures` | 204 |
+| `premove` | 78 |
+| `moments` | 114 |
+| `diagnostic_attaque` | 143 |
+| `seance` | 193 |
+| `parcours` | 393 |
+| `revision` | 318 |
+| `learn` | 84 |
+| `openings` | 75 |
+| `repertoire` | 193 |
+| `ui_audit` | 1 357 |
+| `ux_audit` | 897 |
+| `ux_foundation` | 527 |
+| `viewport` | 857 |
+| `edge_navigation` | 193 |
+| `all_buttons` | 103 |
+| `apprendre` | 311 |
+| `touch` | 63 |
+
+Toutes ont été lancées en `--jobs 1` ; `npm run test:e2e:dev -- --suite exercice --suite attaque --suite endgame_course --jobs 1` : code 0.
+La suite `upgrade` n’est pas lancée : aucune donnée, clé ni version de schéma ne change.
+Les suites suivent la nouvelle présentation sans retrait d’assertion : barre d’actions et échiquier relus dans la zone (`attaque`, `defense`, `convertir`), feuille des conseils fermée par « Retour à la partie », compteur « n/N » de l’en-tête (`seance`, `course_helpers`), « ✗ À revoir » au lieu de « ✗ Raté » (`seance`, `parcours`), zone de retour au lieu de la bulle sur les lignes des cours.
+
+Preuves par mutation, chacune annulée ensuite :
+
+- abandon classé « À revoir » au lieu de neutre : `exercice` à code 1, trois échecs (verdict neutre absent, aux trois formats) ;
+- bande de l’adversaire retirée en fin de partie : `exercice` à code 1, quatre échecs (échiquier déplacé ou agrandi au verdict aux trois formats, zone raccourcie sur desktop).
+
+Corrigés en cours de lot : le retour d’une ligne de cours n’est plus une région `status` (VoiceOver n’annonce pas chaque coup) ; sur desktop, la zone débordait sur les options quand sa marge haute prenait la hauteur de la bande ; la cible du bouton Leçon / Conseils passait sous 44 px ; l’espace insécable de « Pourquoi ? » perdu à la réécriture d’`Exercise.tsx`.
+
+Points ouverts :
+
+- à 660 px, les coups joués et la légende « Compte les attaquants » d’une partie passent sous le pli, comme la suite d’un cours long : un défilement les montre ;
+- les pages de partie couvrent désormais la navigation : à confirmer sur appareil au lot 10 ;
+- la bande de coups du drill défile vers le dernier coup et coupe le premier visible à gauche, comme avant ;
+- 768 à 1024 px gardent une colonne, non mesurés par les formats de référence.

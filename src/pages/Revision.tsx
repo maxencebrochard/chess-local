@@ -305,7 +305,6 @@ export default function Revision() {
   // ---------- Item courant ----------
   const item = items[idx]
   const result = results.find((r) => r.idx === idx) ?? null
-  const progress = `${idx + 1}/${items.length}`
   const key = `${idx}-${retryTick}`
 
   if (item.kind === 'variant') {
@@ -330,7 +329,8 @@ export default function Revision() {
         getEngine={getEngine}
         session={{ ok: 0, total: 0 }}
         snapshot={drillSnap?.key === key ? drillSnap.snapshot : null}
-        title={`🔁 Révision ${progress}`}
+        title="🔁 Révision"
+        progress={{ index: idx + 1, total: items.length, done: results.length }}
         subtitle={statusLabel(item.item)}
         onResult={finish}
         onRetry={retry}
@@ -360,7 +360,7 @@ export default function Revision() {
   )
   const refuted = item.kind === 'puzzle' ? null : refutedUci(item.mistake)
   const verdict: ExerciseVerdict | null = phase === 'play' ? null : {
-    ok: phase === 'success',
+    tone: phase === 'success' ? 'success' : 'review',
     // Séance restaurée d'un stockage antérieur à l'explication : phrase générique.
     reason: reason ?? (phase === 'success' ? 'Exercice réussi.' : 'Rejoue la position pour la fixer.'),
     note: result ? <span data-review-next>{result.next}</span> : undefined,

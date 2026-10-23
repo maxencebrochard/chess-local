@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chess, type Move } from 'chess.js'
 import { Board, type BoardArrow } from './Board'
-import { Cta } from './Cta'
+import { ExerciseFeedback, ExerciseHeader, ExercisePromptActions, ExerciseScreen, ExerciseStage, type ExerciseVerdict } from './Exercise'
 import { sounds } from '../lib/sounds'
 import type { Engine, EngineLine } from '../lib/engine'
 import { isBookPosition, openingForMoves } from '../lib/openings'
@@ -54,11 +54,16 @@ interface Props {
   // d'état sous l'en-tête, libellé du bouton suivant, ligne sous le verdict (« Revient dans 3 jours »).
   title?: string
   subtitle?: string
+  // Série (révision, séance du jour, parcours) : « n/N » et barre dans l'en-tête.
+  progress?: { index: number; total: number; done: number; counterProps?: Record<string, string> }
   nextLabel?: string
   resultNote?: string | null
 }
 
 const SUITE_COUNT = 5
+// Zone de décision du drill : trois lignes de message (théorie attendue, coups théoriques) plus
+// la ligne d'état et la rangée d'actions.
+const DRILL_ZONE_REM = 9.75
 const ENGINE_DEPTH = 14
 const REPLY_DELAY_MS = 450
 const BLUE = '#69c3f2'
@@ -402,147 +407,119 @@ export function OpeningDrill(props: Props) {
     ? `Trait aux ${sideFr} : trouve un coup de la théorie.`
     : myTurn ? `Tu joues les ${sideFr} : à toi.` : 'L\'adversaire répond…'
   const toneClass: Record<Tone, string> = {
-    ok: 'bg-accent/15 text-accent-light',
-    bad: 'bg-red-900/40 text-red-200',
-    info: 'bg-sky-900/40 text-sky-200',
-    engine: 'bg-surface-2 text-neutral-300',
+    ok: 'text-accent-light',
+    bad: 'text-red-200',
+    info: 'text-sky-200',
+    engine: 'text-neutral-300',
   }
   const last = pending ?? moves[moves.length - 1]
   const lastMove = last ? { from: last.slice(0, 2), to: last.slice(2, 4) } : null
   const interactive = !result && !pending && !thinking && myTurn
   const nextLabel = props.nextLabel ?? (mode === 'next' ? 'Position suivante' : mode === 'suite' ? 'Suite suivante' : 'Variante suivante')
+  const stats = `${engineMisses > 0 ? `${engineMisses} écart${engineMisses > 1 ? 's' : ''} avec Stockfish · ` : ''}${
+    mode !== 'next' && plyTarget === null && moves.length >= variant!.moves.length ? 'Fin de la théorie connue' : `${moves.length} demi-coups`}`
+  // Explication du verdict : le dernier message (coup trouvé, théorie attendue, Stockfish muet),
+  // sinon le bilan de la ligne. La note de droite porte l'échéance d'une révision ou le compte.
+  const reason = result && (msg?.text ?? (result.success ? 'Ligne déroulée sans faute.' : 'Rejoue la ligne pour la fixer.'))
+  const verdict: ExerciseVerdict | null = result
+    ? {
+        tone: result.empty ? 'neutral' : result.success ? 'success' : 'review',
+        label: result.empty ? 'Non comptée' : result.success
+          ? mode === 'full' ? 'Variante maîtrisée' : mode === 'suite' ? 'Suite réussie' : 'Trouvé du premier coup'
+          : `À revoir${faults > 0 ? ` · ${faults} faute${faults > 1 ? 's' : ''}` : ''}`,
+        reason,
+        note: props.resultNote && !result.empty ? <span data-result-note>{props.resultNote}</span> : <span>{stats}</span>,
+      }
+    : null
 
   return (
-    <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
-      <div
-        data-drill
-        data-mode={mode}
-        data-uci={moves.join(' ')}
-        data-hint={hint ?? undefined}
-        data-variant-uci={variant?.line.uci}
-        className="mx-auto flex min-h-full max-w-2xl flex-col"
-      >
-        <header className="flex items-center gap-2 px-3 py-1">
-          <button
-            onClick={props.onClose}
-            aria-label="Fermer le drill"
-            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white"
-          >
-            ✕
-          </button>
-          <h1 className="min-w-0 flex-1 truncate text-center text-lg font-black">
-            {props.title ?? MODE_LABEL[mode]}
-            <span className="ml-2 text-sm font-semibold text-neutral-400">{fam.label}</span>
-          </h1>
-          <span className="w-9 text-right text-sm font-bold text-accent" title="Réussites de la séance">
+    <ExerciseScreen
+      data-drill
+      data-mode={mode}
+      data-uci={moves.join(' ')}
+      data-hint={hint ?? undefined}
+      data-variant-uci={variant?.line.uci}
+    >
+      <ExerciseHeader
+        title={<>{props.title ?? MODE_LABEL[mode]}<span className="ml-2 text-sm font-semibold text-neutral-400">{fam.label}</span></>}
+        index={props.progress?.index}
+        total={props.progress?.total}
+        done={props.progress?.done}
+        counterProps={props.progress?.counterProps}
+        onClose={props.onClose}
+        closeLabel="Fermer le drill"
+        action={
+          <span className="text-sm font-bold text-accent" title="Réussites de la séance">
             {props.title === undefined && props.session.total > 0 ? `${props.session.ok}/${props.session.total}` : ''}
           </span>
-        </header>
-        {props.subtitle && <p className="px-3 pb-1 text-center text-xs font-semibold text-neutral-400">{props.subtitle}</p>}
-
-        <div className="flex items-center gap-2 px-3 pb-1">
-          <span data-variant-name className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-200">
-            {title}
-          </span>
-          {extended && inEngine && (
-            <span className="shrink-0 rounded-full bg-surface-3 px-2 py-0.5 text-xs font-bold text-neutral-300">
-              ⚙ Stockfish{thinking ? '…' : ''}
+        }
+      />
+      <ExerciseStage
+        zone={DRILL_ZONE_REM}
+        above={
+          <div className="flex h-7 items-center gap-2">
+            <span data-variant-name className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-200">
+              {title}
             </span>
-          )}
-        </div>
-
-        {/* Hauteur réservée (2 lignes) : le board ne saute pas quand un message apparaît. */}
-        <p className={`mx-3 mb-2 flex h-[3.25rem] items-center overflow-hidden rounded px-3 py-1 text-sm leading-snug ${msg ? toneClass[msg.tone] : 'text-neutral-400'}`}>
-          <span className="line-clamp-2">{msg?.text ?? prompt}</span>
-        </p>
-
-        <div className="flex justify-center">
-          <div className="boardbox md:w-[min(56vh,520px)]">
-            <Board
-              fen={displayFen}
-              orientation={color}
-              interactive={interactive}
-              movableColor={color}
-              onMove={handleMove}
-              lastMove={lastMove}
-              arrows={arrows}
-            />
-          </div>
-        </div>
-
-        <div ref={stripRef} data-moves className="flex min-h-9 items-center gap-1 overflow-x-auto px-3 py-1.5 whitespace-nowrap [scrollbar-width:none]">
-          {plies.map((p, i) => (
-            <span key={i} className="flex shrink-0 items-center gap-1">
-              {i % 2 === 0 && <span className="text-sm text-neutral-400">{i / 2 + 1}.</span>}
-              <span
-                data-engine={p.src === 'engine' ? '' : undefined}
-                className={`rounded px-1 text-[15px] font-bold ${p.src === 'given' ? 'text-neutral-400' : p.src === 'engine' ? 'text-neutral-300' : 'text-neutral-100'}`}
-              >
-                {figurine(sans[i] ?? p.uci, i % 2 === 0 ? 'w' : 'b')}
-                {p.src === 'engine' && <span className="ml-0.5 text-xs text-neutral-400" title="Coup de Stockfish">⚙</span>}
+            {extended && inEngine && (
+              <span className="shrink-0 rounded-full bg-surface-3 px-2 py-0.5 text-xs font-bold text-neutral-300">
+                ⚙ Stockfish{thinking ? '…' : ''}
               </span>
-            </span>
-          ))}
-        </div>
-
-        {result ? (
-          <div data-result={result.empty ? 'empty' : result.success ? 'ok' : 'review'} className="flex flex-col gap-2 px-3 py-2">
-            <div className="flex items-baseline gap-2">
-              <span className={`text-lg leading-tight font-black ${result.empty ? 'text-neutral-300' : result.success ? 'text-accent' : 'text-red-400'}`}>
-                {result.empty ? 'Non comptée' : result.success
-                  ? mode === 'full' ? '✓ Variante maîtrisée' : mode === 'suite' ? '✓ Suite réussie' : '✓ Trouvé du premier coup'
-                  : `À revoir${faults > 0 ? ` · ${faults} faute${faults > 1 ? 's' : ''}` : ''}`}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-right text-xs text-neutral-400">
-                {engineMisses > 0 && `${engineMisses} écart${engineMisses > 1 ? 's' : ''} avec Stockfish · `}
-                {mode !== 'next' && plyTarget === null && moves.length >= variant!.moves.length ? 'Fin de la théorie connue' : `${moves.length} demi-coups`}
-              </span>
-            </div>
-            {props.resultNote && !result.empty && (
-              <p data-result-note className="text-sm font-semibold text-neutral-300">
-                {props.resultNote}
-              </p>
-            )}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={props.onRetry}
-                className="flex cursor-pointer flex-col items-center rounded px-2 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
-              >
-                <span className="text-lg leading-none">↺</span>
-                Réessayer
-              </button>
-              <button
-                onClick={() => props.onAnalyse(moves, { plies, faults, engineMisses, result, msg, arrows })}
-                className="flex cursor-pointer flex-col items-center rounded px-2 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
-              >
-                <span className="text-lg leading-none">♞</span>
-                Analyser
-              </button>
-              <Cta className="ml-auto flex-1 px-4 py-2 text-base" onClick={props.onNext}>
-                {nextLabel}
-              </Cta>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 px-3 py-2">
-            <button
-              onClick={showHint}
-              disabled={!!hint || !!pending || thinking || !myTurn}
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-sm font-bold text-neutral-200 hover:bg-surface-3 disabled:cursor-default disabled:opacity-40"
-            >
-              💡 Indice
-            </button>
-            {mode === 'next' && (
-              <button
-                onClick={props.onNext}
-                className="ml-auto cursor-pointer rounded-lg bg-surface-2 px-3 py-2 text-sm font-bold text-neutral-200 hover:bg-surface-3"
-              >
-                {props.nextLabel ?? 'Position suivante'}
-              </button>
             )}
           </div>
-        )}
-      </div>
-    </div>
+        }
+        feedback={
+          <ExerciseFeedback
+            verdict={verdict}
+            reasonLines={3}
+            zoneProps={{ 'data-result': result ? (result.empty ? 'empty' : result.success ? 'ok' : 'review') : undefined }}
+            prompt={
+              <>
+                <span className={`line-clamp-2 ${msg ? toneClass[msg.tone] : ''}`}>{msg?.text ?? prompt}</span>
+                {props.subtitle && <span className="mt-1 block truncate text-xs font-semibold text-neutral-400">{props.subtitle}</span>}
+              </>
+            }
+            promptActions={
+              <ExercisePromptActions
+                secondary={[
+                  { label: 'Indice', icon: '💡', onClick: showHint, disabled: !!hint || !!pending || thinking || !myTurn },
+                  ...(mode === 'next' ? [{ label: props.nextLabel ?? 'Position suivante', icon: '→', onClick: props.onNext }] : []),
+                ]}
+              />
+            }
+            onNext={props.onNext}
+            nextLabel={nextLabel}
+            onRetry={props.onRetry}
+            onAnalyse={() => result && props.onAnalyse(moves, { plies, faults, engineMisses, result, msg, arrows })}
+          />
+        }
+        below={
+          <div ref={stripRef} data-moves className="flex min-h-9 items-center gap-1 overflow-x-auto px-1.5 py-1.5 whitespace-nowrap [scrollbar-width:none]">
+            {plies.map((p, i) => (
+              <span key={i} className="flex shrink-0 items-center gap-1">
+                {i % 2 === 0 && <span className="text-sm text-neutral-400">{i / 2 + 1}.</span>}
+                <span
+                  data-engine={p.src === 'engine' ? '' : undefined}
+                  className={`rounded px-1 text-[15px] font-bold ${p.src === 'given' ? 'text-neutral-400' : p.src === 'engine' ? 'text-neutral-300' : 'text-neutral-100'}`}
+                >
+                  {figurine(sans[i] ?? p.uci, i % 2 === 0 ? 'w' : 'b')}
+                  {p.src === 'engine' && <span className="ml-0.5 text-xs text-neutral-400" title="Coup de Stockfish">⚙</span>}
+                </span>
+              </span>
+            ))}
+          </div>
+        }
+      >
+        <Board
+          fen={displayFen}
+          orientation={color}
+          interactive={interactive}
+          movableColor={color}
+          onMove={handleMove}
+          lastMove={lastMove}
+          arrows={arrows}
+        />
+      </ExerciseStage>
+    </ExerciseScreen>
   )
 }

@@ -504,7 +504,7 @@ def no_overflow(page, tag):
 def bar_fits(page, tag):
     w = page.evaluate(f"""() => {{
       const g = document.querySelector("{GAME}")
-      const bar = g && g.lastElementChild
+      const bar = g && g.querySelector("[data-exercise-feedback] [data-exercise-actions]")
       return bar ? bar.scrollWidth - bar.clientWidth : null
     }}""")
     check(f"[mise en page] {tag} : barre d'actions sans débordement", w is not None and w <= 0, f"({w})")
@@ -599,9 +599,10 @@ def part_list_and_game(p, browser):
         no_overflow(page, "partie 393x852")
         bar_fits(page, "partie 393x852")
         page.get_by_role("button", name="Conseils").tap()
-        check("[partie] « Conseils » déplie le plan", page.locator(GAME, has_text=first["plan"][:40]).count() == 1)
+        check("[partie] « Conseils » ouvre le plan", page.locator(GAME, has_text=first["plan"][:40]).count() == 1)
         shot(page, "defense_conseils_852")
-        page.get_by_role("button", name="Conseils").tap()
+        page.get_by_role("button", name="Retour à la partie").tap()
+        check("[partie] la feuille des conseils se ferme", page.locator("[data-testid=info-sheet]").count() == 0)
 
         cpu = page.context.new_cdp_session(page)
         try:
