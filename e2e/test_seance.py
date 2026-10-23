@@ -637,8 +637,8 @@ def part_main(p, browser):
     status = page.locator("[data-seance-status]").inner_text() if page.locator("[data-seance-status]").count() else ""
     check("[reprendre] tuile « Reprendre · étape 1/N »", re.fullmatch(r"Reprendre · étape 1/\d+", status) is not None, f"({status!r})")
     check("[reprendre] séance gardée en sessionStorage", stored(page) is not None)
-    page.goto(f"{BASE}/#/stats")
-    if ck.appears("[reset] bouton Réinitialiser (Stats)", page, "[data-testid=reset-btn]", timeout=10000, state="attached"):
+    page.goto(f"{BASE}/#/donnees")
+    if ck.appears("[reset] bouton Réinitialiser (Mes données)", page, "[data-testid=reset-btn]", timeout=10000, state="attached"):
         page.locator("[data-testid=reset-btn]").scroll_into_view_if_needed()
         page.evaluate("() => sessionStorage.setItem('autre-cle', 'x')")
         page.click("[data-testid=reset-btn]")

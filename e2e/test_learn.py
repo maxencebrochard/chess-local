@@ -296,8 +296,8 @@ def suite(p):
     y_after = page.evaluate("() => document.querySelector(\"[id^='chessboard-']\")?.getBoundingClientRect().top")
     check("[anti-saut] board stable sur /analyse", y_before is not None and y_before == y_after, f"({y_before} -> {y_after})")
 
-    # --- Sauvegarde (Stats) ---
-    page.goto(f"{BASE}/#/stats")
+    # --- Sauvegarde (Mes données) ---
+    page.goto(f"{BASE}/#/donnees")
     page.wait_for_timeout(800)
     check("[backup] boutons présents", page.locator("button", has_text="Exporter tout").is_visible()
           and page.locator("button", has_text="Restaurer").is_visible())

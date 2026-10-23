@@ -96,6 +96,7 @@ ROUTES = [
     ("analyse", "main :text('Options')"), ("analyse/jouer", "main :text('Aucune position à jouer')"),
     ("finales", "main :text(\"Finales jusqu'au bout\")"), ("attaque", "main :text(\"Entraîneur d'attaque\")"),
     ("archive", "main :text('Archive')"), ("stats", "main :text('Statistiques')"), ("insights", "main :text('Insights')"),
+    ("reglages", "main :text('Profondeur du bilan de partie')"), ("donnees", "main :text('Dernier export')"),
     ("import", "main :text('Importer depuis')"), ("repertoire", "main :text('Mon répertoire')"),
     ("apprendre/bases", "main :text('Les bases')"), ("apprendre/parcours", "main :text(\"Parcours d'apprentissage\")"),
     ("apprendre/structures", "main :text('Structures de pions')"), ("structures", "main :text('Mes structures de pions')"),

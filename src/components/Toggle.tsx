@@ -1,4 +1,4 @@
-// Interrupteur des réglages (Stats, écran de configuration de Jouer), style chess.com.
+// Interrupteur des réglages (page Réglages, écran de configuration de Jouer), style chess.com.
 // Les classes `h-6 w-11` sont repérées par les suites E2E : ne pas les changer.
 // Toute la ligne (libellé compris, 44 px de haut) est la cible tactile : le pseudo-élément du
 // bouton la recouvre, comme une ligne de réglage iOS.

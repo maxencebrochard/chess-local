@@ -17,7 +17,6 @@ export default function More() {
               <ActivityCard
                 key={d.label}
                 to={d.to}
-                state={d.section ? { section: d.section } : undefined}
                 data-plus={d.icon}
                 icon={<NavIcon name={d.icon} className="h-6 w-6 text-accent" />}
                 title={d.label}

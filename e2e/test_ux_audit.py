@@ -223,6 +223,8 @@ def suite(p):
             ("/stats", "stats", "Statistiques"), ("/insights", "insights-vide", "Insights"),
             ("/import", "import", "Importer depuis"),
             ("/plus", "plus", "Outils et progression"),
+            ("/reglages", "reglages", "Profondeur du bilan de partie"),
+            ("/donnees", "donnees", "Dernier export"),
             ("/repertoire", "repertoire", "Mon répertoire"),
             ("/visualisation", "visualisation", "Calcul et visualisation"),
             ("/moment-critique", "moment-vide", "Aucun moment critique"),
@@ -344,7 +346,7 @@ def suite(p):
         page.locator("textarea").fill("position invalide")
         page.get_by_role("button", name="Charger", exact=True).click()
         capture(page, fmt, "analyse-import-erreur", "Format non reconnu")
-        page.goto(f"{BASE}/#/stats")
+        page.goto(f"{BASE}/#/donnees")
         page.get_by_test_id("reset-btn").click()
         capture(page, fmt, "donnees-confirmation", "Réinitialiser l'app ?")
         page.get_by_role("button", name="Annuler", exact=True).click()

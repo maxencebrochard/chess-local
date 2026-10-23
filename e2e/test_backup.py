@@ -225,13 +225,22 @@ def counts(snap):
     return {t: len(snap.get(t, [])) for t in TABLES}
 
 
-# ---------- page Stats ----------
+# ---------- page Mes données ----------
+
+DATA_READY = "main h1:has-text('Mes données')"
 
 
-def open_stats(page):
-    page.goto(f"{BASE}/#/stats")
-    ok = ck.appears("[stats] page chargée", page, "main :text('Statistiques')", timeout=15000)
-    return ok and check(f"[stats] base prête ({STORES} stores)", wait_schema(page))
+def open_data(page):
+    page.goto(f"{BASE}/#/donnees")
+    ok = ck.appears("[données] page chargée", page, DATA_READY, timeout=15000)
+    return ok and check(f"[données] base prête ({STORES} stores)", wait_schema(page))
+
+
+def spa(page, path, marker):
+    """Navigation interne, sans rechargement (comme un lien) : l'interface doit refléter la base
+    et les réglages à jour (impossible de recharger à la main en PWA standalone)."""
+    page.evaluate("(h) => { location.hash = h }", f"#{path}")
+    return ck.appears(f"[spa] {path} affichée", page, marker, timeout=15000)
 
 
 FRESH_MSG = f"{MSG}:not([data-stale])"
@@ -299,13 +308,13 @@ def seeded_context(p, browser, extra_scripts=(), settings_by_app=False, **option
     for s in extra_scripts:
         ctx.add_init_script(s)
     page = ctx.new_page()
-    if not open_stats(page):
+    if not open_data(page):
         return ctx, page
     seed_db(page, SEED)
     if settings_by_app:
         page.evaluate(f"(blob) => localStorage.setItem('{SETTINGS_KEY}', blob)", json.dumps({"state": SEED_SETTINGS, "version": 0}))
     page.reload()
-    ck.appears("[seed] Stats rechargée", page, "main :text('Statistiques')", timeout=15000)
+    ck.appears("[seed] Mes données rechargée", page, DATA_READY, timeout=15000)
     wait_schema(page)
     return ctx, page
 
@@ -317,7 +326,9 @@ def part_roundtrip(p, browser, tmp):
     ctx, page = seeded_context(p, browser)
     before = snapshot(page)
     check("[seed] base peuplée", counts(before) == {t: len(SEED[t]) for t in TABLES}, f"({counts(before)})")
-    check("[seed] Stats affiche 2 gagnées", page.locator("main :text('2 gagnées')").count() == 1)
+    if spa(page, "/stats", "main h1:text-is('Statistiques')"):
+        ck.appears("[seed] Stats affiche 2 gagnées", page, "main :text('2 gagnées')")
+    spa(page, "/donnees", DATA_READY)
 
     arm(page)
     with page.expect_download() as dl:
@@ -330,7 +341,7 @@ def part_roundtrip(p, browser, tmp):
     check("[export] message de succès avec le nombre de parties", kind == "success" and "Sauvegarde exportée" in text and "4 parties" in text, f"({text!r})")
     le = json.loads(last_export(page) or "null")
     check("[export] date du dernier export mémorisée (clé additive)", isinstance(le, dict) and le.get("games") == 4 and isinstance(le.get("at"), (int, float)), f"({le})")
-    check("[export] Stats affiche la date du dernier export", "jamais" not in page.locator("[data-testid=last-export]").inner_text().lower())
+    check("[export] Mes données affiche la date du dernier export", "jamais" not in page.locator("[data-testid=last-export]").inner_text().lower())
     with open(path, encoding="utf-8") as f:
         exported = json.load(f)
     check("[export] format prod : _app, _version 3, 7 tables, settings en chaîne",
@@ -343,19 +354,20 @@ def part_roundtrip(p, browser, tmp):
     stores = sorted(k for k in exported if not k.startswith("_") and k != "settings")
     check("[export] garde-fou : les tables exportées = les object stores réels", stores == sorted(before.keys()), f"({stores} vs {sorted(before.keys())})")
     check("[export] contenu = base", {t: exported[t] for t in TABLES} == before)
-    page.screenshot(path=f"{SHOTS}/backup_stats_after_export.png", full_page=True)
+    page.screenshot(path=f"{SHOTS}/backup_donnees_after_export.png", full_page=True)
     ctx.close()
 
     # Profil VIERGE : réglages par défaut (thème vert), base vide.
     ctx = mobile_context(p, browser, ck, standalone=True)
     ctx.add_init_script(NO_SHARE)
     page = ctx.new_page()
-    if not open_stats(page):
+    if not open_data(page):
         ctx.close()
         return
     empty = snapshot(page)
     check("[vierge] base vide", all(len(v) == 0 for v in empty.values()), f"({counts(empty)})")
     check("[vierge] dernier export : jamais", "jamais" in page.locator("[data-testid=last-export]").inner_text().lower())
+    ck.appears("[vierge] contenu de l'appareil : aucune donnée", page, "[data-testid=stored-counts]:text-is('Aucune donnée')")
     # Accord du verbe avec le nombre et le genre de ce qui sera ajouté.
     for n, phrase in ((1, "1 partie sera ajoutée,"), (2, "2 parties seront ajoutées,")):
         tables = {t: [] for t in TABLES} | {"games": [game(20 + i, "1-0") for i in range(n)]}
@@ -380,8 +392,11 @@ def part_roundtrip(p, browser, tmp):
     check("[restore] réglages identiques", settings_state(page) == SEED_SETTINGS, f"({settings_state(page)})")
 
     # GLOB-2 : interface à jour sans rechargement, puis un réglage touché n'écrase rien.
-    check("[glob-2] Stats affiche 2 gagnées sans rechargement", page.locator("main :text('2 gagnées')").count() == 1)
-    check("[glob-2] puzzles à jour sans rechargement", page.locator("main :text('3 résolus / 4 tentés')").count() == 1)
+    ck.appears("[glob-2] Mes données recompte la base sans rechargement", page, "[data-testid=stored-counts]:has-text('4 parties')")
+    if spa(page, "/stats", "main h1:text-is('Statistiques')"):
+        ck.appears("[glob-2] Stats affiche 2 gagnées sans rechargement", page, "main :text('2 gagnées')")
+        check("[glob-2] puzzles à jour sans rechargement", page.locator("main :text('3 résolus / 4 tentés')").count() == 1)
+    spa(page, "/reglages", "main h1:text-is('Réglages')")
     check("[glob-2] thème Améthyste sélectionné sans rechargement", "border-accent" in (page.locator("button[title='Améthyste']").get_attribute("class") or ""))
     page.get_by_role("switch", name="Sons", exact=True).click()
     page.wait_for_timeout(300)
@@ -389,7 +404,7 @@ def part_roundtrip(p, browser, tmp):
     check("[glob-2] toggle Sons appliqué", st and st["playSounds"] is True, f"({st})")
     check("[glob-2] le thème restauré survit au toggle", st and st["themeId"] == "purple" and st["reviewDepth"] == "deep", f"({st})")
     page.reload()
-    ck.appears("[glob-2] Stats rechargée", page, "main :text('Statistiques')", timeout=15000)
+    ck.appears("[glob-2] Réglages rechargés", page, "main h1:text-is('Réglages')", timeout=15000)
     st = settings_state(page)
     check("[glob-2] réglages restaurés toujours là après rechargement", st == {**SEED_SETTINGS, "playSounds": True}, f"({st})")
     check("[glob-2] Profond sélectionné après rechargement", "border-accent" in (page.get_by_role("button", name="Profond", exact=True).get_attribute("class") or ""))
@@ -527,10 +542,10 @@ def part_export_paths(p, browser, tmp):
     ctx.add_init_script(share_stub())
     page = ctx.new_page()
     page.clock.set_fixed_time("2026-09-17T22:30:00Z")  # 00:30 le 18 à Paris : en UTC ce serait encore le 17
-    if open_stats(page):
+    if open_data(page):
         seed_db(page, SEED)
         page.reload()
-        ck.appears("[partage] Stats rechargée", page, "main :text('Statistiques')", timeout=15000)
+        ck.appears("[partage] Mes données rechargée", page, DATA_READY, timeout=15000)
         click_export(page)
         text, kind = message(page)
         shared = page.evaluate("() => window.__shared || null")
@@ -540,19 +555,19 @@ def part_export_paths(p, browser, tmp):
         le = json.loads(last_export(page) or "null")
         check("[partage] dernier export mémorisé", isinstance(le, dict) and le.get("games") == 4, f"({le})")
         shown = page.locator("[data-testid=last-export]").inner_text()
-        check("[partage] Stats affiche la date locale du dernier export", "18/09/2026" in shown and "00:30" in shown, f"({shown!r})")
+        check("[partage] Mes données affiche la date locale du dernier export", "18/09/2026" in shown and "00:30" in shown, f"({shown!r})")
     ctx.close()
 
     # Partage annulé par l'utilisateur : rien n'est mémorisé, message honnête.
     ctx = mobile_context(p, browser, ck, settings=SEED_SETTINGS, standalone=True)
     ctx.add_init_script(share_stub("abort"))
     page = ctx.new_page()
-    if open_stats(page):
+    if open_data(page):
         click_export(page)
         text, kind = message(page)
         check("[partage annulé] message « annulé », pas de succès", "annulé" in text.lower() and kind != "success", f"({text!r})")
         check("[partage annulé] aucune date d'export mémorisée", last_export(page) is None)
-        check("[partage annulé] Stats affiche toujours « jamais »", "jamais" in page.locator("[data-testid=last-export]").inner_text().lower())
+        check("[partage annulé] Mes données affiche toujours « jamais »", "jamais" in page.locator("[data-testid=last-export]").inner_text().lower())
     ctx.close()
 
     # Partage refusé (activation expirée) : PAS de repli téléchargement (faux succès en PWA iOS),
@@ -562,10 +577,10 @@ def part_export_paths(p, browser, tmp):
     page = ctx.new_page()
     downloads = []
     page.on("download", lambda d: downloads.append(d))
-    if open_stats(page):
+    if open_data(page):
         seed_db(page, SEED)
         page.reload()
-        ck.appears("[partage refusé] Stats rechargée", page, "main :text('Statistiques')", timeout=15000)
+        ck.appears("[partage refusé] Mes données rechargée", page, DATA_READY, timeout=15000)
         click_export(page)
         text, kind = message(page)
         check("[partage refusé] message rouge, pas de succès", kind == "error" and "pas abouti" in text, f"({text!r})")
@@ -591,7 +606,7 @@ def part_storage_status(p, browser):
         ctx.add_init_script(NO_SHARE)
         ctx.add_init_script(persisted_stub(value))
         page = ctx.new_page()
-        if open_stats(page):
+        if open_data(page):
             if ck.appears(f"[stockage] état affiché (persisted={value})", page, f"[data-testid=storage-persisted]:has-text('{word}')", timeout=10000):
                 block = page.locator("[data-testid=storage-status]").inner_text().lower()
                 check("[stockage] phrase claire : cet appareil, icône, exporte", "cet appareil" in block and "icône" in block and "export" in block, f"({block[:200]!r})")
@@ -656,7 +671,7 @@ def part_prod_format(p, browser, tmp):
     ctx = mobile_context(p, browser, ck, settings=SEED_SETTINGS, standalone=True)
     ctx.add_init_script(NO_SHARE)
     page = ctx.new_page()
-    if open_stats(page):
+    if open_data(page):
         page.evaluate(f"() => {{ for (const k of {json.dumps(SESSION_KEYS + ['cle-etrangere'])}) sessionStorage.setItem(k, '{{}}') }}")
         choose_file(page, path)
         if ck.appears("[prod v2] feuille ouverte", page, "[data-testid=restore-sheet]"):
@@ -670,7 +685,9 @@ def part_prod_format(p, browser, tmp):
         check("[prod v2] 6 tables identiques au fichier, reviews vide", {t: after[t] for t in TABLES_V2} == {t: prod[t] for t in TABLES_V2} and after["reviews"] == [], f"({counts(after)})")
         st = settings_state(page)
         check("[prod v2] réglages du fichier appliqués", same_settings(st, {"themeId": "blue", "showLegalMoves": True, "playSounds": True, "chesscomUsername": "hikaru", "reviewDepth": "fast"}), f"({st})")
-        check("[prod v2] thème Océan sélectionné sans rechargement", "border-accent" in (page.locator("button[title='Océan']").get_attribute("class") or ""))
+        if spa(page, "/reglages", "main h1:text-is('Réglages')"):
+            check("[prod v2] thème Océan sélectionné sans rechargement", "border-accent" in (page.locator("button[title='Océan']").get_attribute("class") or ""))
+        spa(page, "/donnees", DATA_READY)
 
         # Fichier v2 qui CONTIENT des réglages de Jouer valides : ils sont appliqués tels quels.
         play_st = {"premoves": False, "themeId": "brown", "pieceSet": "fantasy", "showLegalMoves": False, "showAttackers": True, "playSounds": False, "soundVolume": 0.25,
@@ -690,8 +707,8 @@ def part_prod_format(p, browser, tmp):
             # En mode 2 joueurs, bot et couleur sont masqués : la cadence est le seul autre choix affiché.
             check("[v2 Jouer] cadence Illimité sélectionnée", "border-accent" in (page.locator("main button:text-is('Illimité')").first.get_attribute("class") or ""))
             page.screenshot(path=f"{SHOTS}/backup_play_after_restore.png")
-        page.goto(f"{BASE}/#/stats")
-        ck.appears("[v2 Jouer] retour sur Stats", page, "main :text('Statistiques')", timeout=15000)
+        page.goto(f"{BASE}/#/donnees")
+        ck.appears("[v2 Jouer] retour sur Mes données", page, DATA_READY, timeout=15000)
 
         # Réglages hostiles : valeurs hors liste blanche ramenées au défaut, sans refuser les données.
         hostile = backup_dict(games=[game(5, "1-0")], settings=json.dumps({"state": {
@@ -736,6 +753,76 @@ def part_prod_format(p, browser, tmp):
     ctx.close()
 
 
+LOCAL_JS = "() => Object.fromEntries(Object.keys(localStorage).sort().map((k) => [k, localStorage.getItem(k)]))"
+
+
+def part_pages(p, browser):
+    """Lot 3 du plan UX : Réglages et Mes données extraits de Stats. Ouvrir les pages n'écrit rien,
+    elles affichent les valeurs déjà persistées, chaque contrôle écrit la même clé qu'avant (et
+    elle seule), et Stats ne porte plus ni réglage ni action sur les données."""
+    tag = "[lot 3]"
+    ctx, page = seeded_context(p, browser)
+    page.evaluate(f"() => localStorage.setItem('{THREAT_PREFS_KEY}', JSON.stringify({{ bot: true, coach: false }}))")
+    db_before, ls_before = snapshot(page), page.evaluate(LOCAL_JS)
+    for path, marker in (("/stats", "main h1:text-is('Statistiques')"), ("/reglages", "main h1:text-is('Réglages')"),
+                         ("/plus", "main h1:text-is('Plus')"), ("/donnees", DATA_READY)):
+        spa(page, path, marker)
+        page.wait_for_timeout(300)
+    check(f"{tag} visiter Stats, Réglages, Plus et Mes données n'écrit rien (localStorage)", page.evaluate(LOCAL_JS) == ls_before,
+          f"({sorted(set(page.evaluate(LOCAL_JS).items()) ^ set(ls_before.items()))})")
+    check(f"{tag} visiter ces pages ne touche pas la base", snapshot(page) == db_before)
+
+    spa(page, "/stats", "main h1:text-is('Statistiques')")
+    ck.appears(f"{tag} Stats garde ses statistiques", page, "[data-testid=threat-stats]")
+    left = page.evaluate("""() => ['[data-testid=toggle-attackers]', '[data-piece-set]', '[role=switch]', '[data-testid=export-btn]',
+      '[data-testid=restore-btn]', '[data-testid=reset-btn]', 'input[type=file]'].filter((s) => document.querySelector(s))""")
+    check(f"{tag} Stats ne porte plus ni réglage ni action sur les données", left == [], f"({left})")
+
+    if spa(page, "/reglages", "main h1:text-is('Réglages')"):
+        pressed = lambda sel: page.locator(sel).get_attribute("aria-pressed") == "true"  # noqa: E731
+        sw = lambda name: page.get_by_role("switch", name=name, exact=True).get_attribute("aria-checked")  # noqa: E731
+        shown = {
+            "theme": pressed("button[title='Améthyste']"), "depth": pressed("main button:text-is('Profond')"),
+            "pieces": page.locator("[data-piece-set='chessnut']").get_attribute("aria-checked") == "true",
+            "premoves": sw("Prémouvements"), "legal": sw("Afficher les coups légaux"), "sounds": sw("Sons"),
+            "attackers": page.locator("[data-testid=toggle-attackers]").get_attribute("aria-checked"),
+            "threat": [page.locator(f"[data-testid=toggle-threat-{m}]").get_attribute("aria-checked") for m in ("bot", "coach")],
+        }
+        check(f"{tag} Réglages affiche les valeurs persistées", shown == {
+            "theme": True, "depth": True, "pieces": True, "premoves": "false", "legal": "false", "sounds": "false",
+            "attackers": "true", "threat": ["true", "false"]}, f"({shown})")
+        check(f"{tag} volume masqué quand les sons sont coupés", page.locator("input[aria-label='Volume des sons']").count() == 0)
+
+        def changed():
+            now = page.evaluate(LOCAL_JS)
+            return sorted(k for k in set(now) | set(ls_before) if now.get(k) != ls_before.get(k))
+
+        page.locator("[data-testid=toggle-threat-coach]").click()
+        page.wait_for_timeout(200)
+        check(f"{tag} alerte menace : seule {THREAT_PREFS_KEY} change", changed() == [THREAT_PREFS_KEY], f"({changed()})")
+        check(f"{tag} alerte menace : même format qu'écrit par Jouer",
+              page.evaluate(f"() => JSON.parse(localStorage.getItem('{THREAT_PREFS_KEY}'))") == {"bot": True, "coach": True})
+        page.goto(f"{BASE}/#/jouer")
+        if ck.appears(f"{tag} Jouer (mode coach semé) : interrupteur de l'alerte", page, "[data-testid=toggle-threat]", timeout=15000):
+            check(f"{tag} Jouer lit le choix fait dans Réglages", page.locator("[data-testid=toggle-threat]").get_attribute("aria-checked") == "true")
+            page.locator("[data-testid=toggle-threat]").click()
+            page.wait_for_timeout(200)
+        page.goto(f"{BASE}/#/reglages")
+        if ck.appears(f"{tag} Réglages rouverts", page, "[data-testid=toggle-threat-coach]", timeout=15000):
+            check(f"{tag} Réglages lit le choix fait dans Jouer", page.locator("[data-testid=toggle-threat-coach]").get_attribute("aria-checked") == "false")
+            check(f"{tag} aller-retour : préférences de l'alerte revenues à l'identique", changed() == [], f"({changed()})")
+        page.locator("button[title='Bois']").click()
+        page.wait_for_timeout(200)
+        st = settings_state(page)
+        check(f"{tag} thème : seule {SETTINGS_KEY} change", changed() == [SETTINGS_KEY], f"({changed()})")
+        check(f"{tag} thème : seul themeId change dans les réglages", st == {**SEED_SETTINGS, "themeId": "brown"}, f"({st})")
+        page.get_by_role("switch", name="Sons", exact=True).click()
+        if ck.appears(f"{tag} curseur de volume affiché avec les sons", page, "input[aria-label='Volume des sons']"):
+            check(f"{tag} volume persisté affiché (40 %)", page.locator("input[aria-label='Volume des sons']").input_value() == "40")
+    check(f"{tag} réglages touchés : base intacte", snapshot(page) == db_before)
+    ctx.close()
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
     with tempfile.TemporaryDirectory(prefix="chesslocal-backup-") as tmp:
@@ -747,6 +834,7 @@ def suite(p):
         part_storage_status(p, browser)
         part_reset(p, browser)
         part_prod_format(p, browser, tmp)
+        part_pages(p, browser)
     browser.close()
 
 

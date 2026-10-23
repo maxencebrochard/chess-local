@@ -175,7 +175,7 @@ def case_reset(p, browser):
     keys = page.evaluate("() => ['chess-local-play-game', 'chess-local-puzzle-session', 'chess-local-mats'].filter((k) => localStorage.getItem(k) !== null)")
     check("[reset] avant : partie, séance de puzzle et préférences de Mats enregistrées", len(keys) == 3, f"({keys})")
 
-    page.goto(f"{BASE}/#/stats")
+    page.goto(f"{BASE}/#/donnees")
     page.click("[data-testid=reset-btn]")
     ck.appears("[reset] première confirmation", page, "[data-testid=reset-sheet]")
     page.click("[data-testid=reset-confirm]")

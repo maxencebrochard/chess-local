@@ -440,17 +440,17 @@ def part_overlay(p, browser):
             page.screenshot(path=f"{SHOTS}/attaque_jouer_852.png")
     ctx.close()
 
-    # Stats : le même interrupteur dans Réglages.
+    # Page Réglages : le même interrupteur.
     ctx = mobile_context(p, browser, ck, standalone=True)
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/stats")
-    if ck.appears("[stats] page", page, "main :text('Réglages')", timeout=15000):
+    page.goto(f"{BASE}/#/reglages")
+    if ck.appears("[réglages] page", page, "main h1:text-is('Réglages')", timeout=15000):
         toggle = page.locator("[data-testid=toggle-attackers]")
-        if check("[stats] interrupteur présent dans Réglages", toggle.count() == 1):
+        if check("[réglages] interrupteur présent", toggle.count() == 1):
             toggle.click()
             page.wait_for_timeout(300)
             st = settings_state(page)
-            check("[stats] l'interrupteur écrit le réglage", bool(st) and st.get("showAttackers") is True, f"({st})")
+            check("[réglages] l'interrupteur écrit le réglage", bool(st) and st.get("showAttackers") is True, f"({st})")
     ctx.close()
 
 

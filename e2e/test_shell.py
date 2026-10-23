@@ -41,16 +41,22 @@ DEEP = [
     ("/archive", "Plus", "true", "main h1:has-text('Archive')"),
     ("/import", "Plus", "true", "text=Importer depuis"),
     ("/stats", "Plus", "true", "main h1:text-is('Statistiques')"),
+    ("/reglages", "Plus", "true", "main h1:text-is('Réglages')"),
+    ("/donnees", "Plus", "true", "main h1:has-text('Mes données')"),
     ("/insights", "Plus", "true", "main h1:has-text('Insights')"),
 ]
 # Sous-destination sélectionnée dans la sous-liste de la nav latérale, par route de la famille Plus.
 SELECTED = {"/plus": None, "/analyse": "Analyse", "/analyse/jouer": "Analyse", "/archive": "Mes parties",
-            "/import": "Importer", "/stats": "Statistiques", "/insights": "Mon bilan"}
-HUB = [  # (libellé, hash attendu, section de /stats amenée à l'écran)
+            "/import": "Importer", "/stats": "Statistiques", "/insights": "Mon bilan",
+            "/reglages": "Réglages", "/donnees": "Mes données"}
+HUB = [  # (libellé, hash attendu, titre des pages extraites de Stats au lot 3, munies d'un retour vers Plus)
     ("Mes parties", "#/archive", None), ("Importer des parties", "#/import", None),
     ("Analyse", "#/analyse", None), ("Mon bilan", "#/insights", None), ("Statistiques", "#/stats", None),
-    ("Réglages", "#/stats", "settings-heading"), ("Mes données", "#/stats", "data-heading"),
+    ("Réglages", "#/reglages", "main h1:text-is('Réglages')"), ("Mes données", "#/donnees", "main h1:has-text('Mes données')"),
 ]
+# Anciens states de navigation vers les sections de Stats (lot 2 : Plus et nav latérale ; carte de
+# migration de l'app native avant le lot 3) : Stats les renvoie vers la page extraite, en replace.
+LEGACY = [({"section": "reglages"}, "#/reglages"), ({"section": "donnees"}, "#/donnees"), ({"backup": True}, "#/donnees")]
 SUB = ["Mes parties", "Importer", "Analyse", "Mon bilan", "Statistiques", "Réglages", "Mes données"]
 
 # Mesures de la nav visible : onglets, pictogrammes, couleurs résolues par un canvas (Tailwind 4
@@ -224,25 +230,6 @@ def tabs_do_not_stack(page, tag):
         check(f"[{tag}] onglet {label} : seul aria-current", len(actives) == 1 and label in actives[0], f"({actives})")
 
 
-def section_on_screen(page, testid):
-    """Titre de section de /stats amené en haut de `<main>` (défilement réel, pas déjà visible)."""
-    return page.evaluate("""(id) => {
-      const m = document.querySelector('main'), h = document.querySelector(`[data-testid=${id}]`)
-      if (!h) return null
-      const mr = m.getBoundingClientRect(), hr = h.getBoundingClientRect()
-      return { scrolled: m.scrollTop, offset: Math.round(hr.top - mr.top), atEnd: m.scrollTop + m.clientHeight >= m.scrollHeight - 2 }
-    }""", testid)
-
-
-def wait_section(page, testid):
-    for _ in range(30):
-        pos = section_on_screen(page, testid)
-        if pos and pos["scrolled"] > 0 and (0 <= pos["offset"] <= 160 or pos["atEnd"]):
-            return pos
-        page.wait_for_timeout(100)
-    return section_on_screen(page, testid)
-
-
 def nav_format(page, tag, desktop=False, safe=False):
     """Cinq onglets exactement, pictogrammes SVG, couleurs actif/inactif mesurées, cibles et
     géométrie, puis l'onglet allumé sur chaque famille de routes (anciens liens compris)."""
@@ -323,7 +310,7 @@ def nav_format(page, tag, desktop=False, safe=False):
 
 def hub_plus(page, tag):
     """Hub /plus : titre, trois groupes, sept destinations en push ; Réglages et Mes données
-    amènent leur section de /stats à l'écran."""
+    ouvrent leurs pages, dont le retour mène au hub."""
     go(page, "#/plus")
     check(f"[{tag}] hub : titre Plus", page.locator("main h1").inner_text().strip() == "Plus")
     groups = page.locator("main section h2").all_inner_texts()
@@ -349,18 +336,22 @@ def hub_plus(page, tag):
         actives = active_tab(page)
         check(f"[{tag}] hub {label} : Plus reste allumé", len(actives) == 1 and "Plus" in actives[0], f"({actives})")
         if section:
-            pos = wait_section(page, section)
-            check(f"[{tag}] hub {label} : section amenée en haut de l'écran",
-                  bool(pos) and pos["scrolled"] > 0 and (0 <= pos["offset"] <= 160 or pos["atEnd"]), f"({pos})")
-            check(f"[{tag}] hub {label} : state consommé (un retour ne refait pas défiler)",
-                  page.evaluate("() => history.state?.usr == null"))
+            ck.appears(f"[{tag}] hub {label} : page rendue", page, section)
+            check(f"[{tag}] hub {label} : aucun state de navigation", page.evaluate("() => history.state?.usr == null"))
+            back = page.get_by_role("button", name="Retour à Plus", exact=True)
+            check(f"[{tag}] hub {label} : retour « Plus » de 44 px", back.count() == 1 and (back.bounding_box() or {}).get("height", 0) >= 44)
+            back.click()
+            page.wait_for_timeout(500)
+            check(f"[{tag}] hub {label} : le retour de la page mène au hub", hash_of(page) == "#/plus", f"({hash_of(page)})")
+            page.go_back()
+            page.wait_for_timeout(500)
         page.go_back()
         page.wait_for_timeout(500)
         check(f"[{tag}] hub {label} : retour arrière -> hub", hash_of(page) == "#/plus", f"({hash_of(page)})")
 
 
 def sidebar_plus(page):
-    """Nav latérale : sous-liste de Plus en replace, Réglages et Mes données sur la même page."""
+    """Nav latérale : sous-liste de Plus en replace, Réglages et Mes données sur leurs pages."""
     go(page, "#/plus")
     before = hist(page)
     sub = page.locator("nav [data-nav-sub] a")
@@ -368,13 +359,13 @@ def sidebar_plus(page):
     page.wait_for_timeout(600)
     check("[desktop] sous-liste Statistiques -> #/stats en replace", hash_of(page) == "#/stats" and hist(page) == before,
           f"({hash_of(page)}, {before} -> {hist(page)})")
-    for label, section in (("Réglages", "settings-heading"), ("Mes données", "data-heading")):
-        page.evaluate("() => document.querySelector('main').scrollTo(0, 0)")
+    for label, expected in (("Réglages", "#/reglages"), ("Mes données", "#/donnees")):
         sub.filter(has_text=label).click()
-        pos = wait_section(page, section)
-        check(f"[desktop] sous-liste {label} depuis /stats : section amenée en haut",
-              hash_of(page) == "#/stats" and bool(pos) and pos["scrolled"] > 0 and (0 <= pos["offset"] <= 160 or pos["atEnd"]), f"({pos})")
+        page.wait_for_timeout(600)
+        check(f"[desktop] sous-liste {label} -> {expected}", hash_of(page) == expected, f"({hash_of(page)})")
         check(f"[desktop] sous-liste {label} : history.length stable", hist(page) == before, f"({before} -> {hist(page)})")
+        check(f"[desktop] sous-liste {label} sélectionné",
+              page.locator("nav [data-nav-sub] a[data-selected]").all_inner_texts() == [label])
     sub.filter(has_text="Mes parties").click()
     page.wait_for_timeout(600)
     check("[desktop] sous-liste Mes parties -> #/archive", hash_of(page) == "#/archive")
@@ -384,6 +375,25 @@ def sidebar_plus(page):
     tab(page, "Jouer").click()
     page.wait_for_timeout(400)
     check("[desktop] sous-liste repliée hors de Plus", page.locator("nav [data-nav-sub]").count() == 0)
+
+
+def legacy_states(page, tag):
+    """Un ancien state `section`/`backup` sur /stats (entrée d'historique restaurée, ancienne carte
+    de migration) aboutit à la page extraite, en replace, et le state ne survit pas."""
+    for state, expected in LEGACY:
+        go(page, "#/plus")
+        page.evaluate("(usr) => history.replaceState({ usr, key: 'legacy', idx: history.state?.idx ?? 0 }, '', '#/stats')", state)
+        before = hist(page)
+        page.reload()
+        page.wait_for_timeout(1200)
+        check(f"[{tag}] ancien state {state} sur /stats -> {expected}", hash_of(page) == expected, f"({hash_of(page)})")
+        check(f"[{tag}] ancien state {state} : replace, state effacé",
+              hist(page) == before and page.evaluate("() => history.state?.usr == null"), f"({before} -> {hist(page)})")
+        actives = active_tab(page)
+        check(f"[{tag}] ancien state {state} : Plus allumé", len(actives) == 1 and "Plus" in actives[0], f"({actives})")
+    go(page, "#/stats")
+    page.wait_for_timeout(600)
+    check(f"[{tag}] /stats sans state reste Statistiques", hash_of(page) == "#/stats" and page.locator("main h1").inner_text().strip() == "Statistiques")
 
 
 def suite(p):
@@ -399,6 +409,7 @@ def suite(p):
     page = ctx.new_page()
     nav_format(page, "393x852")
     hub_plus(page, "393x852")
+    legacy_states(page, "393x852")
     ctx.close()
     ctx = desktop_context(browser, ck)
     page = ctx.new_page()

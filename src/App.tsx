@@ -38,6 +38,8 @@ const Visualisation = lazyPage(() => import('./pages/Visualisation'))
 const Insights = lazyPage(() => import('./pages/Insights'))
 const Seance = lazyPage(() => import('./pages/Seance'))
 const More = lazyPage(() => import('./pages/More'))
+const Settings = lazyPage(() => import('./pages/Settings'))
+const MyData = lazyPage(() => import('./pages/MyData'))
 const Finales = lazyCourse(() => import('./lib/endgameCourse').then((m) => m.FINALES))
 const Roque = lazyCourse(() => import('./lib/attackCourse').then((m) => m.ROQUE))
 const DefenseCourse = lazyCourse(() => import('./lib/defenseCourse').then((m) => m.DEFENSE))
@@ -154,7 +156,6 @@ function Shell() {
                         <Link
                           to={d.to}
                           replace
-                          state={d.section ? { section: d.section } : undefined}
                           onClick={() => onTabClick(d.to)}
                           data-selected={selected || undefined}
                           className={`flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold transition ${
@@ -234,6 +235,8 @@ function Shell() {
               <Route path="/seance" element={<Seance />} />
               <Route path="/import" element={<Import />} />
               <Route path="/plus" element={<More />} />
+              <Route path="/reglages" element={<Settings />} />
+              <Route path="/donnees" element={<MyData />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

@@ -845,14 +845,14 @@ Un déplacement de menu ne justifie pas de renommer un domaine `learnSessions`, 
 Chaque lot porte un périmètre limité et peut être annulé sans migration de données.
 L’ordre indique les dépendances ; les lots 3 à 6 sont séparables une fois le socle et les contrats validés.
 Les checks listés sont les critères d’acceptation de chaque lot.
-Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2) ; ceux des lots suivants restent à établir.
+Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2), ceux du lot 3 dans sa [vérification](#vérification-du-lot-3) ; ceux des lots suivants restent à établir.
 
 | Lot | Périmètre et propriété | Dépendance | Acceptation E2E |
 |---|---|---|---|
 | 0. Réconcilier après fusion (fait) | Inventaire routes, états et domaines, mise à jour de cet audit | Toutes les features retenues fusionnées | Audit trois formats, aucune route oubliée, liste des écarts explicite |
 | 1. Socle visuel (fait) | `Cta`, en-tête, carte, progression, état vide sur trois usages réels | Réconciliation sur la base du lot 1 | Contraste, focus, 44 px, titres longs, état vide, chargement, captures trois formats |
 | 2. Navigation et Plus (fait) | `App.tsx`, nouveau hub Plus, rattachement des routes | Lot 1 | Cinq onglets, aria-current exact, anciens deep links, replace/push, aucun retour hors app, suites shell/all_buttons/edge_navigation |
-| 3. Réglages et données | Extraire la présentation de Stats vers Réglages et Mes données | Lot 2 | Mêmes valeurs persistées ; backup, upgrade, audio_settings, stats ; annulation des actions destructrices |
+| 3. Réglages et données (fait) | Extraire la présentation de Stats vers Réglages et Mes données | Lot 2 | Mêmes valeurs persistées ; backup, upgrade, audio_settings, stats ; annulation des actions destructrices |
 | 4. Accueil quotidien | `Home.tsx`, adaptateur de lecture du service de séance existant | Lot 2 + séance du jour intégrée | Profil neuf, reprise, dû/non dû, données indisponibles, pas de double comptage, CTA accessible à 660 px |
 | 5. Apprendre et Entraînement | Hub guidé, cinq groupes, anciennes entrées conservées | Lot 2 + parcours intégré | Chaque fonction accessible en quatre taps au plus, état vide explicite, suites learn/all_buttons et suites des features déplacées |
 | 6. Puzzles et vitesse | Hub Puzzles, Rush et Mats, retours contextuels | Lot 2 | Réussite/échec, chrono intact, retour vers le bon hub, suites puzzles/mats/continuation |
@@ -1066,7 +1066,7 @@ Il présente trois groupes : Parties (Mes parties, Importer des parties), Outils
 Le groupe s’appelle « Parties » plutôt que « Mes parties » pour ne pas répéter le titre de sa première carte.
 Les destinations sont décrites une seule fois dans `PLUS_GROUPS` de `src/lib/navigation.ts`, partagé avec la nav latérale.
 Réglages et Mes données ouvrent `/stats` avec `state.section` ; Stats retient la section, efface aussitôt le state, attend la lecture de la base puis amène le titre en haut de `<main>`.
-Ce mécanisme généralise l’ancien `state.backup` de la carte de migration native, toujours accepté ; le lot 3 remplacera ces deux entrées par les pages extraites.
+Ce mécanisme généralise l’ancien `state.backup` de la carte de migration native, toujours accepté ; le lot 3 remplacera ces deux entrées par les pages extraites (fait, voir le [lot 3](#lot-3--réglages-et-données-réalisé)).
 Le texte d’aide de la migration native devient « dans la PWA, Plus, Mes données, Exporter tout ».
 Les pages gardent leurs titres actuels (« Archive », « Insights ») : leur renommage en « Mes parties » et « Mon bilan » appartient aux lots qui les retouchent.
 
@@ -1134,3 +1134,77 @@ Preuves par mutation, chacune annulée ensuite :
 
 Captures relues : `e2e/shots/shell_nav_*.png`, `shell_hub_*.png`, `shell_sidebar_*.png` et les captures `plus` d’`ux_audit` aux trois formats.
 La validation sur iPhone physique (rendu des SVG, zone sûre réelle) reste au lot 10.
+
+## Lot 3 : réglages et données réalisé
+
+Stats ne garde que les statistiques : classements, parties contre les bots, puzzles, attaques manquées et menaces adverses.
+Ses deux sections de présentation deviennent deux pages de l’onglet Plus, sans changement de `backup.ts`, du store des réglages ni d’aucune clé de stockage.
+
+| Page | Route | Fichier | Contenu |
+|---|---|---|---|
+| Réglages | `/reglages` | `src/pages/Settings.tsx` | Échiquier (thème, pièces, coups légaux, attaquants), Jeu (prémouvements, alerte « Qu’est-ce qu’il menace ? »), Sons (interrupteur, volume), Analyse (profondeur du bilan) |
+| Mes données | `/donnees` | `src/pages/MyData.tsx` | Contenu de l’appareil, stockage protégé, dernier export, Exporter tout, Restaurer, Réinitialiser |
+
+Les routes sont des racines courtes, comme `/plus`, plutôt que des sous-chemins `/plus/...` : le plan nommait déjà `/reglages`, les URL restent françaises et le `match` de Plus reste une liste de racines.
+Les deux routes entrent dans `PLUS_MATCH` ; le hub et la sous-liste desktop y mènent directement, sans `state.section`.
+Chaque page a un retour « Plus » dans `PageHeader` (push vers `/plus`, comme les sous-pages d’Apprendre vers `/apprendre`).
+
+### Anciens liens
+
+Stats renvoie en `replace` un ancien `state.section` (`reglages`, `donnees`) ou `state.backup` vers la page extraite, avant toute lecture de la base : une entrée d’historique restaurée aboutit au bon contenu.
+La carte de migration de l’app native ouvre directement `/donnees`, toujours en `replace` comme l’ancienne racine Stats ; la page tient le titre et la marche à suivre dans le premier écran, sans défilement.
+Le texte d’aide « dans la PWA, Plus, Mes données, Exporter tout » décrit désormais le vrai chemin.
+`/stats` sans state reste la page Statistiques.
+
+### Valeurs et actions
+
+Les contrôles reprennent ceux de Stats à l’identique (libellés, rôles, `data-testid`), et chacun écrit la même clé qu’avant : `chess-local-settings` au format persist, ou `chess-local-threat-check`.
+L’alerte de menace, jusque-là réglable seulement dans la configuration de Jouer, a ses deux interrupteurs (contre un bot, avec le coach) dans Réglages ; les deux écrans lisent et écrivent la même préférence.
+Mes données ajoute le contenu de l’appareil (`currentCounts`), relu après une restauration.
+Restaurer et Réinitialiser gardent leurs feuilles de confirmation (une pour la restauration, deux pour la réinitialisation, Annuler focalisé, Échap et fond pour annuler, export proposé d’abord) ; aucune modale native n’est introduite.
+La réinitialisation passe d’un lien de 12 px à un bouton rouge détouré dans sa propre section, sous la sauvegarde.
+
+### Vérification du lot 3
+
+`npm run check` : code 0.
+`backup` ajoute `part_pages` : visiter Stats, Réglages, Plus et Mes données n’écrit ni dans `localStorage` ni dans la base ; Stats ne porte plus aucun réglage ni action sur les données ; Réglages affiche les valeurs semées ; l’alerte de menace n’écrit que `chess-local-threat-check`, au format de Jouer, lu dans les deux sens ; le thème ne change que `themeId` dans `chess-local-settings`.
+`shell` vérifie les deux routes (Plus allumé, sous-liste et sélection desktop), les cartes du hub en push avec leur retour « Plus », la sous-liste en `replace` et les trois anciens states (`section` et `backup`) renvoyés en `replace` depuis `/stats`.
+`ios_app` vérifie que la carte de migration ouvre `#/donnees` en `replace`, titre et marche à suivre dans le premier écran.
+Les suites qui ouvraient Stats pour un réglage ou une action sur les données vont sur la page extraite ; celles qui l’ouvraient seulement pour créer le schéma de la base restent sur `/stats`.
+`test_upgrade.py` garde `/stats` pour les anciens builds et passe par `/donnees` pour exporter et restaurer avec le nouveau build ; il n’a pas été lancé dans ce lot.
+
+| Suite production | Checks réussis |
+|---|---:|
+| `shell` | 499 |
+| `backup` | 272 |
+| `audio_settings` | 20 |
+| `pieces_sons` | 93 |
+| `ios_app` | 99 |
+| `diagnostic_attaque` | 143 |
+| `ui_audit` | 1 231 |
+| `ux_audit` | 816 |
+| `viewport` | 746 |
+| `all_buttons` | 108 |
+| `premove` | 78 |
+| `learn` | 73 |
+| `bug_hunt` | 48 |
+| `parcours` | 393 |
+| `seance` | 193 |
+| `visualisation` | 131 |
+| `insights` | 354 |
+| `menace` | 99 |
+| `revision` | 317 |
+| `perf` | 75 |
+
+Toutes les suites ont été lancées avec `--jobs 1`.
+`npm run test:e2e:dev -- --suite shell --suite backup --jobs 1` : code 0, 499 et 272 checks.
+`perf` ouvre aussi les deux routes ; ses scénarios de chunk périmée cliquaient l’onglet Analyse disparu au lot 2 et passent désormais par la tuile Analyse de l’accueil, qui reste dans le bundle initial.
+Son budget d’accueil à froid a échoué une fois (1 594 ms pour 1 462, charge machine à 18) puis est passé à la relance isolée.
+`ui_audit` a d’abord relevé la cible « Contre un bot » : collée à la ligne suivante, le pseudo-élément de celle-ci mordait d’un sous-pixel sur sa visée ; les deux interrupteurs sont désormais espacés.
+
+Preuves par mutation, chacune annulée ensuite :
+
+- `/donnees` retiré de `PLUS_MATCH` et redirection des anciens states coupée dans Stats : `shell` à code 1, quinze échecs (Plus non allumé sur `/donnees` aux trois formats, sous-liste et sélection desktop, trois anciens states restés sur `#/stats` sans `replace`) ;
+- interrupteurs de l’alerte écrivant `chess-local-threat` au lieu de `chess-local-threat-check` : `backup` à code 1, six échecs de `part_pages` (clé modifiée, format, lecture croisée avec Jouer, aller-retour).
+
+Captures relues : `reglages` et `donnees` d’`ux_audit` aux trois formats, `f10_reglages_*`, `backup_donnees_after_export.png` et `ios_migration_donnees_393x852.png`.

@@ -27,6 +27,7 @@ L’[audit UX et le plan de refonte](docs/ux-refonte.md) décrivent la navigatio
 La suite `npm run test:e2e -- --suite ux_audit` régénère les captures locales et l’inventaire de l’expérience actuelle.
 Le lot 1 améliore le contraste des actions vertes et harmonise en-têtes, tuiles, progressions et états vides ; `ux_foundation` en vérifie le rendu aux trois formats, sans changer la navigation.
 Le lot 2 passe à cinq onglets (Accueil, Jouer, Puzzles, Apprendre, Plus) avec des pictogrammes dessinés pour l’app ; Plus (`#/plus`) regroupe Mes parties, Importer des parties, Analyse, Mon bilan, Statistiques, Réglages et Mes données, et les anciens liens restent valides.
+Le lot 3 sort de Statistiques les réglages (`#/reglages`, alerte « Qu’est-ce qu’il menace ? » comprise) et la sauvegarde, la restauration et la réinitialisation (`#/donnees`), sans changer aucune valeur enregistrée.
 
 Les parcours sont couverts par les suites E2E de production et de développement : `npm run test:e2e` et `npm run test:e2e:dev`.
 Les options du lanceur et les prérequis sont décrits dans [les commandes E2E](CLAUDE.md#commandes).

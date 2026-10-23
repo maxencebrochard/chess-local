@@ -218,7 +218,7 @@ def suite(p):
         # Ancien stockage : absence de clé, défaut actif ; modification par le vrai interrupteur.
         ctx = mobile_context(p, browser, ck, standalone=True)
         page = ctx.new_page()
-        page.goto(f"{BASE}/#/stats")
+        page.goto(f"{BASE}/#/reglages")
         page.evaluate("() => { const s=JSON.parse(localStorage.getItem('chess-local-settings')); delete s.state.premoves; s.state.themeId='blue'; localStorage.setItem('chess-local-settings', JSON.stringify(s)) }")
         page.reload()
         toggle = page.get_by_role("switch", name="Prémouvements", exact=True)

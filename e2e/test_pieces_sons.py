@@ -403,7 +403,7 @@ def learn_suite(p, browser):
 def volume_suite(p, browser):
     ctx = ctx_with_audio(p, browser, SOUND_ON)
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/stats")
+    page.goto(f"{BASE}/#/reglages")
     slider = page.locator("input[aria-label='Volume des sons']")
     if ck.appears("[volume] curseur présent sous Sons", page, "input[aria-label='Volume des sons']", timeout=15000):
         slider.scroll_into_view_if_needed()
@@ -471,7 +471,7 @@ def migration_suite(p, browser):
     for old, version, expected in [(None, 0, "atelier"), ("celtique", 0, "wikimedia"), ("chessnut", 0, "chessnut"), (None, 1, "atelier"), ("celtique", 1, "celtique"), ("wikimedia", 1, "wikimedia"), ("wikimedia", 2, "wikimedia")]:
         ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block")
         page = ctx.new_page()
-        page.goto(f"{BASE}/#/stats")
+        page.goto(f"{BASE}/#/reglages")
         original = {"themeId": "blue", "playSounds": False, "soundVolume": 0.35, "premoves": False, "showLegalMoves": False, "showAttackers": True, "reviewDepth": "deep", "chesscomUsername": "migration", "playMode": "local", "playBotId": "noa", "playColor": "b", "playTcLabel": "Illimité"}
         if old is not None:
             original["pieceSet"] = old
@@ -498,7 +498,7 @@ def pieces_suite(p, browser):
         shot(page, "f10_jouer_atelier_852")
 
     # Réglages : choix de Chessnut, avec aperçu.
-    page.goto(f"{BASE}/#/stats")
+    page.goto(f"{BASE}/#/reglages")
     if ck.appears("[pièces] réglage « Pièces » présent", page, "[data-piece-set='chessnut']", timeout=15000):
         page.locator("[data-piece-set='chessnut']").scroll_into_view_if_needed()
         shot(page, "f10_reglages_pieces_852")

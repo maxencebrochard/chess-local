@@ -237,7 +237,7 @@ Réglage hors persist Zustand : `localStorage['chess-local-threat-check']` (`{bo
 Indisponible en bullet ; en mode bot, la pendule du joueur attend l'analyse et la réponse et la partie n'est pas classée ; en mode entraîneur, seule une menace révélée déclasse la partie.
 `Board.onSquareTap` (échiquier non jouable, prémouvement coupé) reçoit les touchers pendant la question ; `threatPly` de l'instantané de partie évite de reposer une question répondue.
 Poser une question ramène au direct si le joueur consultait l’historique pendant l’analyse ; l’échiquier entraîneur réserve la hauteur des commandes pour garder ses quatre coins accessibles sur petit écran.
-Chaque réponse écrit une ligne `learnSessions` domaine `threat-check` (hors Elo, ignorée par `pickNextDomain` et la révision), résumée dans Statistiques (`/stats`, onglet Plus).
+Chaque réponse écrit une ligne `learnSessions` domaine `threat-check` (hors Elo, ignorée par `pickNextDomain` et la révision), résumée dans Statistiques (`/stats`, onglet Plus) ; la page Réglages porte aussi ses deux interrupteurs (bot et entraîneur).
 
 ### Persistance
 
@@ -250,6 +250,8 @@ La migration persist des réglages (version 2) est partagée avec l’import des
 Un jeu enregistré n'est jamais remplacé par `atelier` : seuls les stockages sans `pieceSet` (nouvel utilisateur compris) le reçoivent.
 Un choix `celtique` enregistré en version 1 est conservé ; cette version persist est indépendante de la version du schéma de sauvegarde.
 L’import valide ensuite les types (dont `premoves`, booléen sinon défaut) et les valeurs contre les listes réelles de l’application.
+Les réglages s'affichent dans la page Réglages (`/reglages`, `src/pages/Settings.tsx`), qui écrit aussi `chess-local-threat-check` comme l'écran de Jouer ; sauvegarde, restauration et réinitialisation vivent dans Mes données (`/donnees`, `src/pages/MyData.tsx`), au-dessus de `backup.ts`.
+Ces deux pages ne sont que de la présentation : clés et formats persistés sont ceux de l'ancienne page Stats, vérifiés par `part_pages` de `test_backup.py`.
 Les séances en cours d'Apprendre, de révision, du parcours d'apprentissage et de la séance du jour vivent dans `sessionStorage` (`learn-session-v1`, `revision-session-v1`, `path-session-v1`, `seance-session-v1`), comme l'exercice laissé pour l'analyseur (`exercise-return-v1`) : `importBackup` et `resetApp` effacent ces cinq clés, et seulement elles.
 `resetApp` efface aussi les clés locales de Jouer, Puzzles et Mats éclair, exportées par leurs modules de logique.
 `main.tsx` demande `navigator.storage.persist()` ; iOS peut purger IndexedDB, et le périmètre des sauvegardes de `backup.ts` est décrit dans [README.md, section Features](README.md#features).
@@ -348,9 +350,10 @@ Ne pas remettre `text-white` sur un `bg-accent` opaque ; les variantes transluci
 Ces composants sont appliqués aux tuiles Accueil/Apprendre, aux sommaires communs de cours, à la progression du parcours et aux états vides Archive/attaques/défenses personnelles.
 La suite `ux_foundation` vérifie contraste rendu, focus, dimensions, titres longs, retours, états vides et chargement aux trois formats ; ses captures restent dans `e2e/shots/ux-lot1/`.
 Le lot 2 livre la navigation à cinq onglets (`NAV` de `src/App.tsx`) : Accueil, Jouer, Puzzles, Apprendre et Plus ; la réorganisation d’Apprendre reste différée au lot 5.
-Le `match` de chaque onglet suit le « Placement cible de chaque route » du plan : `/mats` allume Puzzles, `/moment-critique` Apprendre, et `/analyse` (sous-chemins compris), `/archive`, `/import`, `/stats` et `/insights` allument Plus ; un seul `aria-current` dans la nav, toujours sur un onglet.
+Le `match` de chaque onglet suit le « Placement cible de chaque route » du plan : `/mats` allume Puzzles, `/moment-critique` Apprendre, et `/analyse` (sous-chemins compris), `/archive`, `/import`, `/stats`, `/insights`, `/reglages` et `/donnees` allument Plus ; un seul `aria-current` dans la nav, toujours sur un onglet.
 Les routes restent identiques et les anciens liens fonctionnent ; les onglets restent en `replace`, les liens du hub `/plus` (`src/pages/More.tsx`) sont des descentes en push.
-Les destinations de Plus vivent dans `PLUS_GROUPS` de `src/lib/navigation.ts`, partagé par le hub et la nav latérale ; Réglages et Mes données ouvrent `/stats` avec `state.section` (`reglages` ou `donnees`), que Stats lit, fait défiler puis efface, comme l’ancien `state.backup` de la carte de migration native.
+Les destinations de Plus vivent dans `PLUS_GROUPS` de `src/lib/navigation.ts`, partagé par le hub et la nav latérale.
+Le lot 3 donne leurs pages à Réglages (`/reglages`) et Mes données (`/donnees`), avec un retour « Plus » dans `PageHeader` ; Stats renvoie en `replace` les anciens `state.section` (`reglages`, `donnees`) et `state.backup` vers ces pages, et la carte de migration native ouvre directement `/donnees`.
 La nav latérale déplie la sous-liste de Plus dès que l’onglet Plus est allumé (dérivée de la route, sans état), en `replace` et sans `aria-current` : sélection visuelle par `data-selected`.
 Les pictogrammes de nav et du hub sont des SVG inline dessinés pour l’app (`src/components/NavIcon.tsx`) : grille 24, trait 1,75, `currentColor`, `aria-hidden`, aplat à 22 % des formes `data-fill` quand l’onglet est actif (`.nav-icon-active` de `src/index.css`) ; la nav basse garde 48 px de haut, libellés en 12 px.
 Les tests visent les onglets par `nav a[data-nav-tab]` et les cartes du hub par `main a[data-plus='<icône>']` ; la suite `shell` vérifie onglets, familles de routes, hub, sous-liste et pictogrammes aux trois formats.

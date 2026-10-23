@@ -1328,7 +1328,7 @@ def local_run(p, browser):
             row["timeClass"] = "rapid"
             row["timeControl"] = "600"
         backup = {"_app": "chess-local", "_version": 3, "_date": "2026-10-14T12:00:00.000Z", **tables}
-        page.goto(f"{BASE}/#/stats")
+        page.goto(f"{BASE}/#/donnees")
         if ck.appears(f"{tag} restauration disponible", page, "input[type=file]", state="attached"):
             page.set_input_files("input[type=file]", {"name": "autre-appareil.json", "mimeType": "application/json", "buffer": json.dumps(backup).encode()})
             if ck.appears(f"{tag} confirmation de restauration", page, "[data-testid=restore-confirm]"):

@@ -29,7 +29,7 @@ def delayed_settings(p, browser, setting):
     ctx = audio_context(p, browser)
     ctx.add_init_script(HOLD_AUDIO)
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/stats")
+    page.goto(f"{BASE}/#/reglages")
     slider = page.get_by_label("Volume des sons")
     slider.focus()
     page.keyboard.press("End")
@@ -54,7 +54,7 @@ def prefixed_context(p, browser):
     ctx = audio_context(p, browser)
     ctx.add_init_script("window.webkitAudioContext = window.AudioContext; window.AudioContext = undefined")
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/stats")
+    page.goto(f"{BASE}/#/reglages")
     slider = page.get_by_label("Volume des sons")
     slider.focus()
     for mode in [None, "interrupted", "zombie"]:

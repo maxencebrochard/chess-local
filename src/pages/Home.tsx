@@ -83,7 +83,7 @@ export default function Home() {
         <div data-testid="native-migration" className="mb-2 md:mb-4 flex items-center rounded-2xl border border-accent/40 bg-surface-2 shadow-lg">
           <button
             data-testid="native-migration-go"
-            onClick={() => navigate('/stats', { replace: true, state: { backup: true } })}
+            onClick={() => navigate('/donnees', { replace: true })}
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-l-2xl py-2 pl-4 text-left transition hover:bg-surface-3"
           >
             <span className="text-2xl" aria-hidden="true">📲</span>
