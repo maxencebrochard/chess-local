@@ -13,6 +13,7 @@ import re
 import subprocess
 
 import chess
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from helpers import BASE, SHOTS, Checker, click_square, desktop_context, mobile_context, overflow_x
 
@@ -23,6 +24,7 @@ OUT = Path(SHOTS) / "ux-audit" / MODE
 OUT.mkdir(parents=True, exist_ok=True)
 ROWS = []
 DECLARED = set()
+COVERED = set()
 
 
 def data(name):
@@ -160,7 +162,7 @@ def check_route_coverage(page, fmt, visited):
     """Chaque route déclarée doit être photographiée par l'audit : une route ajoutée sans
     extension de la matrice fait échouer la suite."""
     page.goto(f"{BASE}/#/")
-    page.wait_for_selector("main h1", timeout=15000)
+    ck.appears(f"{fmt} : accueil rendu avant lecture des routes", page, "main h1", timeout=15000)
     declared = page.evaluate(DECLARED_ROUTES_JS) or []
     # Garde contre un parcours vide ou partiel qui rendrait la comparaison vacuement vraie.
     ck.check(f"{fmt} : table des routes lue dans l'app ({len(declared)} routes)",
@@ -171,7 +173,7 @@ def check_route_coverage(page, fmt, visited):
                  "absente de la matrice : ajouter un état à `routes` dans test_ux_audit.py")
     for path in sorted(visited):
         ck.check(f"{fmt} : chemin audité {path} servi par une route déclarée", best_route(path, declared) != "*" or path == "/route-inconnue")
-    return declared
+    return declared, covered & set(declared)
 
 
 def context(p, browser, fmt, height):
@@ -257,11 +259,15 @@ def suite(p):
             visit(page, fmt, path, name, marker)
         # Repli `*` : une URL inconnue revient à l'accueil.
         page.goto(f"{BASE}/#/route-inconnue")
-        page.wait_for_url(f"{BASE}/#/", timeout=15000)
+        try:
+            page.wait_for_url(f"{BASE}/#/", timeout=15000)
+        except PlaywrightTimeoutError:
+            pass
+        ck.check(f"{fmt}/route-inconnue : repli vers l'accueil", page.url.endswith("#/"), page.url)
         capture(page, fmt, "route-inconnue", "ChessLocal")
-        ck.check(f"{fmt}/route-inconnue : repli vers l'accueil", page.url.endswith("#/"))
-        declared = check_route_coverage(page, fmt, [r[0] for r in routes] + ["/route-inconnue"])
+        declared, covered = check_route_coverage(page, fmt, [r[0] for r in routes] + ["/route-inconnue"])
         DECLARED.update(declared)
+        COVERED.update(covered)
 
         # Parcours par l'interface : onglets, puis cours et retour explicite.
         page.goto(f"{BASE}/")
@@ -313,8 +319,9 @@ def suite(p):
             page.get_by_role("button", name="Commencer", exact=True).click()
             capture(page, fmt, drill+"-exercice", "[data-board]", selector=True)
         page.goto(f"{BASE}/#/finales/chrono")
-        page.locator("button[data-serie]").first.click()
-        capture(page, fmt, "finales-chrono-serie", "[data-run='endgame-clock']", selector=True)
+        if ck.appears(f"{fmt} : séries des finales au chrono", page, "button[data-serie]", timeout=15000):
+            page.locator("button[data-serie]").first.click()
+            capture(page, fmt, "finales-chrono-serie", "[data-run='endgame-clock']", selector=True)
         page.goto(f"{BASE}/#/ouvertures")
         page.locator("button").filter(has_text="Sicilienne").first.click()
         capture(page, fmt, "ouverture-fiche", "Variantes")
@@ -433,7 +440,7 @@ def suite(p):
     browser.close()
     ck.check("Les trois formats ont été capturés", {r["format"] for r in ROWS} == {"iphone852", "iphone660", "desktop"})
     (OUT / "routes.json").write_text(json.dumps(sorted(DECLARED), ensure_ascii=False, indent=2))
-    print(f"Routes déclarées et couvertes : {len(DECLARED)}")
+    print(f"Routes déclarées : {len(DECLARED)} ; couvertes : {len(COVERED)}")
     print(f"Inventaire : {len(ROWS)} états, {sum(len(r['screenshots']) for r in ROWS)} captures ; {OUT}")
 
 
