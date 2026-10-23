@@ -296,8 +296,7 @@ Les MP3 finaux et les SVG Atelier redessinés sont autorisés par Max (17 octobr
 `Play` remet `<main>` en haut par un seul effet, à chaque passage réglages ↔ partie et à chaque nouvelle partie, pour ne pas hériter du défilement de la configuration sur petit écran (`piece_viewport`).
 `e2e/test_piece_centers.py` contrôle les pixels peints à ±2 % de case ; ne pas compter deux fois le transform CSS lors de la rasterisation des SVG intégrés.
 Les coordonnées de l'échiquier ont une taille de 19 % de la case (9 à 15 px, via `--board-square` posé par `Board`) et collent à leur coin.
-`e2e/test_coordinates.py` mesure l'encre de chaque glyphe contre l'encre des pièces, dans les deux orientations et aux trois formats : aucun recouvrement pour `atelier` et `wikimedia`, sous les douze pièces possibles.
-Les autres jeux dessinent jusqu'au bord de la case, sans coin libre pour un glyphe lisible : la pièce y est peinte au-dessus de la coordonnée, jamais l'inverse.
+`e2e/test_coordinates.py` mesure l'encre de chaque glyphe contre l'encre des pièces, dans les deux orientations et aux trois formats : aucun recouvrement pour les sept jeux, sous les douze pièces possibles.
 
 ### Données
 
