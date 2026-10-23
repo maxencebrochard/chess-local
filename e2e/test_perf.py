@@ -461,7 +461,7 @@ def renamed_build(src, dest):
     assets = os.path.join(dest, "assets")
     names = sorted(n for n in os.listdir(assets) if n.endswith(".js"))
     entry = os.path.basename(initial_assets(src)[0])
-    if entry not in names or not any(n.startswith("Analysis-") for n in names):
+    if entry not in names or not any(n.startswith("Insights-") for n in names):
         return None
     texts = {n: open(os.path.join(assets, n), encoding="utf-8").read() for n in names}
     renames = {entry: entry.replace(".js", "B.js")}
@@ -484,8 +484,8 @@ def renamed_build(src, dest):
     md5 = hashlib.md5(open(os.path.join(dest, "index.html"), "rb").read()).hexdigest()
     sw, n = re.subn(r'\{url:"index\.html",revision:"[^"]+"\}', f'{{url:"index.html",revision:"{md5}"}}', open(sw_path, encoding="utf-8").read())
     open(sw_path, "w", encoding="utf-8").write(sw)
-    analysis_renamed = any(k.startswith("Analysis-") for k in renames)
-    return renames if n == 1 and analysis_renamed else None
+    target_renamed = any(k.startswith("Insights-") for k in renames)  # route ouverte par new_deploy
+    return renames if n == 1 and target_renamed else None
 
 
 def open_analysis(page):
@@ -510,7 +510,7 @@ def new_deploy(p, browser, dist):
         loads = []
         page.on("load", lambda: loads.append(1))
         asked = []
-        page.on("request", lambda r: asked.append(r.url.rsplit("/", 1)[-1]) if "/assets/Analysis-" in r.url else None)
+        page.on("request", lambda r: asked.append(r.url.rsplit("/", 1)[-1]) if "/assets/Insights-" in r.url else None)
         page.goto(f"{server.base}/#/")
         page.evaluate("() => navigator.serviceWorker.ready")
         if not check("[déploiement] build A installé (précache complet, page contrôlée)", wait_precache(page)):
@@ -531,23 +531,18 @@ def new_deploy(p, browser, dist):
             ctx.close()
             return
         before = len(loads)
-        open_analysis(page)
-        ck.appears("[déploiement] Analyse s'affiche après la mise à jour", page, "main :text('Options')", timeout=30000)
-        new_name = renames[next(k for k in renames if k.startswith("Analysis-"))]
+        # Route jamais chargée par l'accueil : Mon bilan, son lien de progression (lot 4).
+        page.locator("[data-testid=home-bilan]").click()
+        ck.appears("[déploiement] Mon bilan s'affiche après la mise à jour", page, "main :text('Insights')", timeout=30000)
+        new_name = renames[next(k for k in renames if k.startswith("Insights-"))]
         # Aucune requête vers l'ancienne chunk : le rechargement a précédé l'import, il n'a pas
         # rattrapé un échec (le filet `reloadOnce` seul passerait par une requête en 404).
         check("[déploiement] un seul rechargement, avant toute requête de l'ancienne chunk", len(loads) - before == 1 and asked and all(a == new_name for a in asked),
-              f"({len(loads) - before} rechargement(s), chunks d'Analyse demandées {asked})")
+              f"({len(loads) - before} rechargement(s), chunks de Mon bilan demandées {asked})")
         ctx.close()
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
-
-
-def open_analysis(page):
-    """Navigation interne vers Analyse, sans rechargement : Analyse n'a plus d'onglet (lot 2 de la
-    refonte, elle vit sous Plus) ; changer le hash est exactement ce que fait un lien du HashRouter."""
-    page.evaluate("() => { location.hash = '#/analyse' }")
 
 
 def missing_chunk(p, browser):
@@ -566,7 +561,7 @@ def missing_chunk(p, browser):
             else:
                 route.continue_()
 
-        ctx.route("**/assets/Analysis-*.js", handle)
+        ctx.route("**/assets/Insights-*.js", handle)  # Mon bilan, lien de progression de l'accueil
         page = ctx.new_page()
         loads = []
         page.on("load", lambda: loads.append(1))
@@ -574,13 +569,13 @@ def missing_chunk(p, browser):
         ck.appears(f"[{label}] accueil affiché", page, "[data-review-ready]")
         if always:
             with ck.expect_pageerror(("dynamically imported module", "Importing a module script failed")):
-                open_analysis(page)
+                page.locator("[data-testid=home-bilan]").click()
                 ck.appears(f"[{label}] écran de secours affiché", page, "main [role='alert']", timeout=20000)
             page.wait_for_timeout(1500)
             check(f"[{label}] un seul rechargement automatique", len(loads) == 2 and len(failed) == 2, f"({len(loads)} chargements, {len(failed)} échecs)")
         else:
-            open_analysis(page)
-            ck.appears(f"[{label}] Analyse s'affiche après rechargement", page, "main :text('Options')", timeout=20000)
+            page.locator("[data-testid=home-bilan]").click()
+            ck.appears(f"[{label}] Mon bilan s'affiche après rechargement", page, "main :text('Insights')", timeout=20000)
             check(f"[{label}] la chunk a échoué une fois, puis l'app a rechargé une fois", len(failed) == 1 and len(loads) == 2, f"({len(failed)} échecs, {len(loads)} chargements)")
             key = page.evaluate("() => sessionStorage.getItem('chess-local-chunk-reload')")
             check(f"[{label}] la garde de rechargement est levée après succès", key is None, f"({key})")

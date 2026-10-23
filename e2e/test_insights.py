@@ -983,10 +983,13 @@ def seeded_report(p, browser, rows, ins):
         page.goto(f"{BASE}/#/")
         if ck.appears(f"[{name}] accueil", page, "main a[href='#/insights']", timeout=15000):
             page.wait_for_timeout(300)
-            box = page.locator("main a[href='#/insights']").bounding_box()
-            check(f"[{name}] accueil : tuile Insights visible sans défiler", box is not None and box["y"] + box["height"] <= page.viewport_size["height"], f"({box})")
-            play = page.locator("main button", has_text="Jouer").last.bounding_box()
-            check(f"[{name}] accueil : bouton Jouer entièrement au-dessus de la nav basse", play is not None and play["y"] + play["height"] <= page.evaluate("() => document.querySelector('main').getBoundingClientRect().bottom") + 0.5, f"({play})")
+            # Lot 4 : action principale visible sans défiler ; Mon bilan vient après, dans la progression.
+            play = page.locator("[data-home-cta]").bounding_box()
+            check(f"[{name}] accueil : action principale entièrement au-dessus de la nav basse", play is not None and play["y"] + play["height"] <= page.evaluate("() => document.querySelector('main').getBoundingClientRect().bottom") + 0.5, f"({play})")
+            link = page.locator("main a[href='#/insights']")
+            link.scroll_into_view_if_needed()
+            box = link.bounding_box()
+            check(f"[{name}] accueil : « Voir mon bilan » atteignable en entier dans main", box is not None and box["y"] >= 0 and box["y"] + box["height"] <= page.evaluate("() => document.querySelector('main').getBoundingClientRect().bottom") + 0.5, f"({box})")
             page.screenshot(path=f"{SHOTS}/insights_home_{name}.png")
         ctx.close()
 
@@ -1110,7 +1113,7 @@ def real_run(p, browser):
 
     # Entrée depuis l'accueil.
     page.goto(f"{BASE}/#/")
-    ck.appears(f"{tag} accueil chargé", page, "text=Résolvez !", timeout=15000)
+    ck.appears(f"{tag} accueil chargé", page, "[data-testid=home]", timeout=15000)
     home_link = page.locator("main a[href='#/insights']")
     if check(f"{tag} accueil : tuile Insights", home_link.count() == 1, f"({home_link.count()})"):
         page.screenshot(path=f"{SHOTS}/insights_home_852.png")

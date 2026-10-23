@@ -846,7 +846,7 @@ Un déplacement de menu ne justifie pas de renommer un domaine `learnSessions`, 
 Chaque lot porte un périmètre limité et peut être annulé sans migration de données.
 L’ordre indique les dépendances ; les lots 3 à 6 sont séparables une fois le socle et les contrats validés.
 Les checks listés sont les critères d’acceptation de chaque lot.
-Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2), ceux du lot 3 dans sa [vérification](#vérification-du-lot-3), ceux du lot 5 dans sa [vérification](#vérification-du-lot-5), ceux du lot 6 dans sa [vérification](#vérification-du-lot-6), ceux du lot 7 dans sa [vérification](#vérification-du-lot-7), ceux du lot 8 dans sa [vérification](#vérification-du-lot-8) ; ceux des lots suivants restent à établir.
+Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2), ceux du lot 3 dans sa [vérification](#vérification-du-lot-3), ceux du lot 4 dans sa [vérification](#vérification-du-lot-4), ceux du lot 5 dans sa [vérification](#vérification-du-lot-5), ceux du lot 6 dans sa [vérification](#vérification-du-lot-6), ceux du lot 7 dans sa [vérification](#vérification-du-lot-7), ceux du lot 8 dans sa [vérification](#vérification-du-lot-8) ; ceux des lots suivants restent à établir.
 
 | Lot | Périmètre et propriété | Dépendance | Acceptation E2E |
 |---|---|---|---|
@@ -854,7 +854,7 @@ Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-d
 | 1. Socle visuel (fait) | `Cta`, en-tête, carte, progression, état vide sur trois usages réels | Réconciliation sur la base du lot 1 | Contraste, focus, 44 px, titres longs, état vide, chargement, captures trois formats |
 | 2. Navigation et Plus (fait) | `App.tsx`, nouveau hub Plus, rattachement des routes | Lot 1 | Cinq onglets, aria-current exact, anciens deep links, replace/push, aucun retour hors app, suites shell/all_buttons/edge_navigation |
 | 3. Réglages et données (fait) | Extraire la présentation de Stats vers Réglages et Mes données | Lot 2 | Mêmes valeurs persistées ; backup, upgrade, audio_settings, stats ; annulation des actions destructrices |
-| 4. Accueil quotidien | `Home.tsx`, adaptateur de lecture du service de séance existant | Lot 2 + séance du jour intégrée | Profil neuf, reprise, dû/non dû, données indisponibles, pas de double comptage, CTA accessible à 660 px |
+| 4. Accueil quotidien (fait) | `Home.tsx`, adaptateur de lecture du service de séance existant | Lot 2 + séance du jour intégrée | Profil neuf, reprise, dû/non dû, données indisponibles, pas de double comptage, CTA accessible à 660 px |
 | 5. Apprendre et Entraînement (fait) | Hub guidé, cinq groupes, anciennes entrées conservées | Lot 2 + parcours intégré | Chaque fonction accessible en quatre taps au plus, état vide explicite, suites learn/all_buttons et suites des features déplacées |
 | 6. Puzzles et vitesse (fait) | Hub Puzzles, Rush et Mats, retours contextuels | Lot 2 | Réussite/échec, chrono intact, retour vers le bon hub, suites puzzles/mats/continuation |
 | 7. Exercice commun, première tranche (fait) | En-tête et feedback sur séance Apprendre puis révision | Lots 1 et 5 | Pas de déplacement du board au verdict, réessai non rescoring, analyse puis restauration, suites learn/revision/touch |
@@ -1210,6 +1210,103 @@ Preuves par mutation, chacune annulée ensuite :
 - interrupteurs de l’alerte écrivant `chess-local-threat` au lieu de `chess-local-threat-check` : `backup` à code 1, six échecs de `part_pages` (clé modifiée, format, lecture croisée avec Jouer, aller-retour).
 
 Captures relues : `reglages` et `donnees` d’`ux_audit` aux trois formats, `f10_reglages_*`, `backup_donnees_after_export.png` et `ios_migration_donnees_393x852.png`.
+
+## Lot 4 : accueil quotidien réalisé
+
+L’Accueil (`src/pages/Home.tsx`) suit la [maquette](#accueil) : une carte principale avec un seul CTA, la révision due en ligne secondaire, deux raccourcis, puis la progression.
+La décision est pure, dans `src/lib/homePlan.ts`, et Home.tsx se borne à lire les sources et à afficher.
+Aucun second ordonnanceur n’est créé : la séance du jour reste seule à choisir ses blocs, et l’accueil ne charge jamais `puzzles.json`.
+
+### Priorité de la carte principale
+
+L’ordre est fixe, sans dépendre de l’heure des dernières actions.
+
+| Rang | Condition | Carte | CTA |
+|---:|---|---|---|
+| 1 | Séance du jour en cours (`readStoredSeance`, moins de 6 h, étape d’un type connu) | « Séance en cours », étape et type, progression réelle | Reprendre la séance, `/seance` en push |
+| 2 | Partie de Jouer en cours (`readStoredGame`, moins de 24 h, mode valide) | « Partie en cours », adversaire, cadence, coup et camp | Reprendre la partie, `/jouer` en replace |
+| 3 | Séance du jour pas encore faite aujourd’hui | « Ta séance du jour », explication brève, révisions reprises et série | Commencer, `/seance` en push |
+| 4 | Séance du jour faite aujourd’hui | « Pour aller plus loin », séance rapide d’Apprendre | Séance rapide, `/apprendre` en replace avec `state.quick` |
+
+Seules ces deux reprises sont retenues, parce que leur page les restaure à un simple montage.
+`learn-session-v1` et `revision-session-v1` ne se restaurent qu’avec `state.restore` depuis l’analyse ; `path-session-v1` et la partie depuis une position appartiennent à des pages multiples : aucune n’est proposée.
+La séance passe avant la partie parce que la partie reste à un geste : le raccourci Jouer affiche alors « Partie en cours ».
+Quand une partie ou la séance rapide tient la carte, la séance du jour reste une ligne secondaire (« Ta séance du jour » ou « Refaire une séance du jour »).
+Tant que la série de jours n’est pas lue, sans reprise, la carte garde sa place mais reste invisible : aucun CTA ne change l’instant d’après.
+
+La reprise de partie est lue par `src/lib/playSession.ts`, extrait de `Play.tsx` qui l’importe désormais : même validation, sans chess.js.
+Le nom du bot est ajouté à l’instantané (`botName`) pour ne pas tirer la liste des bots dans le bundle initial ; un instantané plus ancien affiche « Partie contre un bot ».
+« Séance rapide » démarre la séance automatique existante d’Apprendre (`start()` de `Learn.tsx`), qui consomme puis efface son state.
+
+### Révision due sans double comptage
+
+La règle de la séance est exportée par `seance.ts` (`revisionBlockSize`, 4 au plus) et `planSeance` l’utilise.
+Les révisions déjà comptées par la séance sont celles non jugées de la séance en cours, ou, tant que la séance du jour n’est pas faite, celles qu’une nouvelle séance reprendrait (`buildReviewSession` de la file due).
+La ligne « À réviser aujourd’hui » affiche seule la quantité totale (`data-review-count`) ; la carte de séance nomme sa part (« Commence par 2 révisions dues ») et la ligne la reprend (« Toutes dans ta séance du jour : 1 puzzle · 1 erreur », ou « 4 dans ta séance du jour, en plus : 2 puzzles »).
+Quand rien ne reste hors séance, la pastille passe du jaune au neutre : la ligne n’ajoute pas un second CTA concurrent.
+Ce partage ignore les puzzles retirés par la séance quand `puzzles.json` ne charge pas, puisque l’accueil ne le lit jamais.
+
+### Raccourcis, progression et état dégradé
+
+Jouer et Puzzles sont deux cartes discrètes en `replace`, comme la nav basse.
+La progression vient ensuite : le parcours d’apprentissage (étape suivante et `ProgressBar`, affichée seulement une fois la progression lue) et « Voir mon bilan » vers `/insights`, avec l’activité de la semaine depuis lundi (séances, puzzles réussis, parties) lue par requêtes indexées.
+Aucun classement n’est affiché : les quatre cartes Elo, Puzzle Rush, Analyse, Archive et chess.com quittent l’Accueil, toutes atteignables par Puzzles et Plus.
+La carte de migration native est conservée en tête.
+Si le compteur de révision ne charge pas, `data-review-ready` vaut `unavailable` : la carte et les raccourcis restent, sans ligne de révision ni chiffre inventé.
+L’écart 16 est corrigé : l’écran d’accueil de `/seance` n’a plus que le retour de son en-tête.
+Les écarts 8 et 9 sont traités par la priorité et le partage ci-dessus.
+
+`ActivityCard` reçoit un emplacement `trailing` non interactif (la pastille), et `NavIcon` deux pictogrammes de même grille, `seance` et `reviser`.
+
+### Vérification du lot 4
+
+`npm run check` : code 0.
+La suite `accueil` (`e2e/test_accueil.py`) bundle `homePlan.ts` sous Node (priorité, partage des révisions, libellés, lundi local et passage à l’heure d’été) puis vérifie dans l’app : profil neuf, dû compris dans la séance, dû au-delà, séance faite puis séance rapide lancée, séance en cours reprise, partie en cours reprise (et expirée), compteur indisponible, aucune demande de `puzzles.json`, CTA entier au-dessus de la nav à 393 × 660 avec zones sûres, 393 × 852 et 1440 × 900, cibles de 44 px, ordre des blocs.
+
+| Suite production | Checks réussis |
+|---|---:|
+| `accueil` | 142 |
+| `seance` | 200 |
+| `revision` | 322 |
+| `parcours` | 405 |
+| `shell` | 494 |
+| `all_buttons` | 107 |
+| `ux_foundation` | 527 |
+| `ux_audit` | 816 |
+| `ui_audit` | 1 231 |
+| `viewport` | 750 |
+| `perf` | 75 |
+| `ios_app` | 101 |
+| `insights` | 354 |
+| `backup` | 272 |
+| `bug_hunt` | 48 |
+| `pwa` | 84 |
+| `learn` | 73 |
+| `play_lifecycle` | 84 |
+| `v4` | 28 |
+| `upgrade` | 2 017 |
+
+Ces chiffres sont ceux de la tête rebasée sur `main` (lots 2 et 3 finaux, pages paresseuses), en un seul lancement `--jobs 1`, code 0.
+Avant ce rebasage, en développement (StrictMode) : `accueil`, `seance` et `shell` à code 0.
+`perf` : JS initial 120,8 Ko gzip, JS de l’accueil 996,8 Ko, accueil à froid 891 ms et à chaud 334 ms, budgets inchangés.
+Les suites qui visaient les anciennes tuiles passent par les nouveaux repères (`data-testid=home`, `data-home-cta`, raccourcis), sans retirer d’assertion de fond.
+Les contrôles « l’Accueil tient sans défiler » deviennent « CTA principal visible et tuile atteignable », conformément à la maquette.
+`shell` provoque le crash de l’accueil par `Date.now`, l’accueil n’affichant plus de valeur brute de la base.
+`perf` ouvre Mon bilan par le lien de progression de l’accueil pour ses scénarios de chunk, un vrai clic plutôt que le changement de hash vers Analyse de `main`.
+`upgrade` garde les chiffres de l’ancien accueil pour les huit anciens builds (`legacy_home`, y compris `deployed-2026-10-23-2`), exporte depuis `/stats` sur l’ancien build et depuis `/donnees` sur le nouveau (lot 3), et vérifie l’activité de la semaine sur le nouveau.
+La carte de migration native ouvre `/donnees` en `replace`, comme au lot 3.
+
+Preuves par mutation sur `accueil`, chacune annulée ensuite :
+
+- `revisionsInSeance` ne réclame aucune révision : code 1, neuf échecs (banc et parcours UI : « Commence par », part nommée, pastille neutre, séance en cours) ;
+- partie en cours avant séance en cours dans `homePrimary` : code 1, huit échecs (banc et reprise de séance) ;
+- `dots` de Home.tsx rendant le texte brut : code 1, cinq échecs de coupure (« · » en début de ligne, « 2 / puzzles » séparés).
+
+Les énumérations de l’accueil (« 1 puzzle · 1 erreur », statut de séance, partie en cours, activité de la semaine) passent par `dots` de Home.tsx : le point médian reste collé au mot qui le précède et un nombre au mot qui le suit, par des segments `whitespace-nowrap`, sans changer le texte rendu.
+`accueil` le vérifie à toute largeur (bloc forcé de 100 à 360 px) sur cinq lignes.
+Aucun libellé « Insights » ni « Problèmes » ne restait sur l’accueil ; la route `/insights` est inchangée.
+Captures relues : `e2e/shots/accueil_*.png` aux trois formats et dans chaque état.
+Restent ouverts : la validation sur iPhone physique (lot 10) et le renommage de la page Insights en « Mon bilan », qui appartient au lot 9.
 
 ## Lot 5 : Apprendre et Entraînement réalisé
 

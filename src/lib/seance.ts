@@ -26,6 +26,12 @@ export const BLOCK_META: Record<BlockKind, { label: string; emoji: string; minut
 // Budget visé : 12 minutes, jamais plus de 15 ; 10 au moins dès qu'un bloc long a un candidat.
 export const BUDGET = { target: 12, min: 10, max: 15 } as const
 export const REVISION_MAX = 4
+
+// Révisions dues qu'une nouvelle séance reprend (les plus urgentes, choisies par
+// buildReviewSession). L'accueil lit la même règle pour ne pas compter deux fois ces révisions.
+export function revisionBlockSize(due: number): number {
+  return Math.max(0, Math.min(due, REVISION_MAX))
+}
 export const PUZZLES_MIN = 3
 export const PUZZLES_MAX = 6
 // Poids des ouvertures à partir duquel une variante entre dans la séance même si le budget est atteint.
@@ -225,7 +231,7 @@ export function planSeance(input: PlanInput, rng: () => number = Math.random): S
     return b
   }
 
-  const revisionCount = Math.min(input.due.length, REVISION_MAX)
+  const revisionCount = revisionBlockSize(input.due.length)
   const revision = revisionCount > 0
     ? add({ kind: 'revision', count: revisionCount, reason: input.due.length > revisionCount ? `${revisionCount} des ${input.due.length} éléments dus aujourd'hui` : `${plural(revisionCount, 'élément dû', 'éléments dus')} aujourd'hui` })
     : null

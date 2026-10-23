@@ -14,7 +14,7 @@ from run import Server, port_is_listening
 
 # (route, texte que seule cette page affiche) : la coquille de l'app s'affiche aussi sur une
 # route inconnue, donc « la nav est visible » ne prouverait pas que la page a chargé.
-ROUTES = [("", "Problèmes"), ("jouer", "Adversaire"), ("puzzles", "Classement puzzles"), ("rush", "Survie"),
+ROUTES = [("", "Ta progression"), ("jouer", "Adversaire"), ("puzzles", "Classement puzzles"), ("rush", "Survie"),
           ("apprendre", "Séance rapide"), ("analyse", "Options"), ("archive", "Archive"), ("stats", "Statistiques"),
           ("import", "Importer depuis")]
 # Pages chargées à la demande (App.tsx) que ROUTES ne visite pas : hors ligne, chacune doit
@@ -138,7 +138,7 @@ def offline_phase(p, browser):
         check("[hors ligne] le serveur est réellement arrêté", not port_is_listening(port), f"(port {port})")
 
         page.reload()
-        ck.appears("[hors ligne] l'app redémarre sans serveur", page, "main :text('Problèmes')", timeout=20000)
+        ck.appears("[hors ligne] l'app redémarre sans serveur", page, "[data-testid=home]", timeout=20000)
         # Pages paresseuses (App.tsx) : chaque chunk de route doit venir du précache.
         for route, marker in ROUTES[1:] + LAZY_ROUTES:
             page.goto(f"{own.base}/#/{route}")

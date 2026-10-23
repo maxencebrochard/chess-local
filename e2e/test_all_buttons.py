@@ -110,15 +110,16 @@ def suite(p):
         nav_to(page, label)
         ck.appears(f"[nav desktop] {label}", page, f"main :text('{marker_for(marker, 'desktop')}')", timeout=10000)
 
-    # Accueil : carte Problèmes + tuiles + stats
-    tiles = [("Problèmes", "Classement puzzles"), ("Séance du jour", "Quelques blocs courts"), ("Analyse", "Stockfish 18"), ("Puzzle Rush", "Survie"),
-             ("Archive", "Archive ("), ("chess.com", "Importer depuis"), ("Blitz", "Statistiques")]
-    for title, marker in tiles:
+    # Accueil : carte principale (séance du jour), raccourcis Jouer et Puzzles, progression
+    tiles = [("[data-home-cta]", "CTA Commencer", "Quelques blocs courts"), ("[data-testid=home-play]", "raccourci Jouer", "Adversaire"),
+             ("[data-testid=home-puzzles]", "raccourci Puzzles", "Classement puzzles"),
+             ("[data-testid=home-path]", "parcours", "Parcours d'apprentissage"), ("[data-testid=home-bilan]", "Voir mon bilan", "Insights")]
+    for sel, title, marker in tiles:
         page.locator("nav a", has_text="Accueil").first.click()
         page.wait_for_timeout(400)
-        page.locator("main a", has_text=title).first.click()
+        page.locator(f"main {sel}").first.click()
         # Présence n'importe où dans la page, comme `text=` : `main` est inclus.
-        ck.appears(f"[accueil] tuile {title}", page, f":text('{marker}')", timeout=10000, state="attached")
+        ck.appears(f"[accueil] {title}", page, f":text(\"{marker}\")", timeout=10000, state="attached")
 
     # ---------- JOUER : setup ----------
     page.locator("nav a", has_text="Jouer").first.click()

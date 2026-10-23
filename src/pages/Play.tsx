@@ -18,7 +18,8 @@ import { Engine } from '../lib/engine'
 import { applyRating, db, getRating, type SavedGame } from '../lib/db'
 import { openingForMoves } from '../lib/openings'
 import { playComputerMove, playMoveSound, sounds } from '../lib/sounds'
-import { PLAY_GAME_KEY, TIME_CONTROLS, UNLIMITED, type TimeControl } from '../lib/timeControls'
+import { TIME_CONTROLS, UNLIMITED, type TimeControl } from '../lib/timeControls'
+import { readStoredGame, writeStoredGame } from '../lib/playSession'
 import { THREAT_DOMAIN, findThreat, loadThreatPrefs, saveThreatPrefs, threatItemId, type Score, type Threat, type ThreatPrefs } from '../lib/threat'
 import { PLAY_COLORS, PLAY_MODES, useSettings, type PlayColor, type PlayMode } from '../store/settings'
 
@@ -57,51 +58,6 @@ interface ThreatQuestion {
   phase: 'ask' | 'right' | 'wrong'
   threat: Threat
   ply: number // demi-coups joués dans la position de la question
-}
-
-// Partie en cours mémorisée pour survivre à un changement d'onglet, au retour arrière iOS et
-// à une PWA tuée en arrière-plan (sessionStorage ne survit pas à cette dernière). Transitoire :
-// hors sauvegarde, expirée après 24 h, pendules figées pendant l'absence.
-const GAME_KEY = PLAY_GAME_KEY
-const GAME_TTL_MS = 24 * 3600_000
-
-interface StoredGame {
-  mode: PlayMode
-  botId: string
-  playerColor: 'w' | 'b'
-  tcLabel: string
-  sans: string[]
-  clocks: { w: number; b: number }
-  unrated: boolean
-  lastWhiteCp: number
-  // Mat annoncé par la dernière éval (côté blanc, en coups). Absent des instantanés écrits avant
-  // son ajout : la reprise recalcule de toute façon l'éval.
-  lastWhiteMate?: number | null
-  // Alerte menace : demi-coups de la dernière position traitée (question répondue ou sans menace).
-  // Une question en attente est reposée à la reprise, une question répondue jamais.
-  threatPly?: number
-  savedAt: number
-}
-
-function readStoredGame(): StoredGame | null {
-  try {
-    const raw = localStorage.getItem(GAME_KEY)
-    if (!raw) return null
-    const g = JSON.parse(raw) as StoredGame
-    if (!Array.isArray(g.sans) || typeof g.savedAt !== 'number' || Date.now() - g.savedAt > GAME_TTL_MS) return null
-    return g
-  } catch {
-    return null
-  }
-}
-
-function writeStoredGame(g: StoredGame | null) {
-  try {
-    if (g) localStorage.setItem(GAME_KEY, JSON.stringify(g))
-    else localStorage.removeItem(GAME_KEY)
-  } catch {
-    // stockage indisponible (navigation privée) : la partie vit seulement en mémoire
-  }
 }
 
 // Matériel suffisant pour mater, règle chess.com pour un drapeau : le camp qui ne tombe pas
@@ -221,13 +177,14 @@ export default function Play() {
   const threatHold = useRef(false)
   const askedAt = useRef(0) // apparition de la question : un toucher parti avant n'y répond pas
 
-  // Instantané de la partie en cours (voir GAME_KEY).
+  // Instantané de la partie en cours (voir PLAY_GAME_KEY, lib/playSession.ts).
   const saveGame = useCallback(() => {
     const g = gameRef.current
     if (!g || statusRef.current !== 'playing') return
     writeStoredGame({
       mode: g.mode,
       botId: g.bot.id,
+      botName: g.bot.name,
       playerColor: g.playerColor,
       tcLabel: g.tcLabel,
       sans: chessRef.current.history(),

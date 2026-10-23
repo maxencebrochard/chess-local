@@ -585,7 +585,7 @@ def part_reset(page):
     page.click("[data-testid=reset-confirm]")
     ck.appears("[reset] deuxième confirmation", page, "[data-testid=reset-final-sheet]")
     page.click("[data-testid=reset-final-confirm]")
-    ck.appears("[reset] l'app redémarre", page, "main :text('Problèmes')", timeout=20000)
+    ck.appears("[reset] l'app redémarre", page, "[data-testid=home]", timeout=20000)
     check("[reset] série du parcours effacée", page.evaluate("() => sessionStorage.getItem('path-session-v1')") is None)
     go(page, "/apprendre/parcours")
     map_ready(page, "[reset]")
@@ -798,8 +798,11 @@ def part_layouts(p, browser):
             ck.appears("[660] accueil", page, "[data-testid=home-path]", timeout=10000)
             # Progression calculée après le premier affichage (learningPathStore.ts, import dynamique de Home.tsx).
             ck.appears("[660] progression du parcours connue", page, "[data-path-ready]", timeout=10000)
-            fits = page.evaluate("() => { const m = document.querySelector('main'); return m.scrollHeight <= m.clientHeight + 1 }")
-            check("[660] l'Accueil tient sans défiler avec la tuile Parcours", fits)
+            # Lot 4 : la progression suit l'action principale et peut défiler ; la tuile reste atteignable.
+            page.locator("[data-testid=home-path]").scroll_into_view_if_needed()
+            box = page.locator("[data-testid=home-path]").bounding_box()
+            bottom = page.evaluate("() => document.querySelector('main').getBoundingClientRect().bottom")
+            check("[660] tuile Parcours atteignable en entier dans main", box is not None and box["y"] >= 0 and box["y"] + box["height"] <= bottom + 0.5, f"({box})")
             check("[660] tuile Parcours : progression", page.locator("[data-testid=home-path-progress]").inner_text().strip() == f"1/{TOTAL}", page.locator("[data-testid=home-path]").inner_text())
             shot(page, "parcours_accueil_660")
             page.locator("[data-testid=home-path]").click()

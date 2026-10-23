@@ -1,12 +1,18 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ActivityCard } from '../components/ActivityCard'
 import { Cta } from '../components/Cta'
-import { db, DEFAULT_RATING } from '../lib/db'
+import { NavIcon } from '../components/NavIcon'
+import { ProgressBar } from '../components/ProgressBar'
+import { db } from '../lib/db'
+import {
+  gameMeta, gameTitle, homePrimary, revisionLine, revisionsInSeance, seanceStepLabel, weekStart, weekSummary,
+  type GameResume, type SeanceResume,
+} from '../lib/homePlan'
 import { loadChunk } from '../lib/lazyPage'
-import type { ReviewItem } from '../lib/revision'
 import type { PathState } from '../lib/learningPath'
-import { streak, streakLabel } from '../lib/seance'
+import { readStoredGame } from '../lib/playSession'
+import { BLOCK_META, revisionBlockSize, streak, streakLabel } from '../lib/seance'
 import { readStoredSeance, seanceDates } from '../lib/seanceSession'
 import { dismissMigration, isNative, migrationDismissed } from '../lib/native'
 
@@ -26,194 +32,299 @@ function loadOnce<T>(load: () => Promise<T>): () => Promise<T> {
 const loadRevision = loadOnce(() => import('../lib/revision'))
 const loadPath = loadOnce(() => import('../lib/learningPathStore'))
 
+// File de révision due vue de l'accueil : clés `<kind>:<key>`, celles qu'une nouvelle séance du jour
+// reprendrait, et la description par type de chacune.
+interface DueView {
+  keys: string[]
+  fresh: string[]
+  describe: (keys: string[]) => string
+}
+
+// Lecture synchrone des reprises : la carte principale est juste dès le premier affichage.
+function readSeanceResume(): SeanceResume | null {
+  const s = readStoredSeance()
+  // Étape d'un type inconnu (stockage abîmé) : la séance ne saurait pas la restaurer.
+  if (!s || !Object.hasOwn(BLOCK_META, s.steps[s.idx]?.kind)) return null
+  const judged = new Set(s.results.map((r) => r.idx))
+  return {
+    idx: s.idx,
+    total: s.steps.length,
+    kind: s.steps[s.idx].kind,
+    pendingRevisions: s.steps.flatMap((step, i) => (step.kind === 'revision' && !judged.has(i) ? [`${step.payload.item.kind}:${step.payload.item.key}`] : [])),
+  }
+}
+
+function readGameResume(): GameResume | null {
+  const g = readStoredGame()
+  if (!g) return null
+  return { mode: g.mode, botName: typeof g.botName === 'string' && g.botName ? g.botName : null, color: g.playerColor === 'b' ? 'b' : 'w', tcLabel: typeof g.tcLabel === 'string' ? g.tcLabel : '', plies: g.sans.length }
+}
+
+// Énumérations « a · b · c » et quantités « 2 puzzles » : le point médian reste collé au mot qui le
+// précède, un nombre au mot qui le suit ; ni « · » ni un nom sans son nombre ne passent en début de
+// ligne. Texte rendu identique (espaces ordinaires), seules ces coupures sont interdites.
+function keepNumbers(part: string): ReactNode {
+  const pieces = part.split(/(\d+ \S+)/)
+  if (pieces.length < 2) return part
+  return pieces.map((piece, i) => (i % 2 ? <span key={i} className="whitespace-nowrap">{piece}</span> : piece))
+}
+
+function dots(text: string): ReactNode {
+  const parts = text.split(' · ')
+  return parts.map((part, i) => (
+    <Fragment key={i}>
+      {keepNumbers(part)}
+      {i < parts.length - 1 && <><span className="whitespace-nowrap"> ·</span>{' '}</>}
+    </Fragment>
+  ))
+}
+
 export default function Home() {
   const navigate = useNavigate()
-  const [ratings, setRatings] = useState<Record<string, number>>({})
-  const [solved, setSolved] = useState(0)
-  const [nbGames, setNbGames] = useState(0)
-  const [due, setDue] = useState<ReviewItem[] | null>(null) // null : compte pas encore connu
+  const [seanceResume] = useState(readSeanceResume)
+  const [game] = useState(readGameResume)
+  const [series, setSeries] = useState<{ days: number; today: boolean } | null>(null) // série de séances du jour
+  const [seanceWeek, setSeanceWeek] = useState(0)
+  const [due, setDue] = useState<DueView | 'unavailable' | null>(null) // null : file pas encore lue
   const [path, setPath] = useState<PathState | null>(null) // progression du parcours, null : pas encore connue
-  const [seance, setSeance] = useState<{ days: number; today: boolean } | null>(null) // série de séances du jour
-  const [current] = useState(() => readStoredSeance()) // séance du jour en cours (sessionStorage)
+  const [week, setWeek] = useState<{ puzzles: number; games: number } | null>(null)
   // App native : proposer de récupérer les données de la PWA (docs/ios-app.md), jusqu'à une
   // restauration réussie ou « Non merci », même après un premier puzzle joué dans l'app.
   const [offerMigration, setOfferMigration] = useState(() => isNative && !migrationDismissed())
-  const [kinds, setKinds] = useState('') // description du dû (« 2 puzzles, 1 faute »)
 
   useEffect(() => {
-    void db.ratings.toArray().then((rs) => setRatings(Object.fromEntries(rs.map((r) => [r.key, r.value]))))
-    void db.puzzleAttempts.where('date').above(0).toArray().then((a) => setSolved(a.filter((x) => x.success).length))
-    void db.games.count().then(setNbGames)
+    const from = weekStart(Date.now())
+    // Requêtes indexées seulement : jamais puzzles.json ni une table entière.
+    void Promise.all([
+      db.puzzleAttempts.where('date').aboveOrEqual(from).toArray().then((a) => a.filter((x) => x.success).length),
+      db.games.where('date').aboveOrEqual(from).count(),
+    ]).then(([puzzles, games]) => setWeek({ puzzles, games }), () => setWeek({ puzzles: 0, games: 0 }))
+    void seanceDates().then(
+      (d) => {
+        setSeries(streak(d))
+        setSeanceWeek(d.filter((x) => x >= from).length)
+      },
+      () => setSeries({ days: 0, today: false }),
+    )
     // Chunk introuvable malgré le rechargement : l'accueil reste utilisable, sans le compteur ou sans
     // la progression du parcours.
-    void loadRevision().then(async ({ describeKinds, loadReviewQueue }) => {
+    void loadRevision().then(async ({ buildReviewSession, describeKinds, loadReviewQueue }) => {
       const q = await loadReviewQueue()
-      setKinds(describeKinds(q.due))
-      setDue(q.due)
-    }, () => {})
+      const key = (i: { kind: string; key: string }) => `${i.kind}:${i.key}`
+      const byKey = new Map(q.due.map((i) => [key(i), i]))
+      setDue({
+        keys: q.due.map(key),
+        fresh: buildReviewSession(q.due, revisionBlockSize(q.due.length)).map(key),
+        describe: (keys) => describeKinds(keys.flatMap((k) => byKey.get(k) ?? [])),
+      })
+    }).catch(() => setDue('unavailable'))
     void loadPath().then(async ({ loadPathState }) => setPath(await loadPathState()), () => {})
-    void seanceDates().then((d) => setSeance(streak(d)), () => setSeance({ days: 0, today: false }))
   }, [])
 
-  const r = (key: string) => ratings[key] ?? DEFAULT_RATING
+  const doneToday = series ? series.today : null
+  const primary = homePrimary({ seance: seanceResume, game, doneToday })
+  const dueKeys = due && due !== 'unavailable' ? due.keys : []
+  const inSeance = useMemo(
+    () => (due && due !== 'unavailable' ? revisionsInSeance({ due: due.keys, seance: seanceResume, doneToday, fresh: due.fresh }) : []),
+    [due, seanceResume, doneToday],
+  )
+  const extraKeys = dueKeys.filter((k) => !inSeance.includes(k))
+  const streakText = series && series.days > 0 ? streakLabel(series.days) : null
+  // Compteurs prêts (révision et série de jours, dont dépend le partage des révisions) : posé une
+  // fois les deux connus, même indisponibles, pour les mesures et les tests.
+  const reviewReady = due === null || series === null ? undefined : due === 'unavailable' ? 'unavailable' : ''
 
-  const statCards = [
-    { icon: '⏱', label: 'Rapide', value: r('rapid') },
-    { icon: '⚡', label: 'Blitz', value: r('blitz') },
-    { icon: '🚀', label: 'Bullet', value: r('bullet') },
-    { icon: '🧩', label: 'Puzzles', value: r('puzzle') },
-  ]
+  const seanceMeta = [
+    inSeance.length > 0 ? `Commence par ${inSeance.length} révision${inSeance.length > 1 ? 's' : ''} due${inSeance.length > 1 ? 's' : ''}` : null,
+    streakText,
+  ].filter(Boolean).join(' · ')
 
-  const tiles = [
-    { to: '/analyse', icon: '🔍', title: 'Analyse', desc: 'Stockfish 18, bilan, coach', tab: true },
-    { to: '/rush', icon: '⚡', title: 'Puzzle Rush', desc: '3 min, 5 min ou survie', tab: false },
-    { to: '/archive', icon: '📚', title: 'Archive', desc: `${nbGames} partie${nbGames > 1 ? 's' : ''}`, tab: true },
-    { to: '/import', icon: '♟', title: 'chess.com', desc: 'Importer tes parties', tab: false },
-  ]
+  // Carte principale : une seule action immédiate, remplacée par la reprise quand il y en a une.
+  let card: { eyebrow: string; title: string; description: ReactNode; status?: ReactNode; cta: string; go: () => void; progress?: ReactNode }
+  if (primary.kind === 'resume-seance') {
+    const s = primary.seance
+    card = {
+      eyebrow: 'Séance en cours',
+      title: 'Ta séance du jour',
+      description: <span data-seance-status>{dots(seanceStepLabel(s))}</span>,
+      cta: 'Reprendre la séance',
+      go: () => navigate('/seance'),
+      progress: <ProgressBar value={s.idx} total={s.total} label="Étapes de la séance du jour terminées" />,
+    }
+  } else if (primary.kind === 'resume-game') {
+    card = {
+      eyebrow: 'Partie en cours',
+      title: gameTitle(primary.game),
+      description: dots(gameMeta(primary.game)),
+      cta: 'Reprendre la partie',
+      go: () => navigate('/jouer', { replace: true }),
+    }
+  } else if (primary.kind === 'quick') {
+    card = {
+      eyebrow: 'Pour aller plus loin',
+      title: 'Envie de continuer ?',
+      description: 'Une séance rapide de 1 à 2 minutes, adaptée à ton niveau.',
+      status: dots(`✓ Faite aujourd'hui${streakText ? ` · ${streakText}` : ''}`),
+      cta: 'Séance rapide',
+      go: () => navigate('/apprendre', { replace: true, state: { quick: true } }),
+    }
+  } else {
+    card = {
+      eyebrow: 'Ta séance du jour',
+      title: '10 à 15 minutes guidées',
+      description: 'Révisions, puzzles et positions choisis pour toi, enchaînés sans avoir à choisir.',
+      status: seanceMeta ? dots(seanceMeta) : undefined,
+      cta: 'Commencer',
+      go: () => navigate('/seance'),
+    }
+  }
+  const seanceCard = primary.kind === 'seance' || primary.kind === 'pending' || primary.kind === 'resume-seance'
 
   return (
-    <div data-review-ready={due !== null ? '' : undefined} data-seance-ready={seance !== null ? '' : undefined} data-path-ready={path !== null ? '' : undefined} className="mx-auto flex h-full max-w-2xl flex-col p-4 md:justify-center md:p-8">
-      <h1 className="mb-2 md:mb-4 text-3xl font-black">
-        ♞ Chess<span className="text-accent">Local</span>
+    <div
+      data-testid="home"
+      data-home-primary={primary.kind}
+      data-review-ready={reviewReady}
+      data-seance-ready={series !== null ? '' : undefined}
+      data-path-ready={path !== null ? '' : undefined}
+      className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-4 md:justify-center md:p-8"
+    >
+      <h1 className="text-2xl leading-tight font-black">
+        <span aria-hidden="true">♞ </span>Chess<span className="text-accent">Local</span>
       </h1>
 
       {/* App native : elle n'a pas la même origine que la PWA, la sauvegarde est le seul pont.
           La carte disparaît après une restauration réussie ou « Non merci ». */}
       {offerMigration && (
-        <div data-testid="native-migration" className="mb-2 md:mb-4 flex items-center rounded-2xl border border-accent/40 bg-surface-2 shadow-lg">
+        <div data-testid="native-migration" className="flex items-center rounded-xl border border-accent/40 bg-surface-2">
           <button
+            type="button"
             data-testid="native-migration-go"
             onClick={() => navigate('/donnees', { replace: true })}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-l-2xl py-2 pl-4 text-left transition hover:bg-surface-3"
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-l-xl py-2 pl-4 text-left transition hover:bg-surface-3"
           >
             <span className="text-2xl" aria-hidden="true">📲</span>
             <span className="min-w-0 flex-1">
-              <span className="block font-bold">Récupérer tes données</span>
-              <span className="block truncate text-xs text-neutral-400">Exporte-les dans la PWA, puis restaure-les ici</span>
+              <span className="block font-semibold">Récupérer tes données</span>
+              <span className="block text-sm text-muted">Exporte-les dans la PWA, puis restaure-les ici</span>
             </span>
             <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
           </button>
           <button
+            type="button"
             data-testid="native-migration-dismiss"
             aria-label="Non merci"
             title="Non merci"
             onClick={() => { dismissMigration(); setOfferMigration(false) }}
-            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-r-2xl text-lg text-neutral-500 transition hover:text-neutral-200"
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-r-xl text-lg text-neutral-400 transition hover:text-neutral-200"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* Navigations d'onglet (racines de la nav, et Stats, Analyse, Archive, anciennes racines
-          devenues des destinations de Plus au lot 2, inchangées jusqu'au lot 4) en `replace`,
-          comme la nav basse : le swipe-back iOS ne ramène pas à l'accueil en pleine partie.
-          Puzzle Rush et chess.com sont des descentes (/rush, /import), empilées. */}
-      {/* Carte Problèmes, façon chess.com */}
-      <Link
-        to="/puzzles"
-        replace
-        className="mb-2 md:mb-4 block rounded-2xl bg-gradient-to-br from-[#4e7837] to-[#2e4a20] p-3 md:p-5 shadow-lg transition hover:brightness-110 [@media(max-height:700px)]:py-2"
+      {/* Carte principale. Série de jours pas encore lue (sans reprise) : la carte de la séance garde
+          sa place, invisible, pour ne jamais montrer un CTA qui changerait l'instant d'après. */}
+      <section
+        data-home-card
+        aria-labelledby="home-card-title"
+        aria-busy={primary.kind === 'pending' || undefined}
+        className={`rounded-2xl border border-accent/30 bg-surface-2 p-4 shadow-lg ${primary.kind === 'pending' ? 'invisible' : ''}`}
       >
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="text-2xl font-black text-white">🧩 Problèmes</div>
-            <div className="mt-1 text-sm text-white/80">
-              {solved} résolus · classement {r('puzzle')}
-            </div>
-          </div>
-          <span className="shrink-0 rounded-xl bg-accent px-5 py-2.5 text-lg font-black text-on-accent shadow-[0_3px_0_#5d9948]">
-            Résolvez !
-          </span>
+        <p className="text-sm font-semibold text-accent-light">{card.eyebrow}</p>
+        <h2 id="home-card-title" className="mt-1 text-xl leading-tight font-bold">{card.title}</h2>
+        <p className="mt-1 text-base leading-6 text-muted">{card.description}</p>
+        {card.progress}
+        {card.status && (
+          <p data-seance-status className="mt-2 text-sm font-semibold text-neutral-300">
+            {card.status}
+          </p>
+        )}
+        <Cta data-home-cta data-seance-tile={seanceCard ? '' : undefined} className="mt-4 w-full" onClick={card.go}>
+          {card.cta}
+        </Cta>
+      </section>
+
+      {/* Lignes secondaires : révision due (quantité affichée une seule fois, part de la séance
+          nommée), et la séance du jour quand une partie ou la séance rapide tient la carte. */}
+      {(dueKeys.length > 0 || !seanceCard) && (
+        <div className="grid gap-2">
+          {dueKeys.length > 0 && (
+            <ActivityCard
+              to="/revision"
+              data-testid="home-revision"
+              data-review-in-seance={inSeance.length}
+              icon={<NavIcon name="reviser" className="h-6 w-6 text-amber-300" />}
+              title="À réviser aujourd'hui"
+              description={dots(revisionLine(dueKeys.length, inSeance.length, due && due !== 'unavailable' ? due.describe(extraKeys.length ? extraKeys : dueKeys) : ''))}
+              aside={
+                <span
+                  data-review-count
+                  className={`shrink-0 rounded-full px-3 py-1 text-base font-bold tabular-nums ${extraKeys.length > 0 ? 'bg-amber-400 text-neutral-900' : 'bg-surface-3 text-neutral-200'}`}
+                >
+                  {dueKeys.length}
+                </span>
+              }
+            />
+          )}
+          {!seanceCard && (
+            <ActivityCard
+              to="/seance"
+              data-seance-tile
+              icon={<NavIcon name="seance" className="h-6 w-6 text-accent" />}
+              title={primary.kind === 'quick' ? 'Refaire une séance du jour' : 'Ta séance du jour'}
+              description={
+                // Séance rapide en carte : le statut de la séance (faite, série) y est déjà.
+                primary.kind === 'quick' ? '10 à 15 minutes guidées' : <span data-seance-status>{seanceMeta ? dots(seanceMeta) : '10 à 15 minutes guidées'}</span>
+              }
+            />
+          )}
         </div>
-      </Link>
-
-      {/* Séance du jour : descente (push) ; la séance en cours se reprend à l'arrivée. */}
-      <Link
-        to="/seance"
-        data-seance-tile
-        className="mb-2 md:mb-4 flex items-center gap-3 rounded-2xl border border-accent/30 bg-surface-2 px-4 py-2 shadow-lg transition hover:bg-surface-3 [@media(max-height:700px)]:py-1.5"
-      >
-        <span className="text-2xl" aria-hidden="true">☀️</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Séance du jour</span>
-          <span data-seance-status className="block truncate text-xs text-neutral-400">
-            {current
-              ? `Reprendre · étape ${current.idx + 1}/${current.steps.length}`
-              : seance?.today
-                ? `✓ Faite aujourd'hui · ${streakLabel(seance.days)}`
-                : seance && seance.days > 0
-                  ? `10 à 15 min guidées · ${streakLabel(seance.days)}`
-                  : '10 à 15 min guidées'}
-          </span>
-        </span>
-        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-      </Link>
-
-      {/* Révision espacée : visible seulement quand quelque chose est dû ; descente (push), la
-          séance démarre à l'arrivée. */}
-      {due !== null && due.length > 0 && (
-        <Link
-          to="/revision"
-          className="mb-2 md:mb-4 flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-surface-2 px-4 py-2 shadow-lg transition hover:bg-surface-3 [@media(max-height:700px)]:py-1.5"
-        >
-          <span className="text-2xl" aria-hidden="true">🔁</span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-bold">À réviser aujourd'hui</span>
-            <span className="block truncate text-xs text-neutral-400">{kinds}</span>
-          </span>
-          <span data-review-count className="shrink-0 rounded-full bg-amber-400 px-3 py-1 text-base font-black text-neutral-900">
-            {due.length}
-          </span>
-          <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-        </Link>
       )}
 
-      {/* Cartes stats horizontales. Écran court (Safari avec ses barres, 393x660) : icônes masquées,
-          carte Problèmes et tuiles resserrées, pour que la tuile Séance, la carte Révision et la
-          rangée Parcours/Insights tiennent avec Jouer sans défilement. */}
-      <div className="mb-2 md:mb-4 grid grid-cols-4 gap-2">
-        {statCards.map((s) => (
-          <Link key={s.label} to="/stats" replace className="rounded-xl bg-surface-2 p-3 text-center transition hover:bg-surface-3">
-            <div className="text-2xl [@media(max-height:700px)]:hidden">{s.icon}</div>
-            <div className="text-xl font-black">{s.value}</div>
-            <div className="text-xs text-neutral-400">{s.label}</div>
-          </Link>
-        ))}
+      {/* Raccourcis discrets vers deux onglets : `replace`, comme la nav basse. */}
+      <div className="grid grid-cols-2 gap-2">
+        <ActivityCard
+          to="/jouer"
+          replace
+          data-testid="home-play"
+          icon={<NavIcon name="jouer" className="h-6 w-6 text-accent" />}
+          title="Jouer"
+          description={game && primary.kind !== 'resume-game' ? 'Partie en cours' : 'Une partie'}
+        />
+        <ActivityCard
+          to="/puzzles"
+          replace
+          data-testid="home-puzzles"
+          icon={<NavIcon name="puzzles" className="h-6 w-6 text-accent" />}
+          title="Puzzles"
+          description="À ton niveau"
+        />
       </div>
 
-      {/* Tuiles secondaires */}
-      <div className="mb-2 md:mb-4 grid grid-cols-2 gap-2">
-        {tiles.map((t) => (
-          <ActivityCard key={t.to} to={t.to} replace={t.tab} icon={t.icon} title={t.title} description={t.desc} className="py-2 [@media(max-height:700px)]:py-1.5" />
-        ))}
-      </div>
-
-      {/* Parcours d'apprentissage et Insights : descentes (empilées), côte à côte pour que l'Accueil
-          tienne sans défiler à 393x660. */}
-      <div className="mb-2 md:mb-4 grid grid-cols-2 gap-2">
-        <Link to="/apprendre/parcours" data-testid="home-path" className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 transition hover:bg-surface-3">
-          <span className="text-xl" aria-hidden="true">🗺️</span>
-          <span className="font-bold">Parcours</span>
-          <span data-testid="home-path-progress" className="min-w-0 flex-1 truncate text-xs text-neutral-400">
-            {path ? (path.current ? `${path.done}/${path.total}` : 'terminé') : ''}
-          </span>
-          <span className="text-lg text-neutral-500" aria-hidden="true">›</span>
-        </Link>
-        {/* Insights : hors des cartes Elo qui mènent à Stats. */}
-        <Link to="/insights" className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 transition hover:bg-surface-3">
-          <span className="text-xl" aria-hidden="true">🧠</span>
-          <span className="min-w-0 flex-1 truncate font-bold">Insights</span>
-          <span className="text-lg text-neutral-500" aria-hidden="true">›</span>
-        </Link>
-      </div>
-
-      {/* CTA Jouer géant, collé en bas */}
-      <div className="mt-auto md:mt-4">
-        <Cta className="w-full py-4 text-2xl [@media(max-height:700px)]:py-3" onClick={() => navigate('/jouer', { replace: true })}>
-          Jouer
-        </Cta>
-      </div>
+      {/* Progression, après les actions : parcours d'apprentissage (tuile de transition du plan) et
+          Mon bilan. Descentes empilées. */}
+      <section aria-labelledby="home-progress-title">
+        <h2 id="home-progress-title" className="mb-2 text-lg font-semibold">Ta progression</h2>
+        <div className="grid gap-2">
+          <ActivityCard
+            to="/apprendre/parcours"
+            data-testid="home-path"
+            icon={<NavIcon name="apprendre" className="h-6 w-6 text-accent" />}
+            title="Parcours d'apprentissage"
+            description={path ? (path.current ? `Prochaine étape : ${path.current.step.title}` : 'Parcours terminé') : undefined}
+          >
+            {path && <ProgressBar value={path.done} total={path.total} label="Étapes du parcours validées" testId="home-path-progress" />}
+          </ActivityCard>
+          <ActivityCard
+            to="/insights"
+            data-testid="home-bilan"
+            icon={<NavIcon name="bilan" className="h-6 w-6 text-accent" />}
+            title="Voir mon bilan"
+            description={week ? dots(weekSummary({ seances: seanceWeek, ...week })) : undefined}
+          />
+        </div>
+      </section>
     </div>
   )
 }

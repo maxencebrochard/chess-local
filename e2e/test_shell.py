@@ -21,7 +21,7 @@ SAFE_TOP, SAFE_BOTTOM = 59, 34
 # lot 0) : "page" sur la racine de l'onglet, "true" sur une route rattachée. Le marqueur prouve
 # que l'ancien lien rend toujours sa page (pas de repli vers l'accueil).
 DEEP = [
-    ("/", "Accueil", "page", "text=Résolvez !"),
+    ("/", "Accueil", "page", "[data-testid=home]"),
     ("/seance", "Accueil", "true", "main h1"),
     ("/jouer", "Jouer", "page", "text=Adversaire"),
     ("/puzzles", "Puzzles", "page", "main >> text=Classement puzzles"),
@@ -151,6 +151,12 @@ BOOM = """
   }
   Boom.prototype = Native.prototype
   window.URLSearchParams = Boom
+  // Mode 'accueil' : Date.now lève, et l'accueil le lit à son rendu (reprises de séance et de partie).
+  const now = Date.now
+  Date.now = function () {
+    if (window.__E2E_BOOM === 'accueil') throw new Error('E2E_BOOM_DATE_NOW')
+    return now.call(Date)
+  }
   window.__errs = []
   const original = console.error.bind(console)
   console.error = (...args) => { window.__errs.push(args.map(String).join(' ')); original(...args) }
@@ -158,19 +164,6 @@ BOOM = """
 """
 FALLBACK = "text=Cette page a rencontré un problème"
 
-# Écrit (ou efface, avec None) une ligne de la table Dexie `ratings`, directement dans IndexedDB.
-RATING_ROW = """(row) => new Promise((resolve, reject) => {
-  const req = indexedDB.open('chess-local')
-  req.onerror = () => reject(req.error)
-  req.onsuccess = () => {
-    const db = req.result
-    const tx = db.transaction('ratings', 'readwrite')
-    if (row) tx.objectStore('ratings').put(row)
-    else tx.objectStore('ratings').delete('rapid')
-    tx.oncomplete = () => { db.close(); resolve(true) }
-    tx.onerror = () => { db.close(); reject(tx.error) }
-  }
-})"""
 
 
 def tab(page, label):
@@ -429,16 +422,12 @@ def suite(p):
     page = ctx.new_page()
     tabs_do_not_stack(page, "touch-6 mobile")
 
-    # Accueil : une tuile vers une racine d'onglet est une navigation d'onglet, en replace (le
-    # swipe-back iOS ne ramène pas à l'accueil en pleine partie) ; Puzzle Rush et chess.com
-    # (/rush, /import) sont des descentes, empilées. Les tuiles Stats, Analyse et Archive gardent
-    # leur replace d'anciennes racines d'onglet : l'accueil est refondu au lot 4.
+    # Accueil (lot 4) : les raccourcis Jouer et Puzzles sont des navigations d'onglet, en replace
+    # (le swipe-back iOS ne ramène pas à l'accueil en pleine partie) ; la séance du jour, le parcours
+    # et Mon bilan sont des descentes, empilées.
     for name, loc, expected in (
-        ("CTA Jouer", page.get_by_role("button", name="Jouer", exact=True), "#/jouer"),
-        ("carte Problèmes", page.locator("main a", has_text="Résolvez"), "#/puzzles"),
-        ("carte Rapide", page.locator("main a", has_text="Rapide"), "#/stats"),
-        ("tuile Analyse", page.locator("main a", has_text="Stockfish 18"), "#/analyse"),
-        ("tuile Archive", page.locator("main a", has_text="Archive"), "#/archive"),
+        ("raccourci Jouer", page.locator("[data-testid=home-play]"), "#/jouer"),
+        ("raccourci Puzzles", page.locator("[data-testid=home-puzzles]"), "#/puzzles"),
     ):
         go(page, "#/")
         before = hist(page)
@@ -446,25 +435,28 @@ def suite(p):
         page.wait_for_timeout(600)
         check(f"[accueil] {name} -> {expected}", hash_of(page) == expected, f"({hash_of(page)})")
         check(f"[accueil] {name} : replace, history.length stable", hist(page) == before, f"({before} -> {hist(page)})")
-    go(page, "#/")
-    before = hist(page)
-    page.locator("main a", has_text="Importer tes parties").click()
-    page.wait_for_timeout(600)
-    check("[push] tuile chess.com -> #/import, empile une entrée", hash_of(page) == "#/import" and hist(page) == before + 1,
-          f"({hash_of(page)}, {before} -> {hist(page)})")
+    for name, loc, expected in (
+        ("CTA séance du jour", page.locator("[data-home-cta]"), "#/seance"),
+        ("parcours", page.locator("[data-testid=home-path]"), "#/apprendre/parcours"),
+    ):
+        go(page, "#/")
+        page.locator("[data-testid=home]:not([data-home-primary=pending])").wait_for(timeout=10000)
+        before = hist(page)
+        loc.first.click()
+        page.wait_for_timeout(600)
+        check(f"[push] {name} -> {expected}, empile une entrée", hash_of(page) == expected and hist(page) == before + 1,
+              f"({hash_of(page)}, {before} -> {hist(page)})")
 
-    # Descente empilée : la tuile Puzzle Rush reste un push (le swipe-back a une cible),
-    # et /rush allume l'onglet Puzzles (GLOB-6).
+    # Descente empilée vers Mon bilan, qui allume l'onglet Plus (route rattachée).
     go(page, "#/")
     before = hist(page)
-    page.locator("main a", has_text="Puzzle Rush").click()
+    page.locator("[data-testid=home-bilan]").click()
     page.wait_for_timeout(600)
-    check("[push] tuile Puzzle Rush -> #/rush", hash_of(page) == "#/rush")
-    check("[push] tuile Puzzle Rush empile une entrée", hist(page) == before + 1, f"({before} -> {hist(page)})")
+    check("[push] Voir mon bilan -> #/insights", hash_of(page) == "#/insights")
+    check("[push] Voir mon bilan empile une entrée", hist(page) == before + 1, f"({before} -> {hist(page)})")
     actives = active_tab(page)
-    check("[glob-6] /rush allume Puzzles", len(actives) == 1 and "Puzzles" in actives[0], f"({actives})")
-    check("[glob-6] /rush : aria-current='true' (route rattachée)",
-          tab(page, "Puzzles").get_attribute("aria-current") == "true")
+    check("[push] /insights allume Plus", len(actives) == 1 and "Plus" in actives[0], f"({actives})")
+    check("[push] /insights : aria-current='true' (route rattachée)", tab(page, "Plus").get_attribute("aria-current") == "true")
     page.go_back()
     page.wait_for_timeout(500)
     check("[push] retour arrière -> accueil", hash_of(page) == "#/")
@@ -477,7 +469,7 @@ def suite(p):
     before = hist(page)
     go(page, "#/nimporte")
     check("[glob-7] route inconnue -> #/", hash_of(page) == "#/", f"({hash_of(page)})")
-    check("[glob-7] accueil rendu", page.locator("text=Résolvez !").is_visible())
+    check("[glob-7] accueil rendu", page.locator("[data-testid=home]").is_visible())
     check("[glob-7] redirection en replace", hist(page) == before + 1, f"({before} -> {hist(page)})")
     page.go_back()
     page.wait_for_timeout(500)
@@ -533,7 +525,7 @@ def suite(p):
     page.get_by_role("button", name="Revenir à l'accueil").click()
     page.wait_for_timeout(500)
     check("[boundary] Revenir à l'accueil -> #/", hash_of(page) == "#/", f"({hash_of(page)})")
-    check("[boundary] accueil rendu après secours", page.locator("text=Résolvez !").is_visible())
+    check("[boundary] accueil rendu après secours", page.locator("[data-testid=home]").is_visible())
     with ck.expect_pageerror("E2E_BOOM_URLSEARCHPARAMS"):
         page.evaluate("() => { window.__E2E_BOOM = true }")
         to_analyse()
@@ -545,35 +537,34 @@ def suite(p):
     ck.appears("[boundary] Recharger rend Analyse", page, "[id^='chessboard-']", timeout=5000)
 
     # Crash sur l'accueil lui-même : « Revenir à l'accueil » ne change pas de chemin, il doit
-    # quand même réarmer la frontière. Crash provoqué par un classement illisible en base (un objet
-    # rendu comme texte), réparé avant le tap.
+    # quand même réarmer la frontière. L'accueil (lot 4) n'affiche plus de valeur brute de la base :
+    # le crash est provoqué par Date.now, lu au rendu, désarmé avant le tap.
     go(page, "#/stats")
-    page.evaluate(RATING_ROW, {"key": "rapid", "value": {"e2e": "boom"}})
-    # Message de React 19 en dev, et son code minifié en prod (erreur n° 31).
-    with ck.expect_pageerror(("Objects are not valid as a React child", "react.dev/errors/31")):
+    page.evaluate("() => { window.__E2E_BOOM = 'accueil' }")
+    with ck.expect_pageerror(("E2E_BOOM_DATE_NOW",)):
         tab(page, "Accueil").click()
         ck.appears("[boundary] crash sur l'accueil -> secours", page, FALLBACK, timeout=5000)
         page.wait_for_timeout(200)
         check("[boundary] secours sans bloc technique en anglais", page.locator("main", has_text="Détail technique").count() == 0)
-    page.evaluate(RATING_ROW, None)
+    page.evaluate("() => { window.__E2E_BOOM = undefined }")
     # Re-tap de l'onglet courant (Accueil sur l'accueil) : seul geste qui réarme la frontière sans
     # changer de chemin. L'ancien re-tap d'Analyse n'a plus d'onglet depuis le lot 2.
     tab(page, "Accueil").click()
     page.wait_for_timeout(800)
     check("[boundary] re-tap de l'onglet courant relance la page",
-          hash_of(page) == "#/" and page.locator("text=Résolvez !").is_visible() and page.locator(FALLBACK).count() == 0,
+          hash_of(page) == "#/" and page.locator("[data-testid=home]").is_visible() and page.locator(FALLBACK).count() == 0,
           f"({hash_of(page)})")
     go(page, "#/stats")
-    page.evaluate(RATING_ROW, {"key": "rapid", "value": {"e2e": "boom"}})
-    with ck.expect_pageerror(("Objects are not valid as a React child", "react.dev/errors/31")):
+    page.evaluate("() => { window.__E2E_BOOM = 'accueil' }")
+    with ck.expect_pageerror(("E2E_BOOM_DATE_NOW",)):
         tab(page, "Accueil").click()
         ck.appears("[boundary] second crash sur l'accueil -> secours", page, FALLBACK, timeout=5000)
         page.wait_for_timeout(200)
-    page.evaluate(RATING_ROW, None)
+    page.evaluate("() => { window.__E2E_BOOM = undefined }")
     page.get_by_role("button", name="Revenir à l'accueil").click()
     page.wait_for_timeout(800)
     check("[boundary] crash sur l'accueil : Revenir à l'accueil rend l'accueil",
-          hash_of(page) == "#/" and page.locator("text=Résolvez !").is_visible() and page.locator(FALLBACK).count() == 0,
+          hash_of(page) == "#/" and page.locator("[data-testid=home]").is_visible() and page.locator(FALLBACK).count() == 0,
           f"({hash_of(page)})")
 
     # Crash au rendu qui suit le chargement d'une partie par state de navigation : le

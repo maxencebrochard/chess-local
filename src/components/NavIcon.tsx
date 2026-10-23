@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 export type NavIconName =
   | 'accueil' | 'jouer' | 'puzzles' | 'apprendre' | 'plus'
   | 'parties' | 'importer' | 'analyse' | 'bilan' | 'statistiques' | 'reglages' | 'donnees'
+  | 'seance' | 'reviser'
 
 const PATHS: Record<NavIconName, ReactNode> = {
   // Maison, porte en retrait.
@@ -58,6 +59,16 @@ const PATHS: Record<NavIconName, ReactNode> = {
   donnees: <>
     <ellipse data-fill cx="12" cy="6" rx="7.5" ry="2.75" />
     <path d="M4.5 6v12c0 1.5 3.25 2.75 7.5 2.75s7.5-1.25 7.5-2.75V6M4.5 12c0 1.5 3.25 2.75 7.5 2.75s7.5-1.25 7.5-2.75" />
+  </>,
+  // Accueil : séance du jour (soleil, disque et huit rayons).
+  seance: <>
+    <circle data-fill cx="12" cy="12" r="4" />
+    <path d="M12 2.75v2M12 19.25v2M2.75 12h2M19.25 12h2M5.46 5.46l1.41 1.41M17.13 17.13l1.41 1.41M5.46 18.54l1.41-1.41M17.13 6.87l1.41-1.41" />
+  </>,
+  // Accueil : révision espacée (deux flèches en cercle).
+  reviser: <>
+    <path d="M19.5 12a7.5 7.5 0 0 1-13 5.1M4.5 12a7.5 7.5 0 0 1 13-5.1" />
+    <path d="M17.5 3.25v3.85h-3.85M6.5 20.75V16.9h3.85" />
   </>,
 }
 
