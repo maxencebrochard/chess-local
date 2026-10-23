@@ -287,6 +287,7 @@ La colonne cible suppose les lots 2 à 6 livrés selon l’architecture validée
 `npm run test:e2e -- --suite ux_audit --jobs 1` : code 0, 774 checks, 46 routes déclarées toutes couvertes, 304 états et 515 captures.
 Répartition : 102 états et 164 captures à 393 × 852, 102 et 209 à 393 × 660, 100 et 142 à 1440 × 900.
 `npm run test:e2e:dev -- --suite ux_audit --jobs 1` : code 0, 774 checks.
+Ces comptes précèdent la relecture du lot, qui transforme deux attentes nues en checks `ck.appears` (accueil avant lecture des routes, séries des Finales au chrono) : deux checks de plus par format.
 `UX_AUDIT_FORGET=/convertir npm run test:e2e -- --suite ux_audit --jobs 1` : code 1, trois échecs attendus sur la couverture de `/convertir`.
 Les inventaires et la table lue dans l’app sont dans `e2e/shots/ux-audit/{prod,dev}/` (`inventory.json`, `routes.json`).
 
