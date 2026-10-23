@@ -417,7 +417,9 @@ def suite(p):
     labels = page.evaluate("() => { window.__sampling = false; return window.__labels }")
     positive = [l for l in labels if l.startswith("+") and float(l[1:].replace(",", ".")) >= 3]
     negative = [l for l in labels if l.startswith("-")]
-    check("[cp6] échantillonnage utile (des évals à +3 ou plus relevées)", len(labels) > 60 and len(positive) > 10, f"({len(labels)} frames, {len(positive)} positives)")
+    # Seuil de relevés aligné sur CP-6 bis : sous charge, Chromium ne peint qu'environ 7 images par
+    # seconde pendant la recherche infinie (57 à 79 relevés sur les 6 navigations), 60 échouait au hasard.
+    check("[cp6] échantillonnage utile (des évals à +3 ou plus relevées)", len(labels) > 30 and len(positive) > 10, f"({len(labels)} frames, {len(positive)} positives)")
     check("[cp6] aucun libellé de signe inversé pendant 6 navigations", not negative, f"({sorted(set(negative))} sur {len(labels)} frames)")
     page.close()
 
