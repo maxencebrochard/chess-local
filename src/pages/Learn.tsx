@@ -49,41 +49,55 @@ interface StoredSession {
   pathStep?: string // étape du parcours d'apprentissage qui a ouvert la séance de finale
 }
 
+type LearnState = { restore?: boolean; quick?: boolean; endgame?: string; tactic?: string; domain?: LearnDomain; returnTo?: string; returnLabel?: string; pathStep?: string } | null
+
+// Séance à reprendre au montage : retour de l'analyseur, ou résultat qui attend son enregistrement,
+// prioritaire sur toute nouvelle séance demandée. Lue une seule fois, avant le premier rendu.
+function readRestored(state: LearnState): StoredSession | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY)
+    const saved = raw ? (JSON.parse(raw) as StoredSession) : null
+    if (saved && (state?.restore || saved.pendingResult !== undefined)) return saved
+  } catch {}
+  return null
+}
+
 export default function Learn() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [restored] = useState(() => readRestored(location.state as LearnState))
   const [ratings, setRatings] = useState<Record<string, number | null>>({})
-  const [session, setSession] = useState<Session | null>(null)
-  const [itemIdx, setItemIdx] = useState(0)
-  const [phase, setPhase] = useState<ItemPhase>('lesson')
-  const [results, setResults] = useState<boolean[]>([])
+  const [session, setSession] = useState<Session | null>(restored?.session ?? null)
+  const [itemIdx, setItemIdx] = useState(restored?.itemIdx ?? 0)
+  const [phase, setPhase] = useState<ItemPhase>(restored?.phase ?? 'lesson')
+  const [results, setResults] = useState<boolean[]>(restored?.results ?? [])
   const [ratingDelta, setRatingDelta] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [retryTick, setRetryTick] = useState(0)
   const [showCourse, setShowCourse] = useState(false)
-  const [returnTo, setReturnTo] = useState<string | null>(null)
-  const [returnLabel, setReturnLabel] = useState('Retour au cours')
+  const [returnTo, setReturnTo] = useState<string | null>(restored?.returnTo ?? null)
+  const [returnLabel, setReturnLabel] = useState(restored?.returnLabel ?? 'Retour au cours')
   const [lessonsDone, setLessonsDone] = useState<number | null>(null)
   // Séance demandée par un groupe d'Entraînement, Réviser mes parties, Insights ou la Séance rapide
   // de l'accueil (`state.domain`, `state.tactic`, `state.quick`) : écran de préparation à la place
-  // du hub, qui ne doit pas clignoter.
+  // du hub, qui ne doit pas clignoter. Une séance reprise passe avant : aucune préparation.
   const [preparing, setPreparing] = useState(() => {
-    const st = location.state as { domain?: unknown; tactic?: unknown; quick?: unknown } | null
-    return Boolean(st?.domain || st?.tactic || st?.quick)
+    const st = location.state as LearnState
+    return !restored && Boolean(st?.domain || st?.tactic || st?.quick)
   })
   const [review, setReview] = useState<ReviewQueue | null>(null)
   // Séance de finale ouverte par une étape du parcours : toute réussite (même après Réessayer)
   // valide l'étape, une fois par séance (ligne `path`, sans Elo).
-  const [pathStep, setPathStep] = useState<string | null>(null)
+  const [pathStep, setPathStep] = useState<string | null>(restored?.pathStep ?? null)
   const pathSaved = useRef(false)
-  const [pendingResult, setPendingResult] = useState<boolean | undefined>(undefined)
+  const [pendingResult, setPendingResult] = useState<boolean | undefined>(restored?.pendingResult)
   // Explication du verdict, posée par l'exercice au moment du résultat (présentation seule).
-  const [reason, setReason] = useState<string | null>(null)
+  const [reason, setReason] = useState<string | null>(restored?.reason ?? null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const finishing = useRef(false)
   const path = usePathState()
-  const scoredItems = useRef(new Set<number>())
+  const scoredItems = useRef(new Set<number>(restored?.scoredItems))
   const engineRef = useRef<Engine | null>(null)
 
   // Classements des domaines (écran de fin de séance) et leçons terminées (carte Toutes les
@@ -111,31 +125,27 @@ export default function Learn() {
     [],
   )
 
-  // Retour depuis l'analyseur (bouton « Analyser ») : restaure la séance en cours.
+  // Retour depuis l'analyseur ou résultat en attente : séance déjà reprise par `readRestored`.
   // Venue d'une leçon (« S'entraîner ») : séance sur l'exercice demandé, avec retour au cours.
   // Venue d'Insights (plan d'entraînement) : séance Tactiques sur le thème demandé, avec retour.
   // Venue d'un groupe d'Entraînement ou de Réviser mes parties : séance du domaine, avec retour.
   useEffect(() => {
-    const state = location.state as { restore?: boolean; quick?: boolean; endgame?: string; tactic?: string; domain?: LearnDomain; returnTo?: string; returnLabel?: string; pathStep?: string } | null
-    let saved: StoredSession | null = null
-    try {
-      const raw = sessionStorage.getItem(SESSION_KEY)
-      if (raw) saved = JSON.parse(raw) as StoredSession
-    } catch {}
-    const pending = saved?.pendingResult !== undefined
-    if (state?.domain && state.domain in DOMAIN_META && !pending) {
+    const state = location.state as LearnState
+    if (restored) {
+      if (state) navigate('.', { replace: true, state: null })
+    } else if (state?.domain && state.domain in DOMAIN_META) {
       const { domain, returnTo: back, returnLabel: label } = state
       navigate('.', { replace: true, state: null })
       void start(domain, undefined, back ?? null, label)
-    } else if (state?.quick && !pending) {
+    } else if (state?.quick) {
       // « Séance rapide » de l'accueil, une fois la séance du jour faite : le bouton Séance rapide d'ici.
       navigate('.', { replace: true, state: null })
       void start()
-    } else if (state?.tactic && !pending) {
+    } else if (state?.tactic) {
       const { tactic, returnTo: back, returnLabel: label } = state
       navigate('.', { replace: true, state: null })
       void start('tactic', tactic, back ?? null, label)
-    } else if (state?.endgame && !pending) {
+    } else if (state?.endgame) {
       const s = buildEndgameSession(state.endgame)
       if (s) {
         setSession(s)
@@ -150,22 +160,9 @@ export default function Learn() {
         pathSaved.current = false
       }
       navigate('.', { replace: true, state: null })
-    } else {
-      if (saved && (state?.restore || pending)) {
-        setPreparing(false)
-        setPendingResult(saved.pendingResult)
-        setReason(saved.reason ?? null)
-        setSession(saved.session)
-        setItemIdx(saved.itemIdx)
-        setPhase(saved.phase)
-        setResults(saved.results)
-        scoredItems.current = new Set(saved.scoredItems)
-        setReturnTo(saved.returnTo ?? null)
-        setReturnLabel(saved.returnLabel ?? 'Retour au cours')
-        setPathStep(saved.pathStep ?? null)
-      }
+    } else if (state) {
       // Sans state, rien à effacer : naviguer ici ramènerait sur Apprendre un onglet tapé entre-temps.
-      if (state) navigate('.', { replace: true, state: null })
+      navigate('.', { replace: true, state: null })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
