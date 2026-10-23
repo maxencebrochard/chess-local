@@ -2,6 +2,7 @@
 // e2e/test_parcours.py) : les vraies données et la vraie logique de l'app, sans duplication.
 // Doit rester DANS le repo : hors de l'arbre, rolldown laisse `chess.js` en import externe.
 export * from '../src/lib/learningPath'
+export { lessonRef } from '../src/lib/pathLessons'
 export { getFamily, playerMoveCount } from '../src/lib/openingTrainer'
 export { courseFor } from '../src/lib/courses'
 export { ENDGAMES } from '../src/lib/learn'

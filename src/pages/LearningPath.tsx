@@ -14,13 +14,14 @@ import { courseFor } from '../lib/courses'
 import { Engine } from '../lib/engine'
 import { ENDGAMES } from '../lib/learn'
 import {
-  exerciseGoal, isScored, lessonRef, LEVELS, levelOf, PLACEMENT_ID, PLACEMENT_PER_LEVEL,
+  exerciseGoal, isScored, LEVELS, levelOf, PLACEMENT_ID, PLACEMENT_PER_LEVEL,
   placementLevels, placementOver, starsFor, stepById, STEPS,
   type OpeningExercise, type PathExercise, type PathLevel, type PathState, type PathStep, type StepState,
 } from '../lib/learningPath'
 import {
   PATH_SESSION_KEY, pickPlacementPuzzles, pickStepPuzzles, recordPathRun, recordPlacement,
 } from '../lib/learningPathStore'
+import { lessonRef } from '../lib/pathLessons'
 import { getFamily, loadProgress, playerMoveCount, recordDrill, variantStatus, type Family, type Variant } from '../lib/openingTrainer'
 import { openingFamilyFr } from '../lib/openingNames'
 import { loadPuzzles } from '../lib/puzzles'

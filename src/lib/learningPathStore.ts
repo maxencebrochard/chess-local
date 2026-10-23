@@ -3,7 +3,7 @@
 // Aucun Elo n'est modifié ici.
 import type { PuzzleData } from '../components/PuzzlePlayer'
 import { db } from './db'
-import { LEVELS, PLACEMENT_ID, PLACEMENT_PER_LEVEL, type PathFacts, type PuzzleExercise } from './learningPath'
+import { computePath, EMPTY_FACTS, LEVELS, PLACEMENT_ID, PLACEMENT_PER_LEVEL, type PathFacts, type PathState, type PuzzleExercise } from './learningPath'
 import { COURSE_DOMAIN } from './lessonCourse'
 
 export const PATH_DOMAIN = 'path'
@@ -31,6 +31,11 @@ export async function loadPathFacts(): Promise<PathFacts> {
     }
   }
   return facts
+}
+
+// Progression calculée ; base illisible : parcours vide.
+export async function loadPathState(): Promise<PathState> {
+  return computePath(await loadPathFacts().catch(() => EMPTY_FACTS))
 }
 
 // Une ligne par série jouée jusqu'au bout : `score` = réussites, `success` = seuil atteint.

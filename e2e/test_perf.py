@@ -64,14 +64,22 @@ NET_4G = {"offline": False, "latency": 150, "downloadThroughput": -1, "uploadThr
 #   affichage : contenu 635 -> 522 ms).             Accueil à chaud : 411 ms avant, 333 après.
 #   Premier puzzle : 853 ms avant, 1 088 après (page paresseuse). Glissé : aucune long task.
 # Remesuré le 23 octobre 2026, après rebase sur toutes les features (parcours, séance, défense...) :
-#   JS initial : 468 Ko gzip avant, 117 après.     JS de l'accueil : 1 905 Ko avant, 1 055 après
-#   (révision et parcours d'apprentissage chargés après le premier affichage, homeExtras.ts).
-#   Accueil à froid : complet 707 ms avant, 1 127 après (contenu 658 -> 577 ms).
-#   Accueil à chaud : complet 416 ms avant, 410 après (contenu 380 -> 282 ms).
-#   Premier puzzle : 1 030 ms avant, 1 147 après ; tas de la page Puzzles 55,8 -> 29,0 Mo.
+#   JS initial : 468 Ko gzip avant, 117 après.     JS de l'accueil : 1 905 Ko avant, 987,5 après
+#   (compteur de révision et progression du parcours en deux imports après le premier affichage ;
+#   la progression ne charge plus les cours : computePath ne lit que learningPath.json, et
+#   check-learning-path.mjs résout chaque leçon d'étape dans son cours avec lessonRef).
+#   Accueil à froid : complet 707 ms avant, 1 050 à 1 100 après (médianes ; contenu 658 -> 665 ms).
+#   L'écart est la cascade du compteur de révision : sa chunk et ses dépendances (kingAttack avec
+#   openings.json, 541 Ko, openingTrainer, chess.js...) ne partent qu'au montage de l'accueil, vers
+#   530 ms, puis coûtent au moins un aller-retour de 150 ms et leur évaluation. Revenir à 707 ms
+#   demanderait de les précharger dans index.html, donc de les compter dans le JS initial
+#   (budget de 130 Ko gzip, contre 117 aujourd'hui) : le gain du découpage serait perdu.
+#   Le TTI vaut au moins l'accueil complet : son budget borne aussi ce dernier.
+#   Accueil à chaud : complet 416 ms avant, 365 à 403 après (contenu 380 -> 203 à 244 ms).
+#   Premier puzzle : 1 030 ms avant, 964 après ; tas de la page Puzzles 55,8 -> 28,9 Mo.
 BUDGET = {
     "initial_js_gzip_kb": 130,
-    "home_js_kb": 1200,
+    "home_js_kb": 1050,
     "home_cold_tti_ms": 1400,
     "home_warm_tti_ms": 600,
     "puzzles_warm_ready_ms": 1500,

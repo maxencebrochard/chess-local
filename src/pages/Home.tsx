@@ -10,18 +10,21 @@ import { streak, streakLabel } from '../lib/seance'
 import { readStoredSeance, seanceDates } from '../lib/seanceSession'
 import { dismissMigration, isNative, migrationDismissed } from '../lib/native'
 
-// Import dynamique (homeExtras.ts) : le compteur de révision et la progression du parcours tirent les
-// ouvertures et les cours bundlés, que l'accueil n'a pas à charger avant son premier affichage.
-// Chargé une seule fois : revenir à l'accueil après une mise à jour de l'app ne recharge pas l'app
+// Imports dynamiques, indépendants : le compteur de révision (revision.ts tire l'entraîneur
+// d'ouvertures et ses 470 Ko d'ouvertures) et la progression du parcours (learningPathStore.ts, sans
+// les cours) arrivent après le premier affichage, chacun sans attendre l'autre.
+// Chargés une seule fois : revenir à l'accueil après une mise à jour de l'app ne recharge pas l'app
 // pour une chunk déjà en mémoire.
-let extras: Promise<typeof import('../lib/homeExtras')> | null = null
-function loadExtras() {
-  extras ??= loadChunk(() => import('../lib/homeExtras')).catch((error: unknown) => {
-    extras = null
-    throw error
-  })
-  return extras
+function loadOnce<T>(load: () => Promise<T>): () => Promise<T> {
+  let chunk: Promise<T> | null = null
+  return () =>
+    (chunk ??= loadChunk(load).catch((error: unknown) => {
+      chunk = null
+      throw error
+    }))
 }
+const loadRevision = loadOnce(() => import('../lib/revision'))
+const loadPath = loadOnce(() => import('../lib/learningPathStore'))
 
 export default function Home() {
   const navigate = useNavigate()
@@ -41,18 +44,14 @@ export default function Home() {
     void db.ratings.toArray().then((rs) => setRatings(Object.fromEntries(rs.map((r) => [r.key, r.value]))))
     void db.puzzleAttempts.where('date').above(0).toArray().then((a) => setSolved(a.filter((x) => x.success).length))
     void db.games.count().then(setNbGames)
-    // Chunk introuvable malgré le rechargement : l'accueil reste utilisable, sans le compteur ni la
-    // progression du parcours.
-    const loaded = loadExtras()
-    void loaded.then(async ({ describeKinds, loadReviewQueue }) => {
+    // Chunk introuvable malgré le rechargement : l'accueil reste utilisable, sans le compteur ou sans
+    // la progression du parcours.
+    void loadRevision().then(async ({ describeKinds, loadReviewQueue }) => {
       const q = await loadReviewQueue()
       setKinds(describeKinds(q.due))
       setDue(q.due)
     }, () => {})
-    void loaded.then(async ({ computePath, EMPTY_FACTS, loadPathFacts }) => {
-      // Même lecture que usePathState : base illisible, parcours vide.
-      setPath(computePath(await loadPathFacts().catch(() => EMPTY_FACTS)))
-    }, () => {})
+    void loadPath().then(async ({ loadPathState }) => setPath(await loadPathState()), () => {})
     void seanceDates().then((d) => setSeance(streak(d)), () => setSeance({ days: 0, today: false }))
   }, [])
 
