@@ -68,7 +68,7 @@ B ne vaut sa réécriture que si le 120 Hz et Stockfish natif deviennent priorit
 Si, sur l'appareil, le glissé à 60 Hz se révèle le facteur limitant, mesurer d'abord un prototype d'échiquier natif limité à l'écran Jouer.
 Un plugin Stockfish natif répondrait séparément à un besoin de force du moteur, sans améliorer directement la fluidité du glissé.
 
-## Ce qui est prêt (phase 1, sans Xcode)
+## Ce qui est prêt
 
 - `capacitor.config.ts` : identifiant `io.github.maxencebrochard.chesslocal`, dossier web `dist`, fond `#262421`.
 - `ios/` : projet Xcode généré par `npx cap add ios --packagemanager SPM`, sans CocoaPods, qui a fonctionné sans Xcode.
@@ -129,11 +129,24 @@ Améliorations possibles après la première installation :
 - Ouvrir une sauvegarde depuis la feuille de partage (« Ouvrir dans ChessLocal ») : types de documents dans `Info.plist` et lecture du fichier par `@capacitor/app` et `@capacitor/filesystem`.
 - Sauvegarde automatique dans le dossier Documents de l'app, visible dans Fichiers, par `@capacitor/filesystem`.
 
-## À vérifier au premier build sur iPhone
+## Vérifié sur iPhone le 22 octobre 2026
 
+Premier build réel, sur l'iPhone 17 de Max (iOS 26.6.1), avec Xcode 27.1.
+
+- Compilation par `xcodebuild`, signée avec l'équipe personnelle gratuite : le profil vaut 7 jours, puis l'app expire et se réinstalle depuis le Mac.
+- Le certificat de développeur s'approuve une fois sur l'iPhone, dans Réglages > Général > VPN et gestion de l'appareil.
+- Installation par `devicectl` en USB, puis par le Wi-Fi (réseau local) après un premier appairage.
+- La console native a révélé que le gestionnaire du schéma `capacitor://` sert les assets avec un statut 0 : `sounds.ts` et `puzzles.ts` le prenaient pour une erreur, aucun son ni puzzle ne se chargeait.
+  Corrigé par `assetResponseOk` (`src/lib/assetResponse.ts`), couvert par la suite `ios_app` ; la console n'affiche plus d'erreur de son ensuite.
+
+## Reste à vérifier sur iPhone
+
+Par Max, sur l'appareil :
+
+- Haptique : ressenti à chaque geste du tableau ci-dessus, et coupure avec « Vibrations système ».
+- Son après le correctif du statut 0 : sons réellement entendus, déverrouillage au premier geste, retour après verrouillage, bouton silencieux, et effet sur la musique d'une autre app.
 - Stockfish : Worker et WASM chargés sous `capacitor://`, analyse et bots jouent ; `?debug-uci` ne s'ajoute pas à l'URL d'une app, ouvrir l'inspecteur Safari (Développement, nom de l'iPhone) en build Debug.
-- Haptique ressentie à chaque geste du tableau ci-dessus, et coupée avec « Vibrations système ».
-- Son : déverrouillage au premier geste, retour après verrouillage, bouton silencieux, et effet sur la musique d'une autre app.
+- Stockage : comportement d'éviction de WebKit dans l'app.
 - Safe areas : `viewport-fit=cover` et `pt-safe`/`pb-safe` en plein écran, barre d'état lisible sur le fond sombre.
 - Service worker : absent sous `capacitor://`, l'enregistrement doit échouer en silence, les assets étant déjà locaux.
 - Migration : export depuis la PWA, restauration dans l'app, chiffres identiques sur Stats et l'accueil.
@@ -159,7 +172,7 @@ Améliorations possibles après la première installation :
 4. Dans Xcode : cible App, onglet Signing & Capabilities, cocher « Automatically manage signing », choisir son équipe.
    Si l'identifiant `io.github.maxencebrochard.chesslocal` est refusé, en choisir un autre et le reporter dans `capacitor.config.ts`.
 5. Brancher l'iPhone, activer le mode développeur (Réglages, Confidentialité et sécurité, Mode développeur), le choisir comme destination, puis Run.
-6. Faire la migration ci-dessus et la liste « À vérifier au premier build ».
+6. Faire la migration ci-dessus et la liste « Reste à vérifier sur iPhone ».
 7. Pour TestFlight : Product, Archive, puis Distribute App, App Store Connect ; l'app est d'abord créée dans App Store Connect avec le même identifiant.
    Le build apparaît dans TestFlight après traitement, installable par l'app TestFlight de l'iPhone.
 
