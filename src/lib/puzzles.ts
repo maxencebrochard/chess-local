@@ -19,13 +19,32 @@ export function loadPuzzles(): Promise<PuzzleData[]> {
       return res.json()
     })
     .then((raw: CompactPuzzle[]) => {
-      cache = raw.map(([id, fen, moves, rating, themes]) => ({
-        id,
-        fen,
-        moves: moves.split(' '),
-        rating,
-        themes: themes.split(' '),
-      }))
+      // Mémoire : 120 000 puzzles, c'est près de 600 000 coups et 550 000 thèmes, issus d'un
+      // vocabulaire de quelques milliers de coups et de 10 800 combinaisons de thèmes. Chaque coup
+      // est partagé entre les puzzles qui le jouent, et chaque liste de thèmes (gelée : lue,
+      // jamais modifiée) entre les puzzles qui ont la même. Le tas de la page Puzzles en est réduit
+      // d'environ un tiers, ce qui éloigne la purge de la PWA par iOS.
+      const uci = new Map<string, string>()
+      const themeLists = new Map<string, readonly string[]>()
+      cache = raw.map(([id, fen, moves, rating, themes]) => {
+        let tags = themeLists.get(themes)
+        if (!tags) {
+          tags = Object.freeze(themes.split(' '))
+          themeLists.set(themes, tags)
+        }
+        return {
+          id,
+          fen,
+          moves: moves.split(' ').map((m) => {
+            const known = uci.get(m)
+            if (known !== undefined) return known
+            uci.set(m, m)
+            return m
+          }),
+          rating,
+          themes: tags as string[],
+        }
+      })
       return cache
     })
     .catch((e: unknown) => {

@@ -123,6 +123,9 @@ Les mesures de fiabilité et les preuves par mutation sont décrites dans [le bi
   La réinitialisation efface aussi la partie de Jouer en cours, la séance de puzzle et les préférences de Mats éclair.
   Les bilans Insights en cache sont inclus dans la sauvegarde, mais pas la configuration ni la sélection du dernier rapport ; une restauration conserve la configuration locale et invalide ce rapport, sans supprimer les bilans restaurés.
   Les résultats et records de Calcul et visualisation sont inclus dans la sauvegarde ; ses préférences de longueur et d'affichage restent sur l'appareil, hors sauvegarde, et sont effacées par la réinitialisation de l'app.
+- **Hors ligne et démarrage** : PWA installable, entièrement utilisable hors ligne après la première visite (moteur, puzzles, sons et chaque page sont précachés).
+  Seul l'accueil est chargé au démarrage, les autres pages arrivent avec leur route ; après une mise à jour de l'app, la première page ouverte recharge la nouvelle version au lieu d'échouer.
+  La suite E2E `perf` vérifie des budgets chiffrés sous CPU ralenti 4x : JS initial, temps d'accueil, premier puzzle, fluidité d'un glissé pendant l'analyse.
 - **App iOS** (en préparation, [docs/ios-app.md](docs/ios-app.md)) : la même app empaquetée par Capacitor, avec retour haptique natif à la saisie, à la pose, à la prise, au refus et au prémouvement, et plus discret à chaque coup de l'ordinateur.
   Ses données ne partagent pas le stockage de la PWA : l'accueil de l'app propose de restaurer une sauvegarde exportée depuis la PWA.
   La PWA et GitHub Pages restent inchangés.

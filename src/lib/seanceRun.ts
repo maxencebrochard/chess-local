@@ -1,6 +1,7 @@
 // Séance du jour : chargement de ce qu'il y a à travailler (IndexedDB, rapport Insights en cache,
-// banques bundlées), matérialisation du plan de seance.ts en étapes sérialisables, séance en cours
-// dans sessionStorage et séances terminées dans `learnSessions` (domaine `seance`).
+// banques bundlées) et matérialisation du plan de seance.ts en étapes sérialisables. La séance en
+// cours (sessionStorage) et les séances terminées (`learnSessions`, domaine `seance`) vivent dans
+// seanceSession.ts, réexporté ici.
 import { ATTACKS, attackStats, statsKey } from './attack'
 import { db, getRating } from './db'
 import { computeInsights } from './insights'
@@ -12,20 +13,14 @@ import { solvedEndgames, validFen } from './positionGame'
 import { loadPuzzles, pendingPuzzleId, pickRatedPuzzle, recentPuzzleIds } from './puzzles'
 import { buildReviewSession, loadReviewQueue, resolveSession, resolveVariant, variantKey, type ReviewPayload } from './revision'
 import {
-  planSeance, weakOpenings, type BlockKind, type InsightsFinding, type PlannedBlock, type SeancePlan, type StepResult, type VariantCandidate,
+  planSeance, weakOpenings, type BlockKind, type InsightsFinding, type PlannedBlock, type SeancePlan, type VariantCandidate,
 } from './seance'
 import type { PuzzleData } from '../components/PuzzlePlayer'
+import type { Step } from './seanceSession'
 
-// Une étape de la séance, sérialisable (sessionStorage) : les positions d'attaque, finales et
-// variantes se résolvent au rendu depuis les banques bundlées.
-export type Step =
-  | { kind: 'revision'; payload: ReviewPayload }
-  | { kind: 'puzzles'; puzzle: PuzzleData }
-  | { kind: 'opening'; color: 'w' | 'b'; uci: string; label: string }
-  | { kind: 'endgame'; id: string }
-  | { kind: 'attack'; id: string }
-
-export const SEANCE_DOMAIN = 'seance'
+// Séance en cours et séances terminées : seanceSession.ts, léger, que l'accueil lit seul.
+export { SEANCE_DOMAIN, SEANCE_SESSION_KEY, RESUME_MS, readStoredSeance, writeStoredSeance, recordSeance, seanceDates } from './seanceSession'
+export type { Step, StepPhase, SeanceResult, StoredSeance } from './seanceSession'
 
 // Positions jouables : FEN légale et trait au camp du joueur (mêmes gardes que les pages).
 export const playableAttacks = () => ATTACKS.filter((a) => validFen(a.fen) && a.fen.split(' ')[1] === a.attacker)
@@ -178,62 +173,3 @@ export async function buildSeance(now = Date.now(), rng: () => number = Math.ran
   return { plan, steps, puzzlesUnavailable, rating: rating.value }
 }
 
-// ---------- Séance en cours (sessionStorage) ----------
-
-// Clé effacée par importBackup et resetApp (SESSION_KEYS de backup.ts), comme celles d'Apprendre
-// et de la révision.
-export const SEANCE_SESSION_KEY = 'seance-session-v1'
-// Une séance se reprend dans les 6 heures qui suivent son départ, même passé minuit.
-export const RESUME_MS = 6 * 3_600_000
-
-export type StepPhase = 'play' | 'success' | 'fail'
-
-export interface SeanceResult extends StepResult {
-  note: string | null // « Revient dans 3 jours », « Classement 1512 (+8) »...
-  rating?: number // puzzle classé : classement après ce puzzle
-}
-
-export interface StoredSeance {
-  startedAt: number
-  steps: Step[]
-  idx: number
-  phase: StepPhase
-  results: SeanceResult[]
-  stepStartedAt: number
-  opened: number[] // étapes attaque et finale déjà ouvertes : leur partie se reprend telle quelle
-  ratingStart: number
-}
-
-export function readStoredSeance(now = Date.now()): StoredSeance | null {
-  try {
-    const raw = sessionStorage.getItem(SEANCE_SESSION_KEY)
-    const s = raw ? (JSON.parse(raw) as StoredSeance) : null
-    if (!s || typeof s.startedAt !== 'number' || now - s.startedAt > RESUME_MS || now < s.startedAt) return null
-    if (!Array.isArray(s.steps) || !s.steps.length || !Array.isArray(s.results) || !Array.isArray(s.opened)) return null
-    if (!Number.isInteger(s.idx) || s.idx < 0 || s.idx >= s.steps.length) return null
-    return s
-  } catch {
-    return null
-  }
-}
-
-export function writeStoredSeance(s: StoredSeance | null) {
-  try {
-    if (s) sessionStorage.setItem(SEANCE_SESSION_KEY, JSON.stringify(s))
-    else sessionStorage.removeItem(SEANCE_SESSION_KEY)
-  } catch {}
-}
-
-// ---------- Séances terminées (learnSessions, domaine `seance`) ----------
-
-// Une ligne par séance menée jusqu'au bilan : itemId = types des blocs joints par « + »
-// (`revision+puzzles+attack`), score = étapes réussies. Aucun Elo.
-export async function recordSeance(kinds: BlockKind[], ok: number): Promise<void> {
-  const blocks = kinds.filter((k, i) => k !== kinds[i - 1])
-  await db.learnSessions.add({ date: Date.now(), domain: SEANCE_DOMAIN, itemId: blocks.join('+'), success: 1, score: ok, ratingAfter: null })
-}
-
-// Dates des séances terminées, pour la série de jours (requête indexée, jamais puzzles.json).
-export async function seanceDates(): Promise<number[]> {
-  return (await db.learnSessions.where('domain').equals(SEANCE_DOMAIN).toArray()).map((r) => r.date)
-}

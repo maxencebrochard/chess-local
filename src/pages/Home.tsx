@@ -3,11 +3,25 @@ import { useEffect, useState } from 'react'
 import { ActivityCard } from '../components/ActivityCard'
 import { Cta } from '../components/Cta'
 import { db, DEFAULT_RATING } from '../lib/db'
-import { describeKinds, loadReviewQueue, type ReviewItem } from '../lib/revision'
-import { usePathState } from '../components/usePathState'
+import { loadChunk } from '../lib/lazyPage'
+import type { ReviewItem } from '../lib/revision'
+import type { PathState } from '../lib/learningPath'
 import { streak, streakLabel } from '../lib/seance'
-import { readStoredSeance, seanceDates } from '../lib/seanceRun'
+import { readStoredSeance, seanceDates } from '../lib/seanceSession'
 import { dismissMigration, isNative, migrationDismissed } from '../lib/native'
+
+// Import dynamique (homeExtras.ts) : le compteur de révision et la progression du parcours tirent les
+// ouvertures et les cours bundlés, que l'accueil n'a pas à charger avant son premier affichage.
+// Chargé une seule fois : revenir à l'accueil après une mise à jour de l'app ne recharge pas l'app
+// pour une chunk déjà en mémoire.
+let extras: Promise<typeof import('../lib/homeExtras')> | null = null
+function loadExtras() {
+  extras ??= loadChunk(() => import('../lib/homeExtras')).catch((error: unknown) => {
+    extras = null
+    throw error
+  })
+  return extras
+}
 
 export default function Home() {
   const navigate = useNavigate()
@@ -15,18 +29,30 @@ export default function Home() {
   const [solved, setSolved] = useState(0)
   const [nbGames, setNbGames] = useState(0)
   const [due, setDue] = useState<ReviewItem[] | null>(null) // null : compte pas encore connu
-  const path = usePathState()
+  const [path, setPath] = useState<PathState | null>(null) // progression du parcours, null : pas encore connue
   const [seance, setSeance] = useState<{ days: number; today: boolean } | null>(null) // série de séances du jour
   const [current] = useState(() => readStoredSeance()) // séance du jour en cours (sessionStorage)
   // App native : proposer de récupérer les données de la PWA (docs/ios-app.md), jusqu'à une
   // restauration réussie ou « Non merci », même après un premier puzzle joué dans l'app.
   const [offerMigration, setOfferMigration] = useState(() => isNative && !migrationDismissed())
+  const [kinds, setKinds] = useState('') // description du dû (« 2 puzzles, 1 faute »)
 
   useEffect(() => {
     void db.ratings.toArray().then((rs) => setRatings(Object.fromEntries(rs.map((r) => [r.key, r.value]))))
     void db.puzzleAttempts.where('date').above(0).toArray().then((a) => setSolved(a.filter((x) => x.success).length))
     void db.games.count().then(setNbGames)
-    void loadReviewQueue().then((q) => setDue(q.due))
+    // Chunk introuvable malgré le rechargement : l'accueil reste utilisable, sans le compteur ni la
+    // progression du parcours.
+    const loaded = loadExtras()
+    void loaded.then(async ({ describeKinds, loadReviewQueue }) => {
+      const q = await loadReviewQueue()
+      setKinds(describeKinds(q.due))
+      setDue(q.due)
+    }, () => {})
+    void loaded.then(async ({ computePath, EMPTY_FACTS, loadPathFacts }) => {
+      // Même lecture que usePathState : base illisible, parcours vide.
+      setPath(computePath(await loadPathFacts().catch(() => EMPTY_FACTS)))
+    }, () => {})
     void seanceDates().then((d) => setSeance(streak(d)), () => setSeance({ days: 0, today: false }))
   }, [])
 
@@ -47,7 +73,7 @@ export default function Home() {
   ]
 
   return (
-    <div data-review-ready={due !== null ? '' : undefined} data-seance-ready={seance !== null ? '' : undefined} className="mx-auto flex h-full max-w-2xl flex-col p-4 md:justify-center md:p-8">
+    <div data-review-ready={due !== null ? '' : undefined} data-seance-ready={seance !== null ? '' : undefined} data-path-ready={path !== null ? '' : undefined} className="mx-auto flex h-full max-w-2xl flex-col p-4 md:justify-center md:p-8">
       <h1 className="mb-2 md:mb-4 text-3xl font-black">
         ♞ Chess<span className="text-accent">Local</span>
       </h1>
@@ -134,7 +160,7 @@ export default function Home() {
           <span className="text-2xl" aria-hidden="true">🔁</span>
           <span className="min-w-0 flex-1">
             <span className="block font-bold">À réviser aujourd'hui</span>
-            <span className="block truncate text-xs text-neutral-400">{describeKinds(due)}</span>
+            <span className="block truncate text-xs text-neutral-400">{kinds}</span>
           </span>
           <span data-review-count className="shrink-0 rounded-full bg-amber-400 px-3 py-1 text-base font-black text-neutral-900">
             {due.length}
@@ -170,7 +196,7 @@ export default function Home() {
           <span className="text-xl" aria-hidden="true">🗺️</span>
           <span className="font-bold">Parcours</span>
           <span data-testid="home-path-progress" className="min-w-0 flex-1 truncate text-xs text-neutral-400">
-            {path.state ? (path.state.current ? `${path.state.done}/${path.state.total}` : 'terminé') : ''}
+            {path ? (path.current ? `${path.done}/${path.total}` : 'terminé') : ''}
           </span>
           <span className="text-lg text-neutral-500" aria-hidden="true">›</span>
         </Link>

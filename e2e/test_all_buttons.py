@@ -337,8 +337,9 @@ def suite(p):
         page.click("button:has-text('Exporter tout')")
     check("[archive] export PGN téléchargé", dl.value.suggested_filename.endswith(".pgn"))
     page.locator("main a", has_text="Analyser").first.click()
-    page.wait_for_timeout(800)
-    check("[archive] Analyser ouvre la partie", "analyse" in page.url and page.locator("main [data-current]").count() >= 1)
+    # Analyse est une page paresseuse : attendre son contenu plutôt qu'un délai fixe.
+    ck.appears("[archive] Analyser ouvre la partie (coup courant présent)", page, "main [data-current]", timeout=10000, state="attached")
+    check("[archive] Analyser ouvre la partie", "analyse" in page.url)
     page.locator("nav a", has_text="Archive").first.click()
     page.wait_for_timeout(600)
     before = page.locator("main a", has_text="Analyser").count()

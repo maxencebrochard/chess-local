@@ -12,9 +12,11 @@ Lancement normal : `npm run test:e2e` (voir e2e/run.py), qui démarre son propre
 fournit BASE. Lancer une suite à la main exige BASE :
     BASE=http://localhost:5173 python3 e2e/test_learn.py
 """
+import http.server
 import json
 import os
 import re
+import threading
 from contextlib import contextmanager
 import signal
 import subprocess
@@ -22,6 +24,8 @@ import sys
 import traceback
 
 from playwright.sync_api import sync_playwright
+
+from run import HOST, SUBPATH
 
 E2E_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(E2E_DIR)
@@ -662,3 +666,95 @@ class Solver:
             self.proc.wait(timeout=5)
         except Exception:
             self.proc.kill()
+
+
+# ---------------------------------------------------------------------------
+# Serveur statique sur un port imposé, sous /chess-local/ comme GitHub Pages : deux builds
+# servis l'un après l'autre sur le MÊME port (même origine, donc même service worker et même
+# IndexedDB), pour les suites de montée de version (`upgrade`, `perf`).
+# ---------------------------------------------------------------------------
+class SubpathHandler(http.server.SimpleHTTPRequestHandler):
+    """Sert `directory` sous SUBPATH uniquement (comme GitHub Pages), en HTTP/1.0 : pas de
+    keep-alive, donc l'arrêt ne laisse aucune connexion pendante entre les deux builds."""
+
+    extensions_map = {
+        **http.server.SimpleHTTPRequestHandler.extensions_map,
+        ".wasm": "application/wasm",
+        ".webmanifest": "application/manifest+json",
+        ".json": "application/json",
+        ".js": "text/javascript",
+        ".mjs": "text/javascript",
+        ".mp3": "audio/mpeg",
+    }
+
+    def translate_path(self, path):
+        path = path.split("?", 1)[0].split("#", 1)[0]
+        if not path.startswith(SUBPATH):
+            return os.path.join(self.directory, "__hors_du_sous_chemin__")
+        full = os.path.normpath(os.path.join(self.directory, path[len(SUBPATH):]))
+        if not full.startswith(os.path.normpath(self.directory)):
+            return os.path.join(self.directory, "__hors_du_dossier__")
+        return os.path.join(full, "index.html") if os.path.isdir(full) else full
+
+    def end_headers(self):
+        # Aucun cache HTTP : le second build a des fichiers de même chemin (sw.js, engine, sons)
+        # et le navigateur ne doit jamais en garder un corps périmé. Le précache du service
+        # worker, lui, n'est pas concerné : c'est justement lui qu'on teste.
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
+    def log_message(self, *_args):
+        pass
+
+    def log_error(self, fmt, *args):
+        # Journal des seules erreurs (connexion coupée, corps tronqué) : `log_message` muet les
+        # avalait aussi, et un « Cache.put() encountered a network error » du précache ne
+        # permettait pas de savoir si le serveur avait coupé le corps ou si le client avait abandonné.
+        print(f"[serveur {self.directory[-40:]}] {fmt % args}", flush=True)
+
+    # Mutation `truncate-old-precache` : fichier dont le corps est coupé à mi-chemin, comme le
+    # « Cache.put() encountered a network error » vu sous charge, mais à chaque fois.
+    truncate = None
+
+    def copyfile(self, source, outputfile):
+        if self.truncate and self.path.split("?", 1)[0].endswith(self.truncate):
+            outputfile.write(source.read(os.fstat(source.fileno()).st_size // 2))
+            self.close_connection = True
+            return
+        super().copyfile(source, outputfile)
+
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except (BrokenPipeError, ConnectionResetError) as e:
+            self.log_error("corps interrompu (%s) pendant %s", type(e).__name__, getattr(self, "path", "?"))
+            self.close_connection = True
+
+
+class StaticServer:
+    def __init__(self, directory, port, truncate=None):
+        self.directory = directory
+        self.port = port
+        self.truncate = truncate
+        self.srv = None
+
+    @property
+    def base(self):
+        return f"http://{HOST}:{self.port}{SUBPATH.rstrip('/')}"
+
+    def start(self):
+        directory, truncate = self.directory, self.truncate
+        # Le port est celui de l'origine du profil (IndexedDB et service worker y sont attachés) :
+        # s'il n'est pas disponible, on échoue, on n'en choisit jamais un autre.
+        self.srv = http.server.ThreadingHTTPServer((HOST, self.port), lambda *a, **k: type("H", (SubpathHandler,), {"truncate": truncate})(*a, directory=directory, **k))
+        self.srv.daemon_threads = True
+        self.srv.block_on_close = False  # ne pas attendre un gros fetch en cours (puzzles.json) pour rendre le port
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+
+    def stop(self):
+        if self.srv is None:
+            return
+        self.srv.shutdown()
+        self.srv.server_close()
+        self.srv = None
+

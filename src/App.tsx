@@ -1,39 +1,48 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { lazyPage } from './lib/lazyPage'
+import { lazyCourse } from './pages/CoursePages'
 import Home from './pages/Home'
-import Play from './pages/Play'
-import Analysis from './pages/Analysis'
-import Puzzles from './pages/Puzzles'
-import PuzzleRush from './pages/PuzzleRush'
-import Archive from './pages/Archive'
-import Stats from './pages/Stats'
-import Import from './pages/Import'
-import Learn from './pages/Learn'
-import OpeningTrainer from './pages/OpeningTrainer'
-import MyRepertoire from './pages/MyRepertoire'
-import Endgames from './pages/Endgames'
-import EndgameClock from './pages/EndgameClock'
-import PositionPlay from './pages/PositionPlay'
-import CriticalMoment from './pages/CriticalMoment'
-import Mates from './pages/Mates'
-import MissedAttacks from './pages/MissedAttacks'
-import MissedDefenses from './pages/MissedDefenses'
-import CourseIndex, { CourseLesson } from './pages/LessonCourse'
-import { FINALES } from './lib/endgameCourse'
-import { ROQUE } from './lib/attackCourse'
-import { DEFENSE } from './lib/defenseCourse'
-import { BASES } from './lib/basicsCourse'
-import LearningPathMap, { PathStepRoute } from './pages/LearningPath'
-import { STRUCTURES_COURSE } from './lib/structuresCourse'
-import MyStructures, { MyStructuresCard } from './pages/MyStructures'
-import Revision from './pages/Revision'
-import Attack from './pages/Attack'
-import Convert from './pages/Convert'
-import Defense from './pages/Defense'
-import Visualisation from './pages/Visualisation'
-import Insights from './pages/Insights'
-import Seance from './pages/Seance'
+
+// Découpage par route : l'accueil reste dans le bundle initial, chaque autre page (et ses données
+// JSON, son moteur, ses dépendances) arrive avec sa route. Toutes les chunks sont précachées par le
+// service worker (globPatterns de vite.config.ts) : hors ligne, chaque route s'ouvre comme avant.
+const Play = lazyPage(() => import('./pages/Play'))
+const Analysis = lazyPage(() => import('./pages/Analysis'))
+const Puzzles = lazyPage(() => import('./pages/Puzzles'))
+const PuzzleRush = lazyPage(() => import('./pages/PuzzleRush'))
+const Archive = lazyPage(() => import('./pages/Archive'))
+const Stats = lazyPage(() => import('./pages/Stats'))
+const Import = lazyPage(() => import('./pages/Import'))
+const Learn = lazyPage(() => import('./pages/Learn'))
+const OpeningTrainer = lazyPage(() => import('./pages/OpeningTrainer'))
+const MyRepertoire = lazyPage(() => import('./pages/MyRepertoire'))
+const Endgames = lazyPage(() => import('./pages/Endgames'))
+const EndgameClock = lazyPage(() => import('./pages/EndgameClock'))
+const PositionPlay = lazyPage(() => import('./pages/PositionPlay'))
+const CriticalMoment = lazyPage(() => import('./pages/CriticalMoment'))
+const Mates = lazyPage(() => import('./pages/Mates'))
+const MissedAttacks = lazyPage(() => import('./pages/MissedAttacks'))
+const MissedDefenses = lazyPage(() => import('./pages/MissedDefenses'))
+const LearningPathMap = lazyPage(() => import('./pages/LearningPath'))
+const PathStepRoute = lazyPage(() => import('./pages/LearningPath').then((m) => ({ default: m.PathStepRoute })))
+const MyStructures = lazyPage(() => import('./pages/MyStructures'))
+const Revision = lazyPage(() => import('./pages/Revision'))
+const Attack = lazyPage(() => import('./pages/Attack'))
+const Convert = lazyPage(() => import('./pages/Convert'))
+const Defense = lazyPage(() => import('./pages/Defense'))
+const Visualisation = lazyPage(() => import('./pages/Visualisation'))
+const Insights = lazyPage(() => import('./pages/Insights'))
+const Seance = lazyPage(() => import('./pages/Seance'))
+const Finales = lazyCourse(() => import('./lib/endgameCourse').then((m) => m.FINALES))
+const Roque = lazyCourse(() => import('./lib/attackCourse').then((m) => m.ROQUE))
+const DefenseCourse = lazyCourse(() => import('./lib/defenseCourse').then((m) => m.DEFENSE))
+const Bases = lazyCourse(() => import('./lib/basicsCourse').then((m) => m.BASES))
+const StructuresCourse = lazyCourse(
+  () => import('./lib/structuresCourse').then((m) => m.STRUCTURES_COURSE),
+  () => import('./pages/MyStructures').then(({ MyStructuresCard }) => <MyStructuresCard />),
+)
 
 // `match` : routes rattachées à l'onglet (allumé, sans être la page du lien), sous-chemins compris.
 const NAV = [
@@ -140,58 +149,60 @@ function Shell() {
             pages lancent au montage effaceraient un crash survenu juste après le chargement et
             remonteraient la page vide. */}
         <ErrorBoundary resetKey={`${pathname}#${retaps}`} onHome={goHome}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/jouer" element={<Play />} />
-            <Route path="/puzzles" element={<Puzzles />} />
-            <Route path="/rush" element={<PuzzleRush />} />
-            <Route path="/apprendre" element={<Learn />} />
-            <Route path="/ouvertures" element={<OpeningTrainer />} />
-            <Route path="/repertoire" element={<MyRepertoire />} />
-            <Route path="/apprendre/finales" element={<CourseIndex key={FINALES.slug} course={FINALES} />} />
-            <Route path="/apprendre/finales/:id" element={<CourseLesson course={FINALES} />} />
-            <Route path="/apprendre/roque" element={<CourseIndex key={ROQUE.slug} course={ROQUE} />} />
-            <Route path="/apprendre/roque/:id" element={<CourseLesson course={ROQUE} />} />
-            <Route path="/apprendre/bases" element={<CourseIndex key={BASES.slug} course={BASES} />} />
-            <Route path="/apprendre/bases/:id" element={<CourseLesson course={BASES} />} />
-            <Route path="/apprendre/parcours" element={<LearningPathMap />} />
-            <Route path="/apprendre/parcours/:id" element={<PathStepRoute />} />
-            <Route
-              path="/apprendre/structures"
-              element={<CourseIndex key={STRUCTURES_COURSE.slug} course={STRUCTURES_COURSE} extra={<MyStructuresCard />} />}
-            />
-            <Route path="/apprendre/structures/:id" element={<CourseLesson course={STRUCTURES_COURSE} />} />
-            <Route path="/structures" element={<MyStructures />} />
-            <Route path="/structures/:key" element={<MyStructures />} />
-            <Route path="/apprendre/defense" element={<CourseIndex key={DEFENSE.slug} course={DEFENSE} />} />
-            <Route path="/apprendre/defense/:id" element={<CourseLesson course={DEFENSE} />} />
-            <Route path="/mats" element={<Mates />} />
-            <Route path="/revision" element={<Revision />} />
-            <Route path="/attaques-manquees" element={<MissedAttacks />} />
-            <Route path="/attaques-manquees/:id" element={<MissedAttacks />} />
-            <Route path="/defenses-ratees" element={<MissedDefenses />} />
-            <Route path="/defenses-ratees/:id" element={<MissedDefenses />} />
-            <Route path="/analyse" element={<Analysis />} />
-            <Route path="/analyse/jouer" element={<PositionPlay />} />
-            <Route path="/moment-critique" element={<CriticalMoment />} />
-            <Route path="/finales" element={<Endgames />} />
-            {/* Statique : classée devant `/finales/:id` par le routeur, aucun id de finale ne vaut `chrono`. */}
-            <Route path="/finales/chrono" element={<EndgameClock />} />
-            <Route path="/finales/:id" element={<Endgames />} />
-            <Route path="/attaque" element={<Attack />} />
-            <Route path="/attaque/:id" element={<Attack />} />
-            <Route path="/defense" element={<Defense />} />
-            <Route path="/defense/:id" element={<Defense />} />
-            <Route path="/visualisation" element={<Visualisation />} />
-            <Route path="/convertir" element={<Convert />} />
-            <Route path="/convertir/:id" element={<Convert />} />
-            <Route path="/archive" element={<Archive />} />
-            <Route path="/stats" element={<Stats />} />
-            <Route path="/insights" element={<Insights />} />
-            <Route path="/seance" element={<Seance />} />
-            <Route path="/import" element={<Import />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          {/* Le secours ne se voit qu'à l'ouverture directe d'une route paresseuse (rechargement,
+              lien) : une navigation dans l'app est une transition (HashRouter), qui garde la page
+              affichée jusqu'à ce que la suivante soit prête. */}
+          <Suspense fallback={<PageLoading />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/jouer" element={<Play />} />
+              <Route path="/puzzles" element={<Puzzles />} />
+              <Route path="/rush" element={<PuzzleRush />} />
+              <Route path="/apprendre" element={<Learn />} />
+              <Route path="/ouvertures" element={<OpeningTrainer />} />
+              <Route path="/repertoire" element={<MyRepertoire />} />
+              <Route path="/apprendre/finales" element={<Finales.Index />} />
+              <Route path="/apprendre/finales/:id" element={<Finales.Lesson />} />
+              <Route path="/apprendre/roque" element={<Roque.Index />} />
+              <Route path="/apprendre/roque/:id" element={<Roque.Lesson />} />
+              <Route path="/apprendre/bases" element={<Bases.Index />} />
+              <Route path="/apprendre/bases/:id" element={<Bases.Lesson />} />
+              <Route path="/apprendre/parcours" element={<LearningPathMap />} />
+              <Route path="/apprendre/parcours/:id" element={<PathStepRoute />} />
+              <Route path="/apprendre/structures" element={<StructuresCourse.Index />} />
+              <Route path="/apprendre/structures/:id" element={<StructuresCourse.Lesson />} />
+              <Route path="/structures" element={<MyStructures />} />
+              <Route path="/structures/:key" element={<MyStructures />} />
+              <Route path="/apprendre/defense" element={<DefenseCourse.Index />} />
+              <Route path="/apprendre/defense/:id" element={<DefenseCourse.Lesson />} />
+              <Route path="/mats" element={<Mates />} />
+              <Route path="/revision" element={<Revision />} />
+              <Route path="/attaques-manquees" element={<MissedAttacks />} />
+              <Route path="/attaques-manquees/:id" element={<MissedAttacks />} />
+              <Route path="/defenses-ratees" element={<MissedDefenses />} />
+              <Route path="/defenses-ratees/:id" element={<MissedDefenses />} />
+              <Route path="/analyse" element={<Analysis />} />
+              <Route path="/analyse/jouer" element={<PositionPlay />} />
+              <Route path="/moment-critique" element={<CriticalMoment />} />
+              <Route path="/finales" element={<Endgames />} />
+              {/* Statique : classée devant `/finales/:id` par le routeur, aucun id de finale ne vaut `chrono`. */}
+              <Route path="/finales/chrono" element={<EndgameClock />} />
+              <Route path="/finales/:id" element={<Endgames />} />
+              <Route path="/attaque" element={<Attack />} />
+              <Route path="/attaque/:id" element={<Attack />} />
+              <Route path="/defense" element={<Defense />} />
+              <Route path="/defense/:id" element={<Defense />} />
+              <Route path="/visualisation" element={<Visualisation />} />
+              <Route path="/convertir" element={<Convert />} />
+              <Route path="/convertir/:id" element={<Convert />} />
+              <Route path="/archive" element={<Archive />} />
+              <Route path="/stats" element={<Stats />} />
+              <Route path="/insights" element={<Insights />} />
+              <Route path="/seance" element={<Seance />} />
+              <Route path="/import" element={<Import />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       </main>
       <nav aria-label="Navigation principale" className="pb-safe flex shrink-0 border-t border-black/40 bg-surface-2 md:hidden">
@@ -216,6 +227,21 @@ function Shell() {
           )
         })}
       </nav>
+    </div>
+  )
+}
+
+// Secours de chargement d'une page : vide d'abord (une chunk précachée arrive en quelques
+// dizaines de millisecondes, un texte qui clignote serait pire), un indicateur discret ensuite.
+function PageLoading() {
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 400)
+    return () => clearTimeout(t)
+  }, [])
+  return (
+    <div aria-busy="true" className="flex h-full items-center justify-center p-6">
+      {slow && <p className="text-sm text-neutral-400">Chargement…</p>}
     </div>
   )
 }
