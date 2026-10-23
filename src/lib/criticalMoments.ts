@@ -374,9 +374,13 @@ export function gameLabel(row: Pick<ReviewRow, 'opponent' | 'date'>): string {
  * Moments critiques d'une partie du cache, avec le contexte du bilan rouvert depuis l'exercice :
  * clé de partie de l'analyse (`game:<id>` pour une partie de l'app, comme l'Archive ; aucune pour
  * chess.com, l'analyse retombe alors sur l'empreinte des coups) et retour vers la liste.
+ * Lève si le bilan ne se rejoue pas en entier depuis sa position de départ : ses moments
+ * n'ouvriraient pas l'exercice (`momentState` rejoue tout le bilan).
  */
 export function gameMoments(row: ReviewRow): MomentGame {
   const local = row.key.startsWith('local:')
+  const names = namesOf(row)
+  bilanPgn(row.review, names)
   return {
     key: row.key,
     date: row.date,
@@ -389,7 +393,7 @@ export function gameMoments(row: ReviewRow): MomentGame {
     review: row.review,
     ctx: {
       playerColor: row.playerColor,
-      names: namesOf(row),
+      names,
       label: gameLabel(row),
       gameKey: local ? `game:${row.key.slice('local:'.length)}` : null,
       returnTo: MOMENTS_LIST_PATH,
@@ -412,7 +416,7 @@ export async function loadMomentGames(): Promise<MomentGame[]> {
       const g = gameMoments(rows[i])
       if (g.moments.length) out.push(g)
     } catch {
-      // Bilan illisible (PGN abîmé) : la partie est ignorée, les autres restent.
+      // Bilan illisible (PGN abîmé, coup illégal) : la partie est ignorée, les autres restent.
     }
   }
   return out

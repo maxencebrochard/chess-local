@@ -64,6 +64,12 @@ GAME_B, FENS_B = row("chesscom:555", "chesscom", ["e4", "e5", "Nf3", "Nc6", "Bc4
                      NOW - 86400000, "b", "Rival", "win")
 # Partie sans bascule : absente de la liste.
 GAME_C, _ = row("local:8", "local", ["d4", "d5", "c4", "e6"], {}, NOW - 2 * 86400000, "w", "Max", "draw")
+# Bilan abîmé (cache ancien ou sauvegarde) : 3. Cc3 ?? est une bascule, mais le dernier coup est
+# illégal. Plus récente que les autres, la partie ne doit pas figurer dans la liste.
+GAME_BROKEN, _ = row("local:9", "local", ["d4", "d5", "c4", "e6", "Nc3", "Nf6", "Bg5", "Be7"],
+                     {4: {"uci": "b1c3", "bestMoveUci": "g1f3", "class": "blunder", "winPctBefore": 60.0, "winPctAfter": 20.0}},
+                     NOW - 3600000, "w", "Abime", "loss")
+GAME_BROKEN["review"]["moves"][7]["san"] = "Kxe1"
 MOMENT_A = FENS_A[6]
 FOUND_B, MISS_B = FENS_B[3], FENS_B[5]
 # Le moment trouvé de B a déjà été rejoué et retrouvé (domaine critical-moment) ; celui de A est manqué.
