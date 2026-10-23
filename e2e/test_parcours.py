@@ -770,14 +770,14 @@ def part_endgame_save(p, browser):
         page.get_by_role("button", name="C'est parti", exact=True).click()
         if first_failure:
             tap_move(page, "g5", "g6")
-            ck.appears("[sauvegarde finale] premier essai : pat", page, "text=✗ Raté", timeout=8000)
+            ck.appears("[sauvegarde finale] premier essai : pat", page, "text=✗ À revoir", timeout=8000)
             page.get_by_role("button", name="Réessayer").click()
         before = sessions(page, "endgame")
         block_path_writes(page)
         tap_move(page, "g5", "g7")
         ck.appears("[sauvegarde finale] écriture refusée", page, "[role=alert]", timeout=8000)
         check("[sauvegarde finale] note annulée avec la transaction", sessions(page, "endgame") == before)
-        retry_save(page, "[sauvegarde finale]", "learn-session-v1", "text=✓ Réussi !", reload=first_failure)
+        retry_save(page, "[sauvegarde finale]", "learn-session-v1", "text=✓ Réussi", reload=first_failure)
         rows = sessions(page, "endgame")
         check("[sauvegarde finale] seule la première tentative compte pour l’Elo", len(rows) == 1 and rows[0]["success"] == (0 if first_failure else 1))
         if first_failure:

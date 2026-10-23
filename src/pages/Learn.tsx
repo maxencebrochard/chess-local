@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Chess, type Move } from 'chess.js'
 import { ActivityCard } from '../components/ActivityCard'
 import { PageHeader } from '../components/PageHeader'
@@ -8,7 +8,10 @@ import { EngineContinuation, GoFurtherRow } from '../components/EngineContinuati
 import { CourseSheet } from '../components/CourseSheet'
 import { Cta } from '../components/Cta'
 import { HEvalBar } from '../components/HEvalBar'
-import { MistakeExercise } from '../components/MistakeExercise'
+import { ExerciseFeedback, ExerciseHeader, ExerciseHeaderButton, ExerciseScreen, ExerciseStage, type ExerciseVerdict } from '../components/Exercise'
+import { MistakeConsigne, MistakeExercise } from '../components/MistakeExercise'
+import { mistakeVerdictReason, refutedUci } from '../lib/refutation'
+import { RefutationPlayer } from '../components/RefutationPlayer'
 import { PuzzlePlayer } from '../components/PuzzlePlayer'
 import { puzzleContinuationStart, puzzlePlayerColor, useExerciseContinuation } from '../components/useExerciseContinuation'
 import { courseFor, type Course } from '../lib/courses'
@@ -40,6 +43,7 @@ interface StoredSession {
   results: boolean[]
   scoredItems: number[]
   pendingResult?: boolean
+  reason?: string // explication du verdict affiché (restaurée au retour de l'analyse)
   returnTo?: string // page à rouvrir en fin de séance : leçon du cours de finales, Insights
   returnLabel?: string
   pathStep?: string // étape du parcours d'apprentissage qui a ouvert la séance de finale
@@ -72,6 +76,8 @@ export default function Learn() {
   const [pathStep, setPathStep] = useState<string | null>(null)
   const pathSaved = useRef(false)
   const [pendingResult, setPendingResult] = useState<boolean | undefined>(undefined)
+  // Explication du verdict, posée par l'exercice au moment du résultat (présentation seule).
+  const [reason, setReason] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const finishing = useRef(false)
@@ -140,6 +146,7 @@ export default function Learn() {
           const saved = JSON.parse(raw) as StoredSession
           if (!state?.restore && saved.pendingResult === undefined) return
           setPendingResult(saved.pendingResult)
+          setReason(saved.reason ?? null)
           setSession(saved.session)
           setItemIdx(saved.itemIdx)
           setPhase(saved.phase)
@@ -160,13 +167,13 @@ export default function Learn() {
   useEffect(() => {
     if (session && session.items.length > 0) {
       const stored: StoredSession = {
-        session, itemIdx, phase, results, pendingResult, scoredItems: [...scoredItems.current], returnTo: returnTo ?? undefined, returnLabel, pathStep: pathStep ?? undefined,
+        session, itemIdx, phase, results, pendingResult, reason: reason ?? undefined, scoredItems: [...scoredItems.current], returnTo: returnTo ?? undefined, returnLabel, pathStep: pathStep ?? undefined,
       }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
     } else {
       sessionStorage.removeItem(SESSION_KEY)
     }
-  }, [session, itemIdx, phase, results, pendingResult, returnTo, returnLabel, pathStep])
+  }, [session, itemIdx, phase, results, pendingResult, reason, returnTo, returnLabel, pathStep])
 
   function getEngine(): Engine {
     engineRef.current ??= new Engine()
@@ -204,9 +211,10 @@ export default function Learn() {
     }
   }
 
-  async function finishItem(success: boolean) {
+  async function finishItem(success: boolean, why?: string) {
     if (!session || finishing.current) return
     finishing.current = true
+    if (why !== undefined) setReason(why)
     setPendingResult(success)
     setSaving(true)
     setSaveError(false)
@@ -264,6 +272,7 @@ export default function Learn() {
   }
 
   function retryItem() {
+    setReason(null)
     setRetryTick((t) => t + 1)
     setPhase('play')
     setShowCourse(false)
@@ -301,6 +310,7 @@ export default function Learn() {
   function nextItem() {
     if (!session) return
     setShowCourse(false)
+    setReason(null)
     if (itemIdx + 1 < session.items.length) {
       setItemIdx(itemIdx + 1)
       setPhase('lesson')
@@ -370,63 +380,44 @@ export default function Learn() {
     const item = session.items[itemIdx]
     const courseId = courseIdForItem(item)
     const course = courseId ? courseFor(courseId) : null
-    return (
-      <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
-        {pendingResult !== undefined && (
-          <div className="pt-safe pb-safe fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-surface p-6 text-center" data-testid="learn-save">
-            <p role={saveError ? 'alert' : 'status'}>
-              {saveError ? 'Impossible d’enregistrer le résultat. Il est conservé : libère de l’espace puis réessaie.' : saving ? 'Enregistrement du résultat…' : 'Ton résultat est conservé et attend son enregistrement.'}
-            </p>
-            <Cta disabled={saving} onClick={() => void finishItem(pendingResult)}>
-              {saveError ? 'Réessayer l’enregistrement' : 'Enregistrer le résultat'}
-            </Cta>
-          </div>
-        )}
-        <div className="mx-auto flex min-h-full max-w-2xl flex-col" inert={pendingResult !== undefined} style={pendingResult !== undefined ? { visibility: 'hidden' } : undefined}>
-          <header className="flex items-center px-3 py-1">
-            <button
-              onClick={closeSession}
-              aria-label="Quitter la séance"
-              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white"
-            >
-              ✕
-            </button>
-            <h1 className="flex-1 text-center text-lg font-black">
-              {DOMAIN_META[session.domain].emoji} {DOMAIN_META[session.domain].label}
-              <span className="ml-2 text-sm font-semibold text-neutral-400">
-                {itemIdx + 1}/{session.items.length}
-              </span>
-            </h1>
-            {course ? (
-              <button
-                onClick={() => setShowCourse(true)}
-                title="Voir le cours"
-                aria-label="Voir le cours"
-                className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-lg font-black text-neutral-400 hover:text-white"
-              >
-                ?
-              </button>
-            ) : (
-              <span className="w-11 shrink-0" />
-            )}
-          </header>
-          <ExerciseView
-            key={`${itemIdx}-${retryTick}-${itemKey(item)}`}
-            item={item}
-            phase={phase}
-            setPhase={setPhase}
-            onFinish={(s) => void finishItem(s)}
-            onNext={nextItem}
-            onRetry={retryItem}
-            onAnalyse={analyseItem}
-            getEngine={getEngine}
-            ratingDelta={ratingDelta}
-            course={course}
-            onShowCourse={() => setShowCourse(true)}
-          />
-          {showCourse && course && <CourseSheet course={course} onClose={() => setShowCourse(false)} />}
-        </div>
+    const saveOverlay = pendingResult !== undefined && (
+      <div className="pt-safe pb-safe fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-surface p-6 text-center" data-testid="learn-save">
+        <p role={saveError ? 'alert' : 'status'}>
+          {saveError ? 'Impossible d’enregistrer le résultat. Il est conservé : libère de l’espace puis réessaie.' : saving ? 'Enregistrement du résultat…' : 'Ton résultat est conservé et attend son enregistrement.'}
+        </p>
+        <Cta disabled={saving} onClick={() => void finishItem(pendingResult)}>
+          {saveError ? 'Réessayer l’enregistrement' : 'Enregistrer le résultat'}
+        </Cta>
       </div>
+    )
+    return (
+      <ExerciseScreen overlay={saveOverlay} hidden={pendingResult !== undefined} data-learn-item={item.kind}>
+        <ExerciseHeader
+          title={`${DOMAIN_META[session.domain].emoji} ${DOMAIN_META[session.domain].label}`}
+          index={itemIdx + 1}
+          total={session.items.length}
+          done={results.length}
+          onClose={closeSession}
+          closeLabel="Quitter la séance"
+          action={course ? <ExerciseHeaderButton onClick={() => setShowCourse(true)} title="Voir le cours" aria-label="Voir le cours">?</ExerciseHeaderButton> : undefined}
+        />
+        <ExerciseView
+          key={`${itemIdx}-${retryTick}-${itemKey(item)}`}
+          item={item}
+          phase={phase}
+          setPhase={setPhase}
+          onFinish={(s, why) => void finishItem(s, why)}
+          onNext={nextItem}
+          onRetry={retryItem}
+          onAnalyse={analyseItem}
+          getEngine={getEngine}
+          ratingDelta={ratingDelta}
+          reason={reason}
+          course={course}
+          onShowCourse={() => setShowCourse(true)}
+        />
+        {showCourse && course && <CourseSheet course={course} onClose={() => setShowCourse(false)} />}
+      </ExerciseScreen>
     )
   }
 
@@ -551,19 +542,26 @@ interface ExerciseProps {
   item: SessionItem
   phase: ItemPhase
   setPhase: (p: ItemPhase) => void
-  onFinish: (success: boolean) => void
+  // `why` : explication du verdict en une phrase, affichée sous « Réussi » ou « À revoir ».
+  onFinish: (success: boolean, why: string) => void
   onNext: () => void
   onRetry: () => void
   onAnalyse: () => void
   getEngine: () => Engine
   ratingDelta: number | null
+  reason: string | null
   course: Course | null
   onShowCourse: () => void
   onPuzzleStep?: (step: number) => void
+  // Scène commune (échiquier, consigne avant le coup, verdict après), fournie par ExerciseView.
+  stage: (p: { board: ReactNode; prompt: ReactNode; above?: ReactNode }) => ReactNode
 }
 
-function ExerciseView(props: ExerciseProps) {
+const sideFr = (c: 'w' | 'b') => (c === 'w' ? 'Blancs' : 'Noirs')
+
+function ExerciseView(props: Omit<ExerciseProps, 'stage'>) {
   const { item, phase, setPhase, onNext, course, onShowCourse } = props
+  const [why, setWhy] = useState(false)
   // « Aller plus loin » (puzzles) : hors score, n'agit ni sur la phase ni sur le verdict.
   const puzzle = item.kind === 'tactic' || item.kind === 'strategy' ? item.puzzle : null
   const furthers = useExerciseContinuation(`${item.kind}:${itemKey(item)}`, phase === 'success' || phase === 'fail')
@@ -572,6 +570,7 @@ function ExerciseView(props: ExerciseProps) {
     : null
   const navigate = useNavigate()
   const lessonId = item.kind === 'endgame' ? lessonForExercise(item.endgame.id) : null
+  const refuted = item.kind === 'mistake' ? refutedUci(item.mistake) : null
 
   const lesson =
     item.kind === 'endgame' ? { title: item.endgame.title, text: item.endgame.lesson }
@@ -613,61 +612,60 @@ function ExerciseView(props: ExerciseProps) {
     )
   }
 
-  const verdictBar = (phase === 'success' || phase === 'fail') && (
-    // Une seule rangée à 393 px (LEARN-10) : verdict et delta empilés dans un bloc qui ne
-    // rétrécit pas (un libellé ne passe jamais à la ligne), actions serrées à droite.
-    <div className="flex items-center gap-2 px-3 py-2">
-      <div className="flex shrink-0 flex-col whitespace-nowrap">
-        <span className={`text-lg leading-tight font-black ${phase === 'success' ? 'text-accent' : 'text-red-400'}`}>
-          {phase === 'success' ? '✓ Réussi !' : '✗ Raté'}
-        </span>
-        {props.ratingDelta !== null && props.ratingDelta !== 0 && (
-          <span className={`text-sm leading-tight font-semibold ${props.ratingDelta > 0 ? 'text-accent' : 'text-red-400'}`}>
-            {props.ratingDelta > 0 ? '+' : ''}{props.ratingDelta}
-          </span>
-        )}
-      </div>
-      <div className="ml-auto flex items-center gap-1">
-        <button
-          onClick={props.onRetry}
-          className="flex cursor-pointer flex-col items-center rounded px-1.5 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
-        >
-          <span className="text-lg leading-none">↺</span>
-          Réessayer
-        </button>
-        <button
-          onClick={props.onAnalyse}
-          className="flex cursor-pointer flex-col items-center rounded px-1.5 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
-        >
-          <span className="text-lg leading-none">♞</span>
-          Analyser
-        </button>
-        <Cta className="ml-1 px-5 py-2 text-base" onClick={onNext}>
-          Suivant
-        </Cta>
-      </div>
-    </div>
-  )
-
-  return (
-    <div className="flex flex-1 flex-col">
-      {(item.kind === 'tactic' || item.kind === 'strategy') && (
-        <PuzzleExercise {...props} onPuzzleStep={(s) => { if (phase === 'play') furthers.recordStep(s) }} />
-      )}
-      {item.kind === 'endgame' && <EndgameExercise {...props} />}
-      {item.kind === 'opening' && <OpeningExercise {...props} />}
-      {item.kind === 'mistake' && (
-        <MistakeExercise mistake={item.mistake} active={phase === 'play'} onFinish={props.onFinish} getEngine={props.getEngine} />
-      )}
-      {verdictBar}
-      {furtherStart && (
+  const judged = phase === 'success' || phase === 'fail'
+  const delta = props.ratingDelta
+  const verdict: ExerciseVerdict | null = judged
+    ? {
+        ok: phase === 'success',
+        // Séance restaurée d'un stockage antérieur à l'explication : phrase générique.
+        reason: props.reason ?? (phase === 'success' ? 'Exercice réussi.' : 'Rejoue la position pour la fixer.'),
+        note: delta !== null && delta !== 0 ? <span data-rating-delta>Classement {delta > 0 ? '+' : ''}{delta}</span> : undefined,
+      }
+    : null
+  const stage: ExerciseProps['stage'] = ({ board, prompt, above }) => (
+    <ExerciseStage
+      above={above}
+      feedback={
+        <ExerciseFeedback
+          verdict={verdict}
+          prompt={prompt}
+          onNext={onNext}
+          onRetry={props.onRetry}
+          onAnalyse={props.onAnalyse}
+          onWhy={refuted ? () => setWhy(true) : undefined}
+        />
+      }
+      below={furtherStart && (
         <GoFurtherRow
           planLabel={item.kind === 'strategy' ? 'Voir le plan' : 'Voir la suite'}
           planFirst={item.kind === 'strategy'}
           onOpen={(mode) => furthers.open(mode, furtherStart)}
         />
       )}
-      {puzzle && furthers.overlay && (phase === 'success' || phase === 'fail') && (
+    >
+      {board}
+    </ExerciseStage>
+  )
+  const sub = { ...props, stage }
+
+  return (
+    <>
+      {(item.kind === 'tactic' || item.kind === 'strategy') && (
+        <PuzzleExercise {...sub} onPuzzleStep={(s) => { if (phase === 'play') furthers.recordStep(s) }} />
+      )}
+      {item.kind === 'endgame' && <EndgameExercise {...sub} />}
+      {item.kind === 'opening' && <OpeningExercise {...sub} />}
+      {item.kind === 'mistake' && <MistakeItem {...sub} />}
+      {why && refuted && item.kind === 'mistake' && (
+        <RefutationPlayer
+          fenBefore={item.mistake.fenBefore}
+          playedUci={refuted}
+          bestUci={item.mistake.bestUci}
+          orientation={new Chess(item.mistake.fenBefore).turn()}
+          onClose={() => setWhy(false)}
+        />
+      )}
+      {puzzle && furthers.overlay && judged && (
         <EngineContinuation
           startFen={furthers.overlay.startFen}
           playerColor={puzzlePlayerColor(puzzle)}
@@ -680,34 +678,62 @@ function ExerciseView(props: ExerciseProps) {
           onClose={furthers.close}
         />
       )}
-    </div>
+    </>
   )
 }
 
+// ---------- Faute d'une partie (Mes erreurs) ----------
+function MistakeItem({ item, phase, onFinish, getEngine, stage }: ExerciseProps) {
+  const [checking, setChecking] = useState(false)
+  if (item.kind !== 'mistake') return null
+  const refuted = refutedUci(item.mistake) !== null
+  return stage({
+    prompt: checking ? 'Je vérifie ton coup avec Stockfish…' : <MistakeConsigne mistake={item.mistake} active />,
+    board: (
+      <MistakeExercise
+        bare
+        mistake={item.mistake}
+        active={phase === 'play'}
+        getEngine={getEngine}
+        onChecking={setChecking}
+        onFinish={(ok, { best }) => onFinish(ok, mistakeVerdictReason(ok, best, refuted))}
+      />
+    ),
+  })
+}
+
 // ---------- Puzzle (tactique / stratégie) ----------
-function PuzzleExercise({ item, phase, onFinish, onPuzzleStep }: ExerciseProps) {
+function PuzzleExercise({ item, phase, onFinish, onPuzzleStep, stage }: ExerciseProps) {
   if (item.kind !== 'tactic' && item.kind !== 'strategy') return null
-  const puzzle = item.kind === 'tactic' ? item.puzzle : item.puzzle
-  return (
-    <div className="flex justify-center px-1">
-      <div className="boardbox md:w-[min(60vh,560px)]">
-        <PuzzlePlayer
-          puzzle={puzzle}
-          onStep={onPuzzleStep}
-          onComplete={(ok) => {
-            if (phase === 'play') onFinish(ok)
-          }}
-        />
-      </div>
-    </div>
-  )
+  const puzzle = item.puzzle
+  const side = sideFr(puzzlePlayerColor(puzzle))
+  const tactic = item.kind === 'tactic'
+  return stage({
+    prompt: (
+      <>
+        <span className="font-semibold">{tactic ? item.themeLabel : item.card.title}</span> : trouve le meilleur coup, trait aux {side}.
+      </>
+    ),
+    board: (
+      <PuzzlePlayer
+        puzzle={puzzle}
+        onStep={onPuzzleStep}
+        onComplete={(ok) => {
+          if (phase !== 'play') return
+          onFinish(ok, ok
+            ? tactic ? `Bien vu : le motif était ${item.themeLabel.toLowerCase()}.` : 'Bien joué : tu as trouvé le plan de la position.'
+            : `Pas le coup attendu. Réessaie, ou regarde ${tactic ? 'la suite' : 'le plan'} sous l’échiquier.`)
+        }}
+      />
+    ),
+  })
 }
 
 // ---------- Finale contre Stockfish ----------
 // L'échiquier tranche (mat, pat, répétition, matériel, 50 coups), puis l'objectif de l'exercice
 // (`goal`) : mat sur l'échiquier, promotion, capture du matériel adverse, ou tenir la nulle.
 // L'évaluation ne sert qu'à confirmer une promotion ou une capture, et à détecter un avantage lâché.
-function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
+function EndgameExercise({ item, phase, onFinish, getEngine, stage }: ExerciseProps) {
   const eg = item.kind === 'endgame' ? item.endgame : null
   // Séance restaurée depuis un stockage antérieur au champ `goal` : le mat ou la nulle restent l'objectif.
   const goal: EndgameGoal = eg?.goal ?? (eg?.objective === 'draw' ? 'hold' : 'mate')
@@ -715,8 +741,6 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
   const [fen, setFen] = useState(chessRef.current.fen())
   const [liveCp, setLiveCp] = useState<number | null>(null)
   const [liveMate, setLiveMate] = useState<number | null>(null)
-  // Motif du verdict, affiché à la place de l'objectif une fois l'exercice conclu.
-  const [outcome, setOutcome] = useState<{ ok: boolean; reason: string } | null>(null)
   const plies = useRef(0)
   const badStreak = useRef(0)
   const promoted = useRef(false)
@@ -732,11 +756,11 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
     }
   }, [])
 
+  // Le motif du verdict devient son explication, sous « Réussi » ou « À revoir ».
   const conclude = useCallback((ok: boolean, reason: string) => {
     if (finished.current || !alive.current || phase !== 'play') return
     finished.current = true
-    setOutcome({ ok, reason })
-    onFinish(ok)
+    onFinish(ok, reason)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onFinish, phase])
 
@@ -836,29 +860,15 @@ function EndgameExercise({ item, phase, onFinish, getEngine }: ExerciseProps) {
     return mv
   }
 
-  return (
-    <div className="flex flex-col gap-2 px-3">
-      <div
-        className={`rounded px-3 py-1.5 text-center text-sm font-semibold ${
-          outcome ? (outcome.ok ? 'bg-accent/15 text-accent-light' : 'bg-red-900/40 text-red-200') : 'bg-surface-2'
-        }`}
-      >
-        {outcome
-          ? outcome.reason
-          : `Objectif : ${eg.objective === 'win' ? 'gagne cette position' : 'tiens la nulle'}, trait aux ${eg.side === 'w' ? 'Blancs' : 'Noirs'}`}
-      </div>
-      <HEvalBar cp={liveCp} mate={liveMate} />
-      <div className="flex justify-center">
-        <div className="boardbox md:w-[min(56vh,520px)]">
-          <Board fen={fen} orientation={eg.side} interactive={phase === 'play'} movableColor={eg.side} onMove={handleMove} />
-        </div>
-      </div>
-    </div>
-  )
+  return stage({
+    above: <HEvalBar cp={liveCp} mate={liveMate} />,
+    prompt: `Objectif : ${eg.objective === 'win' ? 'gagne cette position' : 'tiens la nulle'}, trait aux ${sideFr(eg.side)}.`,
+    board: <Board fen={fen} orientation={eg.side} interactive={phase === 'play'} movableColor={eg.side} onMove={handleMove} />,
+  })
 }
 
 // ---------- Drill d'ouverture ----------
-function OpeningExercise({ item, phase, onFinish }: ExerciseProps) {
+function OpeningExercise({ item, phase, onFinish, stage }: ExerciseProps) {
   const line = item.kind === 'opening' ? item.line : null
   const depth = item.kind === 'opening' ? item.depth : 0
   const chessRef = useRef(new Chess())
@@ -871,13 +881,18 @@ function OpeningExercise({ item, phase, onFinish }: ExerciseProps) {
 
   const playerColor = line?.playerColor ?? 'w'
 
+  // Explication : le nombre de corrections décide du verdict (une seule est tolérée).
+  const finishDrill = (n: number) => {
+    finished.current = true
+    onFinish(n <= 1, n === 0 ? 'Ligne déroulée sans faute.' : n === 1 ? 'Ligne déroulée avec une seule correction.' : `${n} corrections sur la ligne : rejoue-la pour la fixer.`)
+  }
+
   // L'app joue le camp adverse.
   useEffect(() => {
     if (!line || finished.current || phase !== 'play') return
     const c = chessRef.current
     if (step >= depth) {
-      finished.current = true
-      onFinish(faults <= 1)
+      finishDrill(faults)
       return
     }
     if (c.turn() !== playerColor) {
@@ -888,8 +903,7 @@ function OpeningExercise({ item, phase, onFinish }: ExerciseProps) {
           setStep((s) => s + 1)
           setFen(c.fen())
         } catch {
-          finished.current = true
-          onFinish(faults <= 1)
+          finishDrill(faults)
         }
       }, 450)
       return () => clearTimeout(t)
@@ -926,28 +940,24 @@ function OpeningExercise({ item, phase, onFinish }: ExerciseProps) {
     return false
   }
 
-  return (
-    <div className="flex flex-col gap-2 px-3">
-      <div className="truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold">
-        {openingFamilyFr(line.name)} : les {Math.ceil(depth / 2)} premiers coups, côté {playerColor === 'w' ? 'blanc' : 'noir'}
-      </div>
-      {/* Hauteur réservée : l'apparition du message ne doit pas faire sauter le board. */}
-      <p className={`min-h-[34px] rounded px-3 py-1.5 text-sm ${msg ? 'bg-red-900/40 text-red-200' : ''}`}>
-        {msg ?? ' '}
-      </p>
-      <div className="flex justify-center">
-        <div className="boardbox md:w-[min(56vh,520px)]">
-          <Board
-            fen={fen}
-            orientation={playerColor}
-            interactive={phase === 'play'}
-            movableColor={playerColor}
-            onMove={handleMove}
-            arrows={hintArrow ? [hintArrow] : []}
-          />
-        </div>
-      </div>
-    </div>
-  )
+  return stage({
+    prompt: (
+      <>
+        <span className="block font-semibold">
+          {openingFamilyFr(line.name)} : les {Math.ceil(depth / 2)} premiers coups, côté {playerColor === 'w' ? 'blanc' : 'noir'}.
+        </span>
+        {msg && <span className="mt-1 block text-red-200">{msg}</span>}
+      </>
+    ),
+    board: (
+      <Board
+        fen={fen}
+        orientation={playerColor}
+        interactive={phase === 'play'}
+        movableColor={playerColor}
+        onMove={handleMove}
+        arrows={hintArrow ? [hintArrow] : []}
+      />
+    ),
+  })
 }
-

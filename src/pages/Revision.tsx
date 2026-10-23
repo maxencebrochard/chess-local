@@ -6,7 +6,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Chess, DEFAULT_POSITION } from 'chess.js'
 import { Cta } from '../components/Cta'
-import { MistakeExercise } from '../components/MistakeExercise'
+import { ExerciseFeedback, ExerciseHeader, ExerciseScreen, ExerciseStage, type ExerciseVerdict } from '../components/Exercise'
+import { MistakeConsigne, MistakeExercise } from '../components/MistakeExercise'
+import { mistakeVerdictReason, refutedUci } from '../lib/refutation'
+import { RefutationPlayer } from '../components/RefutationPlayer'
+import { puzzlePlayerColor } from '../components/useExerciseContinuation'
 import { OpeningDrill, type DrillSnapshot } from '../components/OpeningDrill'
 import { PuzzlePlayer } from '../components/PuzzlePlayer'
 import { Engine } from '../lib/engine'
@@ -39,6 +43,7 @@ interface StoredSession {
   remaining: number
   returnTo: string
   drill?: DrillSnapshot // variante jugée laissée pour l'analyseur : son verdict, repris au retour
+  reason?: string // explication du verdict affiché (restaurée au retour de l'analyse)
 }
 
 // Libellé du lien de sortie, d'après la page qui a ouvert la révision (`state.returnTo`).
@@ -65,6 +70,10 @@ export default function Revision() {
   const [returnTo, setReturnTo] = useState('/')
   // Verdict d'une variante restauré au retour de l'analyseur, pour la clé de drill d'alors.
   const [drillSnap, setDrillSnap] = useState<{ key: string; snapshot: DrillSnapshot } | null>(null)
+  // Explication du verdict affiché, et vérification Stockfish en cours (présentation seule).
+  const [reason, setReason] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [why, setWhy] = useState(false)
   const engineRef = useRef<Engine | null>(null)
   // Items déjà jugés (index), posés de façon synchrone : un second verdict dans le même rendu
   // (Réessayer sur le drill refait feu `onResult`) n'écrit jamais deux fois.
@@ -93,6 +102,7 @@ export default function Revision() {
           recorded.current = new Set(saved.results.map((r) => r.idx))
           setRemaining(saved.remaining ?? 0)
           setReturnTo(saved.returnTo)
+          setReason(saved.reason ?? null)
           // Une variante jugée reprend sur son verdict (drill laissé par « Analyser »). Sans ce
           // verdict (séance d'une version antérieure), le drill repartirait du premier coup : la
           // séance reprend alors à l'item suivant, ou à son écran de fin.
@@ -118,12 +128,12 @@ export default function Revision() {
   useEffect(() => {
     if (items === null) return
     if (items.length > 0 && !ended) {
-      const stored: StoredSession = { items, idx, phase, results, remaining, returnTo }
+      const stored: StoredSession = { items, idx, phase, results, remaining, returnTo, reason: reason ?? undefined }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
     } else {
       sessionStorage.removeItem(SESSION_KEY)
     }
-  }, [items, idx, phase, results, remaining, returnTo, ended])
+  }, [items, idx, phase, results, remaining, returnTo, ended, reason])
 
   async function start() {
     setItems(null)
@@ -155,9 +165,10 @@ export default function Revision() {
   }
 
   // Verdict : seule la première tentative d'un item s'enregistre (Réessayer est sans enjeu).
-  function finish(success: boolean) {
+  function finish(success: boolean, why?: string) {
     if (!items) return
     const item = items[idx]
+    setReason(why ?? null)
     // Puzzles et variantes passent par PuzzlePlayer et OpeningDrill, qui ont déjà joué le verdict.
     if (item.kind !== 'puzzle' && item.kind !== 'variant') (success ? sounds.success : sounds.fail)()
     setPhase(success ? 'success' : 'fail')
@@ -179,6 +190,7 @@ export default function Revision() {
 
   function next() {
     if (!items) return
+    setReason(null)
     if (idx + 1 < items.length) {
       setIdx(idx + 1)
       setPhase('play')
@@ -188,6 +200,7 @@ export default function Revision() {
   }
 
   function retry() {
+    setReason(null)
     setRetryTick((t) => t + 1)
     setPhase('play')
   }
@@ -201,7 +214,7 @@ export default function Revision() {
     const item = items[idx]
     // Le verdict de la variante part avec la séance : le retour le réaffiche tel quel.
     if (drill) {
-      const stored: StoredSession = { items, idx, phase, results, remaining, returnTo, drill }
+      const stored: StoredSession = { items, idx, phase, results, remaining, returnTo, reason: reason ?? undefined, drill }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(stored))
     }
     const back = { returnTo: '/revision', returnLabel: 'Retour à la révision' }
@@ -330,73 +343,77 @@ export default function Revision() {
     )
   }
 
-  // Les thèmes (« Mat en 1 », « Fourchette ») livreraient la solution : après le verdict seulement.
-  const banner = item.kind === 'puzzle'
-    ? `Puzzle ${item.puzzle.id} · ${item.puzzle.rating}${phase !== 'play' ? ` · ${displayThemes(item.puzzle.themes).join(', ')}` : ''}`
-    : item.kind === 'missed-attack' ? 'Attaque manquée' : item.kind === 'missed-defense' ? 'Défense ratée' : null
+  // Consigne avant le coup ; les thèmes (« Mat en 1 », « Fourchette ») livreraient la solution :
+  // ils ne passent dans l'explication qu'après le verdict.
+  const status = <span className="mt-1 block text-xs font-semibold text-neutral-400">{statusLabel(item.item)}</span>
+  const prompt = item.kind === 'puzzle' ? (
+    <>
+      <span className="font-semibold">Puzzle {item.puzzle.id} · {item.puzzle.rating}</span> : trouve le meilleur coup, trait aux {puzzlePlayerColor(item.puzzle) === 'w' ? 'Blancs' : 'Noirs'}.
+      {status}
+    </>
+  ) : checking ? 'Je vérifie ton coup avec Stockfish…' : (
+    <>
+      {item.kind === 'missed-attack' ? 'Attaque manquée · ' : item.kind === 'missed-defense' ? 'Défense ratée · ' : ''}
+      {<MistakeConsigne mistake={item.mistake} active />}
+      {status}
+    </>
+  )
+  const refuted = item.kind === 'puzzle' ? null : refutedUci(item.mistake)
+  const verdict: ExerciseVerdict | null = phase === 'play' ? null : {
+    ok: phase === 'success',
+    // Séance restaurée d'un stockage antérieur à l'explication : phrase générique.
+    reason: reason ?? (phase === 'success' ? 'Exercice réussi.' : 'Rejoue la position pour la fixer.'),
+    note: result ? <span data-review-next>{result.next}</span> : undefined,
+  }
 
   return (
-    <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
-      <div data-review-item={item.kind} className="mx-auto flex min-h-full max-w-2xl flex-col">
-        <header className="flex items-center px-3 py-1">
-          <button onClick={close} aria-label="Quitter la révision" className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white">
-            ✕
-          </button>
-          <h1 className="flex-1 text-center text-lg font-black">
-            🔁 Révision
-            <span className="ml-2 text-sm font-semibold text-neutral-400">{progress}</span>
-          </h1>
-          <span className="w-11 shrink-0" />
-        </header>
-        <p className="px-3 pb-2 text-center text-xs font-semibold text-neutral-400">{statusLabel(item.item)}</p>
-        {saveError && <div className="mx-3 mb-2"><SaveAlert kind={saveError} /></div>}
-        {banner && <p className="mx-3 mb-2 truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold">{banner}</p>}
+    <ExerciseScreen data-review-item={item.kind}>
+      <ExerciseHeader title="🔁 Révision" index={idx + 1} total={items.length} done={results.length} onClose={close} closeLabel="Quitter la révision" />
+      <ExerciseStage
+        feedback={
+          <ExerciseFeedback
+            verdict={verdict}
+            prompt={prompt}
+            onNext={next}
+            onRetry={retry}
+            onAnalyse={() => analyse()}
+            onWhy={refuted ? () => setWhy(true) : undefined}
+          />
+        }
+        below={saveError && <div className="px-3"><SaveAlert kind={saveError} /></div>}
+      >
         {item.kind === 'puzzle' ? (
-          <div className="flex justify-center px-3">
-            <div className="boardbox md:w-[min(56vh,520px)]">
-              <PuzzlePlayer
-                key={key}
-                puzzle={item.puzzle}
-                onComplete={(ok) => {
-                  if (phase === 'play') finish(ok)
-                }}
-              />
-            </div>
-          </div>
+          <PuzzlePlayer
+            key={key}
+            puzzle={item.puzzle}
+            onComplete={(ok) => {
+              if (phase !== 'play') return
+              const motif = `Motif : ${displayThemes(item.puzzle.themes).join(', ')}.`
+              finish(ok, ok ? `Bien vu. ${motif}` : `Pas le coup attendu. ${motif}`)
+            }}
+          />
         ) : (
-          <MistakeExercise key={key} mistake={item.mistake} active={phase === 'play'} onFinish={finish} getEngine={getEngine} />
+          <MistakeExercise
+            key={key}
+            bare
+            mistake={item.mistake}
+            active={phase === 'play'}
+            getEngine={getEngine}
+            onChecking={setChecking}
+            onFinish={(ok, { best }) => finish(ok, mistakeVerdictReason(ok, best, refuted !== null))}
+          />
         )}
-        {phase !== 'play' && (
-          // Une seule rangée à 393 px : verdict et échéance empilés dans un bloc qui ne rétrécit
-          // pas, actions serrées à droite (même gabarit qu'Apprendre).
-          <div className="flex items-center gap-2 px-3 py-2">
-            <div className="flex min-w-0 shrink-0 flex-col whitespace-nowrap">
-              <span className={`text-lg leading-tight font-black ${phase === 'success' ? 'text-accent' : 'text-red-400'}`}>
-                {phase === 'success' ? '✓ Réussi !' : '✗ Raté'}
-              </span>
-              {result && (
-                <span data-review-next className="text-xs leading-tight font-semibold text-neutral-400">
-                  {result.next}
-                </span>
-              )}
-            </div>
-            <div className="ml-auto flex items-center gap-1">
-              <button onClick={retry} className="flex cursor-pointer flex-col items-center rounded px-1.5 py-1 text-xs font-semibold text-neutral-300 hover:text-white">
-                <span className="text-lg leading-none">↺</span>
-                Réessayer
-              </button>
-              <button onClick={() => analyse()} className="flex cursor-pointer flex-col items-center rounded px-1.5 py-1 text-xs font-semibold text-neutral-300 hover:text-white">
-                <span className="text-lg leading-none">♞</span>
-                Analyser
-              </button>
-              <Cta className="ml-1 px-5 py-2 text-base" onClick={next}>
-                Suivant
-              </Cta>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      </ExerciseStage>
+      {why && refuted && item.kind !== 'puzzle' && (
+        <RefutationPlayer
+          fenBefore={item.mistake.fenBefore}
+          playedUci={refuted}
+          bestUci={item.mistake.bestUci}
+          orientation={new Chess(item.mistake.fenBefore).turn()}
+          onClose={() => setWhy(false)}
+        />
+      )}
+    </ExerciseScreen>
   )
 }
 

@@ -378,3 +378,23 @@ function preventionText(kind: Prevention, ref1: RefStep): string {
     case 'no_fork': return `Après lui, ${bare} ne serait plus une fourchette.`
   }
 }
+
+// Coup fautif d'une faute enregistrée, en UCI, relu depuis sa SAN (une sauvegarde abîmée ne casse
+// rien) ; null quand il n'y a rien à réfuter : « Pourquoi ? » n'est alors pas proposé.
+export function refutedUci(mistake: { fenBefore: string; playedSan: string; bestUci: string }): string | null {
+  try {
+    const mv = new Chess(mistake.fenBefore).move(mistake.playedSan)
+    return mv.lan === mistake.bestUci ? null : mv.lan
+  } catch {
+    return null
+  }
+}
+
+// Explication du verdict d'une faute rejouée (Apprendre, révision), sans dévoiler le meilleur coup
+// tant qu'un réessai est proposé.
+export function mistakeVerdictReason(ok: boolean, best: boolean, refuted: boolean): string {
+  if (ok) return best ? 'C’est le coup de Stockfish : la position est réparée.' : 'Pas le coup de Stockfish, mais tout aussi solide.'
+  return refuted
+    ? 'Ce coup perd encore trop. Réessaie, ou regarde pourquoi le coup de ta partie était une faute.'
+    : 'Ce coup perd encore trop. Réessaie, ou analyse la position.'
+}

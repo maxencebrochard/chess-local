@@ -285,7 +285,8 @@ def check_one_verdict(name, page, start, expected):
 
 
 def click_next(page):
-    if ck.appears("[séance] bouton Suivant", page, "button:text-is('Suivant')", timeout=5000):
+    # Suivant : principal après une réussite (variante comprise), secondaire après un échec.
+    if ck.appears("[séance] bouton Suivant", page, "button:text-is('Suivant'), [data-exercise-feedback] button:has-text('Suivant')", timeout=5000):
         page.get_by_role("button", name="Suivant", exact=True).click()
         page.wait_for_timeout(500)
 
@@ -302,7 +303,7 @@ def play_item(page, kind, n, log):
                 shot(page, "revision_mistake_852")
             n_snd = len(sound_log(page))
             tap_move(page, "h2", "h3")
-            ck.appears("[faute 1] vérification Stockfish puis verdict « Raté »", page, "text=✗ Raté", timeout=60000)
+            ck.appears("[faute 1] vérification Stockfish puis verdict « À revoir »", page, "text=✗ À revoir", timeout=60000)
             check_one_verdict("[faute 1] raté", page, n_snd, "fail")
             shot(page, "revision_verdict_852")
             log[label] = next_label(page)
@@ -322,7 +323,7 @@ def play_item(page, kind, n, log):
             check_one_verdict(f"[{label}] réussi", page, n_snd, "success")
             log[label] = next_label(page)
     elif kind == "puzzle":
-        banners = page.locator("[data-review-item] p", has_text="Puzzle")
+        banners = page.locator("[data-review-item] [data-exercise-prompt]", has_text="Puzzle")
         banner = banners.first.inner_text() if banners.count() else ""
         m = re.search(r"Puzzle (L\d+)", banner)
         if not check(f"[séance] item {n + 1} : bandeau « Puzzle L.. » lisible", m is not None, f"({banner!r})"):
@@ -338,8 +339,9 @@ def play_item(page, kind, n, log):
         ck.appears(f"[{pid}] verdict « Réussi »", page, "text=✓ Réussi", timeout=8000)
         check_one_verdict(f"[{pid}] réussi", page, n_snd, "success")
         log[pid] = next_label(page)
-        after = banners.first.inner_text() if banners.count() else ""
-        check(f"[{pid}] thèmes affichés après le verdict", "Mat en 1" in after, f"({after!r})")
+        reason = page.locator("[data-review-item] [data-exercise-reason]")
+        after = reason.first.inner_text() if reason.count() else ""
+        check(f"[{pid}] thèmes dans l'explication après le verdict", "Mat en 1" in after, f"({after!r})")
         if not log.get("_analysed"):
             log["_analysed"] = True
             # Analyser puis retour : la séance reprend au même item, verdict conservé.
@@ -720,7 +722,7 @@ def part_expanded(p, browser):
             check(f"[F18 {tag}] pas de débordement", overflow_x(page) == 0)
             # ...hxg5 perd sur Dh7# ; le bilan attend ...Dxg5.
             play_move("h6", "g5")
-            ck.appears(f"[F18 {tag}] défense ratée", page, "text=✗ Raté", timeout=60000)
+            ck.appears(f"[F18 {tag}] défense ratée", page, "text=✗ À revoir", timeout=60000)
             check(f"[F18 {tag}] échec revient demain", next_label(page) == "Revient demain")
             page.get_by_role("button", name=re.compile(r"Réessayer$")).click()
             play_move("d8", "g5")

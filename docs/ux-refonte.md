@@ -788,10 +788,10 @@ Les zones sûres utilisent les helpers CSS existants et ne sont pas codées avec
 | `EmptyState` | Titre, raison, une action possible | Distinguer absence de données et erreur réseau ; aucune réussite factice |
 | `LoadingState` | Conserver la structure, annoncer le chargement avec `role=status` | Pas de pourcentage inventé ni spinner sans texte |
 | `Cta` existant | Action principale / secondaire, cible, contraste, focus et état occupé | Étendre le composant existant au lieu d’un second système de boutons |
-| En-tête et pied d’exercice | Quitter, progression, consigne, verdict et prochaine action | Composer autour des lecteurs actuels ; ne pas unifier les moteurs métier |
+| En-tête et pied d’exercice | Quitter, progression, consigne, verdict et prochaine action | Livrés au lot 7 (`Exercise.tsx`) autour des lecteurs actuels ; ne pas unifier les moteurs métier |
 
 Les composants déjà livrés et leurs usages sont recensés dans le [socle visuel du lot 1](#lot-1--socle-visuel-réalisé).
-`LoadingState` et l’en-tête et pied d’exercice restent des propositions pour les lots suivants ; leurs usages concrets guideront leur extraction.
+`LoadingState` reste une proposition pour les lots suivants ; l’en-tête et le pied d’exercice sont livrés au [lot 7](#lot-7--exercice-commun-première-tranche-réalisée).
 Les styles de focus doivent être visibles sur fond sombre et ne pas dépendre du hover.
 Les listes déroulantes et feuilles doivent restituer le focus à leur déclencheur, offrir Échap sur desktop et ne pas laisser le focus derrière un calque modal.
 Les annonces de verdict ne doivent pas répéter chaque coup de l’échiquier à VoiceOver.
@@ -846,7 +846,7 @@ Un déplacement de menu ne justifie pas de renommer un domaine `learnSessions`, 
 Chaque lot porte un périmètre limité et peut être annulé sans migration de données.
 L’ordre indique les dépendances ; les lots 3 à 6 sont séparables une fois le socle et les contrats validés.
 Les checks listés sont les critères d’acceptation de chaque lot.
-Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2), ceux du lot 3 dans sa [vérification](#vérification-du-lot-3), ceux du lot 5 dans sa [vérification](#vérification-du-lot-5), ceux du lot 6 dans sa [vérification](#vérification-du-lot-6) ; ceux des lots suivants restent à établir.
+Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2), ceux du lot 3 dans sa [vérification](#vérification-du-lot-3), ceux du lot 5 dans sa [vérification](#vérification-du-lot-5), ceux du lot 6 dans sa [vérification](#vérification-du-lot-6), ceux du lot 7 dans sa [vérification](#vérification-du-lot-7) ; ceux des lots suivants restent à établir.
 
 | Lot | Périmètre et propriété | Dépendance | Acceptation E2E |
 |---|---|---|---|
@@ -857,7 +857,7 @@ Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-d
 | 4. Accueil quotidien | `Home.tsx`, adaptateur de lecture du service de séance existant | Lot 2 + séance du jour intégrée | Profil neuf, reprise, dû/non dû, données indisponibles, pas de double comptage, CTA accessible à 660 px |
 | 5. Apprendre et Entraînement (fait) | Hub guidé, cinq groupes, anciennes entrées conservées | Lot 2 + parcours intégré | Chaque fonction accessible en quatre taps au plus, état vide explicite, suites learn/all_buttons et suites des features déplacées |
 | 6. Puzzles et vitesse (fait) | Hub Puzzles, Rush et Mats, retours contextuels | Lot 2 | Réussite/échec, chrono intact, retour vers le bon hub, suites puzzles/mats/continuation |
-| 7. Exercice commun, première tranche | En-tête et feedback sur séance Apprendre puis révision | Lots 1 et 5 | Pas de déplacement du board au verdict, réessai non rescoring, analyse puis restauration, suites learn/revision/touch |
+| 7. Exercice commun, première tranche (fait) | En-tête et feedback sur séance Apprendre puis révision | Lots 1 et 5 | Pas de déplacement du board au verdict, réessai non rescoring, analyse puis restauration, suites learn/revision/touch |
 | 8. Exercice commun, seconde tranche | Présentation PositionGame et cours sans changer leur logique | Lot 7 | Quitter, reprise, changement d’activité, objectifs et moteur, suites attaque/defense/endgame_play/endgame_course/cours_roque/premove |
 | 9. Fin de partie et Mon bilan | Résultat Jouer, accès analyse, libellé Insights | Lots 2 et 7 | Partie enregistrée avant action, replay, analyse et retour, suites all_buttons/insights/coach |
 | 10. Validation sur appareil | Aucune feature nouvelle, correction des écarts observés | Lots 3 à 9 | iPhone installé, Safari, clavier, VoiceOver, zones sûres, 660/852/desktop, hors ligne et upgrade |
@@ -1428,3 +1428,88 @@ Preuves par mutation, chacune annulée ensuite :
 
 Captures relues : `e2e/shots/puzzles_modes_*.png` (trois modes aux trois formats) et les états `puzzles`, `puzzle-fixture`, `puzzle-reussi`, `puzzles-erreur`, `rush`, `rush-resultat`, `mats`, `mat-fiche` d’`ux_audit`.
 Points ouverts : la tuile « Problèmes » de l’Accueil et le libellé « Problèmes » des plans de Mon bilan restent à renommer « Puzzles » dans leurs lots (4 et 9) ; le bouton « Menu » de fin de Rush et de Mats éclair garde son libellé, que `test_upgrade.py` vise aussi sur les anciens builds.
+
+## Lot 7 : exercice commun, première tranche réalisée
+
+La séance d’Apprendre (`Learn.tsx`, séances de domaine et Mes erreurs) et la révision espacée (`Revision.tsx`, fautes, attaques manquées, défenses ratées et puzzles) partagent l’habillage de la [maquette « Exercice type »](#exercice-type).
+Aucune logique de score, d’Elo, d’échéance ni de persistance n’est modifiée : seuls la présentation et les libellés changent, et l’explication du verdict est conservée avec la séance pour l’aller-retour vers l’analyse.
+
+### Décision : une zone de décision réservée sous l’échiquier
+
+Deux options étaient ouvertes : garder la consigne au-dessus de l’échiquier et poser le verdict dessous, ou réserver sous l’échiquier une zone de hauteur fixe qui porte la consigne avant le coup, puis le verdict et les actions.
+La seconde est retenue.
+Sur 393 × 660 avec zones sûres, l’ancien verdict passait sous la ligne de flottaison dès qu’une consigne et une barre d’éval précédaient l’échiquier.
+Avec la zone réservée, l’échiquier est le plus grand carré qui la laisse visible : il garde toute la largeur à 852 px et sur desktop (borné à 560 px), et se réduit seulement sur les petites hauteurs (351 px à 660 px pour un puzzle, 315 px pour une finale avec sa barre d’éval).
+Rien de ce qui change au verdict ne le déplace ni ne le redimensionne : la consigne, la vérification Stockfish, la correction d’ouverture, le verdict et son explication vivent dans la même zone.
+
+### Composants
+
+| Composant (`src/components/Exercise.tsx`) | Contrat |
+|---|---|
+| `ExerciseScreen` | Calque plein écran z-40 avec zones sûres et colonne `h-full` ; `overlay` et `hidden` pour l’enregistrement en attente |
+| `ExerciseHeader` | Croix nommée (`closeLabel`), titre et « n/N » dans le `h1`, barre `role=progressbar` des exercices jugés, bouton rond facultatif (`ExerciseHeaderButton`, « ? » du cours) |
+| `ExerciseStage` | Colonne de la largeur de l’échiquier : bande `above` de 28 px facultative (barre d’éval), échiquier, zone de décision, `below` (options après le verdict, qui peuvent passer sous le pli) |
+| `ExerciseFeedback` | Zone de hauteur fixe : consigne (`prompt`) avant le verdict ; après, « ✓ Réussi » ou « ✗ À revoir », une note (variation de classement, échéance), une explication de deux lignes au plus, puis les actions |
+
+Une réussite met Suivant en principal ; un échec met Réessayer en principal et Suivant en secondaire, comme le prévoit la maquette.
+Analyser reste secondaire, et « Pourquoi ? » apparaît sur une faute qui a un coup à réfuter.
+« À revoir » est en ambre plutôt qu’en rouge, avec un mot et un symbole : le vert n’est jamais le seul indice.
+L’explication ne dévoile pas la solution d’un échec tant que Réessayer est proposé : « Pas le coup attendu. Réessaie, ou regarde la suite sous l’échiquier. », le motif d’une finale (« L’avantage est parti : la position est nulle. »), le nombre de corrections d’une ouverture, ou, pour une faute, « Ce coup perd encore trop. Réessaie, ou regarde pourquoi le coup de ta partie était une faute. ».
+Dans la révision, le thème d’un puzzle passe de l’ancien bandeau à l’explication, toujours après le verdict seulement, et la ligne d’état (« Raté il y a 10 jours · étape 1/4 ») rejoint la consigne.
+
+`MistakeExercise` gagne un mode `bare` (seul l’échiquier) : consigne (`MistakeConsigne`), vérification (`onChecking`) et « Pourquoi ? » (`refutedUci`, déplacé dans `lib/refutation.ts` avec `mistakeVerdictReason`) passent au propriétaire.
+Son `onFinish` indique aussi si le coup joué est celui de Stockfish ; la séance du jour et le parcours gardent l’ancien rendu sans `bare`.
+Corrigé en passant : la ligne « Je vérifie… » s’insérait au-dessus de l’échiquier pendant la vérification et le faisait descendre de 20 px.
+
+### Vérification du lot 7
+
+`npm run check` : code 0.
+La nouvelle suite `exercice` (`e2e/test_exercice.py`, 500 checks, aussi verte en développement sous StrictMode) vérifie aux trois formats (393 × 660 standalone avec zones sûres émulées, 393 × 852, 1440 × 900), sur une séance Tactiques, une finale, une ouverture, Mes erreurs et la révision (faute puis puzzle) :
+
+- en-tête sous la zone sûre, titre « n/N », progression à 0 puis 1 au verdict ;
+- échiquier carré, pleine largeur à 393 px quand la hauteur le permet, zone de décision alignée sur lui et visible au-dessus de la zone sûre basse, contenu non coupé, aucun débordement ;
+- échiquier immobile au pixel près entre le jeu, la vérification Stockfish, le verdict, le réessai, le retour d’analyse et l’item suivant de la révision, et barre d’éval alignée sur l’échiquier ;
+- verdict et libellé attendus sur une ligne, explication présente et non coupée, action principale selon le résultat, cibles de 44 px, « Pourquoi ? » absent d’un puzzle et présent sur une faute, réfutation ouverte puis fermée par Échap ;
+- réessai sans aucune écriture en base (`ratings`, `learnSessions`, `puzzleAttempts`, `mistakes` relus avant et après), variation de classement et échéance du premier essai conservées ;
+- Analyser puis retour : même item, même verdict, même explication et même échéance.
+
+| Suite production | Checks réussis |
+|---|---:|
+| `exercice` | 500 |
+| `learn` | 84 |
+| `revision` | 318 |
+| `touch` | 63 |
+| `seance` | 193 |
+| `parcours` | 393 |
+| `apprendre` | 311 |
+| `ui_audit` | 1 357 |
+| `ux_audit` | 897 |
+| `ux_foundation` | 527 |
+| `viewport` | 857 |
+| `edge_navigation` | 193 |
+| `continuation` | 74 |
+| `endgames` | 28 |
+| `bug_hunt` | 48 |
+| `moments` | 114 |
+| `insights` | 354 |
+
+Toutes ont été lancées en `--jobs 1` ; la dernière série (`exercice`, `learn`, `continuation`) suit la dernière modification du code, un alignement de la rangée « Aller plus loin ».
+`npm run test:e2e:dev -- --suite exercice --suite learn --suite revision --jobs 1` : code 0.
+Les suites `learn`, `revision`, `continuation`, `endgames` et `parcours` suivent les nouveaux libellés (« ✗ À revoir », « ✓ Réussi » sans point d’exclamation, thème dans l’explication) sans retrait d’assertion ; la barre de verdict de `learn` vérifie maintenant une rangée d’actions au lieu d’une hauteur de 68 px.
+La suite `upgrade` n’est pas lancée sur ce lot : aucune donnée, clé ni version de schéma n’y change (le champ facultatif `reason` des séances en `sessionStorage` est ignoré par les anciennes séances, qui retombent sur une phrase générique).
+
+Preuves par mutation, chacune annulée ensuite :
+
+- `scoredItems` vidé par Réessayer : `exercice` à code 1, neuf échecs (écritures `ratings` et `learnSessions` au réessai, variation de classement changée, aux trois formats) ;
+- largeur de l’échiquier calculée sans la zone de décision : `exercice` à code 1, huit échecs à 393 × 660 (bas de la zone à 656 px pour 626 px visibles) ;
+- ligne « Je vérifie… » remise au-dessus de l’échiquier dans la révision : `exercice` à code 1, trois échecs (échiquier décalé de 20 px pendant la vérification).
+
+Captures relues : `e2e/shots/exercice_*` aux trois formats, et les états `seance-*` et `revision-exercice` d’`ux_audit`.
+Corrigés en cours de lot : barre d’éval plus large que l’échiquier réduit, ombre du bouton principal qui touchait la rangée « Aller plus loin », rangée « Aller plus loin » décalée de 6 px par rapport au texte du verdict.
+
+Points ouverts utiles au lot 8 :
+
+- `OpeningDrill` (variantes de la révision et entraîneur d’ouvertures) garde son propre en-tête et son résultat, déjà « À revoir » ;
+- la séance du jour (`Seance.tsx`) et les séries du parcours (`LearningPath.tsx`) gardent l’ancienne barre « ✓ Réussi ! / ✗ Raté » : même gabarit à remplacer par `ExerciseFeedback` ;
+- `PositionGame` et les cours ont des fins à plusieurs issues (tenue, effondrement, nulle) : `ExerciseVerdict` n’a que `ok`, une troisième tonalité sera à ajouter plutôt qu’à contourner ;
+- sur desktop, la colonne unique est conservée ; la disposition à deux colonnes du système visuel reste à décider avec PositionGame, dont le panneau est plus riche.

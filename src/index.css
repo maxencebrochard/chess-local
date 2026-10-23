@@ -93,6 +93,38 @@ body {
   }
 }
 
+/* Exercice commun (components/Exercise.tsx) : l'échiquier est le plus grand carré qui tient dans
+   la scène en laissant visible la zone de décision de hauteur fixe dessous, borné à 640 px
+   (560 px sur desktop), sous la bande `above` facultative (barre d'éval, 28 px). La zone garde sa hauteur avant et après le verdict : rien ne déplace ni
+   ne redimensionne l'échiquier quand le résultat arrive. */
+.exercise-stage {
+  --exercise-zone: 8.75rem;
+  --exercise-above: 0rem;
+  container-type: size;
+}
+.exercise-column {
+  width: max(12rem, min(100cqw - 0.75rem, 100cqh - var(--exercise-zone) - var(--exercise-above), 640px));
+  margin-inline: auto;
+}
+@media (min-width: 768px) {
+  .exercise-column {
+    width: max(12rem, min(100cqw - 0.75rem, 100cqh - var(--exercise-zone) - var(--exercise-above), 560px));
+  }
+}
+.exercise-board {
+  touch-action: none;
+}
+.exercise-stage-above {
+  --exercise-above: 2.25rem;
+}
+.exercise-above {
+  height: var(--exercise-above);
+  padding-bottom: 0.5rem;
+}
+.exercise-zone {
+  height: var(--exercise-zone);
+}
+
 .board-still [data-piece] {
   touch-action: auto !important;
 }
