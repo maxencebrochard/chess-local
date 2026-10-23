@@ -65,7 +65,7 @@ Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` :
 Les captures vont dans `e2e/shots/` (gitignoré).
 La suite `ux_audit` photographie les familles de routes et leurs états principaux aux trois formats de référence, avec inventaire DOM dans `e2e/shots/ux-audit/{prod,dev}/`.
 Le diagnostic et le plan de refonte différée sont dans [docs/ux-refonte.md](docs/ux-refonte.md), sans changement des routes ni des domaines `learnSessions` dans cette phase.
-`E2E_CPU_RATE=40 npm run test:e2e -- --suite cours_roque --suite endgame_course` reproduit un CPU ralenti via CDP (facteur 1 par défaut), sans changer les délais des assertions.
+`E2E_CPU_RATE=40 npm run test:e2e -- --suite cours_roque --suite endgame_course --suite cours_defense` reproduit un CPU ralenti via CDP (facteur 1 par défaut), sans changer les délais des assertions.
 Les gestes partagés de ces suites vivent dans `e2e/course_helpers.py` : attendre le titre et le numéro d’étape après navigation, puis le changement de tour après Solution.
 Un clic terminé ne garantit pas que React a déjà remplacé le diagramme précédent ; ne pas synchroniser ces transitions avec une pause fixe.
 
@@ -279,6 +279,9 @@ Les MP3 finaux et les SVG Atelier redessinés sont autorisés par Max (17 octobr
 `PieceIcon` centre les silhouettes via les marges mesurées par `scripts/center-pieces.py`, communes au plateau et aux aperçus.
 `Play` remet `<main>` en haut par un seul effet, à chaque passage réglages ↔ partie et à chaque nouvelle partie, pour ne pas hériter du défilement de la configuration sur petit écran (`piece_viewport`).
 `e2e/test_piece_centers.py` contrôle les pixels peints à ±2 % de case ; ne pas compter deux fois le transform CSS lors de la rasterisation des SVG intégrés.
+Les coordonnées de l'échiquier ont une taille de 19 % de la case (9 à 15 px, via `--board-square` posé par `Board`) et collent à leur coin.
+`e2e/test_coordinates.py` mesure l'encre de chaque glyphe contre l'encre des pièces, dans les deux orientations et aux trois formats : aucun recouvrement pour `atelier` et `wikimedia`, sous les douze pièces possibles.
+Les autres jeux dessinent jusqu'au bord de la case, sans coin libre pour un glyphe lisible : la pièce y est peinte au-dessus de la coordonnée, jamais l'inverse.
 
 ### Données
 

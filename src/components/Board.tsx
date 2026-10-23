@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Chess, type Move, type Square } from 'chess.js'
 import { Chessboard, type PieceRenderObject } from 'react-chessboard'
 import { useSettings, currentTheme } from '../store/settings'
@@ -72,6 +72,16 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
   const zones = useMemo(() => (showAttackers ? attackCounts(fen) : null), [fen, showAttackers])
 
   useEffect(() => preloadPieceSet(pieceSet), [pieceSet])
+  // Largeur d'une case pour les coordonnées, posée avant la première peinture puis suivie sans rendu React.
+  useLayoutEffect(() => {
+    const el = root.current
+    if (!el) return
+    const update = () => el.style.setProperty('--board-square', `${el.clientWidth / 8}px`)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // Son du coup, joué par l'échiquier lui-même : toute page dont la position avance d'un coup
   // sonne comme chess.com (puzzle, exercice, navigation dans l'analyse...). Restent muets : un saut
@@ -345,11 +355,15 @@ export function Board({ fen, orientation, interactive, onMove, lastMove, arrows,
           arrows: arrows?.map((a) => ({ ...a })) ?? [],
           darkSquareStyle: { backgroundColor: theme.dark },
           lightSquareStyle: { backgroundColor: theme.light },
-          // Les coordonnées sont peintes par-dessus la pièce, hors de sa zone de saisie : un doigt
-          // posé sur le chiffre ou la lettre doit traverser et saisir la pièce (la lib fusionne
-          // ces styles avec ses défauts, la couleur et la taille sont conservées).
+          // Les coordonnées restent hors de la zone de saisie : un doigt posé sur le chiffre ou la
+          // lettre doit traverser et saisir la pièce (la lib fusionne ces styles avec ses défauts,
+          // la couleur est conservée).
           lightSquareNotationStyle: { pointerEvents: 'none' },
           darkSquareNotationStyle: { pointerEvents: 'none' },
+          // Taille relative à la case (13 px fixes en couvraient 28 % sur iPhone) et glyphe collé au
+          // coin, là où les silhouettes laissent le plus de place ; test_coordinates.py le mesure.
+          alphaNotationStyle: NOTATION_LETTER,
+          numericNotationStyle: NOTATION_DIGIT,
           showNotation: notation,
           dropSquareStyle: { boxShadow: drag?.touch ? 'none' : 'inset 0 0 0 3px rgba(255,255,255,0.65)' },
           // Décaler le dessin, pas le rectangle mesuré par dnd-kit : son recentrage annulerait le décalage.
@@ -423,6 +437,14 @@ let lastBoardSoundAt = 0
 
 // Rendus de pièces par jeu, construits une fois : un objet stable évite de re-rendre les 32 pièces.
 const piecesCache = new Map<string, PieceRenderObject>()
+const NOTATION_FONT: React.CSSProperties = {
+  fontSize: 'clamp(9px, calc(var(--board-square, 48px) * 0.19), 15px)',
+  fontWeight: 600,
+  lineHeight: 1,
+}
+const NOTATION_LETTER: React.CSSProperties = { ...NOTATION_FONT, bottom: 'calc(var(--board-square, 48px) * 0.02)', right: 'calc(var(--board-square, 48px) * 0.03)' }
+const NOTATION_DIGIT: React.CSSProperties = { ...NOTATION_FONT, top: 'calc(var(--board-square, 48px) * 0.025)', left: 'calc(var(--board-square, 48px) * 0.03)' }
+
 function piecesFor(set: string): PieceRenderObject {
   let pieces = piecesCache.get(set)
   if (!pieces) {
