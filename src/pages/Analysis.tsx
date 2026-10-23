@@ -17,6 +17,7 @@ import { RefutationPlayer } from '../components/RefutationPlayer'
 import { Toggle } from '../components/Toggle'
 import { Engine, type EngineLine } from '../lib/engine'
 import { db } from '../lib/db'
+import { routeStillShown } from '../lib/lazyPage'
 import { bookContinuations, openingForMoves } from '../lib/openings'
 import { openingFr } from '../lib/openingNames'
 import { restorableBilan } from '../lib/criticalMoments'
@@ -106,6 +107,9 @@ export default function Analysis() {
   // Jeton du bilan en cours : tout résultat d'un bilan remplacé ou annulé est jeté.
   const reviewAbortRef = useRef<AbortController | null>(null)
   const aliveRef = useRef(false)
+  // Montée ET encore la page affichée : pendant le chargement de la page suivante, Analyse reste
+  // montée (navigation en transition) alors que l'utilisateur l'a déjà quittée.
+  const stillHere = () => aliveRef.current && routeStillShown(location.pathname)
   const reviewTimer = useRef<number | null>(null)
   const noticeTimer = useRef<number | null>(null)
 
@@ -198,11 +202,13 @@ export default function Analysis() {
   useEffect(() => {
     const gameId = params.get('game')
     if (!gameId) return
+    // URL nettoyée tout de suite, jamais après la lecture : la page peut avoir été quittée entre-temps
+    // (voir `routeStillShown`), et un `setParams` tardif y ramènerait l'utilisateur.
+    setParams({}, { replace: true })
     void (async () => {
       // Clé non numérique : Dexie lève, traité comme une partie absente.
       const saved = await db.games.get(+gameId).catch(() => undefined)
-      if (!aliveRef.current) return // page quittée pendant la lecture : ne pas naviguer ni charger
-      setParams({}, { replace: true })
+      if (!stillHere()) return // page quittée pendant la lecture : ne rien charger ni lancer
       if (!saved) {
         showNotice('Partie introuvable (supprimée ?)')
         return
@@ -400,7 +406,8 @@ export default function Analysis() {
   // explicitement (les appels différés depuis le premier rendu ne voient pas `reviewColor` ni `gameMeta`).
   const runReview = useCallback(async (pgnOverride?: string, ctx?: { color: 'w' | 'b' | null; label: string | null; gameKey?: string }) => {
     const pgn = pgnOverride ?? currentPgn()
-    if (!pgn || !aliveRef.current) return
+    // Bilan différé (archive, state de navigation) qui part alors que la page est quittée : aucun moteur.
+    if (!pgn || !stillHere()) return
     cancelReview()
     const ctrl = new AbortController()
     reviewAbortRef.current = ctrl

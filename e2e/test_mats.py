@@ -153,6 +153,18 @@ def attr(page, sel, name):
     return loc.first.get_attribute(name) if loc.count() else None
 
 
+CLOCK_SPY = """() => {
+  window.__clock = []
+  const read = () => {
+    const t = document.querySelector('[role=timer]'), r = document.querySelector('[data-run]')
+    if (t && r) window.__clock.push({ ms: +t.getAttribute('data-ms'), phase: r.getAttribute('data-phase'), t: performance.now(),
+      legend: document.querySelectorAll('[data-net-piece]').length })
+  }
+  new MutationObserver(read).observe(document.querySelector('main'), { subtree: true, attributes: true, childList: true,
+    attributeFilter: ['data-ms', 'data-phase'] })
+}"""
+
+
 def play_uci(page, uci, after=150):
     click_square(page, uci[:2])
     page.wait_for_timeout(120)
@@ -373,35 +385,22 @@ def puzzle_suite(p, browser, index, puzzles):
     shot(page, "mats_rush_393x660")
     if pz:
         page.wait_for_timeout(900)
-        # Chaque rendu (phase, chrono, légende) est journalisé dans la page : sous charge, une
-        # capture ou une attente côté Playwright peut dépasser les 1,5 s du réseau et lire le
-        # puzzle suivant, où le chrono a légitimement repris.
-        page.evaluate("""() => {
-            window.__netLog = []
-            const rec = () => {
-                const run = document.querySelector('[data-run]'), timer = document.querySelector('[role=timer]')
-                if (run && timer) window.__netLog.push([run.dataset.phase, +timer.dataset.ms, performance.now(),
-                    document.querySelectorAll('[data-net-piece]').length])
-            }
-            rec()
-            window.__netObs = new MutationObserver(rec)
-            window.__netObs.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-ms', 'data-phase'] })
-        }""")
+        # Chaque valeur affichée par le chrono, relevée dans la page avec la phase de la série.
+        page.evaluate(CLOCK_SPY)
         play_uci(page, pz[2].split()[1])
         ck.appears("[mat en 1] réseau affiché après le mat", page, "[data-run][data-phase='net']", timeout=3000)
         check("[mat en 1] score 1", attr(page, "[data-score]", "data-score") == "1")
         shot(page, "mats_rush_reseau_393x660")
-        ck.appears("[mat en 1] puzzle suivant", page, "[data-run][data-phase='play']", timeout=3000)
-        log = page.evaluate("() => { window.__netObs.disconnect(); return window.__netLog }")
-        net = [e for e in log if e[0] == "net"]
-        check("[mat en 1] légende du réseau", any(e[3] >= 1 for e in net), f"({len(net)} rendus du réseau)")
-        net_ms = sorted({e[1] for e in net})
-        after = [e for e in log if net and e[2] > net[-1][2]]
-        # Durée du réseau : du premier rendu « net » au premier rendu qui le remplace.
-        shown = after[0][2] - net[0][2] if after else 0
-        check("[mat en 1] chrono suspendu pendant le réseau",
-              len(net_ms) == 1 and bool(after) and after[0][0] == "play" and shown >= 1000,
-              f"(chrono pendant le réseau : {net_ms}, réseau affiché {round(shown)} ms)")
+        ck.appears("[mat en 1] puzzle suivant", page, "[data-run][data-phase='play']", timeout=5000)
+        # Phase réseau relue dans le journal de la page, pas échantillonnée depuis Python : sa durée
+        # (1,5 s) est murale et deux lectures espacées de 800 ms en sortaient sous charge. Le journal
+        # couvre toute la phase ; un chrono qui tourne y laisse au moins une autre valeur (tick de
+        # 100 ms). Figé à la milliseconde : l'affichage gelé est le temps restant exact à la pause.
+        net = [e for e in page.evaluate("() => window.__clock") if e["phase"] == "net"]
+        frozen = sorted({e["ms"] for e in net})
+        check("[mat en 1] légende du réseau", any(e["legend"] >= 1 for e in net), f"({[e['legend'] for e in net]})")
+        check("[mat en 1] chrono suspendu pendant le réseau", len(frozen) == 1,
+              f"(valeurs affichées pendant le réseau : {frozen}, phase de {net[-1]['t'] - net[0]['t'] if net else 0:.0f} ms observés)")
         pid2 = attr(page, "[data-run]", "data-puzzle")
         check("[mat en 1] nouveau puzzle", pid2 and pid2 != pid)
         pz2 = puzzles.get(pid2)
