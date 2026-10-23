@@ -182,10 +182,17 @@ def suite(p):
                     "illégal : retour à la source et cible intacte",
                     piece_on(page, "e7") == "bP" and piece_on(page, "e4") == "wP",
                 )
-                returned = page.locator("[data-square=e7] .board-piece").evaluate("""(e) => {
-                  const p=e.getBoundingClientRect(), s=e.closest('[data-square]').getBoundingClientRect()
-                  return getComputedStyle(e).opacity === '1' && getComputedStyle(e).visibility === 'visible' && Math.abs(p.x-s.x)<1 && Math.abs(p.y-s.y)<1
-                }""")
+                # Le retour de 120 ms peut encore courir sous charge : attendre le repos, borné.
+                try:
+                    page.wait_for_function("""() => {
+                      const e = document.querySelector('[data-square=e7] .board-piece')
+                      if (!e) return false
+                      const p=e.getBoundingClientRect(), s=e.closest('[data-square]').getBoundingClientRect()
+                      return getComputedStyle(e).opacity === '1' && getComputedStyle(e).visibility === 'visible' && Math.abs(p.x-s.x)<1 && Math.abs(p.y-s.y)<1
+                    }""", timeout=2000, polling=50)
+                    returned = True
+                except Exception:
+                    returned = False
                 ck.check("illégal : pièce visible et revenue au repos", returned)
                 entries = [e for e in sound_log(page)[start:] if e["name"] != "(muet)"]
                 ck.check(
