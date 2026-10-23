@@ -1229,7 +1229,7 @@ L’ordre est fixe, sans dépendre de l’heure des dernières actions.
 | 4 | Séance du jour faite aujourd’hui | « Pour aller plus loin », séance rapide d’Apprendre | Séance rapide, `/apprendre` en replace avec `state.quick` |
 
 Seules ces deux reprises sont retenues, parce que leur page les restaure à un simple montage.
-`learn-session-v1` et `revision-session-v1` ne se restaurent qu’avec `state.restore` depuis l’analyse ; `path-session-v1` et la partie depuis une position appartiennent à des pages multiples : aucune n’est proposée.
+`learn-session-v1` ne se restaure qu’avec `state.restore` depuis l’analyse ou pour un résultat qui attend son enregistrement, `revision-session-v1` qu’avec `state.restore` ; `path-session-v1` et la partie depuis une position appartiennent à des pages multiples : aucune n’est proposée.
 La séance passe avant la partie parce que la partie reste à un geste : le raccourci Jouer affiche alors « Partie en cours ».
 Quand une partie ou la séance rapide tient la carte, la séance du jour reste une ligne secondaire (« Ta séance du jour » ou « Refaire une séance du jour »).
 Tant que la série de jours n’est pas lue, sans reprise, la carte garde sa place mais reste invisible : aucun CTA ne change l’instant d’après.
@@ -1237,6 +1237,7 @@ Tant que la série de jours n’est pas lue, sans reprise, la carte garde sa pla
 La reprise de partie est lue par `src/lib/playSession.ts`, extrait de `Play.tsx` qui l’importe désormais : même validation, sans chess.js.
 Le nom du bot est ajouté à l’instantané (`botName`) pour ne pas tirer la liste des bots dans le bundle initial ; un instantané plus ancien affiche « Partie contre un bot ».
 « Séance rapide » démarre la séance automatique existante d’Apprendre (`start()` de `Learn.tsx`), qui consomme puis efface son state.
+Une séance d’Apprendre dont le résultat attend son enregistrement (`pendingResult` de `learn-session-v1`) passe avant : elle est reprise telle quelle, lue une seule fois avant le premier rendu, et aucun state (`quick`, `tactic`, `endgame`) ne la remplace.
 
 ### Révision due sans double comptage
 
@@ -1261,7 +1262,7 @@ Les écarts 8 et 9 sont traités par la priorité et le partage ci-dessus.
 ### Vérification du lot 4
 
 `npm run check` : code 0.
-La suite `accueil` (`e2e/test_accueil.py`) bundle `homePlan.ts` sous Node (priorité, partage des révisions, libellés, lundi local et passage à l’heure d’été) puis vérifie dans l’app : profil neuf, dû compris dans la séance, dû au-delà, séance faite puis séance rapide lancée, séance en cours reprise, partie en cours reprise (et expirée), compteur indisponible, aucune demande de `puzzles.json`, CTA entier au-dessus de la nav à 393 × 660 avec zones sûres, 393 × 852 et 1440 × 900, cibles de 44 px, ordre des blocs.
+La suite `accueil` (`e2e/test_accueil.py`) bundle `homePlan.ts` sous Node (priorité, partage des révisions, libellés, lundi local et passage à l’heure d’été) puis vérifie dans l’app : profil neuf, dû compris dans la séance, dû au-delà, séance faite puis séance rapide lancée, séance rapide sur un résultat en attente (repris puis enregistré une seule fois), séance en cours reprise, partie en cours reprise (et expirée), compteur indisponible, aucune demande de `puzzles.json`, CTA entier au-dessus de la nav à 393 × 660 avec zones sûres, 393 × 852 et 1440 × 900, cibles de 44 px, ordre des blocs.
 
 | Suite production | Checks réussis |
 |---|---:|
