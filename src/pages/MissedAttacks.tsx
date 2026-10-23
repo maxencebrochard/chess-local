@@ -3,6 +3,7 @@
 // l'échiquier depuis la table `mistakes`, puis rejouées contre Stockfish à pleine force :
 // retrouver le coup du bilan, puis mener l'attaque.
 import { useEffect, useState } from 'react'
+import { REVIEW_BACK } from '../lib/navigation'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { EmptyState } from '../components/EmptyState'
@@ -43,7 +44,7 @@ function MissedAttackList() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <PageHeader title="🎯 Mes attaques manquées" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }} />
+      <PageHeader title="🎯 Mes attaques manquées" back={{ label: REVIEW_BACK.label, onClick: () => navigate(REVIEW_BACK.to) }} />
       {diag === null && <p role="status" className="text-muted">Chargement des parties à rejouer…</p>}
 
       {diag && (

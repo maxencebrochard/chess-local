@@ -4,7 +4,7 @@ import os
 import chess
 from datetime import datetime, timedelta, timezone
 
-from helpers import BASE, HOLD_BESTMOVE, WEBKIT_AUDIO, Checker, desktop_context, mobile_context, drag_piece, tap_move, tap_square, piece_on, sound_log, shot
+from helpers import BASE, HOLD_BESTMOVE, WEBKIT_AUDIO, Checker, desktop_context, mobile_context, drag_piece, tap_move, tap_square, piece_on, sound_log, shot, open_learn_session
 
 ck = Checker("premove")
 
@@ -153,8 +153,7 @@ def suite(p):
         puzzle = [["PRECONT", "6k1/5ppp/8/8/4n3/8/5PPP/R5K1 b - - 0 1", "e4c3 a1a8", 800, "mateIn1 fork"]]
         ctx.route("**/puzzles.json", lambda route: route.fulfill(content_type="application/json", body=json.dumps(puzzle)))
         page = ctx.new_page()
-        page.goto(f"{BASE}/#/apprendre")
-        page.locator("main button", has_text="Tactiques").click()
+        open_learn_session(page, "tactic")
         page.get_by_role("button", name="C'est parti").click()
         wait(page, "!!document.querySelector('[data-square=c3] [data-piece]')")
         tap_move(page, "h2", "h3")

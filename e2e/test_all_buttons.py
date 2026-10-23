@@ -17,7 +17,7 @@ SETTINGS = {"chesscomUsername": "popeye232"}
 # « Options » n'existe que dans la barre d'actions mobile, « Copier PGN » que dans le panneau desktop.
 # Les cinq onglets, puis les anciens onglets Analyse, Archive et Stats, atteints par le hub Plus
 # (`plus:<clé>` : onglet Plus, puis la carte `data-plus` de cette clé).
-NAV = [("Jouer", "Adversaire"), ("Puzzles", "Classement puzzles"), ("Apprendre", "Séance"),
+NAV = [("Jouer", "Adversaire"), ("Puzzles", "Classement puzzles"), ("Apprendre", "Séance rapide"),
        ("Plus", "Mes données"), ("plus:analyse", {"mobile": "Options", "desktop": "Copier PGN"}),
        ("plus:parties", "Archive"), ("plus:statistiques", "Statistiques"),
        ("plus:reglages", "Profondeur du bilan de partie"), ("plus:donnees", "Dernier export"), ("Accueil", "ChessLocal")]

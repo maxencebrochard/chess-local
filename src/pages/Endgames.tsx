@@ -2,6 +2,7 @@
 // (`/finales`), puis partie contre Stockfish à pleine force sans plafond de coups
 // (`/finales/:id`). Résultat noté à part, sans incidence sur l'Elo d'Apprendre.
 import { useEffect, useMemo, useState } from 'react'
+import { groupBack } from '../lib/navigation'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { Cta } from '../components/Cta'
@@ -53,7 +54,7 @@ function EndgameList() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <PageHeader title="🏁 Finales jusqu'au bout" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
+      <PageHeader title="🏁 Finales jusqu'au bout" back={{ label: groupBack('finales').label, onClick: () => navigate(groupBack('finales').to) }}
         description="Une position de finale, Stockfish à pleine force en face, aucune limite de coups : tu joues jusqu'au mat ou jusqu'à la nulle." />
 
       <Cta className="mb-5 w-full" onClick={() => navigate(`/finales/${pickEndgame(solved).id}`)}>

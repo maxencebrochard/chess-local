@@ -4,7 +4,7 @@ Usage : npm run test:e2e -- --suite learn
 """
 import json
 
-from helpers import BASE, FINALES, SHOTS, Checker, click_square as sq, mobile_context, overflow_x
+from helpers import BASE, SHOTS, Checker, click_square as sq, mobile_context, open_learn_session, overflow_x, wait_js
 
 PGN = "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nd4 4. Nxe5 Qg5 5. Nxf7 Qxg2 6. Rf1 Qxe4+ 7. Be2 Nf3#"
 ck = Checker("learn")
@@ -62,9 +62,7 @@ def verdict_bar(p, browser, standalone):
     ctx.route("**/puzzles.json", lambda route: route.fulfill(status=200, content_type="application/json", body=body))
     page = ctx.new_page()
     for outcome, (frm, to) in (("réussi", ("a1", "a8")), ("raté", ("g1", "f1"))):
-        page.goto(f"{BASE}/#/apprendre")
-        page.wait_for_timeout(1200)
-        page.locator("main button", has_text="Tactiques").click()
+        open_learn_session(page, "tactic")
         if not ck.appears(f"[{tag}] {outcome} : leçon", page, "button:has-text(\"C'est parti\")", timeout=20000):
             break
         page.get_by_role("button", name="C'est parti").click()
@@ -97,41 +95,56 @@ def suite(p):
     ctx.add_init_script(SPY_PERSIST)
     page = ctx.new_page()
 
-    # --- Page Apprendre ---
+    # --- Page Apprendre : hub guidé (lot 5) ---
     page.goto(f"{BASE}/#/apprendre")
     page.wait_for_timeout(1500)
     check("[learn] onglet nav Apprendre", page.locator("nav a", has_text="Apprendre").last.is_visible())
-    check("[learn] 4 pastilles Elo", page.locator("main .grid > div").count() >= 4)
-    check("[learn] CTA Séance", page.get_by_role("button", name="Séance", exact=True).is_visible())
-    check("[learn] Mes erreurs grisé (vide)", not page.locator("button", has_text="Mes erreurs").is_enabled())
+    check("[learn] trois portes : leçons, entraînement, mes parties",
+          page.evaluate("() => [...document.querySelectorAll('main a[data-learn]')].map((e) => e.dataset.learn)") == ["lecons", "entrainement", "mes-parties"])
+    check("[learn] CTA Séance rapide", page.get_by_role("button", name="Séance rapide", exact=True).is_visible())
     page.screenshot(path=f"{SHOTS}/learn_home.png")
+    # Classements par domaine : un par groupe d'Entraînement, absent tant qu'aucune séance n'est jouée.
+    page.goto(f"{BASE}/#/apprendre/entrainement")
+    ck.appears("[learn] hub Entraînement", page, "main a[data-group]")
+    check("[learn] 5 groupes, sans classement inventé", page.locator("main a[data-group]").count() == 5
+          and page.locator("main [data-group-progress]").count() == 0)
+    page.goto(f"{BASE}/#/apprendre/mes-parties")
+    ck.appears("[learn] Réviser mes parties", page, "[data-testid=mistakes-card][data-count='0']")
+    check("[learn] Mes erreurs grisé (vide)", not page.locator("[data-testid=mistakes-card]").is_enabled())
 
-    # --- Tuiles de défense, à côté de celles de l'attaque ---
-    tile = page.locator("main a", has_text="Entraîneur de défense")
-    check("[défense] tuile « Entraîneur de défense » et son sous-titre",
-          tile.count() == 1 and "Tiens face à l'attaque sur ton roi" in (tile.inner_text() if tile.count() else ""))
+    # --- Tuiles personnelles (Réviser mes parties) et entraîneurs (Attaque et défense) ---
     order = page.evaluate("""() => [...document.querySelectorAll('main a, main button')].map((e) => e.textContent)
-      .map((t) => ["Mes attaques manquées", "Mes défenses ratées", "Entraîneur d'attaque", "Entraîneur de défense"].findIndex((n) => t.includes(n)))
+      .map((t) => ["Mes attaques manquées", "Mes défenses ratées"].findIndex((n) => t.includes(n)))
       .filter((i) => i >= 0)""")
-    check("[défense] chaque tuile de défense suit celle de l'attaque", order == [0, 1, 2, 3], f"({order})")
+    check("[défense] « Mes défenses ratées » suit « Mes attaques manquées »", order == [0, 1], f"({order})")
     card = page.locator("[data-testid=missed-defenses-card]")
+    page.wait_for_selector("[data-testid=missed-defenses-card][data-count='0']", timeout=10000)
     check("[défense] carte « Mes défenses ratées » à 0 sans bilan", card.count() == 1 and card.get_attribute("data-count") == "0"
           and card.inner_text().strip().endswith("0"), f"({card.inner_text() if card.count() else None!r})")
-    if tile.count():
-        tile.click()
-        ck.appears("[défense] la tuile ouvre la liste de l'entraîneur", page, "[data-testid=defense-item]")
-        check("[défense] URL #/defense", page.evaluate("() => location.hash") == "#/defense", f"({page.url})")
-        page.go_back()
-        page.wait_for_timeout(600)
     if card.count():
         card.click()
         ck.appears("[défense] la carte ouvre « Mes défenses ratées » (vide)", page, "[data-testid=defense-empty]")
         check("[défense] URL #/defenses-ratees", page.evaluate("() => location.hash") == "#/defenses-ratees", f"({page.url})")
         page.go_back()
         page.wait_for_timeout(600)
+    page.goto(f"{BASE}/#/apprendre/entrainement/attaque-defense")
+    ck.appears("[défense] groupe Attaque et défense", page, "main a:has-text(\"Entraîneur d'attaque\")")
+    tile = page.locator("main a", has_text="Entraîneur de défense")
+    check("[défense] tuile « Entraîneur de défense » et son sous-titre",
+          tile.count() == 1 and "Tiens face à l'attaque sur ton roi" in (tile.inner_text() if tile.count() else ""))
+    order = page.evaluate("""() => [...document.querySelectorAll('main a, main button')].map((e) => e.textContent)
+      .map((t) => ["Entraîneur d'attaque", "Entraîneur de défense"].findIndex((n) => t.includes(n)))
+      .filter((i) => i >= 0)""")
+    check("[défense] la tuile de défense suit celle de l'attaque", order == [0, 1], f"({order})")
+    if tile.count():
+        tile.click()
+        ck.appears("[défense] la tuile ouvre la liste de l'entraîneur", page, "[data-testid=defense-item]")
+        check("[défense] URL #/defense", page.evaluate("() => location.hash") == "#/defense", f"({page.url})")
+        page.go_back()
+        page.wait_for_timeout(600)
 
     # --- Séance Finales (leçon -> cours -> jeu) ---
-    page.locator("main button", has_text=FINALES).click()
+    open_learn_session(page, "endgame")
     page.wait_for_timeout(1200)
     check("[learn] leçon finale affichée", page.locator(".bg-white").first.is_visible())
     page.screenshot(path=f"{SHOTS}/learn_lesson.png")
@@ -163,10 +176,10 @@ def suite(p):
     check("[cours] retour exercice intact", page.locator("[id^='chessboard-']").first.is_visible())
     page.screenshot(path=f"{SHOTS}/learn_endgame.png")
     page.click("header button:has-text('✕')")
-    page.wait_for_timeout(400)
+    check("[learn] ✕ ramène au groupe Finales", wait_js(page, "() => location.hash === '#/apprendre/entrainement/finales'", 10000), f"({page.url})")
 
     # --- Séance Tactiques (3 puzzles, on rate le 1er exprès via un coup légal quelconque) ---
-    page.locator("main button", has_text="Tactiques").click()
+    open_learn_session(page, "tactic")
     page.wait_for_timeout(2500)
     check("[learn] leçon tactique (thème)", page.locator(".bg-white").first.is_visible())
     page.get_by_role("button", name="C'est parti").click()
@@ -177,7 +190,7 @@ def suite(p):
     page.wait_for_timeout(400)
 
     # --- Séance Ouvertures : drill, bon coup accepté, mauvais corrigé ---
-    page.locator("main button", has_text="Ouvertures").click()
+    open_learn_session(page, "opening")
     page.wait_for_timeout(1500)
     page.get_by_role("button", name="C'est parti").click()
     page.wait_for_timeout(1200)
@@ -191,8 +204,9 @@ def suite(p):
     page.click("header button:has-text('✕')")
     page.wait_for_timeout(400)
 
-    # --- CTA Séance auto ---
-    page.get_by_role("button", name="Séance", exact=True).click()
+    # --- CTA Séance rapide (séance auto) ---
+    page.goto(f"{BASE}/#/apprendre")
+    page.get_by_role("button", name="Séance rapide", exact=True).click()
     page.wait_for_timeout(2500)
     check("[learn] séance auto démarre (leçon)", page.locator(".bg-white").first.is_visible())
     page.click("header button:has-text('✕')")
@@ -211,9 +225,9 @@ def suite(p):
     ck.appears("[bilan] résumé affiché", page, "text=Démarrer le bilan", timeout=180000)
     page.click("header button:has-text('✕')")
     page.wait_for_timeout(600)
-    page.goto(f"{BASE}/#/apprendre")
-    page.wait_for_timeout(1200)
-    mistakes_btn = page.locator("button", has_text="Mes erreurs")
+    page.goto(f"{BASE}/#/apprendre/mes-parties")
+    mistakes_btn = page.locator("[data-testid=mistakes-card]")
+    ck.appears("[learn] compte des erreurs lu", page, "[data-testid=mistakes-card]:not([data-count=''])", timeout=10000)
     check("[learn] Mes erreurs alimenté par le bilan", mistakes_btn.is_enabled())
     mistakes_btn.click()
     page.wait_for_timeout(1200)

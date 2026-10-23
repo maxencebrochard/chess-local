@@ -17,7 +17,7 @@ try:
 except ImportError:
     sys.exit("python-chess manquant : pip install -r e2e/requirements.txt")
 
-from helpers import BASE, WEBKIT_AUDIO, Checker, desktop_context, drag_piece, fmt_sounds, mobile_context, shot, sound_log, sounds_heard, tap_move
+from helpers import BASE, WEBKIT_AUDIO, Checker, desktop_context, drag_piece, fmt_sounds, mobile_context, shot, sound_log, sounds_heard, tap_move, open_learn_session
 
 ck = Checker("pieces_sons")
 check = ck.check
@@ -382,9 +382,7 @@ def learn_suite(p, browser):
     body = json.dumps([LEARN_M1])
     ctx.route("**/puzzles.json", lambda route: route.fulfill(status=200, content_type="application/json", body=body))
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/apprendre")
-    page.wait_for_timeout(1200)
-    page.locator("main button", has_text="Tactiques").click()
+    open_learn_session(page, "tactic")
     if ck.appears("[apprendre] leçon tactique", page, "button:has-text(\"C'est parti\")", timeout=20000):
         n = len(sound_log(page))
         page.get_by_role("button", name="C'est parti").click()

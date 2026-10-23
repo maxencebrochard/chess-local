@@ -3,6 +3,7 @@
 // 100 % hors ligne : aucune analyse moteur dans la leçon, chaque verdict vient du contenu vérifié
 // hors ligne (tables de finales ou Stockfish) et tamponné. « Analyser » ouvre la position de
 // l'étape dans l'analyseur, et son retour rend la même étape (ligne au même coup).
+import { groupBack, LEARN_BACK, LESSONS_BACK, originGroup, type TrainingSlug } from '../lib/navigation'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { Move } from 'chess.js'
@@ -33,13 +34,14 @@ const REPLY_DELAY_MS = 650
 const WRONG_SHOW_MS = 700
 
 // Étape laissée pour l'analyseur (exerciseReturn.ts). L'étape et le parcours vivent dans l'URL ;
-// restent l'origine « séance » (state de navigation, perdu à l'aller-retour) et le coup atteint
+// restent l'origine « séance » ou groupe (state de navigation, perdu à l'aller-retour) et le coup atteint
 // dans une ligne. Une leçon n'est pas notée : l'analyse est permise à toute étape avec échiquier.
 const RETURN_SCREEN = 'lecon'
 interface ReturnState {
   path: string // `${course.path}/${id}`
   step: number
   fromSession: boolean
+  from?: TrainingSlug
   ply: number // demi-coups joués dans la ligne (0 pour un diagramme)
 }
 
@@ -54,6 +56,10 @@ export default function CourseIndex({ course, extra }: { course: Course; extra?:
   const location = useLocation()
   // Venu d'une leçon ouverte depuis une séance d'Apprendre : la séance reste à restaurer.
   const fromSession = Boolean((location.state as { fromSession?: boolean } | null)?.fromSession)
+  // Ouvert depuis un groupe d'Entraînement (« Pour comprendre ») : le retour y ramène, sinon à
+  // Toutes les leçons, propriétaire des cours. Le state suit les leçons et revient au sommaire.
+  const from = originGroup(location.state)
+  const back = fromSession ? LEARN_BACK : from ? groupBack(from) : LESSONS_BACK
   const [done, setDone] = useState<Set<string> | null>(null)
 
   useEffect(() => {
@@ -66,7 +72,7 @@ export default function CourseIndex({ course, extra }: { course: Course; extra?:
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
       <PageHeader title={`${course.emoji} ${course.title}`} description={course.intro}
-        back={{ label: 'Apprendre', onClick: () => navigate('/apprendre', { replace: true, state: fromSession ? { restore: true } : null }) }} />
+        back={{ label: back.label, onClick: () => navigate(back.to, { replace: true, state: fromSession ? { restore: true } : null }) }} />
       <div className="mb-6">
         {done === null ? <p role="status" className="text-sm text-muted">Chargement de la progression…</p>
           : <ProgressBar value={count} total={total} label={`Leçons terminées : ${course.title}`} testId="course-progress" />}
@@ -86,7 +92,7 @@ export default function CourseIndex({ course, extra }: { course: Course; extra?:
                 <ActivityCard
                   key={id}
                   data-lesson={id}
-                  onClick={() => navigate(`${course.path}/${id}`, { state: { fromSession } })}
+                  onClick={() => navigate(`${course.path}/${id}`, { state: { fromSession, from } })}
                   className="w-full"
                   title={lesson.title}
                   description={lesson.summary}
@@ -124,6 +130,8 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
   // Ouverte depuis une séance d'Apprendre (« Voir la leçon ») : ✕ y retourne et la séance est
   // restaurée. Lu une fois : les changements d'étape (`setParams`) effacent le state.
   const [fromSession] = useState(() => returned?.fromSession ?? Boolean((location.state as { fromSession?: boolean } | null)?.fromSession))
+  // Groupe d'Entraînement d'origine (raccourci « leçons » d'un groupe) : ✕ y ramène le sommaire.
+  const [from] = useState(() => originGroup(returned ? { from: returned.from } : location.state))
   const [params, setParams] = useSearchParams()
   // Ouverte depuis une étape du parcours d'apprentissage (`?parcours=<étape>`, gardé dans l'URL :
   // il survit aux changements d'étape et au rechargement) : ✕ et le bilan y ramènent.
@@ -140,7 +148,7 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
 
   // Retour lu : un rechargement repart de l'étape (ligne recommencée), l'origine « séance » reste.
   useEffect(() => {
-    if (isRestore(location.state)) navigate(`${location.pathname}${location.search}`, { replace: true, state: fromSession ? { fromSession } : null })
+    if (isRestore(location.state)) navigate(`${location.pathname}${location.search}`, { replace: true, state: fromSession || from ? { fromSession, from } : null })
     clearExercise()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -160,8 +168,8 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
   const close = () =>
     pathStep ? navigate(`/apprendre/parcours/${pathStep.id}`, { replace: true })
     : fromSession ? navigate('/apprendre', { replace: true, state: { restore: true } })
-    : navigate(course.path, { replace: true })
-  const goCourse = (path: string) => navigate(path, { replace: true, state: { fromSession } })
+    : navigate(course.path, { replace: true, state: from ? { from } : null })
+  const goCourse = (path: string) => navigate(path, { replace: true, state: { fromSession, from } })
   const next = course.nextLessonId(id)
   const exercise = lesson.exercise ? ENDGAMES.find((e) => e.id === lesson.exercise) : undefined
   const canContinue = !step || step.kind === 'diagram' || lineDone
@@ -170,7 +178,7 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
   function analyse() {
     if (!step) return
     const ply = step.kind === 'line' ? plyRef.current : 0
-    stashExercise(RETURN_SCREEN, { path: lessonPath, step: stepIdx, fromSession, ply } satisfies ReturnState)
+    stashExercise(RETURN_SCREEN, { path: lessonPath, step: stepIdx, fromSession, from, ply } satisfies ReturnState)
     const orientation = step.kind === 'line' ? (step.fen.split(' ')[1] as 'w' | 'b') : (step.orientation ?? 'w')
     navigate('/analyse', {
       state: {

@@ -336,6 +336,8 @@ def expectations(snap):
     return {
         "puzzle": rating("puzzle"), "rapid": rating("rapid"), "blitz": rating("blitz"), "bullet": rating("bullet"),
         "learn-tactic": rating("learn-tactic"),
+        # Hub du lot 5 : le classement ne s'affiche qu'après une première séance (games > 0).
+        "learn-tactic-shown": ratings.get("learn-tactic", {}).get("games", 0) > 0,
         "solved": sum(1 for a in attempts if a["success"] is True), "attempts": len(attempts),
         "games": len(games), "wins": wins, "draws": draws, "losses": len(bot_games) - wins - draws,
         "records": records, "pending_mistakes": sum(1 for m in rows("mistakes") if m["solved"] == 0),
@@ -420,6 +422,26 @@ def displayed_ok(tag, page, base, exp, labels):
 
     page.goto(f"{base}/#/apprendre")
     ck.appears(f"{tag} apprendre chargé", page, "text=Séance", timeout=15000)
+
+    # Hub guidé (lot 5) : l'Elo tactique est l'information de progression du groupe Tactique et
+    # calcul (affichée après une première séance), le compteur de Mes erreurs est dans Réviser mes
+    # parties. Les anciens builds gardent leurs pastilles et leur bouton sur /apprendre.
+    if page.locator("main [data-learn]").count():
+        def learn_hub():
+            page.goto(f"{base}/#/apprendre/entrainement/tactique")
+            page.wait_for_selector("main [data-session=tactic]", timeout=15000)
+            page.wait_for_timeout(300)
+            prog = page.locator("main [data-group-progress]")
+            elo = re.sub(r"\D", "", prog.inner_text()) if prog.count() else ""
+            page.goto(f"{base}/#/apprendre/mes-parties")
+            card = page.locator("[data-testid=mistakes-card]")
+            page.wait_for_selector("[data-testid=mistakes-card][data-count]:not([data-count=''])", timeout=15000)
+            pending = card.get_attribute("data-count")
+            want = str(exp["learn-tactic"]) if exp["learn-tactic-shown"] else ""
+            ok = elo == want and pending == str(exp["pending_mistakes"]) and card.is_enabled() == (exp["pending_mistakes"] > 0)
+            return (ok, f"(classement {elo!r}, Mes erreurs {pending!r} actif={card.is_enabled()}, attendu {want!r} / {exp['pending_mistakes']})")
+        expect(f"{tag} apprendre : Elo tactiques et compteur Mes erreurs", wait_until(page, learn_hub))
+        return
 
     def learn():
         got = cards_of(page.locator("main .grid").first.locator("> div"))

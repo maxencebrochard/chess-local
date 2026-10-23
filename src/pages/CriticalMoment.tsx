@@ -1,12 +1,13 @@
 // Un moment critique du bilan rejoué contre Stockfish à pleine force (`/moment-critique`) :
 // retrouver le coup du bilan (keyMove, noté dans `learnSessions` domaine 'critical-moment'), puis
-// jouer la suite. La sortie rouvre l'analyse sur le même bilan, sans le recalculer.
+// jouer la suite. Ouvert depuis le bilan, la sortie rouvre l'analyse sur le même bilan, sans le
+// recalculer ; ouvert depuis la liste « Moments critiques » d'Apprendre (`from: 'liste'`), la
+// sortie ramène à la liste et « Voir le bilan » rouvre l'analyse.
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import type { BilanBack, MomentTarget } from '../components/CriticalMoments'
 import { PositionGame } from '../components/PositionGame'
 import { recordReplaced } from '../lib/attempts'
-import { ANSWER_LABEL, recordMomentMove } from '../lib/criticalMoments'
+import { ANSWER_LABEL, MOMENTS_LIST_PATH, recordMomentMove, type BilanBack, type MomentOrigin, type MomentTarget } from '../lib/criticalMoments'
 import { loadStoredGame, validFen } from '../lib/positionGame'
 import { figurine } from '../lib/review'
 import { useSettings } from '../store/settings'
@@ -17,6 +18,7 @@ const KEY = 'moment'
 interface MomentBack {
   moment: MomentTarget
   analysis: BilanBack
+  from?: MomentOrigin
 }
 
 function isMomentBack(v: unknown): v is MomentBack {
@@ -31,9 +33,9 @@ export default function CriticalMoment() {
   // Moment reçu du bilan (nouvelle tentative), sinon la partie persistée de ce moment
   // (rechargement, retour de l'analyse après « Analyser »).
   const [source] = useState(() => {
-    const st = location.state as { moment?: MomentTarget; back?: BilanBack } | null
+    const st = location.state as { moment?: MomentTarget; back?: BilanBack; from?: unknown } | null
     if (st?.moment) {
-      const back = { moment: st.moment, analysis: st.back }
+      const back: MomentBack = { moment: st.moment, analysis: st.back!, ...(st.from === 'liste' ? { from: 'liste' as const } : {}) }
       return isMomentBack(back) && validFen(back.moment.fen) ? { back, fresh: true } : ('invalid' as const)
     }
     const stored = loadStoredGame()
@@ -50,10 +52,10 @@ export default function CriticalMoment() {
           {source ? 'Ce moment ne peut pas être rejoué (position illégale).' : 'Aucun moment critique à rejouer.'}
         </p>
         <p className="text-sm text-neutral-400">
-          Lance le bilan d'une partie dans l'analyse : ses moments critiques s'affichent en bas du résumé.
+          Les moments critiques de tes parties analysées sont dans Apprendre, Réviser mes parties.
         </p>
-        <Link to="/analyse" replace className="rounded-lg bg-surface-3 px-4 py-2 font-semibold hover:bg-surface-3/70">
-          Aller à l'analyse
+        <Link to={MOMENTS_LIST_PATH} replace className="inline-flex min-h-11 items-center rounded-lg bg-surface-3 px-4 py-2 font-semibold hover:bg-surface-3/70">
+          Voir mes moments critiques
         </Link>
       </div>
     )
@@ -62,7 +64,9 @@ export default function CriticalMoment() {
   const { moment, analysis } = source.back
   const color = moment.fen.split(' ')[1] === 'b' ? 'b' : 'w'
   const played = figurine(moment.playedSan, color)
-  const exit = () => navigate('/analyse', { replace: true, state: analysis })
+  const fromList = source.back.from === 'liste'
+  const bilan = () => navigate('/analyse', { replace: true, state: analysis })
+  const exit = fromList ? () => navigate(MOMENTS_LIST_PATH, { replace: true }) : bilan
   return (
     <PositionGame
       gameKey={KEY}
@@ -83,9 +87,9 @@ export default function CriticalMoment() {
         if (location.state) navigate('.', { replace: true, state: null })
       }}
       keyMove={{ uci: moment.bestUci, san: moment.bestSan, followUp: 'Joue la suite', onJudged: (found) => void recordMomentMove(moment.fen, moment.answer, found) }}
-      otherLabel="Retour au bilan"
+      otherLabel={fromList ? 'Voir le bilan' : 'Retour au bilan'}
       onExit={exit}
-      onOther={exit}
+      onOther={bilan}
     />
   )
 }

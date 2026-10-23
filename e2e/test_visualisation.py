@@ -9,7 +9,7 @@ Ce qui est vérifié :
   indépendant (notation numérotée en figurines, suivi des pièces, pièce demandée, pièces en prise,
   mats en 1, réponse au meilleur coup, roque roi puis tour) ; des copies mutées du bundle doivent
   diverger de l'oracle ; tirage de « mat en un » équilibré entre Oui et Non ;
-- entrée : tuile dans Apprendre, onglet Apprendre allumé sur /visualisation ;
+- entrée : tuile du groupe Tactique et calcul d'Apprendre (retour vers le groupe), onglet Apprendre allumé sur /visualisation ;
 - série mobile (393x852) : chaque question affichée est résolue par l'oracle, ligne affichée = oracle,
   bonne réponse par toucher → ✓, score ; position finale révélée lue dans le DOM = oracle ; mauvaise
   réponse → ✗, case touchée en rouge, erreurs comptées ; trois erreurs → bilan ; lignes
@@ -468,9 +468,9 @@ def analysis_round_trip(page, o, rounds):
 def ui_suite(p, browser, bank):
     ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block")
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/apprendre")
+    page.goto(f"{BASE}/#/apprendre/entrainement/tactique")
     tile = page.get_by_role("link", name="Calcul et visualisation")
-    ck.appears("[entrée] tuile dans Apprendre", page, "a[href='#/visualisation']", timeout=15000)
+    ck.appears("[entrée] tuile dans Apprendre (Tactique et calcul)", page, "a[href='#/visualisation']", timeout=15000)
     tile.click()
     ck.appears("[entrée] accueil de l'entraîneur", page, "[data-vis-hub]", timeout=15000)
     check("[entrée] onglet Apprendre allumé", page.locator("nav a[aria-current='true']", has_text="Apprendre").count() >= 1)

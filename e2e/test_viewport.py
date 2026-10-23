@@ -20,7 +20,7 @@ structurelle, pas le rendu exact du téléphone.
 
 Usage : npm run test:e2e -- --suite viewport
 """
-from helpers import BASE, FINALES, Checker, desktop_context, mobile_context, overflow_x, shot, touch_drag
+from helpers import BASE, Checker, desktop_context, mobile_context, overflow_x, shot, touch_drag, open_learn_session
 
 ck = Checker("viewport")
 check = ck.check
@@ -28,7 +28,9 @@ check = ck.check
 SAFE_TOP, SAFE_BOTTOM = 59, 34
 # Pages qui défilent dans `<main>` ou non : la liste couvre les deux (mesuré sur main :
 # `/`, `/analyse`, `/puzzles` en 393x852 tiennent sans défiler).
-PAGES = ["/", "/mats", "/mats?d=geo-diagonale-ligne", "/apprendre", "/apprendre/parcours", "/analyse", "/jouer", "/puzzles", "/stats", "/reglages", "/donnees", "/plus", "/revision", "/seance"]
+PAGES = ["/", "/mats", "/mats?d=geo-diagonale-ligne", "/apprendre", "/apprendre/parcours", "/apprendre/lecons", "/apprendre/entrainement",
+         "/apprendre/entrainement/finales", "/apprendre/mes-parties", "/apprendre/moments-critiques", "/analyse", "/jouer", "/puzzles", "/stats",
+         "/reglages", "/donnees", "/plus", "/revision", "/seance"]
 # Débordement provoqué : un élément ajouté en fin de `host`, retiré par `remove_injected`. En
 # hauteur sur body, c'est le débordement du document (ce qu'iOS produit quand sa zone visible ne
 # colle pas à la mise en page) : sans lui, Chromium n'a nulle part où chaîner le geste et tous
@@ -301,9 +303,7 @@ def sheet_suite(page, label):
     qui l'entourent dans le DOM. Sonde : sans `contain`, la racine de séance pré-défilée reste à
     40 px avec l'ancien CSS comme avec le nouveau, alors que le document bouge avec l'ancien
     (de 150 à 0 px, puis à 285 px)."""
-    page.goto(f"{BASE}/#/apprendre")
-    ck.appears(f"{label} : accueil Apprendre", page, "main button:has-text('Finales')")
-    page.locator("main button", has_text=FINALES).click()
+    open_learn_session(page, "endgame")
     if not ck.appears(f"{label} : leçon affichée", page, "text=Voir le cours complet"):
         return
     page.click("text=Voir le cours complet")

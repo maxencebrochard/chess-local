@@ -139,8 +139,8 @@ def suite(p):
     page = ctx.new_page()
 
     # --- Entrée depuis Apprendre ---
-    page.goto(f"{BASE}/#/apprendre")
-    if ck.appears("[apprendre] carte Entraîneur d'ouvertures", page, "main a:has-text(\"Entraîneur d'ouvertures\")", timeout=10000):
+    page.goto(f"{BASE}/#/apprendre/entrainement/ouvertures")
+    if ck.appears("[apprendre] carte Entraîneur d'ouvertures (groupe Ouvertures)", page, "main a:has-text(\"Entraîneur d'ouvertures\")", timeout=10000):
         page.locator("main a", has_text="Entraîneur d'ouvertures").click()
         page.wait_for_timeout(400)
     check("[apprendre] la carte mène à #/ouvertures", page.evaluate("() => location.hash") == "#/ouvertures")

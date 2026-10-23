@@ -28,7 +28,7 @@ import re
 
 import chess
 
-from helpers import BASE, FINALES, HOLD_BESTMOVE, Checker, desktop_context, mobile_context, piece_on, shot, tap_move, wait_js
+from helpers import BASE, HOLD_BESTMOVE, Checker, desktop_context, mobile_context, piece_on, shot, tap_move, wait_js, open_learn_session
 
 ck = Checker("bug_hunt")
 check = ck.check
@@ -367,9 +367,7 @@ def case_finale_fuite(p, browser):
     ctx.add_init_script(WORKER_SPY)
     ctx.add_init_script(HOLD_BESTMOVE)
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/apprendre")
-    page.wait_for_timeout(1500)
-    page.locator("main button", has_text=FINALES).click()
+    open_learn_session(page, "endgame")
     page.wait_for_timeout(1000)
     page.get_by_role("button", name="C'est parti").click()
     if not ck.appears("[finale] exercice affiché", page, "text=Objectif", timeout=15000):

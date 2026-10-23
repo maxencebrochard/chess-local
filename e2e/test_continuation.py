@@ -8,7 +8,7 @@ Usage : npm run test:e2e -- --suite continuation
 """
 import json
 
-from helpers import SHOTS, BASE, Checker, desktop_context, mobile_context, overflow_x
+from helpers import SHOTS, BASE, Checker, desktop_context, mobile_context, overflow_x, open_learn_session
 
 ck = Checker("continuation")
 check = ck.check
@@ -97,10 +97,11 @@ def idb_score(page, key):
     )
 
 
+DOMAINS = {"Tactiques": "tactic", "Stratégie": "strategy"}
+
+
 def start_domain(page, label):
-    page.goto(f"{BASE}/#/apprendre")
-    page.wait_for_timeout(1200)
-    page.locator("main button", has_text=label).click()
+    open_learn_session(page, DOMAINS[label])
     ck.appears(f"[{label}] leçon affichée", page, "button:has-text(\"C'est parti\")", timeout=20000)
     page.get_by_role("button", name="C'est parti").click()
 

@@ -543,9 +543,9 @@ def part_list_and_game(p, browser):
     page = ctx.new_page()
 
     # --- 3. Entrée, liste, niveau ---
-    page.goto(f"{BASE}/#/apprendre")
+    page.goto(f"{BASE}/#/apprendre/entrainement/attaque-defense")
     tile = "main a:has-text(\"Entraîneur de défense\")"
-    if ck.appears("[entrée] tuile sur l'accueil Apprendre", page, tile):
+    if ck.appears("[entrée] tuile dans Apprendre (Attaque et défense)", page, tile):
         page.locator(tile).tap()
     ck.appears("[liste] page de l'entraîneur", page, "[data-testid='defense-item']")
     check("[liste] URL #/defense", page.evaluate("() => location.hash").startswith("#/defense"), f"({page.url})")
@@ -857,9 +857,9 @@ def part_missed(p, browser):
         shot(page, "defense_ratees_vide_852")
     seeded = seed(page, "mistakes", MISTAKES)
     check("[ratées] fautes semées", seeded is True)
-    page.goto(f"{BASE}/#/apprendre")
+    page.goto(f"{BASE}/#/apprendre/mes-parties")
     card = page.locator("[data-testid=missed-defenses-card]")
-    if ck.appears("[ratées] carte d'Apprendre", page, "[data-testid=missed-defenses-card]"):
+    if ck.appears("[ratées] carte d'Apprendre (Réviser mes parties)", page, "[data-testid=missed-defenses-card]"):
         page.wait_for_timeout(600)
         check("[ratées] la carte compte 1 défense (témoins exclus)", card.get_attribute("data-count") == "1", f"({card.get_attribute('data-count')})")
         card.tap()

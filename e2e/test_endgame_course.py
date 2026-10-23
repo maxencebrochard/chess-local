@@ -69,8 +69,8 @@ def suite(p):
     ctx = mobile_context(p, browser, ck, standalone=True)
     page = ctx.new_page()
 
-    # ---------- Entrée depuis Apprendre ----------
-    page.goto(f"{BASE}/#/apprendre")
+    # ---------- Entrée depuis Apprendre (Toutes les leçons) ----------
+    page.goto(f"{BASE}/#/apprendre/lecons")
     ck.appears("[entrée] carte Cours de finales", page, "button:has-text('Cours de finales')")
     check("[entrée] progression 0/N", page.locator("[data-testid='course-card-progress']").inner_text() == f"0/{N} leçons")
     shot(page, "course_learn_home")
@@ -231,8 +231,8 @@ def suite(p):
     check("[progrès] coche sur la leçon", "✓" in page.locator("[data-lesson='mat-deux-tours']").inner_text())
     page.reload()
     ck.appears("[progrès] persiste après rechargement", page, f"[data-testid='course-progress']:has-text('1/{N}')")
-    page.goto(f"{BASE}/#/apprendre")
-    ck.appears("[progrès] carte de l'accueil 1/N", page, f"[data-testid='course-card-progress']:has-text('1/{N} leçons')")
+    page.goto(f"{BASE}/#/apprendre/lecons")
+    ck.appears("[progrès] carte de Toutes les leçons 1/N", page, f"[data-testid='course-card-progress']:has-text('1/{N} leçons')")
 
     # ---------- Carré du pion : coup qui lâche le gain, promotion avec la mauvaise pièce ----------
     page.goto(f"{BASE}/#/apprendre/finales/carre-du-pion?etape=3")
@@ -294,7 +294,7 @@ def suite(p):
     page.evaluate(SEED_ROTATION)
     page.goto(f"{BASE}/#/apprendre")
     page.wait_for_timeout(800)
-    page.get_by_role("button", name="Séance", exact=True).click()
+    page.get_by_role("button", name="Séance rapide", exact=True).click()
     page.wait_for_timeout(2500)
     title = page.locator("header h1").first.inner_text()
     check("[rotation] Séance ne repropose pas Finales (lignes course ignorées)", "Finales" not in title, f"({title})")

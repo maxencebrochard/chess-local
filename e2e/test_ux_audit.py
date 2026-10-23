@@ -15,7 +15,8 @@ import subprocess
 import chess
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from helpers import BASE, SHOTS, Checker, click_square, desktop_context, mobile_context, overflow_x
+from helpers import BASE, SHOTS, Checker, click_square, desktop_context, mobile_context, open_learn_session, open_mistakes_session, overflow_x
+from moment_fixtures import GAME_A, GAME_B, SESSIONS as MOMENT_SESSIONS
 
 ck = Checker("ux_audit")
 ROOT = Path(__file__).resolve().parents[1]
@@ -198,6 +199,18 @@ def seed_mistakes(page):
     })""", rows)
 
 
+def seed_moments(page):
+    """Deux parties analysées (cache `reviews`) et leurs états `critical-moment` (moment_fixtures)."""
+    page.evaluate("""data => new Promise((resolve,reject) => {
+      const req=indexedDB.open('chess-local'); req.onerror=()=>reject(req.error);
+      req.onsuccess=()=>{const db=req.result; const tx=db.transaction(['reviews','learnSessions'],'readwrite');
+        for(const r of data.reviews) tx.objectStore('reviews').put(r);
+        for(const r of data.sessions) tx.objectStore('learnSessions').put(r);
+        tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error);
+      };
+    })""", {"reviews": [GAME_A, GAME_B], "sessions": MOMENT_SESSIONS})
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
     (OUT / "manifest.json").write_text(json.dumps({
@@ -238,7 +251,14 @@ def suite(p):
             ("/convertir", "convertir", "Convertir l'avantage"),
             ("/finales/chrono", "finales-chrono", "Finales au chrono"),
             ("/seance", "seance-du-jour", "Séance du jour"),
+            # Hub guidé d'Apprendre (lot 5).
+            ("/apprendre/lecons", "lecons", "[data-testid='defense-card-progress']"),
+            ("/apprendre/entrainement", "entrainement", "Quelle compétence travailler"),
+            ("/apprendre/mes-parties", "mes-parties", "[data-testid='moments-card']"),
+            ("/apprendre/moments-critiques", "moments-vide", "[data-testid='moments-empty']"),
         ]
+        for slug in ["tactique", "attaque-defense", "finales", "ouvertures", "strategie"]:
+            routes.append((f"/apprendre/entrainement/{slug}", f"groupe-{slug}", "S'entraîner"))
         for path, filename, name in [("/attaque", "attacks.json", "attaque-exercice"),
                                       ("/defense", "defenses.json", "defense-exercice"),
                                       ("/finales", "endgames.json", "finale-exercice"),
@@ -279,15 +299,17 @@ def suite(p):
             page.wait_for_url(f"**/#{path}")
             ck.check(f"{fmt} : onglet {label}", page.url.endswith("#"+path))
         page.locator("nav a:visible").filter(has_text="Apprendre").click()
+        page.get_by_text("Toutes les leçons", exact=True).click()
         page.get_by_text("Cours de finales", exact=True).click()
         ck.appears(f"{fmt} : cours via tuile", page, "h1:text('Cours de finales')")
-        page.get_by_role("button", name=re.compile("Apprendre")).click()
+        page.get_by_role("button", name="Retour à Toutes les leçons").click()
+        ck.appears(f"{fmt} : retour à Toutes les leçons", page, "h1:text('Toutes les leçons')")
+        page.get_by_role("button", name="Retour à Apprendre").click()
         ck.appears(f"{fmt} : retour au hub", page, "h1:text('Apprendre')")
 
-        for domain in ["Finales", "Tactiques", "Ouvertures", "Stratégie"]:
+        for domain, key in [("Finales", "endgame"), ("Tactiques", "tactic"), ("Ouvertures", "opening"), ("Stratégie", "strategy")]:
             page.goto(f"{BASE}/#/")
-            page.goto(f"{BASE}/#/apprendre")
-            page.get_by_role("button", name=re.compile(r"^\W*"+domain+r"$")).click()
+            open_learn_session(page, key)
             capture(page, fmt, "seance-"+domain.lower(), "C'est parti")
             page.get_by_role("button", name="C'est parti", exact=True).click()
             capture(page, fmt, "exercice-"+domain.lower(), "[data-board]", selector=True)
@@ -360,9 +382,10 @@ def suite(p):
         page.get_by_role("button", name="Arrêter", exact=True).click()
         capture(page, fmt, "rush-resultat", "Terminé")
 
-        page.goto(f"{BASE}/#/apprendre")
-        ck.appears(f"{fmt} : base initialisée", page, "[data-testid='missed-attacks-card'][data-count]")
+        page.goto(f"{BASE}/#/apprendre/mes-parties")
+        ck.appears(f"{fmt} : base initialisée", page, "[data-testid='missed-attacks-card'][data-count='0']")
         seed_mistakes(page)
+        seed_moments(page)
         for path, name, marker in [
             ("/", "accueil-revision", "À réviser aujourd'hui"),
             ("/attaques-manquees", "attaques-remplies", "Partie audit"),
@@ -370,11 +393,12 @@ def suite(p):
             ("/defenses-ratees", "defenses-remplies", "Partie audit"),
             ("/defenses-ratees/2", "defense-personnelle", "Abandonner"),
             ("/revision", "revision-exercice", "[data-board]"),
+            ("/apprendre/mes-parties", "mes-parties-remplie", "[data-testid='moments-card'][data-count='2']"),
+            ("/apprendre/moments-critiques", "moments-remplis", "[data-testid='moment-item']"),
         ]:
             page.goto(f"{BASE}/#{path}")
             capture(page, fmt, name, marker, selector=marker.startswith("["))
-        page.goto(f"{BASE}/#/apprendre")
-        page.get_by_role("button", name=re.compile("Mes erreurs")).click()
+        open_mistakes_session(page)
         capture(page, fmt, "mes-erreurs", "C'est parti")
         page.get_by_role("button", name="C'est parti", exact=True).click()
         capture(page, fmt, "mes-erreurs-exercice", "[data-board]", selector=True)
@@ -424,8 +448,7 @@ def suite(p):
         loading_ctx.route("**/puzzles.json", lambda route: route.fulfill(json=PUZZLE))
         lp.get_by_role("button", name="Réessayer", exact=True).click()
         capture(lp, fmt, "puzzles-reprise", "Classement puzzles")
-        lp.goto(f"{BASE}/#/apprendre")
-        lp.get_by_role("button", name=re.compile(r"^\W*Tactiques$")).click()
+        open_learn_session(lp, "tactic")
         capture(lp, fmt, "seance-fixture", "C'est parti")
         lp.get_by_role("button", name="C'est parti", exact=True).click()
         ck.appears(f"{fmt} : séance prête", lp, "[data-square='c3'] [data-piece='bN']")

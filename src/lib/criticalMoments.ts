@@ -3,7 +3,7 @@
 // (chess.js et motifs.ts), sans nouvelle recherche moteur.
 // Testée sous Node par la suite `moments` (e2e/test_moments.py).
 import { Chess, type Color, type PieceSymbol, type Square } from 'chess.js'
-import { db } from './db'
+import { db, type ReviewRow } from './db'
 import { mateInOne, other, PIECE_FR, sanOf, see } from './motifs'
 import { figurine, type GameReview, type MoveClass } from './review'
 
@@ -265,4 +265,155 @@ export function restorableBilan(raw: unknown, pgn: string): { review: GameReview
     return null
   }
   return { review, gameKey: typeof b.gameKey === 'string' ? b.gameKey : null }
+}
+
+// ---------- Ouverture de l'exercice (`/moment-critique`) ----------
+
+// State de navigation qui rouvre l'analyse sur ce bilan (lu par Analysis.tsx, champ `bilan`).
+export interface BilanBack {
+  pgn: string
+  color?: 'w' | 'b'
+  orientation?: 'w' | 'b'
+  label?: string
+  returnTo?: string
+  returnLabel?: string
+  bilan: { review: GameReview; gameKey: string | null }
+}
+
+// Position à rejouer, passée à `/moment-critique` (pages/CriticalMoment.tsx).
+export interface MomentTarget {
+  fen: string
+  bestUci: string
+  bestSan: string
+  playedSan: string
+  found: boolean
+  answer: MomentAnswer
+  moveNo: string
+  explanation: string
+}
+
+/** Origine de l'exercice : la liste « Moments critiques » d'Apprendre (sinon le bilan de l'analyse). */
+export type MomentOrigin = 'liste'
+
+export interface BilanContext {
+  playerColor: Color | null
+  names: { w: string; b: string }
+  label: string | null
+  gameKey: string | null
+  returnTo: string | null
+  returnLabel: string
+}
+
+function bilanPgn(review: GameReview, names: { w: string; b: string }): string {
+  const c = new Chess(review.startFen)
+  c.header('White', names.w, 'Black', names.b)
+  if (review.startFen !== new Chess().fen()) c.header('SetUp', '1', 'FEN', review.startFen)
+  for (const m of review.moves) c.move(m.san)
+  return c.pgn()
+}
+
+/**
+ * State de `/moment-critique` pour un moment d'un bilan : le même depuis le résumé du bilan
+ * (components/CriticalMoments.tsx) et depuis la liste d'Apprendre, qui y ajoute `from`.
+ */
+export function momentState(review: GameReview, m: CriticalMoment, ctx: BilanContext, from?: MomentOrigin):
+  { moment: MomentTarget; back: BilanBack; from?: MomentOrigin } {
+  const back: BilanBack = {
+    pgn: bilanPgn(review, ctx.names),
+    color: ctx.playerColor ?? undefined,
+    orientation: ctx.playerColor ?? undefined,
+    label: ctx.label ?? undefined,
+    returnTo: ctx.returnTo ?? undefined,
+    returnLabel: ctx.returnTo ? ctx.returnLabel : undefined,
+    bilan: { review, gameKey: ctx.gameKey },
+  }
+  const moment: MomentTarget = {
+    fen: m.fen, bestUci: m.bestUci, bestSan: m.bestSan, playedSan: m.playedSan, found: m.found,
+    answer: m.answer, moveNo: m.moveNo, explanation: momentExplanation(m),
+  }
+  return from ? { moment, back, from } : { moment, back }
+}
+
+// ---------- Liste « Moments critiques » d'Apprendre ----------
+
+// Les bilans existants sont ceux du cache d'Insights (table `reviews`) : parties de l'app
+// (`local:<id>`) et parties chess.com (`chesscom:<id>`, tous pseudos, comme Mes structures). Le
+// bilan lancé dans l'analyse n'est pas conservé (seules ses fautes le sont) : il n'y figure pas.
+// Aucune recherche moteur, aucune écriture : tout se déduit des bilans, comme dans le résumé.
+
+export const MOMENTS_LIST_PATH = '/apprendre/moments-critiques'
+
+export interface MomentGame {
+  key: string // clé de la ligne `reviews`
+  date: number
+  opponent: string
+  opponentRating: number | null
+  result: ReviewRow['result']
+  timeControl: string
+  source: ReviewRow['source']
+  moments: CriticalMoment[]
+  ctx: BilanContext
+  review: GameReview
+}
+
+// Noms des camps lus dans les en-têtes du PGN d'origine, sinon déduits du camp du joueur.
+function namesOf(row: ReviewRow): { w: string; b: string } {
+  const header = (tag: string) => row.pgn.match(new RegExp(`\\[${tag} "([^"]*)"\\]`))?.[1]?.trim() || null
+  const me = row.username ?? 'Toi'
+  const fallback = row.playerColor === 'w' ? { w: me, b: row.opponent } : { w: row.opponent, b: me }
+  return { w: header('White') ?? fallback.w, b: header('Black') ?? fallback.b }
+}
+
+const DATE_FR = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+
+export function gameLabel(row: Pick<ReviewRow, 'opponent' | 'date'>): string {
+  return `Contre ${row.opponent} · ${DATE_FR.format(row.date)}`
+}
+
+/**
+ * Moments critiques d'une partie du cache, avec le contexte du bilan rouvert depuis l'exercice :
+ * clé de partie de l'analyse (`game:<id>` pour une partie de l'app, comme l'Archive ; aucune pour
+ * chess.com, l'analyse retombe alors sur l'empreinte des coups) et retour vers la liste.
+ */
+export function gameMoments(row: ReviewRow): MomentGame {
+  const local = row.key.startsWith('local:')
+  return {
+    key: row.key,
+    date: row.date,
+    opponent: row.opponent,
+    opponentRating: row.opponentRating,
+    result: row.result,
+    timeControl: row.timeControl,
+    source: row.source,
+    moments: criticalMoments(row.review, row.playerColor),
+    review: row.review,
+    ctx: {
+      playerColor: row.playerColor,
+      names: namesOf(row),
+      label: gameLabel(row),
+      gameKey: local ? `game:${row.key.slice('local:'.length)}` : null,
+      returnTo: MOMENTS_LIST_PATH,
+      returnLabel: 'Retour aux moments critiques',
+    },
+  }
+}
+
+const validRow = (r: ReviewRow) =>
+  !!r && !!r.review && Array.isArray(r.review.moves) && typeof r.review.startFen === 'string' && (r.playerColor === 'w' || r.playerColor === 'b')
+
+/** Parties analysées les plus récentes d'abord ; seules celles qui ont un moment critique. */
+export async function loadMomentGames(): Promise<MomentGame[]> {
+  const rows = (await db.reviews.toArray()).filter(validRow).sort((a, b) => b.date - a.date)
+  const out: MomentGame[] = []
+  for (let i = 0; i < rows.length; i++) {
+    // Une partie se relit en quelques millisecondes : on rend la main entre deux paquets.
+    if (i > 0 && i % 10 === 0) await new Promise((r) => setTimeout(r, 0))
+    try {
+      const g = gameMoments(rows[i])
+      if (g.moments.length) out.push(g)
+    } catch {
+      // Bilan illisible (PGN abîmé) : la partie est ignorée, les autres restent.
+    }
+  }
+  return out
 }

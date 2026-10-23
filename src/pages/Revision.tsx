@@ -1,6 +1,7 @@
 // Révision espacée (/revision) : séance mixte et enchaînée de ce qui est dû aujourd'hui, avec
 // les lecteurs existants (PuzzlePlayer, MistakeExercise, OpeningDrill). La séance démarre à
 // l'arrivée ; la logique d'échéance vit dans src/lib/revision.ts.
+import { REVIEW_ROOT } from '../lib/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Chess, DEFAULT_POSITION } from 'chess.js'
@@ -38,6 +39,13 @@ interface StoredSession {
   remaining: number
   returnTo: string
   drill?: DrillSnapshot // variante jugée laissée pour l'analyseur : son verdict, repris au retour
+}
+
+// Libellé du lien de sortie, d'après la page qui a ouvert la révision (`state.returnTo`).
+function exitLabel(to: string): string {
+  if (to === REVIEW_ROOT) return 'Retour à Réviser mes parties'
+  if (to === '/apprendre') return 'Retour à Apprendre'
+  return "Retour à l'accueil"
 }
 
 export default function Revision() {
@@ -242,7 +250,7 @@ export default function Revision() {
         </p>
         {puzzlesUnavailable && <Cta className="w-full" onClick={() => void start()}>Réessayer</Cta>}
         <Link to={returnTo} replace className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-accent underline underline-offset-2">
-          {returnTo === '/apprendre' ? 'Retour à Apprendre' : "Retour à l'accueil"}
+          {exitLabel(returnTo)}
         </Link>
       </div>
     )

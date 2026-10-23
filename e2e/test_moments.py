@@ -356,10 +356,17 @@ def moment_sessions(page):
 
 
 def recommended_domain(page):
-    """Domaine proposé par la carte « séance » d'Apprendre (pickNextDomain)."""
+    """Domaine choisi par la « Séance rapide » d'Apprendre (pickNextDomain) : titre de la séance
+    ouverte, sans son compteur d'items, puis séance refermée."""
     page.goto(f"{BASE}/#/apprendre")
-    page.wait_for_timeout(1200)
-    return page.evaluate("() => document.querySelector('main')?.innerText.slice(0, 400) ?? ''")
+    page.get_by_role("button", name="Séance rapide", exact=True).click()
+    try:
+        page.wait_for_selector("button[aria-label='Quitter la séance']", timeout=60000)
+    except Exception:
+        return ""
+    title = page.evaluate("() => { const h = document.querySelector('header h1'); const n = h?.querySelector('span'); return h ? h.textContent.replace(n?.textContent ?? '', '').trim() : '' }")
+    page.locator("button[aria-label='Quitter la séance']").click()
+    return title
 
 
 def open_bilan(page):
@@ -510,7 +517,7 @@ def ui_flow(p, browser):
       tx.onerror = () => reject(tx.error)
     })""")
     without = recommended_domain(page)
-    check("[ui] Apprendre propose la même séance (pickNextDomain ignore le domaine)", with_rows == without and len(without) > 20, f"({with_rows[:80]!r} / {without[:80]!r})")
+    check("[ui] Apprendre propose la même séance (pickNextDomain ignore le domaine)", with_rows == without and len(without) > 3, f"({with_rows[:80]!r} / {without[:80]!r})")
 
     page.goto(f"{BASE}/#/")
     page.evaluate("() => localStorage.removeItem('chess-local-position-game-v1')")

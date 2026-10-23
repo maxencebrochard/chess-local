@@ -692,15 +692,15 @@ def seeded_page(p, browser):
     ctx = mobile_context(p, browser, ck, settings={"chesscomUsername": USER}, standalone=True, service_workers="block")
     calls = count_api_calls(ctx)
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/apprendre")
-    ck.appears(f"{tag} Apprendre chargé", page, "main a:has-text('Mon répertoire')", timeout=20000)
+    page.goto(f"{BASE}/#/apprendre/entrainement/ouvertures")
+    ck.appears(f"{tag} groupe Ouvertures d'Apprendre chargé", page, "main a:has-text('Mon répertoire')", timeout=20000)
     if not check(f"{tag} base Dexie en version 3 ({STORES} stores)", wait_schema(page)):
         ctx.close()
         return
     seed_db(page, {"reviews": seeded_rows()})
     cached = oracle([with_review(rep_game(i), i) for i in (301, 302, 308, 399)])
 
-    # Tuile d'Apprendre, juste après l'entraîneur d'ouvertures.
+    # Tuile du groupe Ouvertures d'Apprendre, juste après l'entraîneur d'ouvertures.
     tiles = page.locator("main a").all_inner_texts()
     idx = next((i for i, t in enumerate(tiles) if "Entraîneur d'ouvertures" in t), -1)
     check(f"{tag} tuile « Mon répertoire » juste après l'entraîneur d'ouvertures", idx >= 0 and idx + 1 < len(tiles) and "Mon répertoire" in tiles[idx + 1], f"({tiles})")
@@ -891,7 +891,7 @@ def transposed_drill(p, browser):
     ctx = mobile_context(p, browser, ck, settings={"chesscomUsername": USER}, standalone=True, service_workers="block")
     try:
         page = ctx.new_page()
-        page.goto(f"{BASE}/#/apprendre")
+        page.goto(f"{BASE}/#/apprendre/entrainement/ouvertures")
         if not check("[transposition] base prête", wait_schema(page)):
             return
         game = dict(rep_game(301), pgn=san_pgn("c4 e5 Nc3 d6 h4", USER, "QaTr", "1-0"))
@@ -916,7 +916,7 @@ def en_passant_drill(p, browser):
     ctx = mobile_context(p, browser, ck, settings={"chesscomUsername": USER}, standalone=True, service_workers="block")
     try:
         page = ctx.new_page()
-        page.goto(f"{BASE}/#/apprendre")
+        page.goto(f"{BASE}/#/apprendre/entrainement/ouvertures")
         if not check("[Boehnke] base prête", wait_schema(page)):
             return
         games = [dict(rep_game(301), pgn=san_pgn(sans, USER, "QaEp", "1-0"))
@@ -950,7 +950,7 @@ def shared_family_exit(p, browser):
     ctx = mobile_context(p, browser, ck, settings={"chesscomUsername": USER}, standalone=True, service_workers="block")
     try:
         page = ctx.new_page()
-        page.goto(f"{BASE}/#/apprendre")
+        page.goto(f"{BASE}/#/apprendre/entrainement/ouvertures")
         if not check("[familles] base prête", wait_schema(page)):
             return
         games = bench_cases()["transposition"]["games"]

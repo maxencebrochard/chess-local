@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Chess, type Move } from 'chess.js'
 import { ActivityCard } from '../components/ActivityCard'
 import { PageHeader } from '../components/PageHeader'
-import { ProgressBar } from '../components/ProgressBar'
 import { Board, type BoardArrow } from '../components/Board'
 import { CoachBubble } from '../components/CoachBubble'
 import { EngineContinuation, GoFurtherRow } from '../components/EngineContinuation'
@@ -14,26 +13,21 @@ import { PuzzlePlayer } from '../components/PuzzlePlayer'
 import { puzzleContinuationStart, puzzlePlayerColor, useExerciseContinuation } from '../components/useExerciseContinuation'
 import { courseFor, type Course } from '../lib/courses'
 import { db } from '../lib/db'
-import { ROQUE } from '../lib/attackCourse'
-import { DEFENSE } from '../lib/defenseCourse'
-import { BASES } from '../lib/basicsCourse'
-import { STRUCTURES_COURSE } from '../lib/structuresCourse'
-import { FINALES, lessonForExercise } from '../lib/endgameCourse'
-import type { Course as LessonCourse } from '../lib/lessonCourse'
+import { lessonForExercise } from '../lib/endgameCourse'
 import { Engine } from '../lib/engine'
-import { loadAttackDiagnostic, loadDefenseDiagnostic } from '../lib/kingAttack'
 import {
   buildEndgameSession, buildSession, DOMAIN_META, domainRating, pickNextDomain, scoreItem,
   type EndgameGoal, type LearnDomain, type Session, type SessionItem,
 } from '../lib/learn'
 import { openingDe, openingFamilyFr } from '../lib/openingNames'
-import { describeKinds, dueLabel, loadReviewQueue, type ReviewQueue } from '../lib/revision'
+import { loadReviewQueue, type ReviewQueue } from '../lib/revision'
 import { LEVELS, stepById } from '../lib/learningPath'
 import { recordPathRun } from '../lib/learningPathStore'
 import { usePathState } from '../components/usePathState'
 import { figurine } from '../lib/review'
 import { sounds } from '../lib/sounds'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { LESSONS_ROOT, REVIEW_ROOT, TRAINING_ROOT } from '../lib/navigation'
 
 type ItemPhase = 'lesson' | 'play' | 'success' | 'fail'
 
@@ -55,9 +49,6 @@ export default function Learn() {
   const navigate = useNavigate()
   const location = useLocation()
   const [ratings, setRatings] = useState<Record<string, number | null>>({})
-  const [mistakeCount, setMistakeCount] = useState(0)
-  const [attackCount, setAttackCount] = useState(0)
-  const [defenseCount, setDefenseCount] = useState(0)
   const [session, setSession] = useState<Session | null>(null)
   const [itemIdx, setItemIdx] = useState(0)
   const [phase, setPhase] = useState<ItemPhase>('lesson')
@@ -68,7 +59,13 @@ export default function Learn() {
   const [showCourse, setShowCourse] = useState(false)
   const [returnTo, setReturnTo] = useState<string | null>(null)
   const [returnLabel, setReturnLabel] = useState('Retour au cours')
-  const [lessonsDone, setLessonsDone] = useState<Record<string, number>>({})
+  const [lessonsDone, setLessonsDone] = useState<number | null>(null)
+  // Séance demandée par un groupe d'Entraînement, Réviser mes parties ou Insights (`state.domain`,
+  // `state.tactic`) : écran de préparation à la place du hub, qui ne doit pas clignoter.
+  const [preparing, setPreparing] = useState(() => {
+    const st = location.state as { domain?: unknown; tactic?: unknown } | null
+    return Boolean(st?.domain || st?.tactic)
+  })
   const [review, setReview] = useState<ReviewQueue | null>(null)
   // Séance de finale ouverte par une étape du parcours : toute réussite (même après Réessayer)
   // valide l'étape, une fois par séance (ligne `path`, sans Elo).
@@ -82,24 +79,15 @@ export default function Learn() {
   const scoredItems = useRef(new Set<number>())
   const engineRef = useRef<Engine | null>(null)
 
+  // Classements des domaines (écran de fin de séance) et leçons terminées (carte Toutes les
+  // leçons), lues dans la base sans charger les cours : un id de leçon par ligne `course`.
   const refresh = useCallback(async () => {
-    const attacks = loadAttackDiagnostic().then((d) => d.items.length).catch(() => 0)
-    const defenses = loadDefenseDiagnostic().then((d) => d.items.length).catch(() => 0)
-    const [entries, mistakes, done] = await Promise.all([
+    const [entries, courseRows] = await Promise.all([
       Promise.all((['endgame', 'tactic', 'opening', 'strategy'] as LearnDomain[]).map(async (d) => [d, await domainRating(d)] as const)),
-      db.mistakes.where('solved').equals(0).count(),
-      Promise.all(
-        [BASES, FINALES, ROQUE, DEFENSE, STRUCTURES_COURSE].map(async (c) => {
-          const ids = await c.completedLessons()
-          return [c.slug, c.lessonIds.filter((id) => ids.has(id)).length] as const
-        }),
-      ),
+      db.learnSessions.where('domain').equals('course').toArray(),
     ])
     setRatings(Object.fromEntries(entries))
-    setMistakeCount(mistakes)
-    setLessonsDone(Object.fromEntries(done))
-    setAttackCount(await attacks)
-    setDefenseCount(await defenses)
+    setLessonsDone(new Set(courseRows.map((r) => r.itemId)).size)
   }, [])
 
   useEffect(() => {
@@ -119,9 +107,14 @@ export default function Learn() {
   // Retour depuis l'analyseur (bouton « Analyser ») : restaure la séance en cours.
   // Venue d'une leçon (« S'entraîner ») : séance sur l'exercice demandé, avec retour au cours.
   // Venue d'Insights (plan d'entraînement) : séance Tactiques sur le thème demandé, avec retour.
+  // Venue d'un groupe d'Entraînement ou de Réviser mes parties : séance du domaine, avec retour.
   useEffect(() => {
-    const state = location.state as { restore?: boolean; endgame?: string; tactic?: string; returnTo?: string; returnLabel?: string; pathStep?: string } | null
-    if (state?.tactic) {
+    const state = location.state as { restore?: boolean; endgame?: string; tactic?: string; domain?: LearnDomain; returnTo?: string; returnLabel?: string; pathStep?: string } | null
+    if (state?.domain && state.domain in DOMAIN_META) {
+      const { domain, returnTo: back, returnLabel: label } = state
+      navigate('.', { replace: true, state: null })
+      void start(domain, undefined, back ?? null, label)
+    } else if (state?.tactic) {
       const { tactic, returnTo: back, returnLabel: label } = state
       navigate('.', { replace: true, state: null })
       void start('tactic', tactic, back ?? null, label)
@@ -184,10 +177,12 @@ export default function Learn() {
   // gardée par « Encore une séance » sur le même thème.
   async function start(domain?: LearnDomain, theme?: string, back: string | null = null, label = 'Retour au cours') {
     setLoading(true)
+    let ok = false
     try {
       const d = domain ?? (await pickNextDomain())
       const s = await buildSession(d, { theme })
       if (s.items.length === 0) return
+      ok = true
       setSession(s)
       setItemIdx(0)
       setResults([])
@@ -202,6 +197,10 @@ export default function Learn() {
       console.error('[apprendre] séance non construite', e)
     } finally {
       setLoading(false)
+      setPreparing(false)
+      // Séance demandée depuis une autre page et impossible à construire (puzzles injoignables,
+      // aucune faute à rejouer) : retour à cette page, qui l'annonce.
+      if (!ok && back) navigate(back, { replace: true, state: { sessionFailed: true } })
     }
   }
 
@@ -351,7 +350,7 @@ export default function Learn() {
             <Cta
               variant={returnTo ? 'secondary' : 'primary'}
               className="w-full"
-              onClick={() => void (session.theme ? start('tactic', session.theme, returnTo, returnLabel) : start())}
+              onClick={() => void (returnTo ? start(session.domain, session.theme, returnTo, returnLabel) : start())}
             >
               Encore une séance
             </Cta>
@@ -431,225 +430,59 @@ export default function Learn() {
     )
   }
 
-  // ---------- Accueil Apprendre ----------
-  const domains: LearnDomain[] = ['endgame', 'tactic', 'opening', 'strategy']
+  // ---------- Préparation d'une séance demandée par une autre page ----------
+  if (preparing) {
+    return (
+      <div className="pt-safe pb-safe fixed inset-0 z-40 flex items-center justify-center bg-surface p-6">
+        <p role="status" className="text-muted">Préparation de la séance…</p>
+      </div>
+    )
+  }
+
+  // ---------- Accueil Apprendre : hub guidé ----------
+  // Un prochain pas (le parcours), puis trois portes : les leçons, l'entraînement par compétence
+  // et la révision de ses parties. Chaque porte est une sous-page routée (docs/ux-refonte.md, lot 5).
+  const due = review?.due.length ?? 0
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6">
-      <PageHeader title="🎓 Apprendre" description="Séances de 1 à 2 minutes, adaptées à ton niveau. Un bouton, zéro décision." />
+      <PageHeader title="Apprendre" description="Un prochain pas clair, ou l'entraînement à la carte." />
 
       <PathHero state={path.state} onOpen={() => navigate('/apprendre/parcours')} />
 
-      <div className="mb-4 grid grid-cols-4 gap-2">
-        {domains.map((d) => (
-          <div key={d} className="rounded-xl bg-surface-2 p-3 text-center">
-            <div className="text-2xl">{DOMAIN_META[d].emoji}</div>
-            <div className="text-xl font-black">{ratings[d] ?? '…'}</div>
-            <div className="text-xs text-neutral-400">{DOMAIN_META[d].label}</div>
-          </div>
-        ))}
+      <div className="grid gap-2">
+        <ActivityCard
+          to={LESSONS_ROOT}
+          data-learn="lecons"
+          icon="📚"
+          title="Toutes les leçons"
+          description={lessonsDone ? `Les bases, les finales, l'attaque, la défense et les structures · ${lessonsDone} leçon${lessonsDone > 1 ? 's' : ''} terminée${lessonsDone > 1 ? 's' : ''}` : "Les bases, les finales, l'attaque, la défense et les structures"}
+        />
+        <ActivityCard
+          to={TRAINING_ROOT}
+          data-learn="entrainement"
+          icon="🎯"
+          title="S'entraîner à la carte"
+          description="Tactique, attaque et défense, finales, ouvertures, stratégie"
+        />
+        <ActivityCard
+          to={REVIEW_ROOT}
+          data-learn="mes-parties"
+          icon="🔁"
+          title="Réviser mes parties"
+          description={due > 0 ? `À réviser aujourd'hui : ${due} exercice${due > 1 ? 's' : ''}` : 'Tes erreurs, attaques manquées, défenses ratées et moments critiques'}
+          aside={due > 0 ? <span data-review-count className="shrink-0 rounded-full bg-amber-400 px-2.5 py-0.5 text-sm font-bold text-neutral-900">{due}</span> : undefined}
+        />
       </div>
 
-      <Cta className="mb-4 w-full py-4 text-2xl" onClick={() => void start()} disabled={loading}>
-        {loading ? 'Préparation…' : 'Séance'}
-      </Cta>
-
-      <p className="mb-2 text-sm font-semibold text-neutral-400">Ou cible un domaine :</p>
-      <div className="grid grid-cols-2 gap-2">
-        {domains.map((d) => (
-          <ActivityCard key={d} onClick={() => void start(d)} icon={DOMAIN_META[d].emoji} title={DOMAIN_META[d].label} />
-        ))}
-        <button
-          onClick={() => navigate('/finales')}
-          className="col-span-2 flex cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
-        >
-          <span className="text-2xl">🏁</span>
-          <span className="min-w-0">
-            <span className="block font-bold">Jouer une finale jusqu'au bout</span>
-            <span className="block text-xs text-neutral-400">Contre Stockfish, sans limite de coups</span>
-          </span>
-        </button>
-        <button
-          onClick={() => navigate('/finales/chrono')}
-          data-testid="endgame-clock-card"
-          className="col-span-2 flex cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
-        >
-          <span className="text-2xl">⏱</span>
-          <span className="min-w-0">
-            <span className="block font-bold">Finales au chrono</span>
-            <span className="block text-xs text-neutral-400">Lucena, Philidor, roi et pion : gagne ou tiens la nulle en 15 s</span>
-          </span>
-        </button>
-        <button
-          onClick={() => void start('mistakes')}
-          disabled={mistakeCount === 0}
-          className="col-span-2 flex cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3 disabled:cursor-default disabled:opacity-40"
-        >
-          <span className="text-2xl">🩹</span>
-          <span className="font-bold">Mes erreurs</span>
-          <span className="ml-auto rounded-full bg-accent/20 px-2.5 py-0.5 text-sm font-bold text-accent-light">
-            {mistakeCount}
-          </span>
-        </button>
-      </div>
-      {mistakeCount === 0 && (
-        <p className="mt-2 text-xs text-neutral-400">
-          « Mes erreurs » se remplit automatiquement quand tu fais le bilan d'une partie.
-        </p>
-      )}
-      {/* Révision espacée : descente (push) avec retour ici en fin de séance. */}
-      <Link
-        to="/revision"
-        state={{ returnTo: '/apprendre' }}
-        className="mt-4 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
-      >
-        <span className="text-2xl">🔁</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Révision espacée</span>
-          <span className="block text-xs text-neutral-400">
-            {review === null ? '…'
-              : review.due.length > 0 ? `À réviser aujourd'hui : ${describeKinds(review.due)}`
-              : review.upcoming.length > 0 ? `Rien à réviser aujourd'hui · prochaine ${dueLabel(review.upcoming[0].due)}`
-              : 'Puzzles, erreurs et variantes ratés reviennent à J+1, J+3, J+7 puis J+21'}
-          </span>
-        </span>
-        {review !== null && review.due.length > 0 ? (
-          <span data-review-count className="shrink-0 rounded-full bg-amber-400 px-2.5 py-0.5 text-sm font-bold text-neutral-900">
-            {review.due.length}
-          </span>
-        ) : (
-          <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-        )}
-      </Link>
-      <button
-        onClick={() => navigate('/attaques-manquees')}
-        data-testid="missed-attacks-card"
-        data-count={attackCount}
-        className="mt-2 flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
-      >
-        <span className="text-2xl">🎯</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Mes attaques manquées</span>
-          <span className="block text-xs text-neutral-400">Les moments de tes bilans où Stockfish attaquait le roi : à rejouer contre lui</span>
-        </span>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold ${attackCount > 0 ? 'bg-accent/20 text-accent-light' : 'bg-surface-3 text-neutral-300'}`}>
-          {attackCount}
-        </span>
-      </button>
-      <button
-        onClick={() => navigate('/defenses-ratees')}
-        data-testid="missed-defenses-card"
-        data-count={defenseCount}
-        className="mt-2 flex w-full cursor-pointer items-center gap-3 rounded-xl bg-surface-2 p-3 text-left hover:bg-surface-3"
-      >
-        <span className="text-2xl">🧱</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Mes défenses ratées</span>
-          <span className="block text-xs text-neutral-400">Les moments de tes bilans où ton roi était attaqué et où tu as craqué</span>
-        </span>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold ${defenseCount > 0 ? 'bg-accent/20 text-accent-light' : 'bg-surface-3 text-neutral-300'}`}>
-          {defenseCount}
-        </span>
-      </button>
-      <Link
-        to="/ouvertures"
-        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
-      >
-        <span className="text-2xl">🧭</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Entraîneur d'ouvertures</span>
-          <span className="block text-xs text-neutral-400">Sicilienne, écossaise, gambit dame… variante par variante</span>
-        </span>
-        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-      </Link>
-      <Link
-        to="/repertoire"
-        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
-      >
-        <span className="text-2xl">🗺️</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Mon répertoire</span>
-          <span className="block text-xs text-neutral-400">Où tu sors de la théorie dans tes parties chess.com</span>
-        </span>
-        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-      </Link>
-      {/* Raccourci vers Mats éclair, propriété de l'onglet Puzzles : `from` y ajoute un retour vers Apprendre. */}
-      <Link
-        to="/mats"
-        state={{ from: 'apprendre' }}
-        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
-      >
-        <span className="text-2xl">♚</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Mats éclair</span>
-          <span className="block text-xs text-neutral-400">Mater vite au bullet : contre la montre, mat en N, géométrie, motifs</span>
-        </span>
-        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-      </Link>
-      <Link
-        to="/attaque"
-        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
-      >
-        <span className="text-2xl">⚔️</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Entraîneur d'attaque</span>
-          <span className="block text-xs text-neutral-400">Roques opposés, même aile, roi au centre : mène l'attaque au bout</span>
-        </span>
-        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-      </Link>
-      <Link
-        to="/convertir"
-        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
-      >
-        <span className="text-2xl">🏆</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Convertir l'avantage</span>
-          <span className="block text-xs text-neutral-400">Tu es mieux de +2 à +4 : gagne la partie sans la laisser filer</span>
-        </span>
-        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-      </Link>
-      <Link
-        to="/defense"
-        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
-      >
-        <span className="text-2xl">🛡️</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Entraîneur de défense</span>
-          <span className="block text-xs text-neutral-400">Tiens face à l'attaque sur ton roi</span>
-        </span>
-        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-      </Link>
-      <Link
-        to="/visualisation"
-        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
-      >
-        <span className="text-2xl">🧠</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Calcul et visualisation</span>
-          <span className="block text-xs text-neutral-400">Imagine la ligne sans bouger les pièces, puis réponds</span>
-        </span>
-        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-      </Link>
-      <Link
-        to="/structures"
-        data-testid="my-structures-tile"
-        className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
-      >
-        <span className="text-2xl">🔎</span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Mes structures de pions</span>
-          <span className="block text-xs text-neutral-400">Pion isolé, Carlsbad, chaînes… dans tes parties : résultats et positions à rejouer</span>
-        </span>
-        <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
-      </Link>
-
-      <p className="mt-5 mb-2 text-sm font-semibold text-neutral-400">Cours :</p>
-      <div className="space-y-2">
-        <CourseCard course={BASES} done={lessonsDone[BASES.slug] ?? 0} testId="basics-card-progress" />
-        <CourseCard course={FINALES} done={lessonsDone[FINALES.slug] ?? 0} testId="course-card-progress" />
-        <CourseCard course={ROQUE} done={lessonsDone[ROQUE.slug] ?? 0} testId="attack-card-progress" />
-        <CourseCard course={DEFENSE} done={lessonsDone[DEFENSE.slug] ?? 0} testId="defense-card-progress" />
-        <CourseCard course={STRUCTURES_COURSE} done={lessonsDone[STRUCTURES_COURSE.slug] ?? 0} testId="structures-card-progress" />
-      </div>
+      {/* Séance rapide : la séance automatique existante (un domaine choisi par pickNextDomain),
+          entrée secondaire tant que la séance du jour de l'Accueil ne la remplace pas. */}
+      <section aria-labelledby="learn-quick" className="mt-6">
+        <h2 id="learn-quick" className="text-lg font-semibold">Pas le temps de choisir ?</h2>
+        <p className="mt-1 mb-3 text-sm text-muted">Une séance de 1 à 2 minutes, sur le domaine que tu as le moins travaillé.</p>
+        <Cta variant="secondary" className="w-full" onClick={() => void start()} disabled={loading}>
+          {loading ? 'Préparation…' : 'Séance rapide'}
+        </Cta>
+      </section>
     </div>
   )
 }
@@ -668,7 +501,7 @@ function PathHero({ state, onOpen }: { state: ReturnType<typeof usePathState>['s
     >
       <span className="flex items-center gap-3">
         <span className="min-w-0 flex-1">
-          <span className="block text-xl font-black text-white">🗺️ Parcours d'apprentissage</span>
+          <span className="block text-xl font-black text-white">🗺️ Mon parcours</span>
           <span className="mt-0.5 block truncate text-sm text-white/80">
             {state === null ? '…'
               : cur && level ? `${level.title} · ${cur.step.title}`
@@ -690,17 +523,6 @@ function PathHero({ state, onOpen }: { state: ReturnType<typeof usePathState>['s
         </span>
       )}
     </button>
-  )
-}
-
-// Carte d'un cours (sommaire, progression x/N), section « Cours : » de l'accueil d'Apprendre.
-function CourseCard({ course, done, testId }: { course: LessonCourse; done: number; testId: string }) {
-  const navigate = useNavigate()
-  const total = course.lessonIds.length
-  return (
-    <ActivityCard onClick={() => navigate(course.path)} className="w-full" icon={course.emoji} title={course.title}>
-      <ProgressBar value={done} total={total} label={`Leçons terminées : ${course.title}`} testId={testId} unit="leçons" />
-    </ActivityCard>
   )
 }
 

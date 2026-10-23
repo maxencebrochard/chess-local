@@ -1,5 +1,5 @@
 """Gestes de bord en PWA : annulation native et interactions tactiles conservées."""
-from helpers import BASE, FINALES, Checker, drag_piece, mobile_context, piece_on, scroll_state, sq_center, tap_move, touch_drag
+from helpers import BASE, Checker, drag_piece, mobile_context, piece_on, scroll_state, sq_center, tap_move, touch_drag, open_learn_session
 
 ck = Checker("edge_navigation")
 
@@ -94,8 +94,7 @@ def exercise_drags(p, browser):
             ck.check(f"[diagramme {side}] contact annulé au bord", event and event["trusted"] and event["cancelable"] and event["prevented"], str(event))
         # Le cours complet fournit un diagramme dans une feuille réellement défilable.
         page.set_viewport_size({"width": 393, "height": 660})
-        page.goto(f"{BASE}/#/apprendre")
-        page.locator("main button", has_text=FINALES).tap()
+        open_learn_session(page, "endgame", tap=True)
         page.get_by_text("Voir le cours complet", exact=True).tap()
         if ck.appears("[diagramme centre] cours complet", page, "div.fixed [data-board] [data-piece]"):
             panel = page.locator("div.fixed .overflow-y-auto")
@@ -222,12 +221,13 @@ def suite(p):
     ck.appears("[contenu] bouton près du bord utilisable", page, "textarea", timeout=3000)
     ctx.close()
 
-    ctx = mobile_context(p, browser, ck, standalone=True)
+    # Hub Entraînement d'Apprendre à 393x660 : cinq groupes et la révision dépassent l'écran.
+    ctx = mobile_context(p, browser, ck, standalone=True, viewport={"width": 393, "height": 660})
     page = ctx.new_page()
-    page.goto(f"{BASE}/#/apprendre")
-    ck.appears("[contenu] accueil Apprendre", page, "main button:has-text('Finales')")
+    page.goto(f"{BASE}/#/apprendre/entrainement")
+    ck.appears("[contenu] Entraînement d'Apprendre", page, "main a[data-group=finales]")
     ck.check("[contenu] page assez longue", scroll_state(page)["mainScrollable"])
-    touch_drag(page, 10, 700, 10, 400)
+    touch_drag(page, 10, 560, 10, 260)
     ck.check("[contenu] défilement vertical depuis le bord", scroll_state(page)["mainScrollTop"] > 0)
     ctx.close()
     engine_edge(p, browser)

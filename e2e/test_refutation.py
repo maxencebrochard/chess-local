@@ -21,7 +21,7 @@ import tempfile
 import chess
 
 import coach_oracle as oracle
-from helpers import BASE, SHOTS, Checker, HOLD_BESTMOVE, desktop_context, mobile_context, overflow_x
+from helpers import BASE, SHOTS, Checker, HOLD_BESTMOVE, desktop_context, mobile_context, open_mistakes_session, overflow_x
 
 ck = Checker("refutation")
 check = ck.check
@@ -581,9 +581,7 @@ def mes_erreurs(p, browser):
         ctx.close()
         return
     page.wait_for_timeout(800)
-    page.goto(f"{BASE}/#/apprendre")
-    page.wait_for_timeout(1200)
-    page.locator("button", has_text="Mes erreurs").click()
+    open_mistakes_session(page)
     page.wait_for_timeout(1000)
     page.get_by_role("button", name="C'est parti").click()
     page.wait_for_timeout(600)

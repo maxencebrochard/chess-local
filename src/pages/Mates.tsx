@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { BackButton, PageHeader } from '../components/PageHeader'
 import { PuzzleModes } from '../components/PuzzleModes'
+import { groupBack, LEARN_BACK, originGroup } from '../lib/navigation'
 import { Cta } from '../components/Cta'
 import type { PuzzleData } from '../components/PuzzlePlayer'
 import { ChronoRun } from '../components/mates/ChronoRun'
@@ -130,16 +131,19 @@ export default function Mates() {
 const GLYPH_SIZE: Record<number, string> = { 1: 'text-4xl', 2: 'text-3xl', 3: 'text-xl tracking-tighter' }
 
 // ---------- Accueil ----------
-// Mode de l'onglet Puzzles : le sélecteur des modes est sa sortie. Ouvert depuis le raccourci
-// d'Apprendre (`state.from`), il garde en plus un retour vers Apprendre ; ce state vit dans
-// l'entrée d'historique de l'accueil, retrouvé au retour depuis une fiche.
+// Mode de l'onglet Puzzles : le sélecteur des modes est sa sortie. Ouvert depuis le raccourci du
+// groupe Tactique et calcul d'Apprendre (`state.from`, slug du groupe), il garde en plus un retour
+// vers ce groupe ; ce state vit dans l'entrée d'historique de l'accueil, retrouvé au retour depuis
+// une fiche. `from: 'apprendre'` (raccourci d'avant le lot 5) ramène encore à Apprendre.
 function Hub({ stats, onOpen }: { stats: MatsStats | null; onOpen: (id: string) => void }) {
   const navigate = useNavigate()
-  const fromLearn = (useLocation().state as { from?: string } | null)?.from === 'apprendre'
+  const state = useLocation().state as { from?: string } | null
+  const group = originGroup(state)
+  const back = group ? groupBack(group) : state?.from === 'apprendre' ? LEARN_BACK : null
   return (
     <div className="mx-auto max-w-3xl p-4 md:p-6">
-      {fromLearn && (
-        <BackButton label="Apprendre" onClick={() => navigate('/apprendre')} />
+      {back && (
+        <BackButton label={back.label} onClick={() => navigate(back.to)} />
       )}
       <PuzzleModes current="/mats" className="mb-4" />
       <PageHeader title="Mats éclair" description="Automatise les mats du bullet : vite, juste, sans réfléchir." />
