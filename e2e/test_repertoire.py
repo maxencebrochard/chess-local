@@ -41,6 +41,10 @@ USER = "repertoire_qa"
 START_FEN = chess.STARTING_FEN
 STORES = 7  # games, ratings, puzzleAttempts, rushScores, mistakes, learnSessions, reviews
 COSTLY = 7
+# Premier rendu des cartes après un chargement de page : l'index des positions d'openings.json est
+# reconstruit (environ 8 s sur un Mac au repos, 28 s sous CPU x4, mesuré le 23/10/2026) ; sous la
+# charge des suites parallèles, 15 ou 20 s ont déjà expiré. Un retour dans la même page reste rapide.
+FIRST_LOAD_MS = 60000
 
 with open(os.path.join(E2E_DIR, "fixtures", "chesscom.json"), encoding="utf-8") as f:
     FIXTURE = json.load(f)["routes"]
@@ -707,7 +711,7 @@ def seeded_page(p, browser):
     check(f"{tag} onglet Apprendre allumé", tab.get_attribute("aria-current") is not None)
 
     # Sans réseau : les bilans en cache de ce compte seulement (autre compte, ChessLocal, abîmé exclus).
-    ck.appears(f"{tag} cartes d'ouvertures depuis le cache", page, "[data-opening]", timeout=15000)
+    ck.appears(f"{tag} cartes d'ouvertures depuis le cache", page, "[data-opening]", timeout=FIRST_LOAD_MS)
     check(f"{tag} cache : 4 parties, 4 avec bilan", (attr(page, "[data-games-count]", "data-games-count"), attr(page, "[data-reviewed-count]", "data-reviewed-count")) == ("4", "4"),
           f"({attr(page, '[data-games-count]', 'data-games-count')}, {attr(page, '[data-reviewed-count]', 'data-reviewed-count')})")
     check(f"{tag} cache : aucune requête chess.com avant le tap", calls["n"] == 0, f"({calls['urls']})")
@@ -823,7 +827,7 @@ def seeded_page(p, browser):
                 check(f"{tag} retour : parties chargées conservées (13)", attr(page, "[data-games-count]", "data-games-count") == "13")
                 check(f"{tag} retour : aucune requête de plus", calls["n"] == 4, f"({calls['n']})")
     page.reload()
-    ck.appears(f"{tag} rechargement : cache disponible", page, "[data-opening]", timeout=15000)
+    ck.appears(f"{tag} rechargement : cache disponible", page, "[data-opening]", timeout=FIRST_LOAD_MS)
     check(f"{tag} rechargement : seules les 4 parties en cache persistent",
           attr(page, "[data-games-count]", "data-games-count") == "4" and calls["n"] == 4)
     ctx.close()
@@ -840,7 +844,7 @@ def layouts(p, browser):
             ctx.close()
             continue
         page.locator("[data-load]").click()
-        ck.appears(f"[{name}] parties chargées", page, "[data-opening]", timeout=20000)
+        ck.appears(f"[{name}] parties chargées", page, "[data-opening]", timeout=FIRST_LOAD_MS)
         page.wait_for_timeout(300)
         check(f"[{name}] pas de débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
         page.screenshot(path=f"{SHOTS}/repertoire_{name}.png")
@@ -874,7 +878,7 @@ def no_username(p, browser):
     check(f"{tag} pseudo inconnu non mémorisé", stored == "", f"({stored!r})")
     page.fill("#rep-user", "  Repertoire_QA ")
     page.locator("[data-load]").click()
-    ck.appears(f"{tag} pseudo valide : parties chargées", page, "[data-opening]", timeout=20000)
+    ck.appears(f"{tag} pseudo valide : parties chargées", page, "[data-opening]", timeout=FIRST_LOAD_MS)
     page.screenshot(path=f"{SHOTS}/repertoire_first_load.png", full_page=True)
     stored = page.evaluate("() => JSON.parse(localStorage.getItem('chess-local-settings')).state.chesscomUsername")
     check(f"{tag} pseudo normalisé mémorisé après le chargement", stored == USER, f"({stored!r})")
