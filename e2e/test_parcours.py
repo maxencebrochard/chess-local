@@ -564,7 +564,8 @@ def part_puzzle_step(page):
     check("[reprise carte] étape courante dans l'écran à l'ouverture", cur is not None and 0 <= cur["y"] and cur["y"] + cur["height"] <= vp["height"])
     check("[reprise carte] carte du test de placement remplacée par le lien", page.locator("[data-testid=placement-card]").count() == 0 and page.get_by_role("button", name="Refaire le test de placement").count() == 1)
     go(page, "/apprendre")
-    ck.appears("[apprendre] carte héro relue", page, "[data-testid=path-hero]")
+    # La carte s'affiche avant la progression (« … ») : attendre le compteur, lu après coup dans Dexie.
+    ck.appears("[apprendre] carte héro relue", page, "[data-testid=path-hero-progress]")
     hero = page.locator("[data-testid=path-hero]").inner_text()
     check("[apprendre] carte héro : Continuer, étape courante, 2/N", "Continuer" in hero and STEPS[2]["title"] in hero and f"2/{TOTAL}" in hero, f"({hero!r})")
 

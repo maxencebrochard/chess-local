@@ -818,8 +818,13 @@ def bot_part(p, browser):
     # ---------- Prémouvement en file au moment du coup du bot : pas de question ----------
     ctx = mobile_context(p, browser, ck, standalone=True)
     ctx.add_init_script(HOLD_BESTMOVE)
-    ctx.add_init_script("""(() => { window.__asked = false; new MutationObserver(() => {
-      if (document.querySelector("[data-threat='ask']")) window.__asked = true
+    # Le bot, libre après la libération, répond à Dh4 par un coup tiré au hasard qui peut créer
+    # une vraie menace (3...e6 ouvre d8-h4). Seule une question posée avant cette réponse (sur g6,
+    # avant ou après Dh4) est fautive. L'instantané, écrit dès la question posée, en donne la position.
+    ctx.add_init_script("""(() => { window.__askedPlies = []; new MutationObserver(() => {
+      if (!document.querySelector("[data-threat='ask']")) return
+      const n = JSON.parse(localStorage.getItem('chess-local-play-game') ?? 'null')?.sans.length
+      if (window.__askedPlies.at(-1) !== n) window.__askedPlies.push(n)
     }).observe(document, { subtree: true, attributes: true, childList: true }) })()""")
     page = ctx.new_page()
     open_play(page)
@@ -838,7 +843,8 @@ def bot_part(p, browser):
         page.wait_for_timeout(200)
     check("[prémouvement] Dh4 exécuté juste après g6", ok and released >= 1, f"({released} réponses retenues)")
     page.wait_for_timeout(3000)
-    check("[prémouvement] aucune question posée", page.evaluate("() => window.__asked") is False)
+    asked = page.evaluate("() => window.__askedPlies")
+    check("[prémouvement] aucune question sur g6", all(n is not None and n >= 6 for n in asked), f"(questions aux demi-coups {asked})")
     ctx.close()
 
     # ---------- Bullet : indisponible ----------
