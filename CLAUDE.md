@@ -112,7 +112,7 @@ Autres scripts :
   Un second déploiement le même jour UTC prend le suffixe `-2` (puis `-3`...) : `deployed-AAAA-MM-JJ-2`.
 - `?debug-uci` dans l'URL logge le trafic UCI en console.
 - `npm run ios:sync` construit le web puis le copie dans le projet Xcode `ios/` (Capacitor 8, SPM) ; `npm run ios:open` ouvre Xcode.
-  Il faut Xcode 26 ou plus, absent de la machine de développement à ce jour : voir `docs/ios-app.md`.
+  Il faut Xcode 26 ou plus : voir `docs/ios-app.md`.
 - `node scripts/bench-bots.mjs --preset chain --games 80 --out bench.jsonl` mesure l'Elo des bots (parties bot contre bot, Bradley-Terry ancré sur Iris = 1600, IC 95 % par bootstrap).
   Il exécute la vraie `bots.ts` et la vraie classe `Engine` sur le même WASM, dans Node ; compter environ une heure.
   À relancer après tout changement de style ou d'Elo d'un bot faible.
