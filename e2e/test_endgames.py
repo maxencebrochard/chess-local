@@ -5,7 +5,7 @@
 2. « Mat roi + dame » : trois va-et-vient de dame ne donnent PAS « Réussi », la barre d'éval ne
    reste pas à « 0,00 » sans coup joué.
 3. « Mat roi + dame » : un vrai mat donne « Réussi » avec son motif, et la barre affiche « M<n> ».
-4. « L'opposition de base » : les meilleurs coups mènent à la promotion et au « Réussi », jamais « Raté ».
+4. « L'opposition de base » : les meilleurs coups mènent à la promotion et au « Réussi », jamais « À revoir ».
 
 Le joueur est piloté par un second worker Stockfish créé dans la page (le même WASM que l'app),
 sur une FEN reconstruite depuis le DOM : aucune dépendance à python-chess ni à un Stockfish natif.
@@ -150,7 +150,7 @@ def move_between(before, after, color):
 def verdict(page):
     if page.locator("text=✓ Réussi").count():
         return "success"
-    if page.locator("text=✗ Raté").count():
+    if page.locator("text=✗ À revoir").count():
         return "fail"
     return None
 
@@ -338,7 +338,7 @@ def suite(p):
     if start_endgame(page, "kp-opposition-1"):
         v, labels = drive(page, opp, depth=20, max_moves=40, tag="opposition")
         check("[opposition] les meilleurs coups donnent « Réussi »", v == "success", f"(verdict : {v}, {len(labels)} coups)")
-        check("[opposition] jamais « Raté »", v != "fail")
+        check("[opposition] jamais « À revoir »", v != "fail")
         check("[opposition] motif « promu » affiché", page.locator("text=promu").count() > 0)
         shot(page, "endgames_opposition_end")
 

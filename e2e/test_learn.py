@@ -30,26 +30,26 @@ THEMES = (
     "zugzwang exposedKing discoveredCheck advancedPawn kingsideAttack quietMove"
 )
 
-# Géométrie de la barre de verdict, lue sans dépendre de ses classes : le libellé est le span
-# qui contient « Réussi » ou « Raté », la barre est son parent. Les lignes de texte sont comptées
-# par les rectangles du texte (Range), donc un « ! » rejeté seul à la ligne compte pour deux.
+# Géométrie de la zone de verdict (components/Exercise.tsx) : libellé, variation de classement et
+# actions. Les lignes de texte sont comptées par les rectangles du texte (Range), donc un mot
+# rejeté seul à la ligne compte pour deux.
 VERDICT_GEOM = r"""() => {
-  const label = [...document.querySelectorAll('main span')].find((s) => /^(✓ Réussi|✗ Raté)/.test(s.textContent.trim()))
+  const zone = document.querySelector('[data-exercise-feedback]')
+  const label = zone?.querySelector('[data-exercise-verdict]')
   if (!label) return null
-  let bar = label.parentElement
-  while (bar && !bar.querySelector('button')) bar = bar.parentElement
   const lines = (el) => {
     const r = document.createRange()
     r.selectNodeContents(el)
     return new Set([...r.getClientRects()].filter((q) => q.width > 0).map((q) => Math.round(q.top))).size
   }
-  const delta = [...bar.querySelectorAll('span')].find((s) => /^\(?[+-]\d+\)?$/.test(s.textContent.trim()))
-  const next = [...bar.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Suivant')
-  const b = bar.getBoundingClientRect(), n = next.getBoundingClientRect(), l = label.getBoundingClientRect()
+  const delta = zone.querySelector('[data-rating-delta]')
+  const buttons = [...zone.querySelectorAll('button')]
+  const centers = new Set(buttons.map((x) => { const q = x.getBoundingClientRect(); return Math.round((q.top + q.bottom) / 2) }))
+  const cta = zone.querySelector('.ui-cta').getBoundingClientRect(), l = label.getBoundingClientRect()
   return {
     text: label.textContent.trim(), labelLines: lines(label),
     delta: delta ? delta.textContent.trim() : null, deltaLines: delta ? lines(delta) : 0,
-    barH: Math.round(b.height), left: Math.round(l.left), right: Math.round(window.innerWidth - n.right),
+    rows: centers.size, left: Math.round(l.left), right: Math.round(window.innerWidth - cta.right),
   }
 }"""
 
@@ -70,15 +70,15 @@ def verdict_bar(p, browser, standalone):
         sq(page, frm)
         page.wait_for_timeout(200)
         sq(page, to)
-        ck.appears(f"[{tag}] {outcome} : verdict affiché", page, "text=Suivant", timeout=8000)
+        ck.appears(f"[{tag}] {outcome} : verdict affiché", page, "[data-exercise-verdict]", timeout=8000)
         page.wait_for_timeout(600)
         g = page.evaluate(VERDICT_GEOM)
         if not check(f"[{tag}] {outcome} : barre de verdict trouvée", g is not None):
             break
         check(f"[{tag}] {outcome} : libellé « {g['text']} » sur une seule ligne", g["labelLines"] == 1, f"({g['labelLines']} lignes)")
         check(f"[{tag}] {outcome} : delta d'Elo affiché sur une ligne", g["delta"] is not None and g["deltaLines"] == 1, f"({g['delta']}, {g['deltaLines']} lignes)")
-        # Une seule rangée : la hauteur est celle du bouton Suivant (52 px) plus les marges de 8 px.
-        check(f"[{tag}] {outcome} : barre sur une rangée (≤ 68 px)", g["barH"] <= 68, f"({g['barH']} px)")
+        check(f"[{tag}] {outcome} : libellé attendu", g["text"] == ("✓ Réussi" if outcome == "réussi" else "✗ À revoir"), f"({g['text']!r})")
+        check(f"[{tag}] {outcome} : actions sur une rangée", g["rows"] == 1, f"({g['rows']} rangées)")
         check(f"[{tag}] {outcome} : marges symétriques de 12 px", abs(g["left"] - 12) <= 1 and abs(g["right"] - 12) <= 1, f"(gauche {g['left']}, droite {g['right']})")
         check(f"[{tag}] {outcome} : aucun débordement horizontal", overflow_x(page) == 0)
         page.screenshot(path=f"{SHOTS}/learn_verdict_{outcome}_{'852' if standalone else '660'}.png")
@@ -254,7 +254,7 @@ def suite(p):
         if played:
             break
     # Vérification moteur éventuelle : attente du verdict plutôt qu'un délai fixe de 12 s.
-    ck.appears("[learn] verdict après coup", page, "text=/Réussi|Raté/", timeout=30000)
+    ck.appears("[learn] verdict après coup", page, "[data-exercise-verdict]", timeout=30000)
     check("[learn] bouton Réessayer", page.locator("button", has_text="Réessayer").is_visible())
     check("[learn] bouton Analyser", page.locator("button", has_text="Analyser").is_visible())
     page.locator("button", has_text="Réessayer").click()
