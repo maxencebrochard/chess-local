@@ -16,6 +16,7 @@ import {
   type Cadence, type ChronoPosition, type ChronoRunSummary, type Drill, type MatsReturn, type RunStats,
 } from '../../lib/mates'
 import { stashExercise } from '../../lib/exerciseReturn'
+import { replay } from '../../lib/positionGame'
 import { playComputerMove, playMoveSound, sounds } from '../../lib/sounds'
 import { usePlayerClock } from '../usePlayerClock'
 
@@ -343,10 +344,4 @@ function ChronoSeries({ drill, cadence, budget, stats, getEngine, onDone, onMenu
       )}
     </div>
   )
-}
-
-function replay(fen: string, moves: string[]): Chess {
-  const c = new Chess(fen)
-  for (const m of moves) c.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] })
-  return c
 }

@@ -5,7 +5,7 @@
 // l'étape dans l'analyseur, et son retour rend la même étape (ligne au même coup).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Chess, type Move } from 'chess.js'
+import type { Move } from 'chess.js'
 import { ActivityCard } from '../components/ActivityCard'
 import { PageHeader } from '../components/PageHeader'
 import { ProgressBar } from '../components/ProgressBar'
@@ -14,6 +14,7 @@ import { CoachBubble } from '../components/CoachBubble'
 import { Cta } from '../components/Cta'
 import { lineUci, type Course, type DiagramStep, type Lesson, type LineStep, type MarkColor } from '../lib/lessonCourse'
 import { ENDGAMES } from '../lib/learn'
+import { replay } from '../lib/positionGame'
 import { stepById } from '../lib/learningPath'
 import { figurine } from '../lib/review'
 import { playMoveSound, sounds } from '../lib/sounds'
@@ -131,9 +132,10 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
   const raw = Number(params.get('etape'))
   const stepIdx = Number.isInteger(raw) && raw >= 1 && raw <= total ? raw - 1 : 0
   const step = lesson.steps[stepIdx] ?? null
-  const restoredPly = returned && returned.step === stepIdx && step?.kind === 'line' ? returned.ply : 0
+  const [restoredStep, setRestoredStep] = useState(() => returned?.step ?? -1)
+  const restoredPly = returned && restoredStep === stepIdx && step?.kind === 'line' ? returned.ply : 0
   const [lineDone, setLineDone] = useState(() => step?.kind === 'line' && restoredPly >= step.moves.length)
-  const [replay, setReplay] = useState(0)
+  const [replays, setReplays] = useState(0)
   const plyRef = useRef(restoredPly) // coup atteint dans la ligne affichée
 
   // Retour lu : un rechargement repart de l'étape (ligne recommencée), l'origine « séance » reste.
@@ -149,6 +151,7 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
   }, [isSummary, id, course])
 
   function goTo(i: number) {
+    setRestoredStep(-1)
     setLineDone(false)
     plyRef.current = 0
     setParams({ ...(pathStep ? { parcours: pathStep.id } : {}), ...(i === 0 ? {} : { etape: String(i + 1) }) }, { replace: true })
@@ -201,10 +204,10 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
           {step?.kind === 'diagram' && <DiagramView step={step} />}
           {step?.kind === 'line' && (
             <LineView
-              key={`${stepIdx}-${replay}`}
+              key={`${stepIdx}-${replays}`}
               step={step}
               refusals={course.refusals}
-              startPly={replay === 0 ? restoredPly : 0}
+              startPly={restoredPly}
               onProgress={(ply) => (plyRef.current = ply)}
               onDone={() => setLineDone(true)}
             />
@@ -268,9 +271,10 @@ function LessonView({ course, id, lesson }: { course: Course; id: string; lesson
             {step?.kind === 'line' && lineDone && (
               <button
                 onClick={() => {
+                  setRestoredStep(-1)
                   setLineDone(false)
                   plyRef.current = 0
-                  setReplay((r) => r + 1)
+                  setReplays((r) => r + 1)
                 }}
                 className="cursor-pointer rounded-lg px-3 py-2 text-sm font-semibold text-neutral-300 hover:text-white"
               >
@@ -340,11 +344,7 @@ function LineView({ step, refusals, startPly = 0, onProgress, onDone }: {
   const ucis = useMemo(() => lineUci(step), [step])
   // Coup du joueur sans sa réponse (analyse ouverte pendant la pause) : la réponse est rejouée aussi.
   const start = Math.min(startPly % 2 === 1 ? startPly + 1 : startPly, step.moves.length)
-  const [chess] = useState(() => {
-    const c = new Chess(step.fen)
-    for (const u of ucis.slice(0, start)) c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] })
-    return c
-  })
+  const [chess] = useState(() => replay(step.fen, ucis.slice(0, start)))
   const chessRef = useRef(chess)
   const [fen, setFen] = useState(() => chess.fen())
   const [ply, setPlyState] = useState(start)
