@@ -1,5 +1,4 @@
 """Régressions de sélection et de plans des structures."""
-import re
 
 from helpers import BASE, Checker, mobile_context, shot
 from test_structures import SEED_JS, GAME
@@ -51,10 +50,14 @@ def suite(p):
                 page.wait_for_selector(GAME)
             ck.check(f"{sid}/{game_id} titre, rechargement={refresh}", page.locator("h1").inner_text() == title)
             ck.check(f"{sid}/{game_id} camp, rechargement={refresh}", hint in page.locator(GAME).inner_text())
-            page.get_by_role("button", name=re.compile(r"^Plan [▴▾]$")).click()
-            ck.check(f"{sid}/{game_id} plan, rechargement={refresh}", plan in page.locator(GAME).inner_text())
+            page.get_by_role("button", name="Plan", exact=True).click()
+            sheet = page.get_by_role("dialog", name="Plan")
+            ck.appears(f"{sid}/{game_id} feuille du plan ouverte, rechargement={refresh}", page, "[data-testid='info-sheet']", timeout=5000)
+            ck.check(f"{sid}/{game_id} plan, rechargement={refresh}", sheet.count() == 1 and plan in sheet.inner_text())
             if refresh:
                 shot(page, f"structures_selection_{sid}_{game_id}")
+            sheet.get_by_role("button", name="Retour à la partie").click()
+            ck.check(f"{sid}/{game_id} feuille du plan refermée, rechargement={refresh}", page.locator("[data-testid='info-sheet']").count() == 0)
         ck.check(f"{sid}/{game_id} clé distingue la structure", key.endswith(f"@{sid}"))
     ck.check("Parties déjà chargées : aucun appel chess.com", not chesscom_requests, str(chesscom_requests))
     ctx.close()
