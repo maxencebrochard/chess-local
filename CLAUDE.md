@@ -64,6 +64,7 @@ Après un déploiement, ajouter le nouveau tag à `OLD_BUILDS` et retirer un bui
 Chaque lancement build dans son propre dossier temporaire, jamais dans `dist/` : deux lancements simultanés ne se gênent pas.
 Les captures vont dans `e2e/shots/` (gitignoré).
 La suite `ux_audit` photographie les familles de routes et leurs états principaux aux trois formats de référence, avec inventaire DOM dans `e2e/shots/ux-audit/{prod,dev}/`.
+Elle lit la table des routes dans l'arbre React monté et échoue si une route déclarée dans `App.tsx` n'a aucun état dans sa matrice : toute nouvelle route s'y ajoute (`UX_AUDIT_FORGET=<chemin>` en fait la preuve par mutation).
 Le diagnostic et le plan de refonte différée sont dans [docs/ux-refonte.md](docs/ux-refonte.md), sans changement des routes ni des domaines `learnSessions` dans cette phase.
 `E2E_CPU_RATE=40 npm run test:e2e -- --suite cours_roque --suite endgame_course --suite cours_defense` reproduit un CPU ralenti via CDP (facteur 1 par défaut), sans changer les délais des assertions.
 Les gestes partagés de ces suites vivent dans `e2e/course_helpers.py` : attendre le titre et le numéro d’étape après navigation, puis le changement de tour après Solution.

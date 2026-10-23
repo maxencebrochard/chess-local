@@ -3,6 +3,8 @@
 npm run test:e2e -- --suite ux_audit
 Les captures et mesures restent dans shots/ux-audit/{prod,dev}.
 Les écarts visuels sont mesurés, pas approuvés par le succès de la suite.
+Chaque route déclarée par l'app (lue dans l'arbre React monté) doit figurer dans la matrice :
+UX_AUDIT_FORGET=/convertir prouve qu'une route oubliée fait échouer la suite.
 """
 import json
 import os
@@ -20,6 +22,7 @@ MODE = "prod" if os.environ.get("E2E_DIST") else "dev"
 OUT = Path(SHOTS) / "ux-audit" / MODE
 OUT.mkdir(parents=True, exist_ok=True)
 ROWS = []
+DECLARED = set()
 
 
 def data(name):
@@ -110,6 +113,67 @@ def visit(page, fmt, path, name, marker):
     ck.check(f"{fmt}/{name} : URL après rendu", page.url.endswith(f"#{path}"))
 
 
+# Routes réellement montées : le `<Routes>` d'App.tsx ne devient pas une fibre par `<Route>`
+# (react-router les lit par `createRoutesFromChildren`), mais la fibre de `Routes` porte ses
+# éléments `<Route>` dans `memoizedProps.children`. Le parcours part d'un nœud DOM rendu et ne
+# dépend d'aucun nom de composant : il marche sur le build minifié et quel que soit l'`element`
+# (import direct ou chargement à la demande).
+DECLARED_ROUTES_JS = """() => {
+  const start = document.querySelector('main');
+  const key = start && Object.keys(start).find(k => k.startsWith('__reactFiber$'));
+  if (!key) return null;
+  let root = start[key];
+  while (root.return) root = root.return;
+  const routeTable = children => {
+    const list = (Array.isArray(children) ? children.flat(Infinity) : [children]).filter(c => c && typeof c === 'object');
+    return list.length > 0 && list.every(c => c.props && (typeof c.props.path === 'string' || c.props.index)) ? list : null;
+  };
+  const flatten = (elements, prefix) => elements.flatMap(e => {
+    const path = e.props.index ? prefix : (e.props.path.startsWith('/') || !prefix ? e.props.path : `${prefix.replace(/\\/$/, '')}/${e.props.path}`);
+    const nested = e.props.children ? routeTable(e.props.children) : null;
+    return [path, ...(nested ? flatten(nested, path) : [])];
+  });
+  const found = new Set();
+  const stack = [root];
+  while (stack.length) {
+    const fiber = stack.pop();
+    const table = fiber.memoizedProps && routeTable(fiber.memoizedProps.children);
+    if (table) flatten(table, '').forEach(r => found.add(r));
+    if (fiber.child) stack.push(fiber.child);
+    if (fiber.sibling) stack.push(fiber.sibling);
+  }
+  return [...found];
+}"""
+
+
+def route_regex(pattern):
+    return re.compile("^" + "/".join("[^/]+" if seg.startswith(":") else re.escape(seg) for seg in pattern.split("/")) + "$")
+
+
+def best_route(path, patterns):
+    """Route retenue pour `path`, au classement de react-router : un segment statique l'emporte sur un paramètre."""
+    matching = [r for r in patterns if r != "*" and route_regex(r).match(path)]
+    return max(matching, key=lambda r: sum(0 if seg.startswith(":") else 1 for seg in r.split("/")), default="*")
+
+
+def check_route_coverage(page, fmt, visited):
+    """Chaque route déclarée doit être photographiée par l'audit : une route ajoutée sans
+    extension de la matrice fait échouer la suite."""
+    page.goto(f"{BASE}/#/")
+    page.wait_for_selector("main h1", timeout=15000)
+    declared = page.evaluate(DECLARED_ROUTES_JS) or []
+    # Garde contre un parcours vide ou partiel qui rendrait la comparaison vacuement vraie.
+    ck.check(f"{fmt} : table des routes lue dans l'app ({len(declared)} routes)",
+             "/" in declared and "*" in declared and len(declared) >= 40, str(declared))
+    covered = {best_route(path, declared) for path in visited}
+    for route in sorted(declared):
+        ck.check(f"{fmt} : route {route} couverte par l'audit", route in covered,
+                 "absente de la matrice : ajouter un état à `routes` dans test_ux_audit.py")
+    for path in sorted(visited):
+        ck.check(f"{fmt} : chemin audité {path} servi par une route déclarée", best_route(path, declared) != "*" or path == "/route-inconnue")
+    return declared
+
+
 def context(p, browser, fmt, height):
     if fmt == "desktop":
         return desktop_context(browser, ck, service_workers="block")
@@ -161,13 +225,23 @@ def suite(p):
             ("/moment-critique", "moment-vide", "Aucun moment critique"),
             ("/apprendre/bases", "cours-bases", "Les bases"),
             ("/apprendre/parcours", "parcours", "Parcours d'apprentissage"),
+            ("/apprendre/defense", "cours-defense", "Tenir sous l'attaque"),
+            # `:text()` trouverait aussi la carte « Mes structures de pions » : le marqueur prouve le bloc `extra`.
+            ("/apprendre/structures", "cours-structures", "[data-testid='my-structures-card']"),
+            ("/structures", "structures", "[data-testid='structures-summary'], [data-testid='structures-empty']"),
+            ("/structures/local:999999@14@iqp", "structures-absent", "[data-testid='structure-missing']"),
+            ("/convertir", "convertir", "Convertir l'avantage"),
+            ("/finales/chrono", "finales-chrono", "Finales au chrono"),
+            ("/seance", "seance-du-jour", "Séance du jour"),
         ]
         for path, filename, name in [("/attaque", "attacks.json", "attaque-exercice"),
                                       ("/defense", "defenses.json", "defense-exercice"),
-                                      ("/finales", "endgames.json", "finale-exercice")]:
+                                      ("/finales", "endgames.json", "finale-exercice"),
+                                      ("/convertir", "conversions.json", "convertir-exercice")]:
             item = data(filename)[0]
             routes.append((f"{path}/{item['id']}", name, "Abandonner"))
-        for slug, filename in [("finales", "endgameCourse.json"), ("roque", "attackCourse.json"), ("bases", "basicsCourse.json")]:
+        for slug, filename in [("finales", "endgameCourse.json"), ("roque", "attackCourse.json"), ("bases", "basicsCourse.json"),
+                               ("defense", "defenseCourse.json"), ("structures", "structuresCourse.json")]:
             course = data(filename)
             lid = course["chapters"][0]["lessons"][0]
             routes.append((f"/apprendre/{slug}/{lid}", f"lecon-{slug}", course["lessons"][lid]["title"]))
@@ -176,8 +250,18 @@ def suite(p):
         routes.append(("/apprendre/parcours/placement", "parcours-placement", "Test de placement"))
         for path in ["/attaques-manquees", "/defenses-ratees"]:
             routes.append((f"{path}/999999", path[1:]+"-absent", "pas dans ta liste"))
+        # Preuve par mutation : `UX_AUDIT_FORGET=/convertir` retire ce chemin de la matrice, la
+        # couverture des routes doit alors échouer.
+        routes = [r for r in routes if r[0] != os.environ.get("UX_AUDIT_FORGET")]
         for path, name, marker in routes:
             visit(page, fmt, path, name, marker)
+        # Repli `*` : une URL inconnue revient à l'accueil.
+        page.goto(f"{BASE}/#/route-inconnue")
+        page.wait_for_url(f"{BASE}/#/", timeout=15000)
+        capture(page, fmt, "route-inconnue", "ChessLocal")
+        ck.check(f"{fmt}/route-inconnue : repli vers l'accueil", page.url.endswith("#/"))
+        declared = check_route_coverage(page, fmt, [r[0] for r in routes] + ["/route-inconnue"])
+        DECLARED.update(declared)
 
         # Parcours par l'interface : onglets, puis cours et retour explicite.
         page.goto(f"{BASE}/")
@@ -228,6 +312,9 @@ def suite(p):
             capture(page, fmt, drill+"-fiche", "Commencer")
             page.get_by_role("button", name="Commencer", exact=True).click()
             capture(page, fmt, drill+"-exercice", "[data-board]", selector=True)
+        page.goto(f"{BASE}/#/finales/chrono")
+        page.locator("button[data-serie]").first.click()
+        capture(page, fmt, "finales-chrono-serie", "[data-run='endgame-clock']", selector=True)
         page.goto(f"{BASE}/#/ouvertures")
         page.locator("button").filter(has_text="Sicilienne").first.click()
         capture(page, fmt, "ouverture-fiche", "Variantes")
@@ -345,6 +432,8 @@ def suite(p):
         loading_ctx.close()
     browser.close()
     ck.check("Les trois formats ont été capturés", {r["format"] for r in ROWS} == {"iphone852", "iphone660", "desktop"})
+    (OUT / "routes.json").write_text(json.dumps(sorted(DECLARED), ensure_ascii=False, indent=2))
+    print(f"Routes déclarées et couvertes : {len(DECLARED)}")
     print(f"Inventaire : {len(ROWS)} états, {sum(len(r['screenshots']) for r in ROWS)} captures ; {OUT}")
 
 

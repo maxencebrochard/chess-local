@@ -7,6 +7,7 @@ L’accueil donne une action prioritaire ; Apprendre distingue les parcours guid
 Max a validé cette architecture (« ok go pour tout »).
 La phase 1 ci-dessous est conservée comme diagnostic historique ; le lot 1 est mis en œuvre séparément, sans modification de la navigation.
 Les lots 2 et suivants restent différés.
+Le [lot 0](#lot-0--réconciliation-après-fusion-complète) réconcilie l’audit avec la base où toutes les features retenues sont fusionnées : chaque route y a sa place cible.
 
 ## Actualisation après synchronisation sur main
 
@@ -49,8 +50,245 @@ Avec révision due et insets simulés, Accueil reste à 665 px de contenu pour 5
 | Défense | `/defense`, `/defense/:id`, `/defenses-ratees`, `/defenses-ratees/:id` | Domaines existants |
 | Lanceur parallèle | `e2e/run.py`, `--jobs 1` ou `2` sous verrou | Journaux et durées locaux |
 
-Aucune route de cours de défense distincte n’est présente dans cette base : ne pas confondre l’entraîneur de défense fusionné et une future route de cours.
+Aucune route de cours de défense distincte n’était présente dans la base du lot 1 ; le cours « Tenir sous l’attaque » (`/apprendre/defense`) a été fusionné depuis, voir le [lot 0](#lot-0--réconciliation-après-fusion-complète).
 Le tableau des branches de la phase 1 reste historique ; seules les intégrations ci-dessus sont constatées sur cette base.
+
+## Lot 0 : réconciliation après fusion complète
+
+Base du lot 0 : `31a2e60` (`origin/main` du 23 octobre 2026), après fusion de toutes les features retenues.
+Q3 (chargement des routes à la demande) est encore sur sa branche : le lot 0 ne touche ni `src/App.tsx` ni son mécanisme de chargement.
+Aucune route, aucun domaine `learnSessions`, aucune clé de stockage ni aucun écran n’est modifié : seuls l’audit et ce document changent.
+Les décisions validées le 17 octobre (cinq onglets, Entraînement en cinq groupes sous Apprendre, Plus avec parties, outils et réglages) sont reprises telles quelles ; chaque route actuelle y reçoit une place.
+
+### Inventaire et contrôle des routes
+
+`src/App.tsx` déclare 45 routes explicites et le repli `*` vers l’accueil, soit 46 entrées.
+Le premier audit en comptait 28, le lot 1 en couvrait 35.
+Avant le lot 0, d’après la lecture de l’ancienne matrice, dix routes déclarées n’étaient photographiées par aucun état de l’audit : `/seance`, `/convertir`, `/convertir/:id`, `/finales/chrono`, `/structures`, `/structures/:key`, `/apprendre/defense`, `/apprendre/defense/:id`, `/apprendre/structures` et `/apprendre/structures/:id` ; le repli `*` ne l’était pas non plus.
+La matrice de `e2e/test_ux_audit.py` les couvre maintenant, avec l’exercice de conversion, une série de Finales au chrono, la leçon d’entrée des deux nouveaux cours, la liste vide de Mes structures et une position de structure absente.
+
+La suite lit la table des routes dans l’app en cours d’exécution, pas dans le texte source.
+React Router ne crée pas de fibre par `<Route>` : il lit les éléments enfants de `<Routes>` par `createRoutesFromChildren`.
+La fibre de `Routes` porte donc ces éléments dans `memoizedProps.children`, que la suite atteint depuis le nœud `main` rendu, sans dépendre d’aucun nom de composant.
+Le contrôle fonctionne sur le build minifié comme en développement, et reste valable si l’`element` d’une route devient un composant chargé à la demande.
+Pour chaque route déclarée, un check exige au moins un chemin audité dont la meilleure correspondance, au classement de React Router (segment statique avant paramètre), est cette route : `/finales/chrono` n’est donc pas couverte par `/finales/:id`.
+Un check de garde exige au moins 40 routes, dont `/` et `*`, pour qu’un parcours de l’arbre cassé échoue au lieu de passer à vide.
+`UX_AUDIT_FORGET=/convertir` retire un chemin de la matrice : la suite échoue alors sur « route /convertir couverte par l’audit » aux trois formats (preuve par mutation, code 1).
+
+Limite : le contrôle s’appuie sur des internes de React (`__reactFiber$`, `memoizedProps`), stables depuis React 16 mais non publics.
+Si React les change, ou si un lot remplace `<Routes>` par des objets de route (`useRoutes`, `createHashRouter`), le check de garde échoue bruyamment.
+Il faudrait alors lire ces objets de route, ou à défaut analyser `src/App.tsx` avec l’API du compilateur TypeScript (`ts.createSourceFile`, déjà dans `node_modules`) ; un grep du texte source reste exclu.
+
+### Placement cible de chaque route
+
+« Onglet actuel » est l’onglet allumé par `NAV` dans `src/App.tsx` ; « Place cible » applique l’architecture validée.
+Les routes restent identiques : le lot 2 ne change que le rattachement et les entrées.
+
+| Route | États audités (préfixe de capture) | Onglet actuel | Place cible | Persistance |
+|---|---|---|---|---|
+| `/` | `accueil`, `accueil-revision`, insets simulés, focus clavier | Accueil | Accueil | Aucune propre |
+| `/seance` | `seance-du-jour` | Accueil | Accueil, carte principale « Ta séance du jour » | `seance`, plus les domaines des étapes |
+| `/jouer` | `jouer`, `jouer-local`, `jouer-coach`, `partie`, `abandon-confirmation`, `fin-partie`, `bilan-partie` | Jouer | Jouer : contre un bot, avec le coach (alerte menace), à deux | `games`, `ratings` des cadences, `threat-check` |
+| `/puzzles` | `puzzles`, `puzzles-chargement`, `puzzle-fixture`, `puzzle-reussi`, `puzzles-erreur`, `puzzles-reprise` | Puzzles | Puzzles | `puzzleAttempts`, `ratings` `puzzle` |
+| `/rush` | `rush`, `rush-exercice`, `rush-resultat` | Puzzles | Puzzles / Rush | `rushScores` |
+| `/mats` | `mats`, fiches et exercices `mat-chrono`, `mate-1`, `geo-escalier`, `motif-damiano` | Apprendre | Puzzles / Mats éclair, raccourci depuis Tactique et calcul | `mats` |
+| `/apprendre` | `apprendre`, séances et exercices des quatre domaines, `mes-erreurs`, `seance-verdict`, `seance-analyse`, `seance-bilan` | Apprendre | Hub Apprendre ; séance rapide et domaines rangés dans les groupes d’Entraînement ; Mes erreurs dans Réviser mes parties | `endgame`, `tactic`, `opening`, `strategy`, `mistakes` |
+| `/apprendre/parcours` | `parcours` | Apprendre | Apprendre / Mon parcours | `path` |
+| `/apprendre/parcours/:id` | `parcours-etape`, `parcours-placement` | Apprendre | Apprendre / Mon parcours | `path` |
+| `/apprendre/bases`, `/apprendre/bases/:id` | `cours-bases`, `lecon-bases` | Apprendre | Apprendre / Toutes les leçons | `course` `bases:` |
+| `/apprendre/finales`, `/apprendre/finales/:id` | `cours-finales`, `lecon-finales` | Apprendre | Toutes les leçons ; « Comprendre » du groupe Finales | `course` `finales:` |
+| `/apprendre/roque`, `/apprendre/roque/:id` | `cours-roque`, `lecon-roque` | Apprendre | Toutes les leçons ; lien du groupe Attaque et défense | `course` `roque:` |
+| `/apprendre/defense`, `/apprendre/defense/:id` | `cours-defense`, `lecon-defense` | Apprendre | Toutes les leçons ; lien du groupe Attaque et défense | `course` `defense:` |
+| `/apprendre/structures`, `/apprendre/structures/:id` | `cours-structures`, `lecon-structures` | Apprendre | Toutes les leçons ; lien du groupe Stratégie | `course` `structures:` |
+| `/structures` | `structures` (profil sans partie) | Apprendre | Entraînement / Stratégie « Mes structures de pions » | `structure-play` |
+| `/structures/:key` | `structures-absent` | Apprendre | Entraînement / Stratégie | `structure-play` |
+| `/ouvertures` | `ouvertures`, `ouverture-fiche`, `ouverture-exercice` | Apprendre | Entraînement / Ouvertures « Mes ouvertures » | `opening-drill` |
+| `/repertoire` | `repertoire` | Apprendre | Entraînement / Ouvertures « Mon répertoire » | `opening-drill` (`next:`) |
+| `/visualisation` | `visualisation` | Apprendre | Entraînement / Tactique et calcul « Visualiser » | `visualisation` |
+| `/attaque`, `/attaque/:id` | `attaque`, `attaque-exercice` | Apprendre | Entraînement / Attaque et défense « Attaquer » | `attack` |
+| `/defense`, `/defense/:id` | `defense`, `defense-exercice` | Apprendre | Entraînement / Attaque et défense « Défendre » | `defense` |
+| `/convertir`, `/convertir/:id` | `convertir`, `convertir-exercice` | Apprendre | Entraînement / Attaque et défense « Convertir un avantage » | `conversion` |
+| `/finales`, `/finales/:id` | `finales`, `finale-exercice` | Apprendre | Entraînement / Finales « Jouer une finale » | `endgame-play` |
+| `/finales/chrono` | `finales-chrono`, `finales-chrono-serie` | Apprendre | Entraînement / Finales « Contre la montre » | `endgame-clock` |
+| `/revision` | `revision-vide`, `revision-exercice` | Apprendre | Apprendre / Réviser mes parties « À réviser », raccourci Accueil si dû | `revision` et domaines d’origine |
+| `/attaques-manquees`, `/attaques-manquees/:id` | `attaques-vide`, `attaques-remplies`, `attaque-personnelle`, `attaque-reussie`, `attaques-manquees-absent`, `analyse-retour` | Apprendre | Réviser mes parties « Attaques » | `missed-attack` |
+| `/defenses-ratees`, `/defenses-ratees/:id` | `defenses-vide`, `defenses-remplies`, `defense-personnelle`, `defenses-ratees-absent` | Apprendre | Réviser mes parties « Défenses » | `missed-defense` |
+| `/moment-critique` | `moment-vide` | Analyse | Réviser mes parties « Moments critiques », ouvert depuis le bilan | `critical-moment` |
+| `/analyse` | `analyse`, `analyse-options`, `analyse-import`, `analyse-import-erreur`, retours d’exercice | Analyse | Plus / Outils et progression « Analyse », raccourcis contextuels conservés | `mistakes` écrites par le bilan |
+| `/analyse/jouer` | `position-vide`, `position-jeu` | Analyse | Plus / Analyse, « Jouer contre le moteur » | Partie en cours locale |
+| `/archive` | `archive-vide`, `archive-remplie` | Archive | Plus / Mes parties | `games` |
+| `/import` | `import`, `import-rempli` | Analyse | Plus / Mes parties « Importer des parties » | Aucune (pseudo dans les réglages) |
+| `/stats` | `stats`, `donnees-confirmation` | Stats | Plus / Statistiques ; Réglages et Mes données extraits au lot 3 | Réglages Zustand, sauvegardes |
+| `/insights` | `insights-vide` | Stats | Plus / Mon bilan | `reviews` |
+| `*` | `route-inconnue` | Aucun | Repli vers Accueil, inchangé | Aucune |
+
+La séance du jour et le parcours jouent aussi des positions d’attaque et de finale, mais sur place (`/seance` et `/apprendre`, même `PositionGame`, mêmes domaines), sans visiter `/attaque/:id` ni `/finales/:id`.
+Les routes `/finales/:id`, `/attaque/:id`, `/defense/:id` et `/convertir/:id` n’ont pour entrée que leur catalogue, propriété du groupe d’Entraînement.
+
+### Fonctions sans route propre
+
+| Fonction | Point d’entrée actuel | Place cible |
+|---|---|---|
+| Séance rapide (bouton Séance d’Apprendre) | `/apprendre`, état interne | Apprendre, entrée secondaire « Séance rapide » tant que la séance du jour ne la remplace pas |
+| Test de placement | `/apprendre/parcours/placement` | Mon parcours |
+| Finale jouée depuis une étape du parcours | `/apprendre` avec `state.endgame` | Mon parcours, sans changer le domaine `path` |
+| Alerte « Qu’est-ce qu’il menace ? » | Jouer, bot et coach, réglage par mode | Jouer / Avec le coach, pas une tuile |
+| Résumé des menaces et des attaques manquées | Sections de `/stats` | Plus / Statistiques |
+| Réfutation « Pourquoi ? » | Bilan guidé, carte du coach, verdict de `MistakeExercise` | Tactique et calcul « Comprendre une réfutation », toujours attachée à une position |
+| Moments critiques du bilan | Fin du résumé de bilan dans `/analyse` | Réviser mes parties, via le bilan |
+| Calque « Compte les attaquants » | Options d’Analyse, Jouer, réglage `showAttackers` | Réglages, et bascule contextuelle conservée |
+| Thème, pièces, sons et volume, prémouvements, coups légaux, profondeur du bilan | `/stats` section Réglages | Plus / Réglages |
+| Coordonnées de l’échiquier | Rendu de `Board`, sans réglage | Socle, aucun écran |
+| Exporter, restaurer, réinitialiser | `/stats` section Tes données, bandeau de l’Accueil | Plus / Mes données |
+| App iOS Capacitor (haptique, assets locaux) | Coquille native | Socle, aucun écran |
+
+### Domaines `learnSessions` et stockage local
+
+Les 22 domaines écrits aujourd’hui sont listés dans `src/lib/db.ts` ; aucun n’est renommé par la refonte.
+
+| Domaine | Écrit par | Groupe cible |
+|---|---|---|
+| `endgame`, `tactic`, `opening`, `strategy` | Séances d’Apprendre | Finales, Tactique et calcul, Ouvertures, Stratégie |
+| `mistakes` | Mes erreurs | Réviser mes parties |
+| `revision` | Révision espacée (puzzles) | Réviser mes parties |
+| `missed-attack`, `missed-defense` | Listes personnelles | Réviser mes parties |
+| `critical-moment` | Moments critiques | Réviser mes parties |
+| `course` | Cinq cours (`bases:`, `finales:`, `roque:`, `defense:`, `structures:`) | Toutes les leçons |
+| `path` | Parcours et placement | Mon parcours |
+| `seance` | Séance du jour | Accueil |
+| `opening-drill` | Entraîneur d’ouvertures, Mon répertoire, révision des variantes | Ouvertures |
+| `attack`, `defense`, `conversion` | Entraîneurs d’attaque, de défense et de conversion | Attaque et défense |
+| `endgame-play`, `endgame-clock` | Finales jouées, Finales au chrono | Finales |
+| `visualisation` | Calcul et visualisation | Tactique et calcul |
+| `mats` | Mats éclair | Puzzles |
+| `structure-play` | Mes structures de pions | Stratégie |
+| `threat-check` | Alerte menace de Jouer | Jouer |
+
+Les clés locales propres à une activité sont `chess-local-attack`, `chess-local-defense`, `chess-local-conversion`, `chess-local-endgame-clock`, `chess-local-mats`, `chess-local-threat-check`, `chess-local-visualisation`, `chess-local-insights-v1`, `chess-local-position-game-v1`, `chess-local-play-game` et `chess-local-puzzle-session`.
+Les séances en cours sont dans `learn-session-v1`, `revision-session-v1`, `path-session-v1` et `seance-session-v1`.
+Toutes figurent dans `APP_LOCAL_KEYS` ou `SESSION_KEYS` de `src/lib/backup.ts` : aucun écart de purge n’est constaté.
+
+### Regroupement exhaustif après lot 0
+
+Ce tableau remplace, pour la mise en œuvre, les colonnes « présentes » et « annoncées » du [regroupement du premier audit](#regroupement-exhaustif-des-fonctions), sans en changer les groupes ni les noms proposés.
+
+| Groupe propriétaire | Fonctions et routes | Raccourcis conservés |
+|---|---|---|
+| Accueil | Séance du jour `/seance`, révision due, accès Jouer et Puzzles, progression vers Mon bilan | Reprise d’une séance en cours |
+| Jouer | `/jouer` : bot, coach avec alerte menace, deux joueurs ; fin de partie vers le bilan | CTA Jouer de l’Accueil |
+| Puzzles | `/puzzles`, `/rush`, `/mats` | Mats depuis Tactique et calcul, Rush depuis Insights |
+| Apprendre / Mon parcours | `/apprendre/parcours`, `/apprendre/parcours/:id`, placement | Tuile Accueil pendant la transition |
+| Apprendre / Toutes les leçons | Cinq cours : Les bases, Cours de finales, Démolir le roque, Tenir sous l’attaque, Structures de pions | Liens depuis les groupes Finales, Attaque et défense, Stratégie |
+| Entraînement / Tactique et calcul | Séances Tactiques, `/visualisation`, réfutation expliquée | Mats éclair |
+| Entraînement / Attaque et défense | `/attaque`, `/defense`, `/convertir` et leurs fiches | Cours Démolir le roque et Tenir sous l’attaque |
+| Entraînement / Finales | Séances Finales, `/finales` et `/finales/:id`, `/finales/chrono` | Cours de finales |
+| Entraînement / Ouvertures | Séances Ouvertures, `/ouvertures`, `/repertoire` | Lien de Mon bilan vers le répertoire |
+| Entraînement / Stratégie | Séances Stratégie, `/structures` et `/structures/:key` | Cours Structures de pions, qui affiche déjà la carte Mes structures |
+| Apprendre / Réviser mes parties | `/revision`, Mes erreurs, `/attaques-manquees`, `/defenses-ratees`, `/moment-critique` | Révision due sur l’Accueil, moments critiques dans le bilan |
+| Plus / Mes parties | `/archive`, `/import` | Tuiles de l’Accueil pendant la transition |
+| Plus / Outils et progression | `/analyse`, `/analyse/jouer`, `/stats`, `/insights` | Fin de partie, exercices et listes vers l’analyse |
+| Plus / Préférences et données | Réglages et Tes données de `/stats` | Bandeau de sauvegarde de l’Accueil |
+
+### Carte de navigation après lot 0
+
+Arbre des entrées actuelles, avant le lot 2 ; `[état]` désigne un état interne sans URL propre.
+
+```text
+Accueil /
+├─ Problèmes → /puzzles ; Séance du jour → /seance ; À réviser (si dû) → /revision
+├─ Quatre classements → /stats ; tuiles Analyse, Puzzle Rush, Archive, chess.com
+├─ Parcours → /apprendre/parcours ; Insights → /insights ; CTA Jouer → /jouer
+Jouer /jouer [onglet]
+├─ Contre un bot / Entraîneur / 2 joueurs [états], alerte menace [état]
+└─ Partie → abandon → résultat → /analyse?game=<id>&review=1
+Puzzles /puzzles [onglet] → /rush, /mats
+Apprendre /apprendre [onglet]
+├─ Parcours /apprendre/parcours → /:id, placement
+├─ Séance ; Finales ; Tactiques ; Ouvertures ; Stratégie ; Mes erreurs [états]
+├─ /finales → /:id ; /finales/chrono
+├─ /revision ; /attaques-manquees → /:id ; /defenses-ratees → /:id
+├─ /ouvertures ; /repertoire ; /mats ; /attaque → /:id ; /convertir → /:id ; /defense → /:id
+├─ /visualisation ; /structures → /:key
+└─ Cours /apprendre/{bases,finales,roque,defense,structures} → /:id
+   └─ /apprendre/structures affiche aussi la carte → /structures
+Analyse /analyse [onglet] → /analyse/jouer, /import, bilan → /moment-critique
+Archive /archive [onglet] → /analyse?game=<id>
+Stats /stats [onglet] → /insights, /attaques-manquees ; Réglages et Tes données [même URL]
+```
+
+Arbre cible, avec les mêmes URL et les hubs `/plus` et `/entrainement` proposés pour les lots 2 et 5 :
+
+```text
+Accueil /                      → /seance, /revision, /jouer, /puzzles
+Jouer /jouer                   → bot, coach (alerte menace), à deux → bilan
+Puzzles /puzzles               → /rush, /mats
+Apprendre /apprendre
+├─ Mon parcours                → /apprendre/parcours, /:id, placement
+├─ Toutes les leçons           → /apprendre/{bases,finales,roque,defense,structures}
+├─ Entraînement
+│  ├─ Tactique et calcul       → séance Tactiques, /visualisation, raccourci /mats
+│  ├─ Attaque et défense       → /attaque, /defense, /convertir
+│  ├─ Finales                  → séance Finales, /finales, /finales/chrono
+│  ├─ Ouvertures               → séance Ouvertures, /ouvertures, /repertoire
+│  └─ Stratégie                → séance Stratégie, /structures
+├─ Réviser mes parties         → /revision, Mes erreurs, /attaques-manquees, /defenses-ratees, /moment-critique
+└─ Séance rapide               → séance automatique existante
+Plus
+├─ Mes parties                 → /archive, /import
+├─ Outils et progression       → /analyse, /analyse/jouer, /insights, /stats
+└─ Réglages, Mes données       → sections actuelles de /stats
+```
+
+### Budget de taps des fonctions fusionnées
+
+Mêmes conventions que le [budget de taps actuel](#budget-de-taps-actuel) : profil vierge, activations depuis l’Accueil, défilement non compté.
+La colonne cible suppose les lots 2 à 6 livrés selon l’architecture validée ; elle n’est pas mesurée.
+
+| Fonction | Actuel : page / commencer | Cible : page | Chemin cible |
+|---|---:|---:|---|
+| Séance du jour | 1 / 2 | 1 | Carte principale de l’Accueil |
+| Parcours | 1 / 2 | 2 | Apprendre, Continuer |
+| Tenir sous l’attaque, Structures de pions, Les bases | 2 / 3 | 3 | Apprendre, Toutes les leçons, cours |
+| Convertir l’avantage | 2 / 3 | 4 | Apprendre, Entraînement, Attaque et défense, Convertir |
+| Finales au chrono | 2 / 3 | 4 | Apprendre, Entraînement, Finales, Contre la montre |
+| Calcul et visualisation | 2 / 3 | 4 | Apprendre, Entraînement, Tactique et calcul, Visualiser |
+| Mon répertoire | 2 / variable | 4 | Apprendre, Entraînement, Ouvertures, Mon répertoire |
+| Mes structures de pions | 2 / 3 si une partie existe | 4 | Apprendre, Entraînement, Stratégie, Mes structures |
+| Moment critique | 1 depuis le bilan | 1 depuis le bilan | Aucune liste propre, voir écarts |
+| Alerte menace | 3 (Jouer, Entraîneur, Jouer) | 3 | Jouer, Avec le coach, Jouer |
+| Réfutation | 1 depuis un verdict ou un bilan | 1 | Inchangé |
+| Insights | 1 | 2 | Plus, Mon bilan |
+| Réglages | 1 puis défilement | 2 | Plus, Réglages |
+
+### Écarts constatés
+
+1. Le cours « Tenir sous l’attaque » est fusionné (`/apprendre/defense`), contrairement à la mention du lot 1 selon laquelle aucune route de cours de défense n’existait.
+2. Dix routes et le repli `*` échappaient à l’audit avant ce lot ; elles sont couvertes et un check empêche une nouvelle omission.
+3. Apprendre compte 25 actions hors navigation, contre 20 au lot 1 et 16 au premier audit : Finales au chrono, Convertir l’avantage, Mes structures de pions et deux cours se sont ajoutés.
+4. Apprendre mesure 2 288 px de contenu à 393 × 852, soit 3,74 hauteurs de conteneur à 393 × 660 (612 px), contre 2,99 au lot 1 ; 2 084 px sur desktop.
+5. L’Accueil compte 13 actions hors navigation, 14 avec une révision due : la carte Séance du jour s’est ajoutée, et le libellé « Problèmes » avec « Résolvez ! » demeure (constat P1 de vocabulaire inchangé).
+6. Les portes Finales sont désormais quatre (cours, séance Finales, Jouer une finale, Finales au chrono), plus les finales du parcours ; le groupe Finales doit les présenter par objectif.
+7. « Contre la montre », nom cible de Finales au chrono, décrit déjà le mode chrono de Mats éclair (« contre la montre, mat en N ») ; les deux reposent sur `RunRecorder` de `mates.ts` mais restent deux fonctions distinctes, à nommer sans collision au lot 5.
+8. Deux entrées s’appellent Séance : la séance rapide d’Apprendre et la Séance du jour ; le lot 4 doit garder la séance du jour en principal et la séance rapide en secondaire.
+9. La séance du jour intègre jusqu’à quatre révisions dues, et l’Accueil affiche aussi la carte « À réviser aujourd’hui » : la règle validée de non-double comptage doit être appliquée au lot 4.
+10. `/structures` et `/repertoire` lisent les parties du joueur, mais leur propriétaire validé est Stratégie et Ouvertures ; un raccourci depuis « À partir de mes parties » est permis, le choix d’un second propriétaire reste à confirmer par Max.
+11. La carte Mes structures apparaît à la fois sur Apprendre et dans le sommaire du cours Structures de pions : deux raccourcis vers le même propriétaire, à conserver comme lien de cours.
+12. `/moment-critique` n’a pas de liste : sans partie analysée il affiche « Aucun moment critique », et la seule entrée est le bilan ; le placer dans Réviser mes parties sans créer de liste demandera un lien vers les parties analysées.
+13. `NAV` rattache `/moment-critique` et `/import` à Analyse, `/mats` à Apprendre et `/insights` à Stats ; la cible les rattache respectivement à Réviser mes parties, Plus, Puzzles et Plus.
+14. `/stats` héberge maintenant les sections « Attaques manquées » et « Menaces adverses » en plus des Réglages et de Tes données ; le lot 3 n’extrait que les deux dernières.
+15. Les entrées vers Insights sont trois (Accueil, Stats, Mon répertoire) et ses plans mènent vers Apprendre, Jouer, Puzzles, Rush, Mats, Finales, Ouvertures, l’attaque, la défense et les deux listes personnelles ; ces liens doivent survivre au renommage « Mon bilan ».
+16. L’écran d’accueil de `/seance` offre deux sorties vers l’Accueil (retour d’en-tête et lien « Retour à l’accueil ») : à unifier avec le contrat de retour au lot 4 (`iphone660-seance-du-jour.png`).
+17. Les exercices de `/convertir/:id`, comme ceux d’attaque et de défense, gardent les sept onglets sous leurs actions et un retour fléché sans libellé : constat P2 du mode immersif, étendu au lot 8 (`iphone660-convertir-exercice.png`).
+18. Aucun débordement horizontal n’est mesuré sur les 304 états ; les autres défauts visuels des nouvelles pages restent à relire dans leurs lots propriétaires.
+
+### Vérification du lot 0
+
+`npm run check` : code 0.
+`npm run test:e2e -- --suite ux_audit --jobs 1` : code 0, 774 checks, 46 routes déclarées toutes couvertes, 304 états et 515 captures.
+Répartition : 102 états et 164 captures à 393 × 852, 102 et 209 à 393 × 660, 100 et 142 à 1440 × 900.
+`npm run test:e2e:dev -- --suite ux_audit --jobs 1` : code 0, 774 checks.
+`UX_AUDIT_FORGET=/convertir npm run test:e2e -- --suite ux_audit --jobs 1` : code 1, trois échecs attendus sur la couverture de `/convertir`.
+Les inventaires et la table lue dans l’app sont dans `e2e/shots/ux-audit/{prod,dev}/` (`inventory.json`, `routes.json`).
 
 ## Périmètre et méthode
 
@@ -179,7 +417,7 @@ Les états « position absente » et « rien à réviser » évitent une page bl
 
 Les chemins ci-dessous étaient les routes de `src/App.tsx` à la référence du premier audit, hors préfixe de déploiement et `#` du HashRouter.
 Cet inventaire historique comptait 28 routes explicites et une route de repli `*` vers Accueil.
-Les ajouts fusionnés depuis sont décrits dans [l’actualisation après synchronisation](#actualisation-après-synchronisation-sur-main).
+Les ajouts fusionnés depuis sont décrits dans [l’actualisation après synchronisation](#actualisation-après-synchronisation-sur-main) et la carte complète des 46 routes dans la [carte de navigation après lot 0](#carte-de-navigation-après-lot-0).
 L’arbre représente les entrées visibles et les relations de navigation, pas seulement la structure des URL.
 
 ```text
@@ -322,6 +560,7 @@ Les anciens liens de Stats vers les données continuent d’aboutir au bon conte
 
 Les colonnes « présentes » et « annoncées » reflètent le premier audit.
 Pour leur statut après synchronisation, voir les [fonctions effectivement fusionnées](#fonctions-effectivement-fusionnées).
+Le [regroupement exhaustif après lot 0](#regroupement-exhaustif-après-lot-0) place chaque route actuelle dans ces mêmes groupes.
 
 | Groupe propriétaire | Fonctions présentes | Fonctions annoncées à accueillir | Noms proposés |
 |---|---|---|---|
@@ -579,7 +818,25 @@ Le périmètre fonctionnel vient de la mission, et aucun fichier d’un autre wo
 | `chore/q2-audit-ui`, `feat/ios-app`, `fix/pieces-sons-ios` | Socle partagé | Reprendre leurs corrections de layout et gestes avant de retoucher la coquille |
 
 La réconciliation du lot 1 est consignée dans les [fonctions effectivement fusionnées](#fonctions-effectivement-fusionnées).
-Le lot 0 devra compléter cet inventaire après les fusions restantes, avant les changements de navigation.
+Le [lot 0](#lot-0--réconciliation-après-fusion-complète) constate la fusion de toutes ces branches sur `31a2e60`, avec les invariants ci-dessous.
+
+| Branche | Route ou intégration observée par l’audit | Invariant après fusion |
+|---|---|---|
+| `feat/f24-parcours` | `/apprendre/parcours`, étape, placement | Ids d’étapes figés ; reprise par `path-session-v1` |
+| `feat/f23-seance-du-jour` | `/seance`, tuile Accueil | Source unique de sélection (`planSeance`) ; double comptage avec la révision due à traiter au lot 4 |
+| `feat/f17-convertir-avantage` | `/convertir`, `/convertir/:id` | Domaine `conversion`, retour vers son catalogue |
+| `feat/f21-calcul-visualisation` | `/visualisation` | Domaine `visualisation`, une seule page pour calcul et visualisation |
+| `feat/c5-structures-pions` | `/apprendre/structures`, `/structures`, `/structures/:key` | Cours `structures:` et parties `structure-play` distincts |
+| `feat/c2-moments-critiques` | `/moment-critique` depuis le bilan | Aucune liste propre (écart 12) |
+| `feat/c8-refutation-expliquee` | Lecteur « Pourquoi ? », sans route | Aucune écriture en base |
+| `feat/f20-repertoire-reel` | `/repertoire` | Lignes `opening-drill` `next:`, distinct du catalogue |
+| `feat/f16-cours-defense` | `/apprendre/defense`, `/:id` | Cours `defense:` réutilisant `LessonCourse` |
+| `feat/f18-revision-elargie` | `/revision` | Pas de nouvelle file ni de table |
+| `feat/f19-insights-entraineurs` | Plans d’`/insights` vers attaque, défense et listes | Liens conservés au renommage (écart 15) |
+| `feat/f22-finales-chrono` | `/finales/chrono` | Domaine `endgame-clock` distinct de `mats` (écart 7) |
+| `feat/c1-alerte-menace` | Question dans Jouer, résumé dans Stats | Domaine `threat-check`, aucune tuile |
+| `chore/q2-audit-ui`, `feat/ios-app`, `fix/pieces-sons-ios`, coordonnées | Socle (layout, Capacitor, sons, coordonnées) | Aucun écran ni route |
+| `chore/q3-perf-pwa` (en cours) | Chargement à la demande des routes d’`App.tsx` | Le contrôle de couverture lit les éléments de route, pas leur chargement |
 Un déplacement de menu ne justifie pas de renommer un domaine `learnSessions`, une clé de sauvegarde ou un identifiant de contenu.
 
 ## Plan de mise en œuvre
@@ -587,11 +844,11 @@ Un déplacement de menu ne justifie pas de renommer un domaine `learnSessions`, 
 Chaque lot porte un périmètre limité et peut être annulé sans migration de données.
 L’ordre indique les dépendances ; les lots 3 à 6 sont séparables une fois le socle et les contrats validés.
 Les checks listés sont les critères d’acceptation de chaque lot.
-Les résultats historiques du lot 1 sont consignés dans sa [vérification finale](#vérification-finale-du-lot-1) ; ceux des lots suivants restent à établir.
+Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1) ; ceux des lots suivants restent à établir.
 
 | Lot | Périmètre et propriété | Dépendance | Acceptation E2E |
 |---|---|---|---|
-| 0. Réconcilier après fusion | Inventaire routes, états et domaines, mise à jour de cet audit | Toutes les features retenues fusionnées | Audit trois formats, aucune route oubliée, liste des écarts explicite |
+| 0. Réconcilier après fusion (fait) | Inventaire routes, états et domaines, mise à jour de cet audit | Toutes les features retenues fusionnées | Audit trois formats, aucune route oubliée, liste des écarts explicite |
 | 1. Socle visuel (fait) | `Cta`, en-tête, carte, progression, état vide sur trois usages réels | Réconciliation sur la base du lot 1 | Contraste, focus, 44 px, titres longs, état vide, chargement, captures trois formats |
 | 2. Navigation et Plus | `App.tsx`, nouveau hub Plus, rattachement des routes | Lot 1 | Cinq onglets, aria-current exact, anciens deep links, replace/push, aucun retour hors app, suites shell/all_buttons/edge_navigation |
 | 3. Réglages et données | Extraire la présentation de Stats vers Réglages et Mes données | Lot 2 | Mêmes valeurs persistées ; backup, upgrade, audio_settings, stats ; annulation des actions destructrices |
