@@ -287,7 +287,7 @@ LEAVE_ON_GAME_READ = """(() => {
   IDBObjectStore.prototype.get = function (...a) {
     if (armed && this.name === 'games') {
       armed = false
-      queueMicrotask(() => [...document.querySelectorAll('nav a')].filter((e) => e.textContent.includes('Archive')).at(-1).click())
+      queueMicrotask(() => { location.hash = '#/archive' })
     }
     return get.apply(this, a)
   }
@@ -301,7 +301,7 @@ LEAVE_ON_REVIEW = """(() => {
     const r = post.call(this, cmd, ...rest)
     if (!window.__leftOnReview && typeof cmd === 'string' && cmd.startsWith('go depth')) {
       window.__leftOnReview = true
-      queueMicrotask(() => [...document.querySelectorAll('nav a')].filter((e) => e.textContent.includes('Archive')).at(-1).click())
+      queueMicrotask(() => { location.hash = '#/archive' })
     }
     return r
   }

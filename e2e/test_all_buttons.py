@@ -15,13 +15,24 @@ from helpers import BASE, LIVE, PLIES_AT_LEAST, Checker, click_square, desktop_c
 SETTINGS = {"chesscomUsername": "popeye232"}
 # (onglet, texte attendu dans <main>). Analyse n'a pas le même marqueur selon le layout :
 # « Options » n'existe que dans la barre d'actions mobile, « Copier PGN » que dans le panneau desktop.
+# Les cinq onglets, puis les anciens onglets Analyse, Archive et Stats, atteints par le hub Plus
+# (`plus:<clé>` : onglet Plus, puis la carte `data-plus` de cette clé).
 NAV = [("Jouer", "Adversaire"), ("Puzzles", "Classement puzzles"), ("Apprendre", "Séance"),
-       ("Analyse", {"mobile": "Options", "desktop": "Copier PGN"}), ("Archive", "Archive"),
-       ("Stats", "Statistiques"), ("Accueil", "ChessLocal")]
+       ("Plus", "Mes données"), ("plus:analyse", {"mobile": "Options", "desktop": "Copier PGN"}),
+       ("plus:parties", "Archive"), ("plus:statistiques", "Statistiques"), ("Accueil", "ChessLocal")]
 
 
 def marker_for(marker, layout):
     return marker[layout] if isinstance(marker, dict) else marker
+
+
+def nav_to(page, label):
+    """Onglet visible de ce libellé, ou `plus:<clé>` : onglet Plus puis la carte du hub."""
+    if label.startswith("plus:"):
+        page.locator("nav a[data-nav-tab]", has_text="Plus").locator("visible=true").click()
+        page.locator(f"main a[data-plus='{label[5:]}']").click()
+    else:
+        page.locator("nav a[data-nav-tab]", has_text=label).locator("visible=true").click()
 
 ck = Checker("all_buttons")
 check = ck.check
@@ -68,13 +79,13 @@ def promotion_piece(page, fr, tg):
 def suite(p):
     browser = p.chromium.launch(headless=True)
 
-    # ---------- NAV MOBILE : 7 onglets ----------
+    # ---------- NAV MOBILE : 5 onglets et le hub Plus ----------
     ctx = mobile_context(p, browser, ck, SETTINGS)
     page = ctx.new_page()
     page.goto(f"{BASE}/")
     page.wait_for_timeout(1500)
     for label, marker in NAV:
-        page.locator("nav a", has_text=label).last.click()
+        nav_to(page, label)
         # Attente bornée du marqueur plutôt qu'un délai fixe : Puzzles charge 16 Mo de puzzles.
         ck.appears(f"[nav mobile] {label}", page, f"main :text('{marker_for(marker, 'mobile')}')", timeout=10000)
     ctx.close()
@@ -95,7 +106,7 @@ def suite(p):
     page.wait_for_timeout(1500)
 
     for label, marker in NAV:
-        page.locator("nav a", has_text=label).first.click()
+        nav_to(page, label)
         ck.appears(f"[nav desktop] {label}", page, f"main :text('{marker_for(marker, 'desktop')}')", timeout=10000)
 
     # Accueil : carte Problèmes + tuiles + stats
@@ -283,7 +294,7 @@ def suite(p):
     page.click("button:has-text('Menu')")
 
     # ---------- ANALYSE classique (desktop) ----------
-    page.locator("nav a", has_text="Analyse").first.click()
+    nav_to(page, "plus:analyse")
     page.wait_for_timeout(2500)
     page.locator("main button:has-text('e4')").last.click()
     page.wait_for_timeout(500)
@@ -329,7 +340,7 @@ def suite(p):
     ck.appears("[import] lien introuvable → erreur propre", page, "text=introuvable", timeout=30000, state="attached")
 
     # ---------- ARCHIVE ----------
-    page.locator("nav a", has_text="Archive").first.click()
+    nav_to(page, "plus:parties")
     page.wait_for_timeout(600)
     rows = page.locator("main a", has_text="Analyser").count()
     check("[archive] parties listées", rows >= 2, f"({rows})")
@@ -340,7 +351,7 @@ def suite(p):
     # Analyse est une page paresseuse : attendre son contenu plutôt qu'un délai fixe.
     ck.appears("[archive] Analyser ouvre la partie (coup courant présent)", page, "main [data-current]", timeout=10000, state="attached")
     check("[archive] Analyser ouvre la partie", "analyse" in page.url)
-    page.locator("nav a", has_text="Archive").first.click()
+    nav_to(page, "plus:parties")
     page.wait_for_timeout(600)
     before = page.locator("main a", has_text="Analyser").count()
     page.locator("main button:has-text('✕')").first.click()
@@ -353,7 +364,7 @@ def suite(p):
     page.click("header button:has-text('✕')")
 
     # ---------- STATS / RÉGLAGES ----------
-    page.locator("nav a", has_text="Stats").first.click()
+    nav_to(page, "plus:statistiques")
     page.wait_for_timeout(600)
     page.locator("button[title='Bois']").click()
     page.wait_for_timeout(300)

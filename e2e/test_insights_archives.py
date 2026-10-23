@@ -59,7 +59,8 @@ def departure(p, browser):
     with page.expect_request(first_archive):
         page.click('[data-testid=insights-run]')
     page.wait_for_timeout(100)
-    page.locator("nav a[href='#/stats']").locator('visible=true').click()
+    page.locator("nav a[data-nav-tab]", has_text="Plus").locator('visible=true').click()
+    page.locator("main a[data-plus='statistiques']").click()
     if not ck.appears('départ : Stats affiché', page, "main :text('Statistiques')"):
         ctx.close()
         return

@@ -311,10 +311,10 @@ def archive_mobile_standalone(p, browser):
     if x.count():
         x.first.click()
         page.wait_for_timeout(200)
-    tap("[archive 852] nav Stats", page.locator("nav a:visible", has_text="Stats"))
+    tap("[archive 852] nav Plus", page.locator("nav a[data-nav-tab]:visible", has_text="Plus"))
     page.wait_for_timeout(800)
     ck.check("[archive 852] quitter la page valide la suppression en attente", db_count(page) == 57, f"({db_count(page)})")
-    tap("[archive 852] nav Archive", page.locator("nav a:visible", has_text="Archive"))
+    tap("[archive 852] Plus puis Mes parties", page.locator("main a[data-plus='parties']"))
     ck.appears("[archive 852] de retour : Archive (57)", page, "h1:has-text('Archive (57)')", timeout=5000)
 
     # Exporter tout relit la base (pas l'état paginé) : 57 parties dans le PGN.

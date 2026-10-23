@@ -845,13 +845,13 @@ Un déplacement de menu ne justifie pas de renommer un domaine `learnSessions`, 
 Chaque lot porte un périmètre limité et peut être annulé sans migration de données.
 L’ordre indique les dépendances ; les lots 3 à 6 sont séparables une fois le socle et les contrats validés.
 Les checks listés sont les critères d’acceptation de chaque lot.
-Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1) ; ceux des lots suivants restent à établir.
+Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2) ; ceux des lots suivants restent à établir.
 
 | Lot | Périmètre et propriété | Dépendance | Acceptation E2E |
 |---|---|---|---|
 | 0. Réconcilier après fusion (fait) | Inventaire routes, états et domaines, mise à jour de cet audit | Toutes les features retenues fusionnées | Audit trois formats, aucune route oubliée, liste des écarts explicite |
 | 1. Socle visuel (fait) | `Cta`, en-tête, carte, progression, état vide sur trois usages réels | Réconciliation sur la base du lot 1 | Contraste, focus, 44 px, titres longs, état vide, chargement, captures trois formats |
-| 2. Navigation et Plus | `App.tsx`, nouveau hub Plus, rattachement des routes | Lot 1 | Cinq onglets, aria-current exact, anciens deep links, replace/push, aucun retour hors app, suites shell/all_buttons/edge_navigation |
+| 2. Navigation et Plus (fait) | `App.tsx`, nouveau hub Plus, rattachement des routes | Lot 1 | Cinq onglets, aria-current exact, anciens deep links, replace/push, aucun retour hors app, suites shell/all_buttons/edge_navigation |
 | 3. Réglages et données | Extraire la présentation de Stats vers Réglages et Mes données | Lot 2 | Mêmes valeurs persistées ; backup, upgrade, audio_settings, stats ; annulation des actions destructrices |
 | 4. Accueil quotidien | `Home.tsx`, adaptateur de lecture du service de séance existant | Lot 2 + séance du jour intégrée | Profil neuf, reprise, dû/non dû, données indisponibles, pas de double comptage, CTA accessible à 660 px |
 | 5. Apprendre et Entraînement | Hub guidé, cinq groupes, anciennes entrées conservées | Lot 2 + parcours intégré | Chaque fonction accessible en quatre taps au plus, état vide explicite, suites learn/all_buttons et suites des features déplacées |
@@ -1033,3 +1033,104 @@ Les captures de fin de partie montrent parfois un coup différent du bot, sans c
 Aucun blocage restant dans le lot 1.
 La validation iPhone physique, Safari et VoiceOver reste hors de l’émulation Chromium ; elle appartient au lot 10.
 Les autres défauts historiques de navigation, de classement et des lecteurs immersifs restent dans les lots 2 et suivants.
+
+## Lot 2 : navigation réalisée
+
+La barre passe de sept à cinq onglets, dans l’ordre du [tableau cible](#les-cinq-onglets) : Accueil, Jouer, Puzzles, Apprendre et Plus.
+Analyse, Archive et Stats perdent leur onglet permanent ; leurs routes, comme toutes les autres, sont inchangées et leurs anciens liens rendent toujours la même page.
+Le `match` des onglets applique le [placement cible](#placement-cible-de-chaque-route) et corrige l’écart 13 du lot 0.
+
+| Famille de routes | Onglet avant | Onglet après |
+|---|---|---|
+| `/`, `/seance` | Accueil | Accueil |
+| `/jouer` | Jouer | Jouer |
+| `/puzzles`, `/rush` | Puzzles | Puzzles |
+| `/mats` | Apprendre | Puzzles |
+| `/apprendre` et ses sous-chemins, entraîneurs, listes personnelles, `/revision` | Apprendre | Apprendre |
+| `/moment-critique` | Analyse | Apprendre (Réviser mes parties) |
+| `/analyse`, `/analyse/jouer`, `/import` | Analyse | Plus |
+| `/archive` | Archive | Plus |
+| `/stats`, `/insights` | Stats | Plus |
+| `/plus` | Aucun (nouvelle route) | Plus |
+
+Un seul élément de la nav porte `aria-current` : `page` sur la racine de l’onglet, `true` sur une route rattachée.
+Les cinq onglets restent en `replace` ; les liens du hub sont des descentes en push, si bien que le retour arrière ramène au hub.
+Les tuiles Stats, Analyse et Archive de l’Accueil gardent leur `replace` d’anciennes racines : l’Accueil appartient au lot 4.
+Aucune page n’ajoute de retour fondé sur `history.back()` : l’onglet Plus reste la sortie déterministe des destinations déplacées, même ouvertes directement.
+Les persistances (partie en cours, séances, état des exercices) ne dépendent pas de l’onglet et sont inchangées.
+
+### Hub Plus
+
+`/plus` (`src/pages/More.tsx`) est une racine d’onglet sans retour, construite avec `PageHeader` et `ActivityCard`.
+Il présente trois groupes : Parties (Mes parties, Importer des parties), Outils et progression (Analyse, Mon bilan, Statistiques), Réglages et données (Réglages, Mes données).
+Le groupe s’appelle « Parties » plutôt que « Mes parties » pour ne pas répéter le titre de sa première carte.
+Les destinations sont décrites une seule fois dans `PLUS_GROUPS` de `src/lib/navigation.ts`, partagé avec la nav latérale.
+Réglages et Mes données ouvrent `/stats` avec `state.section` ; Stats retient la section, efface aussitôt le state, attend la lecture de la base puis amène le titre en haut de `<main>`.
+Ce mécanisme généralise l’ancien `state.backup` de la carte de migration native, toujours accepté ; le lot 3 remplacera ces deux entrées par les pages extraites.
+Le texte d’aide de la migration native devient « dans la PWA, Plus, Mes données, Exporter tout ».
+Les pages gardent leurs titres actuels (« Archive », « Insights ») : leur renommage en « Mes parties » et « Mon bilan » appartient aux lots qui les retouchent.
+
+### Nav latérale
+
+La sous-liste de Plus se déplie dès que l’onglet Plus est allumé, c’est-à-dire au clic sur Plus ou à l’arrivée sur une route rattachée.
+Elle est dérivée de la route, sans état ni gestionnaire d’ouverture : aucun cas de liste ouverte sur une autre famille ou fermée sur la sienne.
+Ses sept liens sont en `replace`, comme des onglets, et un clic sur la destination courante réarme la frontière d’erreur comme un re-tap d’onglet.
+Ils ne portent pas `aria-current`, réservé à l’onglet ; la destination courante est signalée visuellement (`data-selected`).
+Les libellés tiennent dans les 176 px de la barre ; « Importer des parties » y devient « Importer ».
+Dépliée, la barre compte douze cibles de 44 px, environ 620 px : elle défile seule (`overflow-y-auto`) dans une fenêtre d’ordinateur plus basse.
+
+### Pictogrammes
+
+Les emojis et glyphes de la barre (♞ ♟ 🧩 🎓 🔍 📚 📊) sont remplacés par des SVG inline dessinés pour l’app, sans dépendance ni jeu d’icônes repris (`src/components/NavIcon.tsx`).
+Onglets : maison, pion, pièce de puzzle, toque, cercle à points de suspension ; hub : échiquiers empilés, flèche entrante, loupe, courbe encadrée, histogramme, curseurs, cylindre de données.
+Grille commune de 24 px, trait de 1,75 px aux bouts et angles arrondis, `currentColor` et `aria-hidden` ; le libellé texte reste le nom accessible.
+Actif : couleur accent (accent-light sur la nav latérale) et aplat à 22 % des formes `data-fill`, pour que l’état ne repose pas que sur la couleur.
+La nav basse garde exactement sa hauteur de 48 px (mesurée avant et après) avec des pictogrammes de 24 px et des libellés de 12 px en graisse 600, conformes au [système visuel](#tokens-et-typographie) ; la nav latérale utilise 20 px.
+
+### Vérification du lot 2
+
+`npm run check` : code 0.
+La suite `shell` vérifie aux trois formats (393 × 660 standalone avec zones sûres émulées, 393 × 852, 1440 × 900) :
+
+- cinq onglets exactement, dans l’ordre, cibles d’au moins 44 × 44 px, libellés sur une ligne, aucun débordement horizontal ;
+- pictogrammes SVG de 24 px (20 px sur desktop), grille et trait communs, `aria-hidden`, trait de la couleur du libellé ;
+- couleur active mesurée (accent `#81b64c`, accent-light `#b5dc8c` sur desktop), couleur inactive commune et distincte, contraste d’au moins 4,5:1 (5,22:1 à 9,1:1 mesurés), aplat actif à 22 % et contour seul au repos ;
+- sur mobile, cinq colonnes égales, pictogramme centré au-dessus du libellé, nav collée en bas et, avec les zones sûres, 34 px de marge basse sous les onglets ;
+- 21 familles de routes ouvertes par leur ancien lien : page rendue, URL conservée et un seul `aria-current` sur l’onglet attendu avec la bonne valeur ;
+- sur desktop, sous-liste dépliée sur les seules routes de Plus, destination sélectionnée attendue, aucun `aria-current` et cibles de 44 px ;
+- hub : titre, trois groupes, sept cartes dans l’ordre avec description et pictogramme, chaque lien en push avec Plus allumé et retour au hub, Réglages et Mes données amenés en haut de l’écran avec le state effacé ;
+- sous-liste desktop en `replace`, y compris Réglages et Mes données redemandés depuis `/stats`.
+
+Les scénarios de frontière d’erreur passent désormais par le hub pour atteindre Analyse ; le re-tap de l’onglet courant est vérifié sur l’Accueil, et celui d’une sous-destination courante sur la nav latérale.
+Les suites qui tapaient les anciens onglets passent par Plus et la carte du hub (`all_buttons`, `archive_import`, `insights_archives`) ou par l’onglet Plus pour quitter une page (`analysis_robust`, `play_lifecycle`), sans retirer d’assertion.
+`insights`, `endgame_play` et `mats` attendent l’onglet de leur nouvelle famille ; `/plus` entre dans la matrice d’`ux_audit`, la tournée d’`ui_audit` et les pages de `viewport`.
+
+| Suite production | Checks réussis |
+|---|---:|
+| `shell` | 455 |
+| `all_buttons` | 101 |
+| `edge_navigation` | 193 |
+| `viewport` | 649 |
+| `ui_audit` | 1 168 |
+| `ux_audit` | 792 |
+| `ux_foundation` | 524 |
+| `ios_app` | 98 |
+| `analysis_robust` | 88 |
+| `archive_import` | 145 |
+| `endgame_play` | 86 |
+| `insights` | 354 |
+| `insights_archives` | 23 |
+| `mats` | 91 |
+| `play_lifecycle` | 84 |
+
+Les quinze suites ont été lancées ensemble (`npm run test:e2e -- --suite … --jobs 2`) : code 0, 4 851 checks, sans relance.
+`npm run test:e2e:dev -- --suite shell --jobs 1` : code 0, 455 checks.
+`ux_audit` lit 47 routes déclarées, toutes couvertes, et produit 307 états et 520 captures.
+
+Preuves par mutation, chacune annulée ensuite :
+
+- `/import` retiré de `PLUS_MATCH` : `shell` à code 1, sept échecs (« /import allume Plus » aux trois formats, sous-liste et sélection desktop, Plus allumé après la carte Importer du hub aux deux formats qui le testent) ;
+- onglet actif de la nav basse rendu sans sa variante pleine : `shell` à code 1, deux échecs (« aplat actif » à 393 × 660 et 393 × 852).
+
+Captures relues : `e2e/shots/shell_nav_*.png`, `shell_hub_*.png`, `shell_sidebar_*.png` et les captures `plus` d’`ux_audit` aux trois formats.
+La validation sur iPhone physique (rendu des SVG, zone sûre réelle) reste au lot 10.

@@ -1124,7 +1124,7 @@ def real_run(p, browser):
     check(f"{tag} aucune requête chess.com au chargement", calls["n"] == 0, f"({calls['n']})")
     check(f"{tag} aucun rapport sans série", page.locator("[data-testid=insights-report]").count() == 0)
     current = page.locator("nav a[aria-current]").locator("visible=true").all_inner_texts()
-    check(f"{tag} onglet Stats allumé sur /insights", current == ["📊\nStats"], f"({current})")
+    check(f"{tag} onglet Plus allumé sur /insights", current == ["Plus"], f"({current})")
     page.screenshot(path=f"{SHOTS}/insights_config_852.png", full_page=True)
 
     tap(f"{tag} cadence Blitz", page, "[data-testid=tc-blitz]")

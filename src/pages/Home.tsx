@@ -105,9 +105,10 @@ export default function Home() {
         </div>
       )}
 
-      {/* Navigations d'onglet (racines de la nav) en `replace`, comme la nav basse : le swipe-back
-          iOS ne ramène pas à l'accueil en pleine partie. Puzzle Rush et chess.com sont des
-          descentes (/rush, /import), empilées. */}
+      {/* Navigations d'onglet (racines de la nav, et Stats, Analyse, Archive, anciennes racines
+          devenues des destinations de Plus au lot 2, inchangées jusqu'au lot 4) en `replace`,
+          comme la nav basse : le swipe-back iOS ne ramène pas à l'accueil en pleine partie.
+          Puzzle Rush et chess.com sont des descentes (/rush, /import), empilées. */}
       {/* Carte Problèmes, façon chess.com */}
       <Link
         to="/puzzles"

@@ -222,6 +222,7 @@ def suite(p):
             ("/defense", "defense", "Entraîneur de défense"), ("/archive", "archive-vide", "Aucune partie enregistrée"),
             ("/stats", "stats", "Statistiques"), ("/insights", "insights-vide", "Insights"),
             ("/import", "import", "Importer depuis"),
+            ("/plus", "plus", "Outils et progression"),
             ("/repertoire", "repertoire", "Mon répertoire"),
             ("/visualisation", "visualisation", "Calcul et visualisation"),
             ("/moment-critique", "moment-vide", "Aucun moment critique"),

@@ -350,7 +350,7 @@ def suite(p):
     ck.appears("[générique] partie depuis la position", page, GAME)
     check("[générique] URL #/analyse/jouer", page.evaluate("() => location.hash") == "#/analyse/jouer")
     check("[générique] même position", fen(page) == lost, f"({fen(page)})")
-    check("[générique] onglet Analyse allumé", page.locator("nav a[aria-current]", has_text="Analyse").locator("visible=true").count() == 1)
+    check("[générique] onglet Plus allumé", page.locator("nav a[aria-current]").locator("visible=true").all_inner_texts() == ["Plus"])
     check("[générique] pas d'objectif, partie libre", page.locator("[data-testid='objective']", has_text="Objectif").count() == 0)
     page.get_by_role("button", name="Nulle").tap()
     ck.appears("[nulle] refus affiché", page, "text=Stockfish refuse la nulle", timeout=20000)

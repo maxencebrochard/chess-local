@@ -195,7 +195,7 @@ def entry_suite(p, browser):
     page.goto(f"{BASE}/#/mats")
     ck.appears("[accueil] titre", page, "h1:has-text('Mats éclair')", timeout=10000)
     cur = page.locator("nav a[aria-current]").last
-    check("[accueil] onglet Apprendre allumé", cur.count() > 0 and "Apprendre" in cur.inner_text(), f"({cur.inner_text() if cur.count() else '-'})")
+    check("[accueil] onglet Puzzles allumé", cur.count() > 0 and "Puzzles" in cur.inner_text(), f"({cur.inner_text() if cur.count() else '-'})")
     sections = page.locator("[data-section]").evaluate_all("els => els.map(e => e.dataset.section)")
     check("[accueil] quatre familles d'exercices", sections == ["chrono", "mateIn", "geo", "motif"], f"({sections})")
     n = {s: page.locator(f"[data-section='{s}'] [data-drill]").count() for s in sections}

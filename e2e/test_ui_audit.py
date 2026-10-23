@@ -613,6 +613,8 @@ def tour(page, profile):
     a("insights")
     goto(page, "/import", "main h1")
     a("import")
+    goto(page, "/plus", "main h1")
+    a("plus")
 
 
 def tour_empty(page, profile):
