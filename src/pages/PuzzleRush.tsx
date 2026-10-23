@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { ActivityCard } from '../components/ActivityCard'
 import { Cta } from '../components/Cta'
+import { PageHeader } from '../components/PageHeader'
+import { PuzzleModes } from '../components/PuzzleModes'
 import { FAIL_FLASH_MS, PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
 import { db } from '../lib/db'
 import { loadPuzzles } from '../lib/puzzles'
@@ -11,6 +14,12 @@ type RushState = 'menu' | 'running' | 'done'
 const MODE_MS: Record<RushMode, number | null> = { '3min': 180_000, '5min': 300_000, survival: null }
 const NEXT_DELAY_MS = 400 // après un succès ; après un échec c'est la durée du flash rouge
 const NO_BEST: Record<RushMode, number> = { '3min': 0, '5min': 0, survival: 0 }
+const RUSH_LABEL: Record<RushMode, string> = { '3min': '3 minutes', '5min': '5 minutes', survival: 'Survie' }
+const RUSH_HINT: Record<RushMode, string> = {
+  '3min': 'Le plus de puzzles avant la fin du chrono',
+  '5min': 'Plus de temps, la même règle des trois erreurs',
+  survival: 'Sans chrono, jusqu’à la troisième erreur',
+}
 
 // Puzzles de la série dans l'ordre : réussi, raté, ou laissé en cours (null) par le chrono ou Arrêter.
 type RushEntry = { puzzle: PuzzleData; ok: boolean | null }
@@ -227,30 +236,28 @@ export default function PuzzleRush() {
 
   if (state === 'menu') {
     return (
-      <div className="mx-auto max-w-xl p-4 md:p-8">
-        <h1 className="mb-2 text-2xl font-bold">⚡ Puzzle Rush</h1>
-        <p className="mb-6 text-neutral-400">
-          Enchaîne un maximum de puzzles. Trois erreurs et c'est fini. La difficulté monte avec ton score.
-        </p>
+      <div className="mx-auto max-w-xl p-4 md:p-6">
+        <PuzzleModes current="/rush" className="mb-4" />
+        <PageHeader title="Puzzle Rush" description="Enchaîne un maximum de puzzles. Trois erreurs et c’est fini. La difficulté monte avec ton score." />
         {loadError && (
-          <div className="mb-4 rounded-lg bg-surface-2 p-4 text-center">
+          <div className="mb-4 rounded-xl bg-surface-2 p-4 text-center">
             <p className="mb-3 text-sm text-neutral-400">Impossible de charger les puzzles. Vérifie ta connexion, puis réessaie.</p>
             <Cta onClick={load}>Réessayer</Cta>
           </div>
         )}
-        <div className="space-y-3">
+        <div className="grid gap-2">
           {(['3min', '5min', 'survival'] as RushMode[]).map((m) => (
-            <button
+            <ActivityCard
               key={m}
+              data-rush-mode={m}
               onClick={() => start(m)}
               disabled={!allPuzzles}
-              className="flex w-full cursor-pointer items-center justify-between rounded-lg bg-surface-2 p-4 hover:bg-surface-3 disabled:cursor-default disabled:opacity-50"
+              icon={<span className="inline-block w-7 text-center">{m === 'survival' ? '♾' : '⏱'}</span>}
+              title={RUSH_LABEL[m]}
+              description={RUSH_HINT[m]}
             >
-              <span className="text-lg font-semibold">
-                {m === '3min' ? '⏱ 3 minutes' : m === '5min' ? '⏱ 5 minutes' : '♾ Survie'}
-              </span>
-              <span className="text-sm text-neutral-400">Record : {best[m]}</span>
-            </button>
+              <span className="mt-1 block text-sm font-semibold text-neutral-300">Record : {best[m]}</span>
+            </ActivityCard>
           ))}
         </div>
       </div>

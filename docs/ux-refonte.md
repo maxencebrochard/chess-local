@@ -845,7 +845,7 @@ Un déplacement de menu ne justifie pas de renommer un domaine `learnSessions`, 
 Chaque lot porte un périmètre limité et peut être annulé sans migration de données.
 L’ordre indique les dépendances ; les lots 3 à 6 sont séparables une fois le socle et les contrats validés.
 Les checks listés sont les critères d’acceptation de chaque lot.
-Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2), ceux du lot 3 dans sa [vérification](#vérification-du-lot-3) ; ceux des lots suivants restent à établir.
+Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-du-lot-0), ceux du lot 1 dans sa [vérification finale](#vérification-finale-du-lot-1), ceux du lot 2 dans sa [vérification](#vérification-du-lot-2), ceux du lot 3 dans sa [vérification](#vérification-du-lot-3), ceux du lot 6 dans sa [vérification](#vérification-du-lot-6) ; ceux des lots suivants restent à établir.
 
 | Lot | Périmètre et propriété | Dépendance | Acceptation E2E |
 |---|---|---|---|
@@ -855,7 +855,7 @@ Les résultats du lot 0 sont consignés dans sa [vérification](#vérification-d
 | 3. Réglages et données (fait) | Extraire la présentation de Stats vers Réglages et Mes données | Lot 2 | Mêmes valeurs persistées ; backup, upgrade, audio_settings, stats ; annulation des actions destructrices |
 | 4. Accueil quotidien | `Home.tsx`, adaptateur de lecture du service de séance existant | Lot 2 + séance du jour intégrée | Profil neuf, reprise, dû/non dû, données indisponibles, pas de double comptage, CTA accessible à 660 px |
 | 5. Apprendre et Entraînement | Hub guidé, cinq groupes, anciennes entrées conservées | Lot 2 + parcours intégré | Chaque fonction accessible en quatre taps au plus, état vide explicite, suites learn/all_buttons et suites des features déplacées |
-| 6. Puzzles et vitesse | Hub Puzzles, Rush et Mats, retours contextuels | Lot 2 | Réussite/échec, chrono intact, retour vers le bon hub, suites puzzles/mats/continuation |
+| 6. Puzzles et vitesse (fait) | Hub Puzzles, Rush et Mats, retours contextuels | Lot 2 | Réussite/échec, chrono intact, retour vers le bon hub, suites puzzles/mats/continuation |
 | 7. Exercice commun, première tranche | En-tête et feedback sur séance Apprendre puis révision | Lots 1 et 5 | Pas de déplacement du board au verdict, réessai non rescoring, analyse puis restauration, suites learn/revision/touch |
 | 8. Exercice commun, seconde tranche | Présentation PositionGame et cours sans changer leur logique | Lot 7 | Quitter, reprise, changement d’activité, objectifs et moteur, suites attaque/defense/endgame_play/endgame_course/cours_roque/premove |
 | 9. Fin de partie et Mon bilan | Résultat Jouer, accès analyse, libellé Insights | Lots 2 et 7 | Partie enregistrée avant action, replay, analyse et retour, suites all_buttons/insights/coach |
@@ -1209,3 +1209,93 @@ Preuves par mutation, chacune annulée ensuite :
 - interrupteurs de l’alerte écrivant `chess-local-threat` au lieu de `chess-local-threat-check` : `backup` à code 1, six échecs de `part_pages` (clé modifiée, format, lecture croisée avec Jouer, aller-retour).
 
 Captures relues : `reglages` et `donnees` d’`ux_audit` aux trois formats, `f10_reglages_*`, `backup_donnees_after_export.png` et `ios_migration_donnees_393x852.png`.
+
+## Lot 6 : puzzles et vitesse réalisé
+
+L’onglet Puzzles réunit trois modes : le puzzle classé (`/puzzles`), Puzzle Rush (`/rush`) et Mats éclair (`/mats`), avec leurs sous-modes inchangés (3 minutes, 5 minutes, Survie ; contre la montre, mat en N, géométrie, motifs).
+Aucune logique de score, de chrono, d’Elo ni de persistance n’est modifiée : seuls le classement, les libellés et la présentation changent.
+
+### Décision : `/puzzles` reste le puzzle classé
+
+Deux options étaient ouvertes : un hub sur `/puzzles` avec le puzzle classé un geste plus loin, ou `/puzzles` conservé avec un accès rapide aux autres modes.
+La seconde est retenue.
+Le puzzle classé est l’activité quotidienne de l’onglet : il reste à zéro geste de l’onglet, mieux que le budget d’un geste.
+Les anciennes URL rendent exactement la même page, y compris le retour d’analyse (`returnTo: '/puzzles'`), la tuile Problèmes de l’Accueil (lot 4) et les plans de Mon bilan qui visent `/puzzles`.
+Aucune route n’est ajoutée : la matrice d’`ux_audit` reste complète sans changement.
+
+Le « hub » est donc la famille des trois racines sœurs, reliées par un sélecteur commun (`src/components/PuzzleModes.tsx`, liste `PUZZLE_MODES` de `src/lib/navigation.ts`) : Classés, Rush, Mats éclair.
+Il est en tête du puzzle classé (au-dessus de l’échiquier, aligné sur lui), du menu du Rush et de l’accueil de Mats éclair, à la même hauteur dans les trois (16 px sous la zone sûre, 24 px sur desktop) : le sélecteur ne saute pas d’un mode à l’autre.
+Ses liens sont en `replace`, comme les onglets : ce sont des racines, le retour arrière ne fait pas la navette entre modes et le swipe-back iOS n’a pas de cible parasite.
+Le mode courant porte `aria-current="page"`, un fond teinté d’accent et le texte `accent-light`, pas seulement une couleur.
+C’est un `div role="navigation"` nommé « Modes de puzzles » plutôt qu’un `<nav>` : même rôle pour les lecteurs d’écran, et `nav a[aria-current]` reste l’unique onglet allumé de la navigation principale.
+Les anciens boutons « Puzzle Rush » et « Mats éclair » sous l’échiquier disparaissent : le sélecteur les remplace.
+
+### Contrat de retour
+
+| Écran | Sortie | Forme |
+|---|---|---|
+| Puzzle classé, menu du Rush, accueil de Mats éclair | Sélecteur des modes, onglets | Racines, `replace` |
+| Run de Rush | Croix « Arrêter » (score enregistré), puis Rejouer ou Menu | Immersif, sans sélecteur |
+| Fiche d’un schéma de Mats éclair (`?d=`) | Flèche « Retour à Mats éclair », retour arrière | Catalogue, sans sélecteur |
+| Série de Mats éclair | Croix et Menu existants | Immersif, sans sélecteur |
+| Mats éclair ouvert par le raccourci d’Apprendre | « Retour à Apprendre » en plus du sélecteur | `state.from: 'apprendre'`, conservé par les fiches |
+| Erreur ou chargement de `/puzzles` | Sélecteur conservé à sa place | Mats éclair contre la montre reste joignable sans `puzzles.json` |
+
+L’accueil de Mats éclair perd son retour fixe vers Apprendre, devenu faux depuis le lot 2 (Mats appartient à Puzzles) ; le raccourci d’Apprendre est conservé et seul lui ajoute ce retour.
+Le state d’entrée suit la fiche (`setParams` avec le même state) : la flèche de la fiche ramène à un accueil qui a toujours son retour vers Apprendre.
+Un lien direct vers `/mats` ou une fiche n’a pas ce retour : le sélecteur et l’onglet Puzzles en sont la sortie déterministe.
+
+### Présentation
+
+Le menu du Rush passe sur `PageHeader` et `ActivityCard` : titre sans emoji, une description par mode et le record sous le titre, icônes à largeur fixe pour aligner les textes.
+L’accueil de Mats éclair garde ses cartes métier ; son titre perd l’emoji et la fiche reprend le retour nommé commun (`BackButton`, extrait de `PageHeader`).
+Sur le puzzle classé, Indice et Réessayer deviennent des `Cta` secondaires : même hauteur, même arrondi et même ombre que Passer et Suivant, au lieu de boutons plus bas et carrés.
+Sur desktop, le puzzle classé est aligné en haut comme ses deux voisins, panneau aligné sur le haut de l’échiquier.
+À 393 × 660 avec zones sûres, l’échiquier occupe 147 à 528 px pour une zone visible de 71 à 578 px : il reste entier sous le sélecteur, le panneau défile dessous comme avant.
+Un `h1` masqué « Puzzles classés » donne un titre à la page, qui n’en avait pas.
+
+### Vérification du lot 6
+
+`npm run check` : code 0.
+La suite `puzzles` gagne un scénario « modes » aux trois formats (393 × 660 standalone avec zones sûres émulées, 393 × 852, 1440 × 900) :
+
+- sélecteur présent sur `/puzzles`, `/rush` et `/mats`, rôle navigation nommé hors des `<nav>` d’onglets, trois modes dans l’ordre, un seul `aria-current="page"` sur le mode attendu ;
+- cibles d’au moins 44 px, libellés sur une ligne, onglet Puzzles seul allumé, aucun débordement horizontal ;
+- sur le puzzle classé : sélecteur au-dessus de l’échiquier, aligné sur ses bords, sous la zone sûre, et échiquier entier visible sans défiler ;
+- sélecteur à la même hauteur sur les trois modes ;
+- Classés → Rush → Mats éclair → Classés : bonne URL, `history.length` inchangé, et même puzzle classé repris, sans nouveau tirage ;
+- anciens boutons Rush et Mats retirés, sélecteur conservé sur l’état d’erreur de `/puzzles` ;
+- run de Rush et écran de fin sans sélecteur, la croix ferme le run, Menu ramène au sélecteur.
+
+La suite `mats` vérifie le raccourci d’Apprendre (« Retour à Apprendre » présent, conservé après une fiche et sa flèche « Retour à Mats éclair », retour vers `/apprendre`), l’absence de ce retour depuis l’onglet, et l’entrée par le sélecteur.
+Les scénarios existants de réussite, d’échec, de « Passer », de chrono réel du Rush, d’enregistrement des scores et des séries de Mats éclair passent sans modification d’assertion.
+
+`test_perf.py` cliquait encore le lien « Analyse » de l’ancien onglet, retiré au lot 2 : la suite s’arrêtait sur une exception au déploiement d’un nouveau build.
+Elle navigue maintenant vers `#/analyse` par un changement de hash (même navigation interne qu’un lien, sans rechargement du document), et ses 73 checks passent.
+
+| Suite production | Checks réussis |
+|---|---:|
+| `puzzles` | 218 |
+| `mats` | 101 |
+| `shell` | 455 |
+| `all_buttons` | 102 |
+| `ui_audit` | 1 168 |
+| `ux_audit` | 792 |
+| `viewport` | 649 |
+| `edge_navigation` | 193 |
+| `perf` | 73 |
+| `premove` | 78 |
+| `continuation` | 74 |
+
+Ces onze suites ont été lancées ensemble après la dernière modification (`npm run test:e2e -- --suite … --jobs 1`) : code 0.
+Lancées plus tôt sur le même lot, `ux_foundation` (524), `learn` (73), `touch` (63), `ios_app` (98) et `insights` (354) passent aussi.
+`npm run test:e2e:dev -- --suite puzzles --suite mats --jobs 1` : code 0 (StrictMode).
+La suite `upgrade` n’est pas lancée sur ce lot : aucune donnée, clé ni version de schéma n’y change.
+
+Preuves par mutation, chacune annulée ensuite :
+
+- liens du sélecteur en push (`replace={false}`) : `puzzles` à code 1, neuf échecs (« replace, history.length stable » pour Rush, Mats et Classés aux trois formats) ;
+- raccourci d’Apprendre sans `state.from` : `mats` à code 1, deux échecs (« retour vers Apprendre » à l’arrivée et après la fiche).
+
+Captures relues : `e2e/shots/puzzles_modes_*.png` (trois modes aux trois formats) et les états `puzzles`, `puzzle-fixture`, `puzzle-reussi`, `puzzles-erreur`, `rush`, `rush-resultat`, `mats`, `mat-fiche` d’`ux_audit`.
+Points ouverts : la tuile « Problèmes » de l’Accueil et le libellé « Problèmes » des plans de Mon bilan restent à renommer « Puzzles » dans leurs lots (4 et 9) ; le bouton « Menu » de fin de Rush et de Mats éclair garde son libellé, que `test_upgrade.py` vise aussi sur les anciens builds.

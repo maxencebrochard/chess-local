@@ -46,3 +46,17 @@ export const PLUS_MATCH = ['/archive', '/import', '/analyse', '/insights', '/sta
 export function isSelected(d: PlusDestination, pathname: string): boolean {
   return pathname === d.to || pathname.startsWith(`${d.to}/`)
 }
+
+// Modes de l'onglet Puzzles (lot 6 du plan UX) : trois racines sœurs, reliées par le sélecteur
+// `PuzzleModes` en tête de chacune. `/puzzles` reste le puzzle classé : l'activité quotidienne de
+// l'onglet s'ouvre sans geste de plus, et les anciennes URL rendent toujours la même page.
+export interface PuzzleMode {
+  to: '/puzzles' | '/rush' | '/mats'
+  label: string
+}
+
+export const PUZZLE_MODES: PuzzleMode[] = [
+  { to: '/puzzles', label: 'Classés' },
+  { to: '/rush', label: 'Rush' },
+  { to: '/mats', label: 'Mats éclair' },
+]

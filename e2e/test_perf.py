@@ -485,6 +485,12 @@ def renamed_build(src, dest):
     return renames if n == 1 and analysis_renamed else None
 
 
+def open_analysis(page):
+    """Navigation interne vers Analyse (HashRouter, sans rechargement du document) : depuis le
+    lot 2, Analyse n'a plus d'onglet, et un changement de hash fait le même chemin qu'un lien."""
+    page.evaluate("() => { location.hash = '#/analyse' }")
+
+
 def new_deploy(p, browser, dist):
     """Build A installé, build B déployé à sa place, page encore ouverte sur A : une route jamais
     ouverte demande une chunk que le nouveau service worker a purgée."""

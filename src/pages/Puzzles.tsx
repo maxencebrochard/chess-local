@@ -3,12 +3,16 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Chess } from 'chess.js'
 import { Cta } from '../components/Cta'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
+import { PuzzleModes } from '../components/PuzzleModes'
 import { db, getRating } from '../lib/db'
 import { loadPuzzles, pickRatedPuzzle, PUZZLE_SESSION_KEY, recentPuzzleIds, recordRatedPuzzle } from '../lib/puzzles'
 import { displayThemes } from '../lib/puzzleThemes'
 import { figurine } from '../lib/review'
 
 type Phase = 'solving' | 'solved' | 'failed'
+
+// Largeur de `.boardbox` (index.css) : le sélecteur des modes s'aligne sur l'échiquier.
+const BOARD_WIDTH = 'w-[min(100vw_-_0.75rem,76vh,640px)]'
 
 // Puzzle en cours (PUZZLE_SESSION_KEY), conservé d'une visite à l'autre (rechargement, aller-retour
 // vers l'analyseur, changement d'onglet, PWA tuée par iOS) : quitter la page n'est pas un « passer »
@@ -164,17 +168,27 @@ export default function Puzzles() {
     [puzzle],
   )
 
-  if (loadError) {
+  // Erreur et chargement gardent le sélecteur à la place qu'il aura sur l'échiquier : Mats éclair
+  // contre la montre reste joignable sans puzzles.json, et rien ne saute à l'arrivée du puzzle.
+  if (loadError || !puzzle || rating === null) {
     return (
-      <div className="mx-auto max-w-xl p-8 text-center">
-        <p className="mb-1 font-semibold">Puzzles indisponibles</p>
-        <p className="mb-4 text-sm text-neutral-400">Impossible de charger les puzzles. Vérifie ta connexion, puis réessaie.</p>
-        <Cta onClick={() => void init()}>Réessayer</Cta>
+      <div className="flex min-h-full flex-col items-center px-2 pt-4 pb-2 md:p-6">
+        <h1 className="sr-only">Puzzles classés</h1>
+        <div className={`flex max-w-full flex-col gap-2 md:gap-4 ${BOARD_WIDTH}`}>
+          <PuzzleModes current="/puzzles" />
+          {loadError ? (
+            <div className="rounded-xl bg-surface-2 p-6 text-center">
+              <p className="mb-1 font-semibold">Puzzles indisponibles</p>
+              <p className="mb-4 text-sm text-neutral-400">Impossible de charger les puzzles. Vérifie ta connexion, puis réessaie.</p>
+              <Cta onClick={() => void init()}>Réessayer</Cta>
+            </div>
+          ) : (
+            <p role="status" className="p-6 text-neutral-400">Chargement…</p>
+          )}
+        </div>
       </div>
     )
   }
-
-  if (!puzzle || rating === null) return <div className="p-8 text-neutral-400">Chargement…</div>
 
   const sideToPlay = puzzle.fen.split(' ')[1] === 'w' ? 'Noirs' : 'Blancs'
   const playerColor: 'w' | 'b' = puzzle.fen.split(' ')[1] === 'w' ? 'b' : 'w'
@@ -196,8 +210,16 @@ export default function Puzzles() {
     })
   }
 
+  // Sélecteur des modes au-dessus de l'échiquier, aligné sur lui à toutes les tailles : sur
+  // 393 x 660 avec les zones sûres, l'échiquier entier reste visible sous lui (lot 6). Haut de page
+  // commun avec le Rush et Mats éclair (16 px, 24 px sur desktop) : le sélecteur ne saute pas d'un
+  // mode à l'autre.
   return (
-    <div className="flex h-full flex-col items-center justify-start gap-3 p-2 md:flex-row md:justify-center md:gap-6 md:p-4">
+    <div className="flex min-h-full flex-col items-center px-2 pt-4 pb-2 md:p-6">
+      <h1 className="sr-only">Puzzles classés</h1>
+      <div className="flex max-w-full flex-col gap-2 md:gap-4">
+      <PuzzleModes current="/puzzles" className={`self-center md:self-start ${BOARD_WIDTH}`} />
+      <div className="flex flex-col items-center justify-start gap-3 md:flex-row md:items-start md:justify-center md:gap-6">
       <div className="boardbox">
         <PuzzlePlayer
           key={`${puzzle.id}-${attemptKey}`}
@@ -261,20 +283,22 @@ export default function Puzzles() {
 
         <div className="flex gap-2">
           {phase === 'solving' && (
-            <button
+            <Cta
+              variant="secondary"
+              className="flex-1"
               onClick={() => setHint(puzzle.moves[stepIndex % 2 === 1 ? stepIndex : stepIndex + 1]?.slice(0, 2) ?? null)}
-              className="flex-1 cursor-pointer rounded bg-surface-3 py-2 font-semibold hover:bg-surface-3/70"
             >
               💡 Indice
-            </button>
+            </Cta>
           )}
           {phase === 'failed' && (
-            <button
+            <Cta
+              variant="secondary"
+              className="flex-1"
               onClick={() => { setPhase('solving'); setHint(null); setAttemptKey((k) => k + 1) }}
-              className="flex-1 cursor-pointer rounded bg-surface-3 py-2 font-semibold hover:bg-surface-3/70"
             >
               ↺ Réessayer
-            </button>
+            </Cta>
           )}
           {phase === 'solving' ? (
             <Cta variant="secondary" className="flex-1" onClick={() => void skip()}>
@@ -289,26 +313,15 @@ export default function Puzzles() {
 
         {phase !== 'solving' && (
           <button
+            type="button"
             onClick={openInAnalysis}
-            className="cursor-pointer rounded-lg bg-surface-2 py-2.5 font-semibold text-neutral-200 hover:bg-surface-3"
+            className="min-h-11 cursor-pointer rounded-xl bg-surface-2 py-2.5 font-semibold text-neutral-200 hover:bg-surface-3"
           >
             ♞ Analyser avec Stockfish
           </button>
         )}
-
-        <button
-          onClick={() => navigate('/rush')}
-          className="cursor-pointer rounded-lg bg-surface-2 py-2.5 font-semibold text-neutral-200 hover:bg-surface-3"
-        >
-          ⚡ Puzzle Rush
-        </button>
-
-        <button
-          onClick={() => navigate('/mats')}
-          className="cursor-pointer rounded-lg bg-surface-2 py-2.5 font-semibold text-neutral-200 hover:bg-surface-3"
-        >
-          ♚ Mats éclair
-        </button>
+      </div>
+      </div>
       </div>
     </div>
   )
