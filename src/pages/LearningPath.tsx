@@ -7,9 +7,11 @@ import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { CourseBody } from '../components/CourseSheet'
 import { usePathState } from '../components/usePathState'
 import { Cta } from '../components/Cta'
+import { ExerciseFeedback, ExerciseHeader, ExerciseScreen, ExerciseStage, type ExerciseVerdict } from '../components/Exercise'
 import { ProgressBar } from '../components/ProgressBar'
 import { OpeningDrill, type DrillSnapshot } from '../components/OpeningDrill'
 import { PuzzlePlayer, type PuzzleData } from '../components/PuzzlePlayer'
+import { puzzlePlayerColor } from '../components/useExerciseContinuation'
 import { courseFor } from '../lib/courses'
 import { Engine } from '../lib/engine'
 import { isRestore } from '../lib/exerciseReturn'
@@ -643,8 +645,10 @@ function Runner({ run, setRun, fromAnalysis, exercise, title, backTo, isOver, on
     navigate('/analyse', { state: { fen, uci: moves, viewIndex: 0, orientation, label, returnTo: backTo, returnLabel: 'Retour au parcours' } })
   }
 
+  // Résultat de chaque item de la série : un point par puzzle ou variante, dans la bande au-dessus
+  // de l'échiquier (hauteur réservée).
   const dots = (
-    <div className="flex justify-center gap-1.5 pb-2" data-testid="run-dots">
+    <span className="flex shrink-0 gap-1.5" data-testid="run-dots">
       {run.items.map((_, i) => (
         <span
           key={i}
@@ -653,7 +657,7 @@ function Runner({ run, setRun, fromAnalysis, exercise, title, backTo, isOver, on
           }`}
         />
       ))}
-    </div>
+    </span>
   )
 
   if (saveState !== 'idle') {
@@ -689,7 +693,8 @@ function Runner({ run, setRun, fromAnalysis, exercise, title, backTo, isOver, on
         plyTarget={null}
         getEngine={getEngine}
         session={{ ok: 0, total: 0 }}
-        title={`Variante ${run.idx + 1}/${run.items.length}`}
+        title="Variante"
+        progress={{ index: run.idx + 1, total: run.items.length, done: run.results.length }}
         subtitle={`Réussis ${(exercise as OpeningExercise).pass} variantes sur ${exercise.count} pour valider l'étape.`}
         onResult={judge}
         onRetry={() => setRetry((t) => t + 1)}
@@ -708,62 +713,45 @@ function Runner({ run, setRun, fromAnalysis, exercise, title, backTo, isOver, on
   if (item.kind !== 'puzzle') return null
   const p = item.puzzle
   const lvl = levelOfItem?.(run.idx)
-  // Les thèmes livreraient la solution : après le verdict seulement.
-  const banner = `Puzzle ${p.id} · ${p.rating}${phase !== 'play' ? ` · ${displayThemes(p.themes).join(', ')}` : ''}`
+  // Les thèmes livreraient la solution : dans l'explication, après le verdict seulement.
+  const motif = `Motif : ${displayThemes(p.themes).join(', ')}.`
+  const verdictShown: ExerciseVerdict | null = phase === 'play' ? null : {
+    tone: phase === 'success' ? 'success' : 'review',
+    reason: phase === 'success' ? `Bien vu. ${motif}` : `Pas le coup attendu. ${motif}`,
+  }
   return (
-    <div className="pt-safe pb-safe fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-surface">
-      <div data-run={run.key} data-puzzle-id={p.id} data-run-idx={run.idx} className="mx-auto flex min-h-full max-w-2xl flex-col">
-        <header className="flex items-center px-3 py-1">
-          <button onClick={onQuit} aria-label="Quitter la série" className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-2xl leading-none text-neutral-400 hover:text-white">
-            ✕
-          </button>
-          <h1 className="min-w-0 flex-1 truncate text-center text-lg font-black">
-            {title}
-            <span className="ml-2 text-sm font-semibold text-neutral-400">
-              {run.idx + 1}/{run.items.length}
-            </span>
-          </h1>
-          <span className="w-11 shrink-0" />
-        </header>
-        {lvl && (
-          <p className="pb-1 text-center text-xs font-bold tracking-wide uppercase" style={{ color: lvl.color }}>
-            Niveau {lvl.title} · ≈ {lvl.elo}
-          </p>
-        )}
-        {dots}
-        <p className="mx-3 mb-2 truncate rounded bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold">{banner}</p>
-        <div className="flex justify-center px-3">
-          <div className="boardbox md:w-[min(56vh,520px)]">
-            <PuzzlePlayer
-              key={`${run.idx}-${p.id}`}
-              puzzle={p}
-              onComplete={(ok) => {
-                if (phase === 'play') judge(ok)
-              }}
-            />
+    <ExerciseScreen data-run={run.key} data-puzzle-id={p.id} data-run-idx={run.idx}>
+      <ExerciseHeader title={title} index={run.idx + 1} total={run.items.length} done={run.results.length} onClose={onQuit} closeLabel="Quitter la série" />
+      <ExerciseStage
+        above={
+          <div className="flex h-7 items-center gap-3">
+            {lvl ? (
+              <p className="min-w-0 flex-1 truncate text-xs font-bold tracking-wide uppercase" style={{ color: lvl.color }}>
+                Niveau {lvl.title} · ≈ {lvl.elo}
+              </p>
+            ) : <span className="flex-1" />}
+            {dots}
           </div>
-        </div>
-        {phase !== 'play' && (
-          <div className="flex items-center gap-2 px-3 py-2">
-            <span className={`shrink-0 text-lg leading-tight font-black whitespace-nowrap ${phase === 'success' ? 'text-accent' : 'text-red-400'}`}>
-              {phase === 'success' ? '✓ Réussi !' : '✗ Raté'}
-            </span>
-            <div className="ml-auto flex items-center gap-1">
-              <button
-                onClick={() => analyse(p.fen, p.moves, p.fen.split(' ')[1] === 'w' ? 'b' : 'w', `Puzzle ${p.id} (${p.rating})`)}
-                className="flex cursor-pointer flex-col items-center rounded px-1.5 py-1 text-xs font-semibold text-neutral-300 hover:text-white"
-              >
-                <span className="text-lg leading-none">♞</span>
-                Analyser
-              </button>
-              <Cta className="ml-1 px-5 py-2 text-base" onClick={advance}>
-                {isOver(run.results) ? 'Voir le résultat' : 'Suivant'}
-              </Cta>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+        }
+        feedback={
+          <ExerciseFeedback
+            verdict={verdictShown}
+            prompt={<><span className="font-semibold">Puzzle {p.id} · {p.rating}</span> : trouve le meilleur coup, trait aux {puzzlePlayerColor(p) === 'w' ? 'Blancs' : 'Noirs'}.</>}
+            onNext={() => void advance()}
+            nextLabel={isOver(run.results) ? 'Voir le résultat' : 'Suivant'}
+            onAnalyse={() => analyse(p.fen, p.moves, p.fen.split(' ')[1] === 'w' ? 'b' : 'w', `Puzzle ${p.id} (${p.rating})`)}
+          />
+        }
+      >
+        <PuzzlePlayer
+          key={`${run.idx}-${p.id}`}
+          puzzle={p}
+          onComplete={(ok) => {
+            if (phase === 'play') judge(ok)
+          }}
+        />
+      </ExerciseStage>
+    </ExerciseScreen>
   )
 }
 

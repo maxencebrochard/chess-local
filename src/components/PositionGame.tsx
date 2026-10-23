@@ -10,8 +10,12 @@ import { AttackLegend } from './AttackLegend'
 import { Board, type BoardArrow } from './Board'
 import { ConfirmSheet } from './ConfirmSheet'
 import { CourseSheet } from './CourseSheet'
-import { Cta } from './Cta'
 import { EngineContinuation } from './EngineContinuation'
+import {
+  ExerciseActionButton, ExerciseFeedback, ExerciseHeader, ExerciseHeaderButton, ExerciseScreen, ExerciseStage, type ExerciseAction, type ExerciseTone,
+  type ExerciseVerdict,
+} from './Exercise'
+import { InfoSheet } from './InfoSheet'
 import { MoveStrip } from './MoveStrip'
 import { courseFor } from '../lib/courses'
 import { Engine } from '../lib/engine'
@@ -94,6 +98,8 @@ export interface PositionGameProps {
   successTitle?: string // titre du verdict réussi
   decisiveReason?: string // motif d'une fin sur avantage décisif (défaut : celui de l'attaque)
   headerAction?: ReactNode // à droite du titre, à la place du bouton du cours
+  // Série qui enchaîne des parties (séance du jour) : « n/N » et barre dans l'en-tête.
+  progress?: { index: number; total: number; done: number; counterProps?: Record<string, string> }
   planButton?: boolean // fin de partie : « Plan », la suite de Stockfish depuis la position de départ
   allowDraw?: boolean // bouton Nulle (vrai par défaut)
   // Objectif « tenir » (objective 'hold') : nombre de coups du joueur et plancher d'éval. Après
@@ -637,175 +643,183 @@ export function PositionGame(props: PositionGameProps) {
   const boardEndKind = end && end.kind !== 'resign' && end.kind !== 'agreed' && end.kind !== 'decisive' && end.kind !== 'held' && end.kind !== 'collapsed'
   const holdShown = hold ? Math.min(playerMoves, hold.moves) : 0
 
+  // Ton du verdict (présentation seule ; `data-verdict` garde le jugement de l'objectif) : une
+  // nulle, un abandon ou une défense tenue au moins à moitié sont des issues neutres, un mat subi
+  // ou une défense qui cède tôt sont à revoir.
+  const score = end ? (end.result === '1/2-1/2' ? 0.5 : (end.result === '1-0') === (player === 'w') ? 1 : 0) : 0
+  const tone: ExerciseTone | null =
+    end ? (
+      verdict === 'success' ? 'success'
+      : verdict === null && score === 1 ? 'success'
+      : end.result === '1/2-1/2' || end.kind === 'resign' ? 'neutral'
+      : hold && end.kind === 'collapsed' && playerMoves * 2 >= hold.moves ? 'neutral'
+      : 'review'
+    )
+    : offered ? 'success'
+    : null
+  const help = assisted ? ' (avec aide)' : ''
+  const exerciseVerdict: ExerciseVerdict | null = tone && (text || offered)
+    ? text
+      ? { tone, label: text.title, reason: <>{text.reason}{help}</> }
+      : { tone, label: props.successTitle ?? 'Objectif atteint', reason: <>Avantage décisif tenu : conclus, ou joue jusqu'au mat.{help}</> }
+    : null
+  const objectiveTitle =
+    objective === 'win' ? 'Objectif : gagner'
+    : objective === 'draw' ? 'Objectif : tenir la nulle'
+    : objective === 'hold' ? `Objectif : tenir ${hold?.moves ?? 0} coups`
+    : (props.objectiveLabel ?? 'Partie libre')
+
+  const restartAction: ExerciseAction = { label: 'Rejouer', icon: '↺', onClick: restart }
+  const otherAction: ExerciseAction | null = onOther ? { label: props.otherLabel ?? 'Autre finale', icon: '→', onClick: onOther } : null
+  const endActions = (): { secondary: ExerciseAction[]; primary: ExerciseAction } => {
+    const primary = tone === 'success' && otherAction ? otherAction : restartAction
+    const alternative = primary === restartAction ? otherAction : restartAction
+    const secondary: (ExerciseAction | null | false)[] = [
+      alternative,
+      boardEndKind && { label: 'Annuler', icon: '↩', onClick: takeback, disabled: playerMoves === 0 },
+      { label: 'Analyser', icon: '♞', onClick: analyse, disabled: history.length === 0 },
+      !!props.planButton && { label: 'Plan', icon: '💡', onClick: () => setShowPlan(true) },
+    ]
+    return { primary, secondary: secondary.filter((a): a is ExerciseAction => !!a) }
+  }
+  const actions = offered
+    ? {
+        secondary: [
+          { label: 'Continuer', icon: '▶', onClick: () => setDecisive('continued') },
+          { label: 'Recommencer', icon: '↺', onClick: restart },
+        ],
+        primary: { label: 'Conclure', icon: '✓', onClick: conclude },
+      }
+    : endActions()
+  const playActions: (ExerciseAction | false)[] = [
+    { label: 'Abandonner', icon: '🏳', onClick: () => setConfirmResign(true) },
+    objective !== 'draw' && props.allowDraw !== false && { label: 'Nulle', icon: '½', onClick: () => void offerDraw(), disabled: !myTurn || !!busy },
+    !thinking && !busy && chessRef.current.turn() !== player
+      ? { label: 'Relancer', icon: '🤖', onClick: opponentTurn }
+      : { label: 'Indice', icon: '💡', onClick: () => void requestHint(), disabled: !myTurn || !!busy },
+    { label: 'Annuler', icon: '↩', onClick: takeback, disabled: thinking || !!busy || playerMoves === 0 },
+    { label: 'Recommencer', icon: '↺', onClick: restart, disabled: history.length === 0 },
+  ]
+
+  const status = thinking ? 'réfléchit…' : busy === 'hint' ? 'cherche un indice…' : busy === 'draw' ? 'étudie ta proposition…'
+    : busy === 'confirm' ? 'vérifie ta défense…' : opponent ? opponent.label : 'pleine force'
+
   return (
-    <div
+    <ExerciseScreen
       data-testid="position-game"
       data-fen={fen}
       data-status={end ? 'over' : 'playing'}
       data-verdict={verdict ?? 'none'}
+      data-tone={tone ?? 'none'}
       data-decisive={decisive ?? 'none'}
       data-end={end?.kind ?? 'none'}
       data-hold-fall={hold ? holdFall.count : undefined}
       data-thinking={thinking || busy ? '1' : '0'}
-      className="mx-auto flex h-full max-w-2xl flex-col"
     >
-      <header className="flex items-center gap-1 px-2 pt-1">
-        {/* Avec une action à droite plus large qu'un bouton rond, deux côtés de même largeur
-            gardent le titre centré. */}
-        <div className={`flex shrink-0 ${props.headerAction ? 'w-20' : ''}`}>
-          <button
-            onClick={onExit}
-            aria-label="Retour"
-            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-2xl text-neutral-400 hover:text-white"
-          >
-            ←
-          </button>
-        </div>
-        <h1 className="min-w-0 flex-1 truncate text-center text-lg font-black">{title}</h1>
-        {props.headerAction ? <div className="flex w-20 shrink-0 justify-end">{props.headerAction}</div> : (course ? (
-          <button
-            onClick={() => setShowCourse(true)}
-            title="Voir le cours"
-            aria-label="Voir le cours"
-            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-lg font-black text-neutral-400 hover:text-white"
-          >
-            ?
-          </button>
-        ) : (
-          <span className="w-11" />
-        ))}
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div
-          data-testid="objective"
-          className={`mx-3 mt-1 rounded px-3 py-1.5 ${
-            verdict === 'success' || offered ? 'bg-accent/15 text-accent-light'
-            : verdict === 'fail' ? 'bg-red-900/40 text-red-200'
-            : 'bg-surface-2'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <p className="min-w-0 flex-1 truncate text-sm font-bold">
-              {text
-                ? <>{verdict === 'success' ? '✓ ' : verdict === 'fail' ? '✗ ' : ''}{text.title}</>
-                : offered ? <>✓ {props.successTitle ?? 'Objectif atteint'}</>
-                : objective === 'win' ? 'Objectif : gagner'
-                : objective === 'draw' ? 'Objectif : tenir la nulle'
-                : objective === 'hold' ? `Objectif : tenir ${hold?.moves ?? 0} coups`
-                : (props.objectiveLabel ?? 'Partie libre')}
-            </p>
-            {lesson && (
-              <button
-                onClick={() => setShowLesson((s) => !s)}
-                aria-expanded={showLesson}
-                className="relative inline-flex h-8 shrink-0 cursor-pointer items-center rounded-full bg-surface-3/80 px-3 text-xs font-semibold text-neutral-200 after:absolute after:-inset-x-1 after:-inset-y-1.5 after:content-[''] hover:bg-surface-3"
-              >
-                {props.lessonLabel ?? 'Leçon'} {showLesson ? '▴' : '▾'}
-              </button>
-            )}
+      <ExerciseHeader
+        title={title}
+        index={props.progress?.index}
+        total={props.progress?.total}
+        done={props.progress?.done}
+        counterProps={props.progress?.counterProps}
+        onClose={onExit}
+        closeLabel="Retour"
+        wideAction={!!props.headerAction}
+        action={props.headerAction ?? (course ? (
+          <ExerciseHeaderButton onClick={() => setShowCourse(true)} title="Voir le cours" aria-label="Voir le cours">?</ExerciseHeaderButton>
+        ) : undefined)}
+      />
+      <ExerciseStage
+        above={
+          // Adversaire et compteurs : hauteur réservée au-dessus de l'échiquier, comme une barre d'éval.
+          <div className="flex h-7 items-center gap-2 text-xs text-neutral-400">
+            <span className="shrink-0 font-semibold text-neutral-300">🤖 Stockfish 18</span>
+            <span className="min-w-0 truncate">{status}</span>
+            <span className="ml-auto flex shrink-0 items-center gap-1.5">
+              {assisted && !end && <span className="rounded bg-surface-3 px-1.5 py-0.5">avec aide</span>}
+              {hold && (
+                <span
+                  data-testid="hold-counter"
+                  data-moves={holdShown}
+                  className={`rounded px-1.5 py-0.5 font-semibold tabular-nums ${holdWarning ? 'bg-amber-900/50 text-amber-200' : 'bg-surface-3 text-neutral-200'}`}
+                >
+                  Coup {holdShown}/{hold.moves}
+                </span>
+              )}
+              {showClock && (
+                <span className={`rounded px-1.5 py-0.5 ${clock >= 80 ? 'bg-amber-900/50 text-amber-200' : 'bg-surface-3'}`}>
+                  50 coups : {Math.floor(clock / 2)}/50
+                </span>
+              )}
+            </span>
           </div>
-          <p data-testid="objective-subline" className={`truncate text-xs ${sublineClass}`}>
-            {text ? <>{text.reason}{assisted && ' (avec aide)'}</>
-              : offered ? <>Avantage décisif tenu : conclus, ou joue jusqu'au mat.{assisted && ' (avec aide)'}</>
-              : (subline ?? ' ')}
-          </p>
-        </div>
-        {showLesson && lesson && (
-          <p className="mx-3 mt-1 rounded bg-surface-2 px-3 py-2 text-sm leading-snug text-neutral-200">{lesson}</p>
-        )}
-
-        <div className="flex h-7 items-center gap-2 px-3 text-xs text-neutral-400">
-          <span className="font-semibold text-neutral-300">🤖 Stockfish 18</span>
-          <span>
-            {thinking ? 'réfléchit…' : busy === 'hint' ? 'cherche un indice…' : busy === 'draw' ? 'étudie ta proposition…'
-              : busy === 'confirm' ? 'vérifie ta défense…' : opponent ? opponent.label : 'pleine force'}
-          </span>
-          <span className="ml-auto flex items-center gap-2">
-            {assisted && !end && <span className="rounded bg-surface-3 px-1.5 py-0.5">avec aide</span>}
-            {hold && (
-              <span
-                data-testid="hold-counter"
-                data-moves={holdShown}
-                className={`rounded px-1.5 py-0.5 font-semibold tabular-nums ${holdWarning ? 'bg-amber-900/50 text-amber-200' : 'bg-surface-3 text-neutral-200'}`}
-              >
-                Coup {holdShown}/{hold.moves}
-              </span>
-            )}
-            {showClock && (
-              <span className={`rounded px-1.5 py-0.5 ${clock >= 80 ? 'bg-amber-900/50 text-amber-200' : 'bg-surface-3'}`}>
-                50 coups : {Math.floor(clock / 2)}/50
-              </span>
-            )}
-          </span>
-        </div>
-
-        <div className="flex justify-center">
-          <div className="boardbox md:w-[min(62vh,560px)]">
-            <Board
-              fen={viewFen}
-              orientation={player}
-              interactive={myTurn && live && !busy}
-              allowPremove={!end && live && !busy}
-              movableColor={player}
-              onMove={handleMove}
-              lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
-              silent
-              arrows={hint && live ? [hint] : []}
-              showAttackers={props.showAttackers}
-            />
-          </div>
-        </div>
-        {props.showAttackers && <AttackLegend fen={viewFen} className="px-3 pt-1" compact principle={props.attackersPrinciple} />}
-        <div className="min-h-10">
-          <MoveStrip
-            sans={history.map((m) => m.san)}
-            classes={history.map(() => null)}
-            currentIndex={live ? history.length - 1 : viewIndex}
-            onSelect={(i) => setViewIndex(i === history.length - 1 ? -1 : i)}
-            startTurn={player}
+        }
+        feedback={
+          <ExerciseFeedback
+            verdict={exerciseVerdict}
+            testIds={{ status: 'objective', reason: 'objective-subline' }}
+            actions={actions}
+            prompt={
+              <div data-testid="objective">
+                <p className="flex h-5 items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate font-bold">{objectiveTitle}</span>
+                  {lesson && (
+                    <button
+                      type="button"
+                      onClick={() => setShowLesson(true)}
+                      aria-haspopup="dialog"
+                      className="relative shrink-0 cursor-pointer text-xs font-semibold text-accent-light underline underline-offset-2 after:absolute after:-inset-x-3 after:-inset-y-4 after:content-[''] hover:text-white"
+                    >
+                      {props.lessonLabel ?? 'Leçon'}
+                    </button>
+                  )}
+                </p>
+                <p data-testid="objective-subline" className={`mt-0.5 line-clamp-2 h-10 text-sm leading-5 ${sublineClass}`}>
+                  {subline ?? '\u00a0'}
+                </p>
+              </div>
+            }
+            promptActions={
+              <div data-exercise-actions className="mt-1.5 flex items-center">
+                {playActions.filter((a): a is ExerciseAction => !!a).map((a) => <ExerciseActionButton key={a.label} action={a} grow />)}
+              </div>
+            }
           />
-        </div>
-      </div>
+        }
+        below={
+          <>
+            <div className="min-h-10">
+              <MoveStrip
+                sans={history.map((m) => m.san)}
+                classes={history.map(() => null)}
+                currentIndex={live ? history.length - 1 : viewIndex}
+                onSelect={(i) => setViewIndex(i === history.length - 1 ? -1 : i)}
+                startTurn={player}
+              />
+            </div>
+            {props.showAttackers && <AttackLegend fen={viewFen} className="px-3 pt-1" compact principle={props.attackersPrinciple} />}
+          </>
+        }
+      >
+        <Board
+          fen={viewFen}
+          orientation={player}
+          interactive={myTurn && live && !busy}
+          allowPremove={!end && live && !busy}
+          movableColor={player}
+          onMove={handleMove}
+          lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
+          silent
+          arrows={hint && live ? [hint] : []}
+          showAttackers={props.showAttackers}
+        />
+      </ExerciseStage>
 
-      <div className="flex items-center border-t border-black/40 py-1.5">
-        {offered ? (
-          <>
-            <Action label="Continuer" icon="▶" onClick={() => setDecisive('continued')} />
-            <Action label="Recommencer" icon="↺" onClick={restart} />
-            <div className="flex-1" />
-            <Cta className="mr-1 px-5 py-2 text-base" onClick={conclude}>Conclure</Cta>
-          </>
-        ) : !end ? (
-          <>
-            <Action label="Abandonner" icon="🏳" onClick={() => setConfirmResign(true)} />
-            {objective !== 'draw' && props.allowDraw !== false && (
-              <Action label="Nulle" icon="½" onClick={() => void offerDraw()} disabled={!myTurn || !!busy} />
-            )}
-            {!thinking && !busy && chessRef.current.turn() !== player ? (
-              <Action label="Relancer" icon="🤖" onClick={opponentTurn} />
-            ) : (
-              <Action label="Indice" icon="💡" onClick={() => void requestHint()} disabled={!myTurn || !!busy} />
-            )}
-            <Action label="Annuler" icon="↩" onClick={takeback} disabled={thinking || !!busy || playerMoves === 0} />
-            <Action label="Recommencer" icon="↺" onClick={restart} disabled={history.length === 0} />
-          </>
-        ) : (
-          <>
-            {boardEndKind && <Action label="Annuler" icon="↩" onClick={takeback} disabled={playerMoves === 0} />}
-            <Action label="Analyser" icon="♞" onClick={analyse} disabled={history.length === 0} />
-            {props.planButton && <Action label="Plan" icon="💡" onClick={() => setShowPlan(true)} />}
-            {onOther && <Action label="Rejouer" icon="↺" onClick={restart} />}
-            <div className="flex-1" />
-            {onOther ? (
-              <Cta className="mr-1 px-5 py-2 text-base" onClick={onOther}>{props.otherLabel ?? 'Autre finale'}</Cta>
-            ) : (
-              <Cta className="mr-1 px-5 py-2 text-base" onClick={restart}>Rejouer</Cta>
-            )}
-          </>
-        )}
-      </div>
-
+      {showLesson && lesson && (
+        <InfoSheet title={props.lessonLabel ?? 'Leçon'} onClose={() => setShowLesson(false)}>
+          {lesson}
+        </InfoSheet>
+      )}
       {confirmResign && (
         <ConfirmSheet
           title="Abandonner la partie ?"
@@ -822,20 +836,6 @@ export function PositionGame(props: PositionGameProps) {
       {showPlan && (
         <EngineContinuation startFen={startFen} playerColor={player} mode="plan" label={title} onClose={() => setShowPlan(false)} />
       )}
-    </div>
-  )
-}
-
-// Action de la barre du bas : icône + libellé, comme le mode entraîneur de Jouer.
-function Action({ label, icon, onClick, disabled }: { label: string; icon: string; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="flex min-w-0 flex-1 cursor-pointer flex-col items-center gap-0.5 rounded px-0 py-1 text-[11px] font-semibold whitespace-nowrap text-neutral-300 hover:text-white disabled:cursor-default disabled:opacity-35"
-    >
-      <span aria-hidden="true" className="text-xl leading-none">{icon}</span>
-      {label}
-    </button>
+    </ExerciseScreen>
   )
 }

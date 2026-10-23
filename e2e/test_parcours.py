@@ -365,7 +365,7 @@ def solve_current(page, good=True, label=""):
         return None
     tap_move(page, *(GOOD if good else BAD))
     try:
-        page.wait_for_selector("text=✓ Réussi" if good else "text=✗ Raté", timeout=8000)
+        page.wait_for_selector("text=✓ Réussi" if good else "text=✗ À revoir", timeout=8000)
         return good
     except Exception:
         check(f"{label} verdict {'réussi' if good else 'raté'}", False)
@@ -520,8 +520,8 @@ def part_puzzle_step(page):
         verdict = solve_current(page, good, f"[série 1, puzzle {i + 1}]")
         check(f"[série 1] puzzle {i + 1} : verdict {'réussi' if good else 'raté'}", verdict == good)
         if i == 0:
-            banner = page.locator("[data-run] p", has_text="Puzzle").first.inner_text()
-            check("[série 1] thèmes affichés après le verdict", "Pièce en prise" in banner, f"({banner!r})")
+            banner = page.locator("[data-run] [data-exercise-reason]").first.inner_text()
+            check("[série 1] thèmes dans l’explication après le verdict", "Pièce en prise" in banner, f"({banner!r})")
         next_item(page)
     if ck.appears("[série 1] écran de fin « non validée »", page, "[data-run-end='failed']", timeout=8000):
         shot(page, "parcours_serie_ratee_852")

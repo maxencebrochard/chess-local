@@ -1,6 +1,7 @@
-"""E2E « Exercice commun » (lot 7 de docs/ux-refonte.md) : en-tête, scène et zone de décision
-partagés par la séance d'Apprendre et la révision espacée, aux trois formats de référence
-(393x660 PWA avec zones sûres émulées, 393x852, 1440x900).
+"""E2E « Exercice commun » (lots 7 et 8 de docs/ux-refonte.md) : en-tête, scène et zone de
+décision partagés par la séance d'Apprendre, la révision espacée, les parties contre Stockfish
+(PositionGame) et les lignes des cours, aux trois formats de référence (393x660 PWA avec zones
+sûres émulées, 393x852, 1440x900). Sur desktop, la zone est à droite de l'échiquier (deux colonnes).
 
 Pour une séance Tactiques (mat en 1 servi par une route), Mes erreurs (une faute semée) et la
 révision (une faute et un puzzle dus) :
@@ -14,9 +15,24 @@ révision (une faute et un puzzle dus) :
 - Réessayer sans nouvelle écriture en base (ratings, learnSessions, puzzleAttempts, mistakes) ;
 - Analyser puis retour : même item, même verdict, même explication, même échéance.
 
+Pour une partie contre Stockfish (finale « Mat roi + dame ») :
+- objectif dans la zone, adversaire dans la bande au-dessus, échiquier immobile au coup, à la
+  réponse de Stockfish, au verdict et après Rejouer ;
+- reprise après rechargement depuis `chess-local-position-game-v1` ;
+- abandon : issue neutre « ◐ Objectif manqué », explication, Rejouer en principal, une seule
+  ligne `endgame-play`, et Rejouer sans aucune écriture ;
+- Quitter (✕) vers la liste des finales ; changement d'activité : une attaque entamée puis
+  remplacée par une finale est notée abandonnée une fois (`recordReplaced`).
+
+Pour une ligne de cours (« Le mat des deux tours », étape 2) : consigne dans la zone, coup juste
+hors méthode au ton neutre, Solution au ton réussi, échiquier immobile, texte jamais coupé.
+
 Usage : npm run test:e2e -- --suite exercice
 """
 import json
+import os
+
+import chess
 
 from helpers import BASE, SHOTS, Checker, click_square as sq, desktop_context, mobile_context, open_learn_session, open_mistakes_session, overflow_x
 
@@ -81,7 +97,9 @@ GEOM = r"""() => {
     primary: primary?.textContent.trim() ?? null,
     labels: buttons.map((b) => b.textContent.trim()),
     small: buttons.filter((b) => { const q = b.getBoundingClientRect(); return q.width < 44 || q.height < 44 }).map((b) => b.textContent.trim()),
-    zoneOverflow: zone ? zone.scrollHeight > zone.clientHeight + 1 : true,
+    zoneOverflow: zone ? zone.scrollHeight > zone.clientHeight + 1 || [...zone.querySelectorAll('[data-exercise-actions]')].some((r) => r.scrollWidth > r.clientWidth + 1) : true,
+    // Libellé plus large que son bouton (le pseudo-élément qui agrandit la cible ne compte pas).
+    clippedLabels: zone ? [...zone.querySelectorAll('button')].filter((b) => { const r = document.createRange(); r.selectNodeContents(b); return r.getBoundingClientRect().width > b.getBoundingClientRect().width + 1 }).map((b) => b.textContent.trim()) : [],
     title: document.querySelector('[data-exercise-header] h1')?.textContent ?? null,
     progress: document.querySelector('[data-exercise-header] [role=progressbar]')?.getAttribute('aria-valuenow') ?? null,
     note: document.querySelector('[data-exercise-note]')?.textContent.trim() ?? null,
@@ -159,9 +177,17 @@ def layout_checks(tag, page, g, safe):
     check(f"{tag} : en-tête sous la zone sûre", g["header"]["top"] >= top, f"({g['header']['top']} < {top})")
     check(f"{tag} : échiquier carré", abs(g["board"]["width"] - g["board"]["height"]) <= 1, f"({g['board']['width']}x{g['board']['height']})")
     check(f"{tag} : zone de décision visible sans défiler", g["zone"]["bottom"] <= bottom + 0.5, f"(bas {g['zone']['bottom']:.1f} > {bottom})")
-    check(f"{tag} : zone alignée sur l'échiquier", abs(g["zone"]["left"] - g["board"]["left"]) < 0.5 and abs(g["zone"]["right"] - g["board"]["right"]) < 0.5,
-          f"(zone {g['zone']['left']:.1f}-{g['zone']['right']:.1f}, échiquier {g['board']['left']:.1f}-{g['board']['right']:.1f})")
-    check(f"{tag} : contenu de la zone non coupé", not g["zoneOverflow"])
+    if g["vw"] >= 1024:
+        # Deux colonnes : zone à droite de l'échiquier, en haut de sa colonne, échiquier entier visible.
+        check(f"{tag} : zone à droite de l'échiquier", g["zone"]["left"] >= g["board"]["right"] + 16, f"(zone {g['zone']['left']:.1f}, échiquier jusqu'à {g['board']['right']:.1f})")
+        check(f"{tag} : zone en haut de la colonne de droite", g["zone"]["top"] <= g["board"]["top"] + 0.5 and g["board"]["top"] - g["zone"]["top"] <= 40,
+              f"(zone {g['zone']['top']:.1f}, échiquier {g['board']['top']:.1f})")
+        check(f"{tag} : échiquier entier visible", g["board"]["bottom"] <= g["vh"] + 0.5, f"({g['board']['bottom']:.1f})")
+        check(f"{tag} : échiquier d'au moins 600 px", g["board"]["width"] >= 600, f"({g['board']['width']})")
+    else:
+        check(f"{tag} : zone alignée sur l'échiquier", abs(g["zone"]["left"] - g["board"]["left"]) < 0.5 and abs(g["zone"]["right"] - g["board"]["right"]) < 0.5,
+              f"(zone {g['zone']['left']:.1f}-{g['zone']['right']:.1f}, échiquier {g['board']['left']:.1f}-{g['board']['right']:.1f})")
+    check(f"{tag} : contenu de la zone non coupé", not g["zoneOverflow"] and not g["clippedLabels"], f"({g['clippedLabels']})")
     check(f"{tag} : aucun débordement horizontal", overflow_x(page) == 0)
     if g["vw"] <= 400 and not safe:
         check(f"{tag} : échiquier pleine largeur (marges de 6 px)", abs(g["board"]["width"] - (g["vw"] - 12)) <= 1, f"({g['board']['width']})")
@@ -178,6 +204,17 @@ def verdict_checks(tag, g, ok):
     check(f"{tag} : verdict sur une ligne", g["verdictLines"] == 1, f"({g['verdictLines']})")
     check(f"{tag} : explication présente et non coupée", bool(g["reason"]) and len(g["reason"]) > 10 and not g["reasonClipped"], f"({g['reason']!r})")
     check(f"{tag} : Analyser et Suivant/Réessayer présents", any("Analyser" in x for x in g["labels"]) and any("Suivant" in x for x in g["labels"]) and any("Réessayer" in x for x in g["labels"]), f"({g['labels']})")
+    check(f"{tag} : cibles de 44 px", not g["small"], f"({g['small']})")
+
+
+def game_verdict_checks(tag, g, kind, label, primary):
+    """Verdict d'une partie : ton, symbole et titre de l'écran, explication, action principale."""
+    check(f"{tag} : ton « {kind} »", g["kind"] == kind, f"({g['kind']})")
+    check(f"{tag} : verdict « {label} »", g["verdict"] == label, f"({g['verdict']!r})")
+    check(f"{tag} : verdict sur une ligne", g["verdictLines"] == 1, f"({g['verdictLines']})")
+    check(f"{tag} : explication présente et non coupée", bool(g["reason"]) and len(g["reason"]) > 5 and not g["reasonClipped"], f"({g['reason']!r})")
+    check(f"{tag} : action principale « {primary} »", g["primary"] == primary, f"({g['primary']!r})")
+    check(f"{tag} : Analyser présent", any("Analyser" in x for x in g["labels"]), f"({g['labels']})")
     check(f"{tag} : cibles de 44 px", not g["small"], f"({g['small']})")
 
 
@@ -415,6 +452,175 @@ def revision(page, fmt, safe):
         page.screenshot(path=f"{SHOTS}/exercice_revision_puzzle_{fmt}.png")
 
 
+# ---------------------------------------------------------------- partie contre Stockfish (PositionGame)
+GAME = "[data-testid=position-game]"
+KQ_FEN = "8/8/8/4k3/8/8/3Q4/4K3 w - - 0 1"
+STORE_KEY = "chess-local-position-game-v1"
+ROWS = "async (domain) => {" f"  const db = await ({OPEN_DB})()" """
+  const rows = await new Promise((res, rej) => { const q = db.transaction('learnSessions').objectStore('learnSessions').getAll(); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error) })
+  db.close()
+  return rows.filter((r) => r.domain === domain)
+}"""
+
+
+def game_attr(page, name):
+    return page.evaluate(f"() => document.querySelector('{GAME}')?.getAttribute('data-{name}') ?? null")
+
+
+def wait_my_turn(page, color, timeout=30000):
+    """Trait au joueur, moteur au repos (ou partie finie) : True si atteint."""
+    try:
+        page.wait_for_function(f"""(c) => {{ const g = document.querySelector('{GAME}')
+          return g && (g.dataset.status === 'over' || (g.dataset.fen.split(' ')[1] === c && g.dataset.thinking === '0')) }}""", arg=color, timeout=timeout)
+        return True
+    except Exception:
+        return False
+
+
+def play_uci(page, uci):
+    sq(page, uci[:2]); page.wait_for_timeout(150); sq(page, uci[2:4])
+
+
+def first_legal(fen):
+    return next(iter(chess.Board(fen).legal_moves)).uci()
+
+
+def position_game(page, fmt, safe):
+    tag = f"[{fmt} partie]"
+    page.goto(f"{BASE}/#/finales/kq-mate")
+    if not ck.appears(f"{tag} partie affichée", page, f"{GAME} [data-exercise-feedback=prompt]", timeout=20000):
+        return
+    wait_my_turn(page, "w")
+    settle(page, 400)
+    g0 = geom(page)
+    if not layout_checks(f"{tag} en jeu", page, g0, safe):
+        return
+    check(f"{tag} : titre de la finale, sans compteur hors série", (g0["title"] or "").strip() == "Mat roi + dame" and g0["progress"] is None, f"({g0['title']!r}, {g0['progress']})")
+    check(f"{tag} : objectif dans la zone", "Objectif : gagner" in page.locator("[data-exercise-prompt]").inner_text())
+    check(f"{tag} : ✕ nommé « Retour »", page.locator("[data-exercise-header] button[aria-label='Retour']").count() == 1)
+    above = page.evaluate("() => { const b = document.querySelector('.exercise-above')?.getBoundingClientRect(); return b ? [b.left, b.right, b.bottom] : null }")
+    check(f"{tag} : adversaire dans la bande au-dessus de l'échiquier", above is not None and abs(above[0] - g0["board"]["left"]) < 0.5
+          and above[2] <= g0["board"]["top"] + 0.5 and "Stockfish 18" in page.locator(".exercise-above").inner_text(), f"({above})")
+    labels = page.locator("[data-exercise-feedback=prompt] button").all_inner_texts()
+    check(f"{tag} : actions de jeu dans la zone", all(any(n in x for x in labels) for n in ("Abandonner", "Nulle", "Indice", "Annuler", "Recommencer")), f"({labels})")
+    page.screenshot(path=f"{SHOTS}/exercice_partie_jeu_{fmt}.png")
+
+    play_uci(page, "d2d3")
+    if ck.appears(f"{tag} Stockfish réfléchit", page, f"{GAME}[data-thinking='1']", timeout=5000):
+        same_board(f"{tag} pendant la réflexion", g0["board"], geom(page)["board"])
+    check(f"{tag} réponse de Stockfish", wait_my_turn(page, "w"))
+    settle(page, 300)
+    same_board(f"{tag} après la réponse", g0["board"], geom(page)["board"])
+    fen = game_attr(page, "fen")
+    stored = page.evaluate(f"() => JSON.parse(localStorage.getItem('{STORE_KEY}') || 'null')")
+    check(f"{tag} : partie persistée (deux demi-coups)", stored is not None and stored.get("key") == "finale:kq-mate" and len(stored.get("uci", [])) == 2, f"({stored})")
+
+    page.reload()
+    if ck.appears(f"{tag} reprise après rechargement", page, f"{GAME}[data-fen='{fen}']", timeout=20000):
+        wait_my_turn(page, "w")
+        settle(page, 300)
+        same_board(f"{tag} après le rechargement", g0["board"], geom(page)["board"])
+
+    before = len(page.evaluate(ROWS, "endgame-play"))
+    page.locator("[data-exercise-feedback] button", has_text="Abandonner").click()
+    page.locator("[data-testid=resign-confirm]").click()
+    if not ck.appears(f"{tag} verdict après l'abandon", page, f"{GAME} [data-exercise-feedback=neutral]", timeout=8000):
+        return
+    settle(page, 400)
+    g1 = geom(page)
+    same_board(f"{tag} verdict neutre", g0["board"], g1["board"])
+    check(f"{tag} : zone de même hauteur", g0["zone"]["height"] == g1["zone"]["height"], f"({g0['zone']['height']} -> {g1['zone']['height']})")
+    layout_checks(f"{tag} abandon", page, g1, safe)
+    game_verdict_checks(f"{tag} abandon", g1, "neutral", "◐ Objectif manqué", "Rejouer")
+    check(f"{tag} : explication de l'abandon", g1["reason"] == "Tu as abandonné.", f"({g1['reason']!r})")
+    check(f"{tag} : « Autre finale » en secondaire", any("Autre finale" in x for x in g1["labels"]), f"({g1['labels']})")
+    check(f"{tag} : jugement de l'objectif inchangé (échec)", game_attr(page, "verdict") == "fail" and game_attr(page, "tone") == "neutral")
+    page.wait_for_timeout(300)
+    after = page.evaluate(ROWS, "endgame-play")
+    check(f"{tag} : une ligne endgame-play ratée", len(after) == before + 1 and after[-1]["success"] == 0, f"({before} -> {len(after)})")
+    page.screenshot(path=f"{SHOTS}/exercice_partie_abandon_{fmt}.png")
+
+    snap = page.evaluate(SNAPSHOT)
+    page.locator("[data-exercise-feedback] .ui-cta", has_text="Rejouer").click()
+    if ck.appears(f"{tag} Rejouer : nouvelle partie", page, f"{GAME}[data-status=playing] [data-exercise-feedback=prompt]", timeout=8000):
+        settle(page, 300)
+        g2 = geom(page)
+        same_board(f"{tag} après Rejouer", g0["board"], g2["board"])
+        check(f"{tag} : Rejouer repart de la position de départ", game_attr(page, "fen") == KQ_FEN)
+        page.wait_for_timeout(300)
+        changed = [t for t, v in page.evaluate(SNAPSHOT).items() if snap[t] != v]
+        check(f"{tag} : Rejouer sans écriture en base", not changed, f"({changed})")
+
+    page.locator("[data-exercise-header] button[aria-label='Retour']").click()
+    ck.appears(f"{tag} Quitter : liste des finales", page, "main h1:has-text('Finales')", timeout=10000)
+    check(f"{tag} : Quitter ramène à #/finales", page.evaluate("() => location.hash") == "#/finales", f"({page.evaluate('() => location.hash')})")
+
+
+def replaced_attempt(page, fmt):
+    """Une attaque entamée puis remplacée par une finale : notée abandonnée une seule fois."""
+    tag = f"[{fmt} changement d'activité]"
+    attacks = json.load(open(os.path.join(os.path.dirname(__file__), "..", "src", "data", "attacks.json")))
+    pos = attacks[0]
+    page.goto(f"{BASE}/#/attaque/{pos['id']}")
+    if not ck.appears(f"{tag} attaque affichée", page, f"{GAME} [data-exercise-feedback=prompt]", timeout=20000):
+        return
+    color = pos["fen"].split(" ")[1]
+    wait_my_turn(page, color)
+    before = len(page.evaluate(ROWS, "attack"))
+    play_uci(page, first_legal(pos["fen"]))
+    check(f"{tag} réponse du défenseur", wait_my_turn(page, color, 45000))
+    page.goto(f"{BASE}/#/finales/kq-mate")
+    if not ck.appears(f"{tag} finale affichée", page, f"{GAME} [data-exercise-feedback=prompt]", timeout=20000):
+        return
+    check(f"{tag} : un simple coup d'œil ne note rien", len(page.evaluate(ROWS, "attack")) == before)
+    wait_my_turn(page, "w")
+    play_uci(page, "d2d3")
+    page.wait_for_timeout(800)
+    rows = page.evaluate(ROWS, "attack")
+    check(f"{tag} : attaque notée abandonnée une fois", len(rows) == before + 1 and rows[-1].get("outcome") == "abandon" and rows[-1].get("itemId") == pos["id"],
+          f"({before} -> {len(rows)}, {rows[-1] if rows else None})")
+    wait_my_turn(page, "w")
+    play_uci(page, first_legal(game_attr(page, "fen")))
+    page.wait_for_timeout(800)
+    check(f"{tag} : pas de seconde note", len(page.evaluate(ROWS, "attack")) == before + 1)
+
+
+# ---------------------------------------------------------------- ligne d'un cours
+def course_line(page, fmt, safe):
+    tag = f"[{fmt} cours]"
+    page.goto(f"{BASE}/#/apprendre/finales/mat-deux-tours?etape=2")
+    if not ck.appears(f"{tag} ligne affichée", page, "[data-exercise-feedback=prompt] [data-testid=line-feedback]", timeout=20000):
+        return
+    settle(page, 400)
+    # Position dans le contenu du défileur : un clic de Playwright peut faire défiler la leçon.
+    r = lambda sel: page.evaluate(f"""() => {{ const e = document.querySelector("{sel}"); if (!e) return null; const b = e.getBoundingClientRect()
+      let s = e.parentElement; while (s && !/(auto|scroll)/.test(getComputedStyle(s).overflowY)) s = s.parentElement
+      return [b.left, b.top + (s ? s.scrollTop : 0), b.width, b.height] }}""")  # noqa: E731
+    b0 = r("[data-board]")
+    head = r("[data-exercise-header]")
+    check(f"{tag} : en-tête sous la zone sûre", head is not None and head[1] >= (SAFE_TOP if safe else 0), f"({head})")
+    check(f"{tag} : compteur « 2/3 » dans le titre", page.locator("[data-exercise-header] h1 [data-testid=lesson-step]").inner_text() == "2/3")
+    check(f"{tag} : aucun débordement horizontal", overflow_x(page) == 0)
+    # Coup juste mais hors méthode (toute la position « garde » le gain) : ton neutre.
+    play_uci(page, "e1e2")
+    if ck.appears(f"{tag} coup hors méthode : ton neutre", page, "[data-exercise-feedback=neutral] [data-exercise-verdict]", timeout=5000):
+        check(f"{tag} : verdict neutre « ◐ ♔e2 »", page.locator("[data-exercise-verdict]").inner_text().strip() == "◐ ♔e2", f"({page.locator('[data-exercise-verdict]').inner_text()!r})")
+        same_board(f"{tag} coup neutre", b0, r("[data-board]"))
+        page.screenshot(path=f"{SHOTS}/exercice_cours_neutre_{fmt}.png")
+    page.wait_for_timeout(900)  # coup repris
+    page.get_by_role("button", name="💡 Solution").click()
+    if ck.appears(f"{tag} Solution : ton réussi", page, "[data-exercise-feedback=success] [data-exercise-verdict]", timeout=5000):
+        settle(page, 900)  # réponse adverse
+        same_board(f"{tag} coup trouvé", b0, r("[data-board]"))
+        clipped = page.evaluate("() => { const e = document.querySelector('[data-exercise-reason]'); return e ? e.scrollHeight > e.clientHeight + 1 : true }")
+        check(f"{tag} : explication jamais coupée", not clipped)
+        check(f"{tag} : réponse adverse dans la zone", "répondent" in page.locator("[data-exercise-feedback=success]").inner_text())
+        page.screenshot(path=f"{SHOTS}/exercice_cours_reussi_{fmt}.png")
+    if fmt == "1440x900":
+        zone = r("[data-exercise-feedback]")
+        check(f"{tag} : desktop, retour à droite de l'échiquier", zone is not None and zone[0] >= b0[0] + b0[2] + 16, f"({zone}, {b0})")
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
     for fmt, make in formats(p, browser):
@@ -441,6 +647,16 @@ def suite(p):
                 "puzzleAttempts": [{"id": 1, "puzzleId": "L10", "date": now - 5 * DAY, "success": False, "puzzleRating": 1000, "ratingAfter": 900}],
             })
             revision(page, fmt, safe)
+        ctx.close()
+
+        ctx, safe = make()
+        page = new_page(ctx, safe)
+        page.goto(f"{BASE}/#/finales")
+        if check(f"[{fmt}] schéma créé (partie)", wait_schema(page)):
+            position_game(page, fmt, safe)
+            course_line(page, fmt, safe)
+            if fmt == "393x852":
+                replaced_attempt(page, fmt)
         ctx.close()
     browser.close()
 

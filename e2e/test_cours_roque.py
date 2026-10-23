@@ -47,7 +47,8 @@ def feedback(page):
 
 
 def bubble(page):
-    return page.locator(".bg-white").first.inner_text()
+    """Texte de l'étape : bulle du coach (diagramme) ou zone de retour commune (ligne, lot 8)."""
+    return page.locator(".bg-white, [data-exercise-feedback]").first.inner_text()
 
 
 def in_viewport(page, locator):
@@ -244,7 +245,7 @@ def suite(p):
     rmv = reply.parse_san(line["moves"][1]["san"])
     wait_piece(ck, page, rmv.uci()[:2], None)
     check("[grec] réponse adverse jouée", piece_on(page, rmv.uci()[2:4]) is not None and piece_on(page, rmv.uci()[:2]) is None)
-    check("[grec] réponse annoncée dans la bulle", "répondent" in bubble(page))
+    check("[grec] réponse annoncée dans la zone de retour", "répondent" in bubble(page))
     shot(page, "roque_grec_line")
     clicks = finish_line(ck, page)
     check("[grec] ligne jouée jusqu'au bout par Solution", continue_btn(page).is_enabled(), f"({clicks} clics)")
@@ -369,7 +370,7 @@ def suite(p):
         board = page.locator("[id^='chessboard-']").first
         check(f"[660] {lid} étape {si + 1} : échiquier entier à l'écran", in_viewport(page, board), f"({board.bounding_box()})")
         check(f"[660] {lid} étape {si + 1} : Continuer à l'écran", in_viewport(page, continue_btn(page)))
-        check(f"[660] {lid} étape {si + 1} : bulle visible", page.locator(".bg-white").first.is_visible())
+        check(f"[660] {lid} étape {si + 1} : texte de l'étape visible", page.locator(".bg-white, [data-exercise-feedback]").first.is_visible())
         check(f"[660] {lid} étape {si + 1} : pas de défilement horizontal", overflow_x(page) == 0)
         shot(page, f"roque_660_{lid}_{si + 1}")
     ctx.close()
