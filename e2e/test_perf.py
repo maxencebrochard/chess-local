@@ -521,7 +521,7 @@ def new_deploy(p, browser, dist):
             ctx.close()
             return
         before = len(loads)
-        page.get_by_role("link", name="Analyse", exact=True).last.click()
+        open_analysis(page)
         ck.appears("[déploiement] Analyse s'affiche après la mise à jour", page, "main :text('Options')", timeout=30000)
         new_name = renames[next(k for k in renames if k.startswith("Analysis-"))]
         # Aucune requête vers l'ancienne chunk : le rechargement a précédé l'import, il n'a pas
@@ -532,6 +532,12 @@ def new_deploy(p, browser, dist):
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
+
+
+def open_analysis(page):
+    """Navigation interne vers Analyse, sans rechargement : Analyse n'a plus d'onglet (lot 2 de la
+    refonte, elle vit sous Plus) ; changer le hash est exactement ce que fait un lien du HashRouter."""
+    page.evaluate("() => { location.hash = '#/analyse' }")
 
 
 def missing_chunk(p, browser):
@@ -558,12 +564,12 @@ def missing_chunk(p, browser):
         ck.appears(f"[{label}] accueil affiché", page, "[data-review-ready]")
         if always:
             with ck.expect_pageerror(("dynamically imported module", "Importing a module script failed")):
-                page.get_by_role("link", name="Analyse", exact=True).last.click()
+                open_analysis(page)
                 ck.appears(f"[{label}] écran de secours affiché", page, "main [role='alert']", timeout=20000)
             page.wait_for_timeout(1500)
             check(f"[{label}] un seul rechargement automatique", len(loads) == 2 and len(failed) == 2, f"({len(loads)} chargements, {len(failed)} échecs)")
         else:
-            page.get_by_role("link", name="Analyse", exact=True).last.click()
+            open_analysis(page)
             ck.appears(f"[{label}] Analyse s'affiche après rechargement", page, "main :text('Options')", timeout=20000)
             check(f"[{label}] la chunk a échoué une fois, puis l'app a rechargé une fois", len(failed) == 1 and len(loads) == 2, f"({len(failed)} échecs, {len(loads)} chargements)")
             key = page.evaluate("() => sessionStorage.getItem('chess-local-chunk-reload')")
