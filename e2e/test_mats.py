@@ -187,11 +187,26 @@ def entry_suite(p, browser):
         page.locator("main a", has_text="Mats éclair").click()
         ck.appears("[entrée] Apprendre → /mats", page, "h1:has-text('Mats éclair')", timeout=5000)
         check("[entrée] URL /mats", "#/mats" in page.url, f"({page.url})")
+        # Raccourci d'Apprendre (lot 6) : retour d'origine explicite, conservé après une fiche.
+        back = page.get_by_role("button", name="Retour à Apprendre", exact=True)
+        check("[entrée] raccourci d'Apprendre : retour vers Apprendre", back.count() == 1)
+        check("[entrée] raccourci d'Apprendre : sélecteur des modes aussi", page.locator("main [data-puzzle-modes] a[aria-current='page']", has_text="Mats éclair").count() == 1)
+        page.locator("[data-drill='mate-1']").click()
+        if ck.appears("[entrée] fiche depuis le raccourci", page, "[data-sheet='mate-1']", timeout=5000):
+            check("[entrée] fiche : pas de sélecteur des modes (flèche vers le catalogue)", page.locator("main [data-puzzle-modes]").count() == 0)
+            page.get_by_role("button", name="Retour à Mats éclair", exact=True).click()
+            ck.appears("[entrée] flèche de la fiche → accueil de Mats éclair", page, "[data-section='chrono']", timeout=5000)
+            check("[entrée] retour vers Apprendre conservé après la fiche", back.count() == 1)
+        if back.count() == 1:
+            back.click()
+            ck.appears("[entrée] retour → Apprendre", page, "main a:has-text('Mats éclair')", timeout=5000)
+            check("[entrée] retour : URL /apprendre", page.url.endswith("#/apprendre"), f"({page.url})")
     page.goto(f"{BASE}/#/puzzles")
-    if ck.appears("[entrée] bouton Mats éclair dans Puzzles", page, "main button:has-text('Mats éclair')", timeout=15000):
-        page.locator("main button", has_text="Mats éclair").click()
-        page.wait_for_timeout(500)
-        check("[entrée] Puzzles → /mats", "#/mats" in page.url, f"({page.url})")
+    if ck.appears("[entrée] mode Mats éclair dans le sélecteur de Puzzles", page, "main [data-puzzle-mode='mats']", timeout=15000):
+        page.locator("main [data-puzzle-mode='mats']").click()
+        ck.appears("[entrée] Puzzles → /mats", page, "h1:has-text('Mats éclair')", timeout=5000)
+        check("[entrée] Puzzles → /mats : URL", page.url.endswith("#/mats"), f"({page.url})")
+        check("[entrée] depuis l'onglet : pas de retour vers Apprendre", page.get_by_role("button", name="Retour à Apprendre").count() == 0)
     page.goto(f"{BASE}/#/mats")
     ck.appears("[accueil] titre", page, "h1:has-text('Mats éclair')", timeout=10000)
     cur = page.locator("nav a[aria-current]").last

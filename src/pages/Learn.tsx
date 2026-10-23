@@ -572,8 +572,10 @@ export default function Learn() {
         </span>
         <span className="text-xl text-neutral-500" aria-hidden="true">›</span>
       </Link>
+      {/* Raccourci vers Mats éclair, propriété de l'onglet Puzzles : `from` y ajoute un retour vers Apprendre. */}
       <Link
         to="/mats"
+        state={{ from: 'apprendre' }}
         className="mt-2 flex items-center gap-3 rounded-xl bg-surface-2 p-3 hover:bg-surface-3"
       >
         <span className="text-2xl">♚</span>

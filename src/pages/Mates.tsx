@@ -3,7 +3,8 @@
 // arrière du téléphone ramène à l'accueil) → série (contre la montre ou puzzles).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { PageHeader } from '../components/PageHeader'
+import { BackButton, PageHeader } from '../components/PageHeader'
+import { PuzzleModes } from '../components/PuzzleModes'
 import { Cta } from '../components/Cta'
 import type { PuzzleData } from '../components/PuzzlePlayer'
 import { ChronoRun } from '../components/mates/ChronoRun'
@@ -38,7 +39,9 @@ export default function Mates() {
 
   useEffect(() => {
     refresh()
-    if (location.state) navigate(location.pathname + location.search, { replace: true, state: null })
+    // Seul le retour de l'analyseur est consommé : le `from` d'un raccourci d'Apprendre reste dans
+    // l'entrée d'historique, pour le retour vers le groupe.
+    if (isRestore(location.state)) navigate(location.pathname + location.search, { replace: true, state: null })
     clearExercise()
     return () => {
       engineRef.current?.quit()
@@ -72,9 +75,11 @@ export default function Mates() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drill?.id])
 
+  // Le state d'entrée (`from` du raccourci d'Apprendre) suit la fiche et revient avec l'accueil.
+  const entryState = useLocation().state as unknown
   function open(id: string | null) {
     setRun(null)
-    setParams(id ? { d: id } : {})
+    setParams(id ? { d: id } : {}, { state: entryState })
   }
 
   // Une série se joue par-dessus la fiche ; le retour arrière ou un autre schéma la ferment.
@@ -125,12 +130,19 @@ export default function Mates() {
 const GLYPH_SIZE: Record<number, string> = { 1: 'text-4xl', 2: 'text-3xl', 3: 'text-xl tracking-tighter' }
 
 // ---------- Accueil ----------
+// Mode de l'onglet Puzzles : le sélecteur des modes est sa sortie. Ouvert depuis le raccourci
+// d'Apprendre (`state.from`), il garde en plus un retour vers Apprendre ; ce state vit dans
+// l'entrée d'historique de l'accueil, retrouvé au retour depuis une fiche.
 function Hub({ stats, onOpen }: { stats: MatsStats | null; onOpen: (id: string) => void }) {
   const navigate = useNavigate()
+  const fromLearn = (useLocation().state as { from?: string } | null)?.from === 'apprendre'
   return (
     <div className="mx-auto max-w-3xl p-4 md:p-6">
-      <PageHeader title="♚ Mats éclair" back={{ label: 'Apprendre', onClick: () => navigate('/apprendre') }}
-        description="Automatise les mats du bullet : vite, juste, sans réfléchir." />
+      {fromLearn && (
+        <BackButton label="Apprendre" onClick={() => navigate('/apprendre')} />
+      )}
+      <PuzzleModes current="/mats" className="mb-4" />
+      <PageHeader title="Mats éclair" description="Automatise les mats du bullet : vite, juste, sans réfléchir." />
 
       <div className="mb-5 grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-surface-2 p-3 text-center">
@@ -220,11 +232,9 @@ function DrillSheet({ drill, stats, puzzles, loadError, onRetry, onBack, onStart
 
   return (
     <div data-sheet={drill.id} className="mx-auto max-w-3xl p-4 md:p-6">
-      <header className="mb-3 flex items-center gap-2">
-        <button onClick={onBack} className="-ml-2 inline-flex min-h-11 cursor-pointer items-center px-2 text-sm font-semibold text-neutral-400 hover:text-white">
-          ← Mats
-        </button>
-      </header>
+      {/* Flèche : la fiche remonte au catalogue de Mats éclair (même entrée d'historique que le
+          retour arrière du téléphone, `?d=` retiré). */}
+      <BackButton label="Mats éclair" onClick={onBack} />
       <div className="md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-6">
         <div>
           <h1 className="text-2xl font-black">

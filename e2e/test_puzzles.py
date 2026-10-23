@@ -6,6 +6,9 @@ en temps réel, score enregistré quand on quitte un run, solution affichée apr
 2e coup (SAN en figurines, promotion comprise), coup faux montré en rouge puis échiquier
 verrouillé, série et puzzle courant conservés (rechargement, aller-retour analyse), « Passer »
 payant, et `puzzles.json` en échec de chargement (état d'erreur, « Réessayer », aucune pageerror).
+Lot 6 du plan UX : sélecteur des trois modes de l'onglet (Classés, Rush, Mats éclair) aux trois
+formats, aligné sur l'échiquier qui reste entier à 393x660 avec les zones sûres, liens en replace
+qui gardent l'onglet Puzzles allumé et le puzzle classé en cours, absent pendant un run de Rush.
 Les coups faux sont joués au tap (rafales) et au drag tactile réel (échec au 2e coup).
 
 La base de 120 000 puzzles est remplacée par une liste réduite servie par `ctx.route` : les
@@ -25,7 +28,7 @@ try:
 except ImportError:
     sys.exit("python-chess manquant : pip install -r e2e/requirements.txt")
 
-from helpers import BASE, Checker, drag_piece, mobile_context, shot, sq_center, tap_move, tap_square
+from helpers import BASE, Checker, desktop_context, drag_piece, mobile_context, overflow_x, shot, sq_center, tap_move, tap_square
 
 ck = Checker("puzzles")
 check = ck.check
@@ -599,6 +602,8 @@ def error_suite(p, browser):
     page.goto(f"{BASE}/#/puzzles")
     ck.appears("[erreur] /puzzles : état d'erreur affiché", page, "text=Impossible de charger les puzzles", timeout=10000)
     shot(page, "puzzles_error_852")
+    m = modes(page)
+    check("[erreur] /puzzles : sélecteur des modes conservé (Mats éclair joignable sans puzzles)", m is not None and [x["text"] for x in m["links"] if x["current"] == "page"] == ["Classés"])
     net["fail"] = False
     tap_button("[erreur] /puzzles : bouton Réessayer", page, "Réessayer")
     ck.appears("[erreur] /puzzles : Réessayer charge la page", page, "text=Classement puzzles", timeout=15000)
@@ -614,6 +619,134 @@ def error_suite(p, browser):
     ctx.close()
 
 
+# ---------- Lot 6 : modes de l'onglet Puzzles ----------
+
+MODES = [("puzzles", "Classés", "#/puzzles"), ("rush", "Rush", "#/rush"), ("mats", "Mats éclair", "#/mats")]
+SAFE_TOP, SAFE_BOTTOM = 59, 34
+
+MODES_JS = """() => {
+  const nav = document.querySelector('main [data-puzzle-modes]')
+  if (!nav) return null
+  const r = (e) => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom, w: b.width, h: b.height } }
+  const board = document.querySelector('main .boardbox')
+  const main = document.querySelector('main')
+  const mainBox = r(main)
+  const pad = parseFloat(getComputedStyle(main).paddingTop)
+  return {
+    role: nav.getAttribute('role'), label: nav.getAttribute('aria-label'), tag: nav.tagName,
+    nav: r(nav), board: board ? r(board) : null, main: { ...mainBox, contentTop: mainBox.t + pad },
+    links: [...nav.querySelectorAll('a')].map((a) => ({ text: a.textContent.trim(), href: a.getAttribute('href'), current: a.getAttribute('aria-current'), box: r(a) })),
+  }
+}"""
+
+
+def modes(page):
+    return page.evaluate(MODES_JS)
+
+
+def tab_lit(page):
+    return page.locator("nav a[aria-current]").locator("visible=true").all_inner_texts()
+
+
+def hist(page):
+    return page.evaluate("() => history.length")
+
+
+def modes_context(p, browser, fmt):
+    if fmt == "1440x900":
+        ctx = desktop_context(browser, ck, service_workers="block")
+    else:
+        h = int(fmt.split("x")[1])
+        ctx = mobile_context(p, browser, ck, standalone=True, viewport={"width": 393, "height": h}, service_workers="block")
+    body = json.dumps(FOUR_PLY + RUSH)
+    ctx.route("**/puzzles.json", lambda route: route.fulfill(status=200, content_type="application/json", body=body))
+    page = ctx.new_page()
+    if fmt == "393x660":
+        cdp = ctx.new_cdp_session(page)
+        cdp.send("Emulation.setSafeAreaInsetsOverride", {"insets": {"top": SAFE_TOP, "bottom": SAFE_BOTTOM}})
+    return ctx, page
+
+
+def check_modes(page, tag, active):
+    m = modes(page)
+    if not check(f"{tag} sélecteur des modes présent", m is not None):
+        return None
+    check(f"{tag} rôle navigation nommé, hors des <nav> d'onglets", m["role"] == "navigation" and m["label"] == "Modes de puzzles" and m["tag"] != "NAV", f"({m['tag']}, {m['role']}, {m['label']})")
+    got = [(x["text"], x["href"]) for x in m["links"]]
+    check(f"{tag} trois modes dans l'ordre", got == [(t, h) for _, t, h in MODES], f"({got})")
+    cur = [x["text"] for x in m["links"] if x["current"] == "page"]
+    check(f"{tag} un seul mode courant : {active}", cur == [active], f"({cur})")
+    small = [(x["text"], round(x["box"]["w"]), round(x["box"]["h"])) for x in m["links"] if x["box"]["h"] < 44 or x["box"]["w"] < 44]
+    check(f"{tag} cibles des modes >= 44 px", not small, f"({small})")
+    one_line = [x["text"] for x in m["links"] if x["box"]["h"] > 46]
+    check(f"{tag} libellés des modes sur une ligne", not one_line, f"({one_line})")
+    check(f"{tag} onglet Puzzles seul allumé", tab_lit(page) == ["Puzzles"], f"({tab_lit(page)})")
+    check(f"{tag} pas de débordement horizontal", overflow_x(page) == 0, f"({overflow_x(page)} px)")
+    return m
+
+
+def modes_suite(p, browser):
+    for fmt in ("393x660", "393x852", "1440x900"):
+        tag = f"[modes {fmt}]"
+        ctx, page = modes_context(p, browser, fmt)
+        page.goto(f"{BASE}/#/puzzles")
+        if not ck.appears(f"{tag} puzzle classé affiché", page, "text=Trouve le meilleur coup", timeout=15000):
+            ctx.close()
+            continue
+        page.wait_for_timeout(400)
+        m = check_modes(page, f"{tag} /puzzles", "Classés")
+        top = m["nav"]["t"] if m else None
+        if m and check(f"{tag} échiquier présent", m["board"] is not None):
+            nav, board, main = m["nav"], m["board"], m["main"]
+            check(f"{tag} sélecteur au-dessus de l'échiquier", nav["b"] <= board["t"] - 4, f"(bas {nav['b']:.0f}, échiquier {board['t']:.0f})")
+            check(f"{tag} sélecteur aligné sur l'échiquier (bords gauche et droit)", abs(nav["l"] - board["l"]) <= 1 and (fmt == "1440x900" or abs(nav["r"] - board["r"]) <= 1),
+                  f"(sélecteur {nav['l']:.1f}-{nav['r']:.1f}, échiquier {board['l']:.1f}-{board['r']:.1f})")
+            check(f"{tag} sous la zone sûre haute", nav["t"] >= main["contentTop"] - 0.5, f"(haut {nav['t']:.0f}, contenu {main['contentTop']:.0f})")
+            check(f"{tag} échiquier entier visible sans défiler", board["b"] <= main["b"] and board["t"] >= main["contentTop"], f"(échiquier {board['t']:.0f}-{board['b']:.0f}, main {main['contentTop']:.0f}-{main['b']:.0f})")
+        check(f"{tag} anciens boutons Rush et Mats retirés du panneau", page.locator("main button", has_text="Puzzle Rush").count() == 0 and page.locator("main button", has_text="Mats éclair").count() == 0)
+        shot(page, f"puzzles_modes_{fmt}")
+        before_board = placement(page)
+        before = hist(page)
+        click = (lambda loc: loc.click()) if fmt == "1440x900" else (lambda loc: loc.tap())
+
+        # Rush, puis Mats éclair, puis retour au classé : replace, onglet allumé, puzzle conservé.
+        click(page.locator("main [data-puzzle-mode='rush']"))
+        if ck.appears(f"{tag} Classés -> Rush", page, "main h1:has-text('Puzzle Rush')", timeout=8000):
+            check(f"{tag} Rush : URL #/rush", page.url.endswith("#/rush"), f"({page.url})")
+            check(f"{tag} Rush : replace, history.length stable", hist(page) == before, f"({before} -> {hist(page)})")
+            mr = check_modes(page, f"{tag} /rush", "Rush")
+            check(f"{tag} Rush : sélecteur à la même hauteur que sur Classés", mr is not None and top is not None and abs(mr["nav"]["t"] - top) <= 0.5, f"({mr and mr['nav']['t']} contre {top})")
+            ck.appears(f"{tag} Rush : modes prêts", page, "main button:not([disabled]):has-text('Survie')", timeout=15000)
+            shot(page, f"puzzles_modes_rush_{fmt}")
+        click(page.locator("main [data-puzzle-mode='mats']"))
+        if ck.appears(f"{tag} Rush -> Mats éclair", page, "main h1:has-text('Mats éclair')", timeout=8000):
+            check(f"{tag} Mats : URL #/mats", page.url.endswith("#/mats"), f"({page.url})")
+            check(f"{tag} Mats : replace, history.length stable", hist(page) == before, f"({before} -> {hist(page)})")
+            mm = check_modes(page, f"{tag} /mats", "Mats éclair")
+            check(f"{tag} Mats : sélecteur à la même hauteur que sur Classés", mm is not None and top is not None and abs(mm["nav"]["t"] - top) <= 0.5, f"({mm and mm['nav']['t']} contre {top})")
+            check(f"{tag} Mats ouvert depuis l'onglet : pas de retour vers Apprendre", page.get_by_role("button", name="Retour à Apprendre").count() == 0)
+            shot(page, f"puzzles_modes_mats_{fmt}")
+        click(page.locator("main [data-puzzle-mode='puzzles']"))
+        if ck.appears(f"{tag} Mats éclair -> Classés", page, "text=Trouve le meilleur coup", timeout=8000):
+            check(f"{tag} Classés : replace, history.length stable", hist(page) == before, f"({before} -> {hist(page)})")
+            check(f"{tag} Classés : même puzzle repris, sans nouveau tirage", wait_placement(page, before_board), f"({placement(page)} au lieu de {before_board})")
+        ctx.close()
+
+    # Run de Rush : écran immersif, sans sélecteur ; la croix le ferme, Menu ramène aux modes.
+    ctx, page, _ = open_page(p, browser, RUSH)
+    page.goto(f"{BASE}/#/rush")
+    if ck.appears("[modes] menu du Rush prêt", page, "main button:not([disabled]):has-text('Survie')", timeout=15000):
+        page.locator("main button", has_text="Survie").tap()
+        if check("[modes] run lancé", wait_puzzle(page, RUSH) is not None):
+            check("[modes] run en cours : pas de sélecteur des modes", modes(page) is None)
+            page.get_by_role("button", name="Arrêter").tap()
+            if ck.appears("[modes] la croix ferme le run", page, "main button:has-text('Menu')", timeout=5000):
+                check("[modes] écran de fin : pas de sélecteur des modes", modes(page) is None)
+                page.locator("main button", has_text="Menu").tap()
+                ck.appears("[modes] Menu ramène au sélecteur des modes", page, "main [data-puzzle-modes] a[aria-current='page']:has-text('Rush')", timeout=5000)
+    ctx.close()
+
+
 def suite(p):
     browser = p.chromium.launch(headless=True)
     try:
@@ -623,6 +756,7 @@ def suite(p):
         double_skip_suite(p, browser)
         promo_suite(p, browser)
         error_suite(p, browser)
+        modes_suite(p, browser)
     finally:
         browser.close()
 
