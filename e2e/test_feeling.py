@@ -48,7 +48,7 @@ def suite(p):
                 )
             )
             mutation = os.environ.get("E2E_MUTATION", "")
-            audio = WEBKIT_AUDIO
+            audio = WEBKIT_AUDIO + sound_sync_mutation()
             if mutation in ("sound-task", "sound-scheduled"):
                 # Mutation après l'espion : il observe le départ réellement demandé au navigateur.
                 audio += """;(() => {
@@ -238,10 +238,24 @@ COMMIT_SPY = """(() => {
 })()"""
 
 
+def sound_sync_mutation():
+    """E2E_MUTATION=sound-sync : 300 ms de travail synchrone avant chaque départ de son, dans le
+    geste (un rendu forcé avant le son, par exemple). Le critère d'événement passe, le budget du
+    geste doit échouer. Posé après l'espion audio : il entoure le départ que l'espion horodate."""
+    if os.environ.get("E2E_MUTATION") != "sound-sync":
+        return ""
+    return """;(() => {
+      const start = AudioBufferSourceNode.prototype.start
+      AudioBufferSourceNode.prototype.start = function (...args) {
+        const t = performance.now(); while (performance.now() - t < 300) {}
+        return start.apply(this, args)
+      }})()"""
+
+
 def puzzle_sound(p, browser):
     """Hors analyse aussi, le son d'un coup accepté part dans le geste de pose, une seule fois."""
     ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block", settings={"playSounds": True})
-    ctx.add_init_script(WEBKIT_AUDIO)
+    ctx.add_init_script(WEBKIT_AUDIO + sound_sync_mutation())
     ctx.add_init_script(COMMIT_SPY)
     body = json.dumps([QUIET_PUZZLE])
     ctx.route("**/puzzles.json", lambda route: route.fulfill(status=200, content_type="application/json", body=body))

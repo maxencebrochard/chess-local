@@ -68,3 +68,16 @@ export function loadChunk<T>(load: () => Promise<T>): Promise<T> {
 export function lazyPage<T extends ComponentType<any>>(load: () => Promise<{ default: T }>) {
   return lazy<T>(() => loadChunk(load))
 }
+
+/**
+ * Vrai tant que l'URL réelle désigne encore la route `pathname`.
+ *
+ * Une navigation dans l'app est une transition : tant que la page suivante (chunk paresseuse) se
+ * charge, la page quittée reste montée et son `useLocation()` décrit encore l'ancienne URL. Une
+ * suite asynchrone (lecture Dexie, minuterie) doit vérifier ceci avant de naviguer ou de lancer un
+ * travail : un `setSearchParams` relatif à la page quittée ramènerait l'utilisateur en arrière.
+ * L'app tourne sous `HashRouter` : l'URL réelle est dans `location.hash`, mise à jour dès le geste.
+ */
+export function routeStillShown(pathname: string): boolean {
+  return (window.location.hash.replace(/^#/, '').split('?')[0] || '/') === pathname
+}

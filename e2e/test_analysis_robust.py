@@ -9,6 +9,7 @@ ANA-31 (`?game=` inconnu) et ANA-5 (nom d'ouverture long).
 
 Usage : npm run test:e2e -- --suite analysis_robust
 """
+import re
 import time
 
 from helpers import BASE, Checker, mobile_context, overflow_x, piece_on, shot, tap_move
@@ -148,6 +149,77 @@ def watch_uci(page):
     return log
 
 
+# Journal UCI tenu dans la page, au niveau du worker : commandes envoyées et profondeur des lignes
+# `info` reçues (que `?debug-uci` ne journalise pas), dans l'ordre exact où l'app les voit.
+# Un journal par worker : en StrictMode (dev), le premier moteur est quitté au démontage simulé
+# pendant que le second démarre, et son `go infinite` peut même partir après celui du second.
+# `window.__uciLogs` : un journal par worker qui a lancé une recherche infinie.
+UCI_DEPTH_SPY = """(() => {
+  const Native = window.Worker
+  const logs = []
+  window.__uciLogs = () => logs.filter((l) => l.goAt)
+  window.Worker = class extends Native {
+    constructor(...a) {
+      super(...a)
+      this.__log = { sent: [], depth: 0, stopped: false, depthAtStop: null, times: [], goAt: 0, dead: false }
+      logs.push(this.__log)
+      this.addEventListener('message', (e) => {
+        const log = this.__log
+        const m = typeof e.data === 'string' && /^info .*\\bdepth (\\d+)\\b.* pv /.exec(e.data)
+        if (m && +m[1] > log.depth) {
+          log.depth = +m[1]
+          log.times.push([+m[1], Math.round(performance.now() - log.goAt)])
+        }
+      })
+    }
+    postMessage(cmd, ...rest) {
+      const log = this.__log
+      if (typeof cmd === 'string') {
+        log.sent.push(cmd)
+        if (cmd === 'go infinite') Object.assign(log, { depth: 0, stopped: false, depthAtStop: null, times: [], goAt: performance.now() })
+        if (cmd === 'stop' && !log.stopped) Object.assign(log, { stopped: true, depthAtStop: log.depth })
+        if (cmd === 'quit') log.dead = true
+      }
+      return super.postMessage(cmd, ...rest)
+    }
+    terminate() {
+      this.__log.dead = true
+      return super.terminate()
+    }
+  }
+})()"""
+LIVE_DEPTH = 22  # src/pages/Analysis.tsx
+# Une nouvelle profondeur arrive en moins d'une seconde au repos (21 → 22 : 0,6 s, profondeur 22
+# atteinte en 4 s) ; 60 s sans progrès est un moteur bloqué, pas une machine lente.
+STALL_S = 60
+
+
+def wait_live_self_stop(page):
+    """Attend le `stop` de la recherche live tant que le moteur progresse.
+
+    Réussite : un worker reçoit `stop` à la profondeur cible. Échec : un worker en recherche (ni
+    stoppé ni quitté) atteint la profondeur cible + 2 (la recherche ne s'arrête pas d'elle-même),
+    ou aucune nouvelle profondeur pendant STALL_S secondes. Un worker stoppé plus tôt sans être
+    relancé (StrictMode : celui du premier montage) n'est ni une réussite ni un échec."""
+    best, since = -1, time.time()
+    while True:
+        logs = page.evaluate("() => window.__uciLogs()")
+        done = [lg for lg in logs if lg["stopped"] and lg["depthAtStop"] >= LIVE_DEPTH]
+        if done:
+            return {"ok": True, "profondeur au stop": done[0]["depthAtStop"], "ms par profondeur": done[0]["times"][-4:]}
+        running = [lg for lg in logs if not lg["stopped"] and not lg["dead"]]
+        over = [lg["depth"] for lg in running if lg["depth"] >= LIVE_DEPTH + 2]
+        if over:
+            return {"ok": False, "profondeur sans stop": over[0]}
+        depth = max((lg["depth"] for lg in running), default=-1)
+        if depth > best:
+            best, since = depth, time.time()
+        elif time.time() - since > STALL_S:
+            return {"ok": False, "bloqué à la profondeur": best, "secondes": round(time.time() - since),
+                    "journaux": [(lg["sent"][-3:], lg["depthAtStop"]) for lg in logs]}
+        page.wait_for_timeout(200)
+
+
 def wait_until(page, predicate, timeout_ms):
     deadline = time.time() + timeout_ms / 1000
     while time.time() < deadline:
@@ -176,7 +248,14 @@ def idb(page, script, arg=None):
 def seed_game(ctx, game):
     page = ctx.new_page()
     page.goto(f"{BASE}/#/archive")
-    page.wait_for_timeout(1500)
+    # Dexie crée la base au premier accès : attendre la table plutôt qu'une durée fixe. Jamais
+    # d'`open` avant que la base existe, il en créerait une vide en version 1.
+    wait_until(page, lambda: page.evaluate("""() => indexedDB.databases().then((list) => list.some((d) => d.name === 'chess-local')
+      && new Promise((res) => {
+        const r = indexedDB.open('chess-local')
+        r.onsuccess = () => { const ok = r.result.objectStoreNames.contains('games'); r.result.close(); res(ok) }
+        r.onerror = () => res(false)
+      }))"""), 30000)
     game_id = idb(
         page,
         "const tx = db.transaction('games', 'readwrite'); const r = tx.objectStore('games').add(arg);"
@@ -185,6 +264,85 @@ def seed_game(ctx, game):
     )
     page.close()
     return game_id
+
+
+def no_workers(page, timeout_ms=15000):
+    """Plus aucun worker dans la page, attendu sans durée fixe. `quit()` laisse finir la recherche
+    en vol (mutex) avant de terminer le worker : quelques secondes sous charge. Un worker orphelin,
+    lui, ne disparaît jamais et échoue à l'échéance."""
+    return wait_until(page, lambda: len(page.workers) == 0, timeout_ms)
+
+
+# Chunk de la page Archive : build de production (`assets/Archive-<hash>.js`) ou serveur de dev.
+ARCHIVE_CHUNK = re.compile(r"/(assets/Archive-[^/]*\.js|src/pages/Archive\.tsx)(\?.*)?$")
+
+
+# Quitter l'analyse au moment exact où elle lit la partie (`?game=`) dans Dexie : un toucher sur
+# l'onglet Archive placé dans la fenêtre de la course, au lieu d'espérer que la charge l'y mette.
+# Le clic part en microtâche, avant toute réponse d'IndexedDB (qui arrive dans une tâche).
+LEAVE_ON_GAME_READ = """(() => {
+  if (!location.hash.includes('game=')) return
+  let armed = true
+  const get = IDBObjectStore.prototype.get
+  IDBObjectStore.prototype.get = function (...a) {
+    if (armed && this.name === 'games') {
+      armed = false
+      queueMicrotask(() => [...document.querySelectorAll('nav a')].filter((e) => e.textContent.includes('Archive')).at(-1).click())
+    }
+    return get.apply(this, a)
+  }
+})()"""
+
+
+LEAVE_ON_REVIEW = """(() => {
+  window.__leftOnReview = false
+  const post = Worker.prototype.postMessage
+  Worker.prototype.postMessage = function (cmd, ...rest) {
+    const r = post.call(this, cmd, ...rest)
+    if (!window.__leftOnReview && typeof cmd === 'string' && cmd.startsWith('go depth')) {
+      window.__leftOnReview = true
+      queueMicrotask(() => [...document.querySelectorAll('nav a')].filter((e) => e.textContent.includes('Archive')).at(-1).click())
+    }
+    return r
+  }
+})()"""
+
+
+def cp7_slow_chunk(p, browser, game):
+    """CP-7 déterministe : partie quittée pendant sa lecture, chunk d'Archive lente (première
+    visite, appareil chargé).
+
+    La navigation de l'app est une transition : tant que la page suivante n'est pas chargée,
+    Analyse reste montée. Sa lecture Dexie (`?game=`) se termine pendant ce temps ; avant le
+    correctif, son nettoyage d'URL (`setParams`, relatif à la route d'Analyse) ramenait l'utilisateur
+    sur #/analyse et le bilan différé démarrait un moteur. La chunk est retenue, puis libérée.
+    Service worker bloqué : il servirait la chunk depuis son précache, hors de portée de `route`."""
+    ctx = mobile_context(p, browser, ck, standalone=True, service_workers="block")
+    game_id = seed_game(ctx, game)
+    held = []
+    ctx.route(ARCHIVE_CHUNK, lambda route: held.append(route))  # `route` désactive aussi le cache HTTP
+    ctx.add_init_script(LEAVE_ON_GAME_READ)
+    page = ctx.new_page()
+    uci = watch_uci(page)
+    page.goto(f"{BASE}/?debug-uci#/analyse?game={game_id}&review=1")
+    check("[cp7 chunk lente] chunk d'Archive demandée au toucher", wait_until(page, lambda: bool(held), 30000), f"({len(held)})")
+    # Durée de la chunk lente simulée, pas une attente d'assertion : la lecture Dexie, déjà partie
+    # au toucher, et le bilan différé de 300 ms ont largement le temps de se dérouler.
+    page.wait_for_timeout(2000)
+    hash_ = page.evaluate("location.hash")
+    check("[cp7 chunk lente] la navigation vers l'Archive n'est pas annulée par le chargement de la partie",
+          hash_ == "#/archive", f"(hash {hash_})")
+    # L'analyse live de la position initiale (`go infinite`) tourne tant qu'Analyse est montée ; le
+    # bilan, lui (`go depth`), ne doit pas partir pour une page quittée.
+    check("[cp7 chunk lente] aucun bilan lancé pour une page quittée", not any(c.startswith("go depth") for c in uci["sent"]),
+          f"({[c for c in uci['sent'] if c.startswith('go')]})")
+    for route in held:
+        route.continue_()
+    ctx.unroute(ARCHIVE_CHUNK)
+    ck.appears("[cp7 chunk lente] Archive affichée", page, "main h1:has-text('Archive')", timeout=30000)
+    check("[cp7 chunk lente] aucun worker Stockfish orphelin", no_workers(page),
+          f"({len(page.workers)} worker(s), hash {page.evaluate('location.hash')})")
+    ctx.close()
 
 
 def eval_label(page):
@@ -315,23 +473,24 @@ def suite(p):
 
     # ---------- PERF-1 : la recherche live s'arrête d'elle-même à la profondeur cible ----------
     page = ctx.new_page()
+    page.add_init_script(UCI_DEPTH_SPY)
     uci = watch_uci(page)
     page.goto(f"{BASE}/?debug-uci#/analyse")
     page.wait_for_selector("[data-square='e4']", timeout=30000)
     ck.appears("[perf1] lignes moteur affichées", page, ENGINE_LINE, timeout=30000)
     check("[perf1] recherche infinie lancée", "go infinite" in uci["sent"], f"({uci['sent'][-3:]})")
-
-    def self_stopped():
-        # Un `stop` APRÈS le dernier `go infinite` (StrictMode : un premier `go` peut avoir été stoppé au remontage).
-        s = uci["sent"]
-        gos = [i for i, c in enumerate(s) if c == "go infinite"]
-        return bool(gos) and "stop" in s[gos[-1] + 1:]
-
-    check("[perf1] `stop` envoyé sans aucune action de l'utilisateur", wait_until(page, self_stopped, 60000), f"({uci['sent'][-4:]})")
+    # Atteindre la profondeur 22 en MultiPV 3 prend de quelques secondes à plusieurs minutes selon la
+    # charge de la machine : on attend le moteur tant qu'il progresse, sans échéance murale. Le check
+    # reste décidable : un moteur qui dépasse la cible sans `stop` (correctif absent) atteint la
+    # profondeur cible + 2 et échoue aussitôt ; un moteur qui ne progresse plus échoue au bout de
+    # STALL_S. Tout est relevé dans la page (journal de chaque worker) : même ordre que l'app.
+    outcome = wait_live_self_stop(page)
+    check("[perf1] `stop` envoyé sans aucune action de l'utilisateur, à la profondeur cible", outcome["ok"], f"({outcome})")
     n_go = sum(c.startswith("go") for c in uci["sent"])
     page.wait_for_timeout(2000)
     check("[perf1] aucune relance après l'arrêt", sum(c.startswith("go") for c in uci["sent"]) == n_go, f"({uci['sent'][-4:]})")
-    check("[perf1] `bestmove` reçu (le moteur est vraiment au repos)", any(r.startswith("bestmove") for r in uci["recv"]), f"({uci['recv'][-3:]})")
+    check("[perf1] `bestmove` reçu (le moteur est vraiment au repos)",
+          wait_until(page, lambda: any(r.startswith("bestmove") for r in uci["recv"]), 15000), f"({uci['recv'][-3:]})")
     check("[perf1] les lignes restent affichées après l'arrêt", page.locator(ENGINE_LINE).count() >= 1)
     page.close()
 
@@ -478,8 +637,9 @@ def suite(p):
     idb(page, "const tx = db.transaction('mistakes', 'readwrite'); tx.objectStore('mistakes').clear();"
               "tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error)")
     page.close()
-    game_id = seed_game(ctx, {"date": 1758200000000, "mode": "bot", "botId": "noa", "playerColor": "b", "timeControl": "5+0",
-                              "timeClass": "blitz", "pgn": PGN_BOTH_ERR, "result": "1-0", "termination": "abandon"})
+    game = {"date": 1758200000000, "mode": "bot", "botId": "noa", "playerColor": "b", "timeControl": "5+0",
+            "timeClass": "blitz", "pgn": PGN_BOTH_ERR, "result": "1-0", "termination": "abandon"}
+    game_id = seed_game(ctx, game)
     page = ctx.new_page()
     page.goto(f"{BASE}/#/analyse?game={game_id}&review=1")
     if ck.appears("[ana9] bilan lancé depuis l'archive", page, "button:has-text('Démarrer le bilan')", timeout=180000):
@@ -496,12 +656,17 @@ def suite(p):
 
     # ---------- CP-7 : quitter la page avant le lancement différé du bilan ----------
     page = ctx.new_page()
+    # Quitter pendant le bilan, recherche en vol : le toucher part de la page au premier `go depth`.
+    # Depuis Python, il arrivait soit avant le montage d'Analyse (aucun moteur, check vide), soit
+    # après la fin du bilan, dont le résumé recouvre la navigation (clic intercepté sous charge).
+    page.add_init_script(LEAVE_ON_REVIEW)
     page.goto(f"{BASE}/#/analyse?game={game_id}&review=1")
-    page.locator("nav a", has_text="Archive").last.click()
-    page.wait_for_timeout(3000)
-    check("[cp7] aucun worker Stockfish orphelin après avoir quitté pendant le lancement du bilan", len(page.workers) == 0,
+    check("[cp7] Analyse quittée pendant le bilan", wait_until(page, lambda: page.evaluate("window.__leftOnReview") is True, 60000))
+    ck.appears("[cp7] Archive affichée après avoir quitté pendant le lancement du bilan", page, "main h1:has-text('Archive')", timeout=30000)
+    check("[cp7] aucun worker Stockfish orphelin après avoir quitté pendant le lancement du bilan", no_workers(page),
           f"({len(page.workers)} worker(s), hash {page.evaluate('location.hash')})")
     page.close()
+    cp7_slow_chunk(p, browser, game)
 
     # ---------- CP-2 : coup ajouté en bout de ligne après un bilan, puis Bilan > Démarrer ----------
     page = open_analysis(ctx)

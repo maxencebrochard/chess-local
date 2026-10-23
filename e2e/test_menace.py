@@ -682,28 +682,32 @@ def coach_part(p, browser):
     ctx = mobile_context(p, browser, ck, standalone=True, threat_prefs=None)
     page = ctx.new_page()
     open_play(page)
-    seed_game(page, "coach", "b", ["e4", "e5", "Bc4", "Nc6", "Qh5"])
+    # Toucher Indication dès qu'il est actif, l'analyse de menace pas encore lancée : la fenêtre
+    # (éval de reprise du coach) ne dure que le temps d'une recherche, et une boucle de sondage
+    # depuis Python la manquait quand la page allait plus vite qu'elle (serveur de dev). Le toucher
+    # part de la page, au rendu même qui active le bouton. Observateur posé avant la reprise :
+    # seed_game ne recharge pas le document (changements de hash).
     page.evaluate("""() => {
       window.__hintWhileThinking = []
+      window.__hintClicked = null
       const note = () => {
         const el = document.querySelector('[data-threat]')
         const btn = [...document.querySelectorAll('main button')].find((b) => b.textContent.includes('Indication'))
         if (el?.dataset.threat === 'thinking' && btn) window.__hintWhileThinking.push(btn.disabled)
+        if (window.__hintClicked === null && el?.dataset.threat === 'idle' && btn && !btn.disabled) {
+          window.__hintClicked = { threat: el.dataset.threat, ply: el.dataset.threatPly }
+          btn.click()
+        }
       }
       new MutationObserver(note).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-threat', 'disabled'] })
-      note()
     }""")
-    hint = page.locator("main button", has_text="Indication")
-    clicked = False
-    for _ in range(300):
-        st = threat_state(page)
-        if st and st["s"] != "idle":
-            break
-        if st and hint.count() and hint.is_enabled():
-            hint.click()
-            clicked = True
-            break
-        page.wait_for_timeout(50)
+    seed_game(page, "coach", "b", ["e4", "e5", "Bc4", "Nc6", "Qh5"])
+    try:
+        page.wait_for_function("() => window.__hintClicked !== null || document.querySelector(\"[data-threat='thinking'], [data-threat='ask']\")",
+                               timeout=40000, polling=50)
+    except Exception:
+        pass  # le check ci-dessous échoue avec l'état relevé
+    clicked = page.evaluate("() => window.__hintClicked") is not None
     check("[entraîneur] Indication demandée avant l'analyse de menace", clicked, f"({threat_state(page)})")
     if ck.appears("[entraîneur] question posée malgré l'indication demandée", page, "[data-threat='ask']", timeout=40000):
         page.wait_for_timeout(1500)
@@ -832,7 +836,12 @@ def bot_part(p, browser):
     wait_state(page, {"idle"}, ply=2, timeout=40000)
     page.evaluate("() => { window.__heldUci = [] }")
     tap_move(page, "d1", "h5")
-    page.wait_for_timeout(1500)
+    # Réponse du bot retenue avant de préparer le prémouvement : une durée fixe laissait, sous
+    # charge, `bestmove` arriver après la libération (rien de retenu, coup joué sans file).
+    try:
+        page.wait_for_function("() => window.__heldUci && window.__heldUci.length >= 1", timeout=30000, polling=50)
+    except Exception:
+        pass  # le check « réponses retenues » ci-dessous échoue avec le détail
     tap_move(page, "h5", "h4")  # prémouvement : Dh4 après la réponse forcée
     released = page.evaluate("() => window.__releaseUci()")
     ok = False
@@ -842,7 +851,16 @@ def bot_part(p, browser):
             break
         page.wait_for_timeout(200)
     check("[prémouvement] Dh4 exécuté juste après g6", ok and released >= 1, f"({released} réponses retenues)")
-    page.wait_for_timeout(3000)
+    # Pas de durée fixe : une analyse de g6 non abandonnée (le moteur du coach est sérialisé) aurait
+    # posé sa question avant que celle de la réponse du bot à Dh4 (6e demi-coup) ne se termine.
+    settled = True
+    try:
+        page.wait_for_function("""() => { const e = document.querySelector('[data-threat]')
+          return window.__askedPlies.includes(6) || (e && e.dataset.threat === 'idle' && e.dataset.threatPly === '6') }""",
+                               timeout=60000, polling=100)
+    except Exception:
+        settled = False
+    check("[prémouvement] réponse du bot à Dh4 analysée", settled, f"({threat_state(page)})")
     asked = page.evaluate("() => window.__askedPlies")
     check("[prémouvement] aucune question sur g6", all(n is not None and n >= 6 for n in asked), f"(questions aux demi-coups {asked})")
     ctx.close()

@@ -148,6 +148,13 @@ WEBKIT_AUDIO = r"""(() => {
     vis = 'visible'
     document.dispatchEvent(new Event('visibilitychange'))
   }
+  // Début réel de la diffusion de chaque fin de geste : premier écouteur du chemin (fenêtre, phase de
+  // capture, posé avant tout script de l'app). L'écart avec `timeStamp` (création de l'événement)
+  // est l'attente dans la file du thread principal, qui dépend de la charge et non du code du geste.
+  const dispatchAt = new WeakMap()
+  for (const t of ['pointerup', 'mouseup', 'touchend', 'click', 'keydown']) {
+    window.addEventListener(t, (e) => { dispatchAt.set(e, performance.now()) }, true)
+  }
   // Fichier d'origine de chaque AudioBuffer.
   const abUrl = new WeakMap()
   window.__decoded = new Set()
@@ -183,7 +190,8 @@ WEBKIT_AUDIO = r"""(() => {
     // ultérieure (setTimeout, requestAnimationFrame, fin d'animation, réponse réseau).
     const ev = window.event
     window.__sounds.push({ name, at, state: st, audible: st === 'running' && !zombies.has(this.context),
-      scheduledMs, event: ev ? ev.type : null, trusted: ev ? ev.isTrusted : null, eventAt: ev ? ev.timeStamp : null })
+      scheduledMs, event: ev ? ev.type : null, trusted: ev ? ev.isTrusted : null, eventAt: ev ? ev.timeStamp : null,
+      dispatchAt: ev ? dispatchAt.get(ev) ?? null : null })
     return origStart.apply(this, a)
   }
 })()"""
@@ -212,21 +220,30 @@ def wait_sounds_ready(page, timeout=15000):
 def immediate_sound(entries, name, budget_ms=250):
     """(ok, détail) : un seul son, `name`, audible, démarré PENDANT la diffusion de l'événement de
     fin de geste qui joue le coup (même tâche, microtâches comprises), et au plus `budget_ms` après
-    l'horodatage navigateur de cet événement.
+    le début de cette diffusion.
 
     Le critère principal ne dépend pas de la charge : un son repoussé à une tâche ultérieure
     (setTimeout, requestAnimationFrame, fin d'animation) n'a plus d'événement en cours et échoue même
-    s'il part 5 ms plus tard. Le budget en temps n'est qu'un filet contre un long travail synchrone
-    ajouté avant le son, assez large pour le travail légitime d'une machine chargée.
-    Une programmation future de 80 ms ou plus échoue indépendamment de ce budget."""
+    s'il part 5 ms plus tard. Le budget borne le travail synchrone du geste avant le son (un rendu
+    React forcé, un calcul ajouté) : il se compte depuis le premier écouteur de l'événement, pas
+    depuis sa création (`timeStamp`), car l'attente dans la file du thread principal avant la
+    diffusion ne dépend que de la charge de la machine (117,6 ms relevés sous un gate parallèle, pour
+    un travail du geste de quelques ms ; voir docs/f14-feeling.md). Il est en temps CPU de la page :
+    multiplié par E2E_CPU_RATE, qui ralentit d'autant ce travail. Une programmation future de 80 ms
+    ou plus échoue indépendamment."""
     sounds = [e for e in entries if e["name"] != "(muet)"]
-    detail = f"({fmt_sounds(sounds)}, {[(e.get('event'), e.get('trusted'), None if e.get('eventAt') is None else round(e['at'] - e['eventAt'], 1)) for e in sounds]})"
+    def timing(e):
+        if e.get("eventAt") is None or e.get("dispatchAt") is None:
+            return None
+        return f"file {e['dispatchAt'] - e['eventAt']:.1f} ms, geste {e['at'] - e['dispatchAt']:.1f} ms"
+    detail = f"({fmt_sounds(sounds)}, {[(e.get('event'), e.get('trusted'), timing(e)) for e in sounds]})"
     if len(sounds) != 1:
         return False, detail
     e = sounds[0]
+    budget = budget_ms * float(os.environ.get("E2E_CPU_RATE", "1"))
     ok = (e["name"] == name and e["audible"] and e.get("event") in GESTURE_EVENTS and e.get("trusted")
           and e.get("scheduledMs", float("inf")) < 80
-          and e.get("eventAt") is not None and 0 <= e["at"] - e["eventAt"] < budget_ms)
+          and e.get("dispatchAt") is not None and 0 <= e["at"] - e["dispatchAt"] < budget)
     return ok, detail
 
 

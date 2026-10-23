@@ -128,6 +128,11 @@ function PuzzleSeries({ drill, cadence, all, stats, showNet, onDone, onMenu, onR
       if (showNet && analyseMate(fen)) {
         // Le chrono s'arrête le temps de lire le réseau : la lecture n'est pas une taxe.
         pausedAt.current = Date.now()
+        // Affichage figé sur le temps restant exact à la pause, dans la même mise à jour que la
+        // phase : sinon il garde la valeur du dernier tick, en avance d'un tick (100 ms, davantage
+        // sous charge) sur le temps qui reprendra, et un tick encore en attente de rendu pourrait
+        // la réécrire pendant le réseau.
+        if (endAt.current !== null) setLeft(Math.max(0, endAt.current - pausedAt.current))
         phaseRef.current = 'net'
         setNetFen(fen)
         setPhase('net')

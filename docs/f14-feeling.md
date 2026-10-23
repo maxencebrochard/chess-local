@@ -90,7 +90,12 @@ La synthèse demeure donc une approximation documentée, pas une copie ni une pr
 
 Le check E2E exige que le son démarre pendant la diffusion de l'événement de fin de geste qui joue le coup (`window.event` relevé par l'espion audio), une fois tous les sons décodés.
 Ce critère ne dépend pas de la charge de la machine : un son repoussé à une tâche ultérieure (setTimeout, image suivante, fin d'animation) échoue, même quelques millisecondes plus tard.
-Un budget de 250 ms après l'horodatage navigateur de l'événement reste un filet contre un long travail synchrone ajouté avant le son.
+Un budget de 250 ms (80 ms pour le coup d'un puzzle) reste un filet contre un long travail synchrone ajouté avant le son.
+Depuis le 23 octobre 2026, il se compte depuis le début de la diffusion de l'événement (premier écouteur, posé par l'espion en capture sur la fenêtre), et non plus depuis son horodatage navigateur (`timeStamp`).
+L'écart entre les deux est l'attente de l'événement dans la file du thread principal : elle ne dépend que de la charge de la machine, pas du code du geste.
+Sous un gate parallèle, le check du puzzle a relevé 117,6 ms alors que le travail du geste mesure quelques millisecondes (6,4 ms sous `E2E_CPU_RATE=4`) ; un thread principal occupé 150 ms juste avant le relâchement donne « file 149,7 ms, geste 1,4 ms ».
+Le budget est en temps CPU de la page : il est multiplié par `E2E_CPU_RATE`, qui ralentit d'autant le travail du geste.
+Le détail du check affiche les deux durées (« file » et « geste ») pour chaque son.
 Il ne garantit pas une latence acoustique sur iPhone.
 L'espion Web Audio mesure séparément le délai futur passé à `start()` et exige moins de 80 ms, afin qu'une programmation retardée ne profite pas du budget de 250 ms.
 Aucun appel haptique n'est ajouté : `navigator.vibrate` n'est pas disponible dans Safari iOS et aucune technique fiable vérifiée sur cet appareil n'est disponible ici.
@@ -104,6 +109,7 @@ Chaque mutation a été appliquée temporairement à l'implémentation, exécut�
 |---|---|
 | Échelle tactile à 1, décalage nul, cible figée sur la source, points supprimés, animation de retour supprimée | Taille, soulèvement, cible intermédiaire et finale, coups légaux tactile et souris, retour animé |
 | `AudioBufferSourceNode.start()` programmé 200 ms plus tard | Timing du coup tactile et souris, clic-clic adverse, prise, roque, échec et promotion |
+| `E2E_MUTATION=sound-sync` : 300 ms de travail synchrone avant chaque son, dans le geste (23 octobre 2026) | Budget du geste pour le coup tactile et souris, le clic-clic adverse, la prise, le roque, l'échec, la promotion et le puzzle |
 | Tous les coups remplacés par `game-start` | Typage de chaque son, tactile et souris |
 | Pose légale refusée | Pièce non jouée à la pose et absence de son attendu |
 | Pièce source cachée après refus | Pièce non visible au retour |
